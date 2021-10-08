@@ -42,6 +42,14 @@ class arduinoRead():
                 # Try to Connect to the Arduino
                 arduinoPort = self.findArduino(serialNum = arduinoSerialNum)
                 arduinoControl = serial.Serial(arduinoPort, baudrate=115200, timeout=1)
+                
+                # Toggle DTR to reset Arduino
+                arduinoControl.setDTR(False)
+                arduinoControl.flushInput()
+                arduinoControl.setDTR(True)
+                # Reset Arduino
+                self.readAll(arduinoControl)
+                arduinoControl.close(); arduinoControl.open()
             except Exception as e:
                 # If No Connection Established, Exit Program and Inform User
                 print("Cannot Connect to Arudino", arduinoSerialNum);
@@ -73,7 +81,7 @@ class arduinoRead():
         arduino.timeout = 2
     
         # Read and discard everything that may be in the input buffer
-        _ = arduino.readAll()
+        arduino.readAll()
         # Send request to Arduino
         arduino.write(bytes([handshake_code]))
         # Read in what Arduino sent
@@ -186,7 +194,7 @@ class arduinoRead():
                 
                 if len(arduinoValues) == numChannels + 1:
                     # Store the Time and Voltage Data
-                    arduinoData[1].append(int(arduinoValues[0]))
+                    arduinoData[1].append(int(arduinoValues[0])/1000)
                     for channelIndex in range(numChannels):
                         # Convert Arduino Data to Voltage Before Storing
                         arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 5/1023)
@@ -332,33 +340,28 @@ class eogArduinoRead(eogProtocol):
         for i in range(numTrashReads):
             self.eogArduino.read_until()
 
+
         readBuffer = b""; dataFinger = 0
         # Loop Through and Read the Arduino Data in Real-Time
         while len(self.data["timePoints"]) < numPointsRead:
+            
             # Read in chunk of data
             raw = self.arduinoRead.readAllNewlines(ser=self.eogArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
-            
             # Parse it, passing if it is gibberish
-            try:
-                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
-                
-                # Update data dictionary
-                startNum = len(self.data["timePoints"])
-                for i in range(len(timePoints)):
-                    self.data["timePoints"].append(startNum+i)
-
-                for channelIndex in range(self.numChannels):
-                    self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
-
-                # When Ready, Send Data Off for Analysis
-                pointNum = len(self.data["timePoints"])
-                while pointNum - dataFinger >= self.numTimePoints:
-                    self.analyzeData(dataFinger, self.plotStreamedData, myModel = None, Controller=None)
-                    dataFinger += self.moveDataFinger
-            except Exception as e:
-                print(e)
-                pass
+            Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
             
+            # Update data dictionary
+            self.data["timePoints"].extend(timePoints)
+            for channelIndex in range(self.numChannels):
+                self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
+
+            # When Ready, Send Data Off for Analysis
+            pointNum = len(self.data["timePoints"])
+            while pointNum - dataFinger >= self.numTimePoints:
+                self.analyzeData(dataFinger, self.plotStreamedData, myModel = None, Controller=None)
+                dataFinger += self.moveDataFinger
+
+        
         print("Finished Streaming in Data; Closing Arduino\n")
         # Close the Arduinos at the End
         self.eogArduino.close()

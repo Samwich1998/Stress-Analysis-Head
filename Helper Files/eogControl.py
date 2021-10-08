@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85735313333351E040A0'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
-    numDataPoints = 500000  # The Number of Points to Stream into the Arduino
+    numDataPoints = 50000  # The Number of Points to Stream into the Arduino
     moveDataFinger = 200    # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 4         # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     numFeatures = 4         # The Number of Features to Extract/Save/Train on
@@ -56,13 +56,13 @@ if __name__ == "__main__":
     
     # Protocol Switches: Only One Can be True; Only the First True Variable Excecutes
     streamArduinoData = True   # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
-    readDataFromExcel = True  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False     # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Peaks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False         # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = True  # Graph the Data to Show Incoming Signals + Analysis
-    saveInputData = False      # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveInputData = True      # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     saveModel = False         # Save the Machine Learning Model for Later Use
     testModel = False         # Apply the Learning Algorithm to Decode the Signals
     
@@ -70,9 +70,9 @@ if __name__ == "__main__":
     
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveInputData:
-        saveExcelName = "Samuel Solomon 2021-10-06 Circles.xlsx"  # The Name of the Saved File
+        saveExcelName = "Samuel Solomon 2021-10-08.xlsx"  # The Name of the Saved File
         saveDataFolder = "../Output Data/All Data/Industry Electrodes/Sam/"   # Data Folder to Save the Excel Data; MUST END IN '/'
-        eyeMovement = "Up"                          # Speficy the eye Movement You Will Perform
+        eyeMovement = "Right"                          # Speficy the eye Movement You Will Perform
     
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:

@@ -42,7 +42,7 @@ class emgProtocol:
         
         # High Pass Filter Parameters
         f1 = 100; f3 = 50;
-        self.samplingFreq = 1000
+        self.samplingFreq = 500
         self.Rp = 0.1; self.Rs = 30;
         self.Wp = 2*math.pi*f1/self.samplingFreq
         self.Ws = 2*math.pi*f3/self.samplingFreq

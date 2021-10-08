@@ -43,7 +43,7 @@ class eogProtocol:
         
         # High Pass Filter Parameters
         self.cutOffFreqLPF = 7
-        self.samplingFreq = 330
+        self.samplingFreq = 500
         # Root Mean Squared (RMS) Parameters
         self.rmsWindow = 100; self.stepSize = 5;
         
@@ -128,7 +128,7 @@ class eogProtocol:
             self.bioelectricPlotAxes[channelNum].set_ylabel("Bioelectric Signal (Volts)")
             
         # Create the Peak Data Plot
-        yLimitHighFiltered = 0.5;
+        yLimitHighFiltered = 5;
         self.filteredBioelectricPlotAxes = [] 
         # Plot the Peak Data
         self.filteredBioelectricDataPlots = []
@@ -177,44 +177,24 @@ class eogProtocol:
                 self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
             # ----------------------------------------------------------------#
             
-            # ---------------------- Low pass Filter -------------------------#
-            # Calculate the Number of New Data Points You Need for Peak Detecting
-            RMSData = self.RMSDataList[channelIndex]
-            if len(RMSData) == 0 and dataFinger > 0:
-                print("You Collected NO RMS Data Last Round ... ?")
-                print("Please Decrease Your rmsWindow Size or Increase numTimePoints")
-                sys.exit()
-            else:
-                newRMSDataBegins = self.stepSize*len(RMSData) - dataFinger
-    
-            # High Pass Filter to Remove Noise
-            startLPFindex = max(dataFinger + newRMSDataBegins - self.lowPassBuffer, 0)
+            # ---------------------- Low pass Filter -------------------------#    
+            # Low Pass Filter to Remove Noise
+            startLPFindex = max(dataFinger - self.lowPassBuffer, 0)
             yDataBuffer = self.data['Channel' + str(channelIndex+1)][startLPFindex:dataFinger + self.numTimePoints]
-            filteredData = self.butter_lowpass_filter(yDataBuffer, self.cutOffFreqLPF, self.samplingFreq, order=5)[-self.numTimePoints + newRMSDataBegins:]   
-            # ----------------------------------------------------------------#
+            filteredData = self.butter_lowpass_filter(yDataBuffer, self.cutOffFreqLPF, self.samplingFreq, order=5)[-self.numTimePoints:]
     
-            # --------------------- Root Mean Squared ------------------------#
-            if len(filteredData) >= self.rmsWindow:
-                newRMSData = self.RMSFilter(filteredData, self.rmsWindow, self.stepSize)
-                RMSData.extend(newRMSData)
-            else:
-                print("If You are Here, it is a Mistake")
-                print("Please Decrease Your rmsWindow Size or Increase numTimePoints")
-                sys.exit()
-                
-            # Plot RMS Data
-            xDataRMS = np.arange(max(len(RMSData) - self.numPointsRMS,0), len(RMSData), 1)
+            # Plot Filtered Data
             if plotStreamedData:
-                self.filteredBioelectricDataPlots[channelIndex].set_data(xDataRMS, RMSData[-self.numPointsRMS:])
-                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(xDataRMS[0], xDataRMS[0] + self.numPointsRMS)
+                self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData)
+                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
             # ----------------------------------------------------------------#
 
             # ----------------------- Peak Detection  ------------------------#
             # Get Most Current RMS Data (Add Buffer in Case the peak is Cut Off)
-            bufferRMSData = RMSData[-(len(newRMSData) + self.peakDetectionBufferSize):]
-            bufferRMSDataX = xDataRMS[-(len(newRMSData) + self.peakDetectionBufferSize):]
+            bufferRMSData = filteredData[-self.peakDetectionBufferSize:]
+            bufferRMSDataX = self.timePoints[-self.peakDetectionBufferSize:]
             # Find Peaks from the New Data
-            newTopPeaks, yBase = self.find_peaks(bufferRMSDataX, bufferRMSData, channelIndex, RMSData)
+            newTopPeaks, yBase = self.find_peaks(bufferRMSDataX, bufferRMSData, channelIndex, filteredData)
             # If No New Peaks, Then No New Features
             if newTopPeaks == {}:
                 continue
@@ -226,13 +206,13 @@ class eogProtocol:
             # If New Peak Was Found with Enough Peak Seperation, Add Group 
             self.currentGroupNum = max(self.featureLocsX[channelIndex].keys(), default=0)
             currentHighestXPeak = max([max(self.featureLocsX[i][self.currentGroupNum], default=0) for i in range(self.numChannels)])
-            if abs(xDataRMS[-1] - currentHighestXPeak) > self.minGroupSep and currentHighestXPeak != 0:
+            if abs(self.timePoints[-1] - currentHighestXPeak) > self.minGroupSep and currentHighestXPeak != 0:
                 self.createNewGroup(myModel, Controller)
             # ----------------------------------------------------------------#
             
             # --------------------- Feature Extraction  ----------------------#
             # Features Analysis to Group Peaks Together 
-            batchXGroups, featureSetTemp = self.featureDefinition(RMSData, xPeakTop, yBase, self.currentGroupNum, myModel, Controller)
+            batchXGroups, featureSetTemp = self.featureDefinition(filteredData, xPeakTop, yBase, self.currentGroupNum, myModel, Controller)
             # Update Overall Grouping Dictionary
             for groupNum in batchXGroups.keys():
                 # Get New Peaks/Features to Add
@@ -265,8 +245,8 @@ class eogProtocol:
                     # Get Peak Points
                     if len(self.featureLocsX[channelIndex][groupNum]) != 0:
                         xPeakTop = self.featureLocsX[channelIndex][groupNum][0]
-                        if xDataRMS[0] <= xPeakTop:
-                            yPeakTop = RMSData[-len(xDataRMS):][np.where(xDataRMS == xPeakTop)[0][0]]
+                        if self.timePoints[0] <= xPeakTop:
+                            yPeakTop = filteredData[np.where(self.timePoints == xPeakTop)]
                             # Plot the Peaks in the Group
                             groupPeakPlot.set_data(xPeakTop, yPeakTop)
                         
@@ -410,16 +390,15 @@ class eogProtocol:
         numpyDataX = np.array(xData)
         numpyDataY = np.array(yData)
         # Find Peak Indices
-        peakInfo = scipy.signal.find_peaks(yData, prominence=.03, height=0.01, width=15, rel_height=0.5, distance = 100)
+        peakInfo = scipy.signal.find_peaks(yData, prominence=.1, height=0.01, rel_height=0.5)
         indicesTop = peakInfo[0]
         # Get X,Y Peaks
         xTop = numpyDataX[indicesTop]
         yTop = numpyDataY[indicesTop]
         
-        #yBases = numpyDataY[peakInfo[1]['left_bases']]
         yBases = []
         for top in indicesTop:
-            yBases.append(min(numpyDataY[top-200:top], default=[]))
+            yBases.append(min(numpyDataY[top-50:top], default=[]))
         #print(peakInfo)
         
         # Find the New Peaks

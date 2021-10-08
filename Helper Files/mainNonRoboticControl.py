@@ -161,7 +161,7 @@ if __name__ == "__main__":
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels)
-            saveInputs.saveData(readData.data, readData.xTopGrouping, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, handMovement)
+            saveInputs.saveData(readData.data, readData.featureLocsX, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, handMovement)
         else:
             print("User Chose Not to Save the Data")
     

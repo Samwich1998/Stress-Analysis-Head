@@ -7,14 +7,14 @@ Created on Mon Jan 25 13:17:05 2021
 """
 
 # Basic Modules
-import os
 import sys
 import math
 import numpy as np
 # Peak Detection
 import scipy
 import scipy.signal
-from scipy.signal import lfilter
+# Filter
+from scipy.signal import butter, lfilter
 # Plotting
 import matplotlib.pyplot as plt
 
@@ -24,32 +24,48 @@ import matplotlib.pyplot as plt
 
 class eogProtocol:
     
-    def __init__(self, xWidth = 2000, moveDataFinger = 200, numChannels = 4, movementOptions = []):
+    def __init__(self, numTimePoints = 2000, moveDataFinger = 200, numChannels = 4, movementOptions = [], plotStreamedData = True):
         
         # Input Parameters
-        self.numChannels = numChannels        # Number of EMG Signals
-        self.xWidth = xWidth                  # The X-Wdith of the Plot (Number of Data-Points Shown)
+        self.numChannels = numChannels        # Number of Bioelectric Signals
+        self.numTimePoints = numTimePoints                  # The X-Wdith of the Plot (Number of Data-Points Shown)
         self.moveDataFinger = moveDataFinger  # The Amount of Data to Stream in Before Finding Peaks
         self.movementOptions = movementOptions
+        self.plotStreamedData = plotStreamedData
         
         # Data to Stream in
         self.data = {}
-        
         # Peak Finding and Feature Holders
         self.RMSDataList = {}
-        self.xTopGrouping = {}
+        self.featureLocsX = {}
         self.featureSetGrouping = {}
         self.badPeaks = {}
+        
+        # High Pass Filter Parameters
+        self.cutOffFreqLPF = 7
+        self.samplingFreq = 330
+        # Root Mean Squared (RMS) Parameters
+        self.rmsWindow = 100; self.stepSize = 5;
+        
+        # Data Collection Parameters
+        self.numPointsRMS = 10000
+        self.peakDetectionBufferSize = 500
+        self.rmsEdgeBuffer = 50      # Buffer in the Last Points of the RMS Data for Determining Peaks
+        self.minGroupSep = 100       # Seperation that Defines a New Group
+        self.lowPassBuffer = max(self.rmsWindow + self.stepSize, 1000)  # Must be > rmsWindow + stepSize; Current Experimental lowest: numTimePoints*0.4 (Changes with numTimePoints)
+        # Keep Track of Gestures Recorded
+        self.currentGroupNum = -1
         
         # Start with Fresh Inputs
         self.resetGlobalVariables()
         
         # Define Class for Plotting Peaks
-        self.initPlotPeaks()
+        if plotStreamedData:
+            self.initPlotPeaks()
 
     def resetGlobalVariables(self):
         # Data to Read in
-        self.data = dict(timePoints=[])
+        self.data = {'timePoints':[]}
         for channel in range(self.numChannels):
             self.data['Channel'+str(1+channel)] = []
         
@@ -57,9 +73,13 @@ class eogProtocol:
         for channelNum in range(self.numChannels):
             # Hold Analysis Values
             self.RMSDataList[channelNum] = []
-            self.xTopGrouping[channelNum] = {1:[]}
+            self.featureLocsX[channelNum] = {1:[]}
             self.featureSetGrouping[channelNum] = {1:[]}
             self.badPeaks[channelNum] = []
+        
+        # Close Any Opened Plots
+        if self.plotStreamedData:
+            plt.close()
 
 
     def initPlotPeaks(self): 
@@ -79,124 +99,98 @@ class eogProtocol:
         # use ggplot style for more sophisticated visuals
         plt.style.use('seaborn-poster') #sets the size of the charts
         #plt.style.use('ggplot')
+        plt.ion()
 
         # ------------------------------------------------------------------- #
         # --------- Plot Variables user Can Edit (Global Variables) --------- #
-        # High Pass Filter Parameters
-        self.f1 = 100; self.f3 = 50;
-        self.Rp = 0.1; self.Rs = 30;
-        self.samplingFreq = 1000
-        # Root Mean Squared (RMS) Parameters
-        self.rmsWindow = 250; self.stepSize = 8;
-        
-        # Data Collection Parameters
-        self.peakDetectionBufferSize = 500
-        self.featureDefinitionBuffer = 50
-        self.maxPeakSep = 100   # Seperation that Defines a New Group
-        self.badInitialHighPass = max(self.rmsWindow + self.stepSize, 5000)  # Must be > rmsWindow + stepSize; Current Experimental lowest: xWidth*0.4 (Changes with xWidth)
-        
-            
+
         # Specify Figure aesthetics
-        plt.ion()
-        figWidth = 14; figHeight = 10; # 28,16
-        self.fig, ax = plt.subplots(4, 2, sharey=False, sharex = 'col', figsize=(figWidth, figHeight))
+        figWidth = 14; figHeight = 10;
+        self.fig, ax = plt.subplots(self.numChannels, 2, sharey=False, sharex = 'col', figsize=(figWidth, figHeight))
         
         # Plot the Raw Data
-        self.xWidth = 2000
-        self.xWidthPeaks = 10000
-        self.xLimLow = 0; self.xLimHigh = self.xLimLow + self.xWidth;
-        self.yLimLow = 0; self.yLimHigh = 5; 
-        self.movieGraphChannelListRaw = []
-        self.channelListRaw = []
+        yLimLow = 0; yLimHigh = 5; 
+        xLimLow = 0; xLimHigh = xLimLow + self.numTimePoints;
+        self.bioelectricDataPlots = []; self.bioelectricPlotAxes = []
         for channelNum in range(self.numChannels):
             # Create Plots
-            self.channelListRaw.append(ax[channelNum, 0])
+            self.bioelectricPlotAxes.append(ax[channelNum, 0])
             
             # Generate Plot
-            self.movieGraphChannelListRaw.append(self.channelListRaw[channelNum].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
+            self.bioelectricDataPlots.append(self.bioelectricPlotAxes[channelNum].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
             
             # Set Figure Limits
-            self.channelListRaw[channelNum].set_xlim(self.xLimLow, self.xLimHigh)
-            self.channelListRaw[channelNum].set_ylim(self.yLimLow, self.yLimHigh)
+            self.bioelectricPlotAxes[channelNum].set_xlim(xLimLow, xLimHigh)
+            self.bioelectricPlotAxes[channelNum].set_ylim(yLimLow, yLimHigh)
             # Label Axis + Add Title
-            self.channelListRaw[channelNum].set_title("EMG Signal in Channel " + str(channelNum + 1))
-            self.channelListRaw[channelNum].set_xlabel("EMG Data Points")
-            self.channelListRaw[channelNum].set_ylabel("EMG Signal (Volts)")
+            self.bioelectricPlotAxes[channelNum].set_title("Bioelectric Signal in Channel " + str(channelNum + 1))
+            self.bioelectricPlotAxes[channelNum].set_xlabel("Bioelectric Data Points")
+            self.bioelectricPlotAxes[channelNum].set_ylabel("Bioelectric Signal (Volts)")
             
         # Create the Peak Data Plot
-        self.yLimitHighFiltered = 0.5;
-        self.channelListFiltered = [] 
+        yLimitHighFiltered = 0.5;
+        self.filteredBioelectricPlotAxes = [] 
         # Plot the Peak Data
-        self.movieGraphChannelListFiltered = []
+        self.filteredBioelectricDataPlots = []
         self.movieGraphChannelTopPeaksList = []
-        self.movieGraphChannelBottomPeaksList = []
         for channelNum in range(self.numChannels):
             # Create Plots
-            self.channelListFiltered.append(ax[channelNum, 1])
+            self.filteredBioelectricPlotAxes.append(ax[channelNum, 1])
             
             # Plot RMS Peaks
-            self.movieGraphChannelListFiltered.append(self.channelListFiltered[channelNum].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
+            self.filteredBioelectricDataPlots.append(self.filteredBioelectricPlotAxes[channelNum].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
             # Plot Top Peaks
             self.movieGraphChannelTopPeaksList.append({})
             
             # Set Figure Limits
-            self.channelListFiltered[channelNum].set_ylim(self.yLimLow, self.yLimitHighFiltered)
+            self.filteredBioelectricPlotAxes[channelNum].set_ylim(yLimLow, yLimitHighFiltered)
             # Label Axis + Add Title
-            self.channelListFiltered[channelNum].set_title("Filtered EMG Signal in Channel " + str(channelNum + 1))
-            self.channelListFiltered[channelNum].set_xlabel("Root Mean Squared Data Point")
-            self.channelListFiltered[channelNum].set_ylabel("Filtered Signal (Volts)")
+            self.filteredBioelectricPlotAxes[channelNum].set_title("Filtered Bioelectric Signal in Channel " + str(channelNum + 1))
+            self.filteredBioelectricPlotAxes[channelNum].set_xlabel("Root Mean Squared Data Point")
+            self.filteredBioelectricPlotAxes[channelNum].set_ylabel("Filtered Signal (Volts)")
             
             # Hold Analysis Values
             self.RMSDataList[channelNum] = []
-            self.xTopGrouping[channelNum] = {1:[]}
+            self.featureLocsX[channelNum] = {1:[]}
             self.featureSetGrouping[channelNum] = {1:[]}
             self.badPeaks[channelNum] = []
             
-        
         # Tighten Figure White Space (Must be After wW Add Fig Info)
-        self.fig.tight_layout(pad=2.0)
-        plt.show()
+        self.fig.tight_layout(pad=2.0); plt.show()
         
-        # Create Output File Directory to Save Data
-        self.outputData = "../Output Data/"
-        os.makedirs(self.outputData, exist_ok=True)
-        
-        # Keep Track of Robotic Movements
-        self.lastPeakAnalyzed = 0
-        self.currentGroupNum = -1
-        
-        self.xDataEMG = self.data['timePoints'][0:self.xWidth]
-
     
-    def analyzeData(self, dataFinger, seeFullPlot = False, myModel = None, Controller=None):
+    def analyzeData(self, dataFinger, plotStreamedData = False, myModel = None, Controller=None):     
         
-        # Get X Data: Shared Axis for All Channels
-        self.xDataEMG = self.data['timePoints'][dataFinger:dataFinger + self.xWidth]
-        # Add incoming Data to Each Respective Channel's Plot
-        for dataChannel in range(self.numChannels):
+        if plotStreamedData:
+            # Get X Data: Shared Axis for All Channels
+            self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
             
-            # ---------------------- Get EMG Signal --------------------------#
-            # Get New Y DataData
-            newYData = self.data['Channel' + str(dataChannel+1)][dataFinger:dataFinger + self.xWidth]
-            # Plot Raw EMG Data            
-            self.movieGraphChannelListRaw[dataChannel].set_data(self.xDataEMG, newYData)
-            self.channelListRaw[dataChannel].set_xlim(self.xDataEMG[0], self.xDataEMG[0]+self.xWidth)
+        # Add incoming Data to Each Respective Channel's Plot
+        for channelIndex in range(self.numChannels):
+            
+            # ------------------- Plot Biolectric Signal ---------------------#
+            if plotStreamedData:
+                # Get New Y Data
+                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
+                # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
+                self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
+                self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
             # ----------------------------------------------------------------#
             
-            # ---------------------- High pass Filter ------------------------#
+            # ---------------------- Low pass Filter -------------------------#
             # Calculate the Number of New Data Points You Need for Peak Detecting
-            RMSData = self.RMSDataList[dataChannel]
+            RMSData = self.RMSDataList[channelIndex]
             if len(RMSData) == 0 and dataFinger > 0:
                 print("You Collected NO RMS Data Last Round ... ?")
-                print("Please Decrease Your rmsWindow Size or Increase xWidth")
+                print("Please Decrease Your rmsWindow Size or Increase numTimePoints")
                 sys.exit()
             else:
-                newRMSDataBegins = self.stepSize*(len(RMSData)) - (dataFinger)
+                newRMSDataBegins = self.stepSize*len(RMSData) - dataFinger
     
             # High Pass Filter to Remove Noise
-            startHPF = max(dataFinger + newRMSDataBegins - self.badInitialHighPass,0)
-            yDataBuffer = self.data['Channel' + str(dataChannel+1)][startHPF:dataFinger + self.xWidth]
-            filteredData = self.highPassFilter(yDataBuffer)[-self.xWidth + newRMSDataBegins:]   
+            startLPFindex = max(dataFinger + newRMSDataBegins - self.lowPassBuffer, 0)
+            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startLPFindex:dataFinger + self.numTimePoints]
+            filteredData = self.butter_lowpass_filter(yDataBuffer, self.cutOffFreqLPF, self.samplingFreq, order=5)[-self.numTimePoints + newRMSDataBegins:]   
             # ----------------------------------------------------------------#
     
             # --------------------- Root Mean Squared ------------------------#
@@ -205,12 +199,14 @@ class eogProtocol:
                 RMSData.extend(newRMSData)
             else:
                 print("If You are Here, it is a Mistake")
-                print("Please Decrease Your rmsWindow Size or Increase xWidth")
+                print("Please Decrease Your rmsWindow Size or Increase numTimePoints")
                 sys.exit()
-            xDataRMS = self.data['timePoints'][max(len(RMSData) - self.xWidthPeaks,0):len(RMSData)]  
+                
             # Plot RMS Data
-            self.movieGraphChannelListFiltered[dataChannel].set_data(xDataRMS, RMSData[-self.xWidthPeaks:])
-            self.channelListFiltered[dataChannel].set_xlim(xDataRMS[0], xDataRMS[0] + self.xWidthPeaks)
+            xDataRMS = np.arange(max(len(RMSData) - self.numPointsRMS,0), len(RMSData), 1)
+            if plotStreamedData:
+                self.filteredBioelectricDataPlots[channelIndex].set_data(xDataRMS, RMSData[-self.numPointsRMS:])
+                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(xDataRMS[0], xDataRMS[0] + self.numPointsRMS)
             # ----------------------------------------------------------------#
 
             # ----------------------- Peak Detection  ------------------------#
@@ -218,7 +214,7 @@ class eogProtocol:
             bufferRMSData = RMSData[-(len(newRMSData) + self.peakDetectionBufferSize):]
             bufferRMSDataX = xDataRMS[-(len(newRMSData) + self.peakDetectionBufferSize):]
             # Find Peaks from the New Data
-            newTopPeaks, yBase = self.find_peaks(bufferRMSDataX, bufferRMSData, dataChannel, RMSData)
+            newTopPeaks, yBase = self.find_peaks(bufferRMSDataX, bufferRMSData, channelIndex, RMSData)
             # If No New Peaks, Then No New Features
             if newTopPeaks == {}:
                 continue
@@ -228,9 +224,9 @@ class eogProtocol:
             
             # ------------------------ Move Robot ----------------------------#
             # If New Peak Was Found with Enough Peak Seperation, Add Group 
-            self.currentGroupNum = max(self.xTopGrouping[dataChannel].keys(), default=0)
-            currentHighestXPeak = max([max(self.xTopGrouping[i][self.currentGroupNum], default=0) for i in range(self.numChannels)])
-            if abs(xDataRMS[-1] - currentHighestXPeak) > self.maxPeakSep and currentHighestXPeak != 0:
+            self.currentGroupNum = max(self.featureLocsX[channelIndex].keys(), default=0)
+            currentHighestXPeak = max([max(self.featureLocsX[i][self.currentGroupNum], default=0) for i in range(self.numChannels)])
+            if abs(xDataRMS[-1] - currentHighestXPeak) > self.minGroupSep and currentHighestXPeak != 0:
                 self.createNewGroup(myModel, Controller)
             # ----------------------------------------------------------------#
             
@@ -243,39 +239,41 @@ class eogProtocol:
                 updateXGroups = batchXGroups[groupNum]
                 updateFeatures = featureSetTemp[groupNum]
                 # Add Them
-                if groupNum in self.xTopGrouping[dataChannel].keys():
-                    self.xTopGrouping[dataChannel][groupNum].extend(updateXGroups)
-                    self.featureSetGrouping[dataChannel][groupNum].extend(updateFeatures)
+                if groupNum in self.featureLocsX[channelIndex].keys():
+                    self.featureLocsX[channelIndex][groupNum].extend(updateXGroups)
+                    self.featureSetGrouping[channelIndex][groupNum].extend(updateFeatures)
                 else:
-                    self.xTopGrouping[dataChannel][groupNum] = updateXGroups
-                    self.featureSetGrouping[dataChannel][groupNum] = updateFeatures
+                    self.featureLocsX[channelIndex][groupNum] = updateXGroups
+                    self.featureSetGrouping[channelIndex][groupNum] = updateFeatures
             # ----------------------------------------------------------------#
-                   
+
             # ------------------------ Plot Peaks ----------------------------#
-            # Plot the Peaks; Colored by Grouping
-            for groupNum in self.xTopGrouping[dataChannel].keys():
-                # Check to See if the Group Has a Plot You Can Use
-                groupPeakPlot = self.movieGraphChannelTopPeaksList[dataChannel].get(groupNum, None)
-                # If None Availible, Create a New Plot to Add the Data
-                if not groupPeakPlot:
-                    channelFiltered = self.channelListFiltered[dataChannel]
-                    # Color Code the Group Peaks. Wrap Around to First Index When Done
-                    groupColor = (groupNum-1)%(len(self.peakCurrentRightColorOrder))
-                    # Create a Plot for the Peaks Using its Respective Group's Color
-                    groupPeakPlot = channelFiltered.plot([], [], 'o', c=self.peakCurrentRightColorOrder[groupColor], linewidth=1, alpha = 0.65)[0]
-                    # Save the Plot for Later Use in the Group
-                    self.movieGraphChannelTopPeaksList[dataChannel][groupNum] = groupPeakPlot
-                # Get Peak Points
-                if len(self.xTopGrouping[dataChannel][groupNum]) != 0:
-                    xPeakTop = self.xTopGrouping[dataChannel][groupNum][0]
-                    if xDataRMS[0] <= xPeakTop:
-                        yPeakTop = RMSData[-len(xDataRMS):][xDataRMS.index(xPeakTop)]
-                        # Plot the Peaks in the Group
-                        groupPeakPlot.set_data(xPeakTop, yPeakTop)
+            if plotStreamedData:
+                # Plot the Peaks; Colored by Grouping
+                for groupNum in self.featureLocsX[channelIndex].keys():
+                    # Check to See if the Group Has a Plot You Can Use
+                    groupPeakPlot = self.movieGraphChannelTopPeaksList[channelIndex].get(groupNum, None)
+                    # If None Availible, Create a New Plot to Add the Data
+                    if not groupPeakPlot:
+                        channelFiltered = self.filteredBioelectricPlotAxes[channelIndex]
+                        # Color Code the Group Peaks. Wrap Around to First Index When Done
+                        groupColor = (groupNum-1)%(len(self.peakCurrentRightColorOrder))
+                        # Create a Plot for the Peaks Using its Respective Group's Color
+                        groupPeakPlot = channelFiltered.plot([], [], 'o', c=self.peakCurrentRightColorOrder[groupColor], linewidth=1, alpha = 0.65)[0]
+                        # Save the Plot for Later Use in the Group
+                        self.movieGraphChannelTopPeaksList[channelIndex][groupNum] = groupPeakPlot
+                    # Get Peak Points
+                    if len(self.featureLocsX[channelIndex][groupNum]) != 0:
+                        xPeakTop = self.featureLocsX[channelIndex][groupNum][0]
+                        if xDataRMS[0] <= xPeakTop:
+                            yPeakTop = RMSData[-len(xDataRMS):][np.where(xDataRMS == xPeakTop)[0][0]]
+                            # Plot the Peaks in the Group
+                            groupPeakPlot.set_data(xPeakTop, yPeakTop)
                         
         # Update to Get New Data Next Round
-        plt.draw()
-        self.fig.canvas.flush_events()
+        if plotStreamedData:
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
         # -------------------------------------------------------------------#
     
 
@@ -288,7 +286,7 @@ class eogProtocol:
         # Get Data and Filter
         plt.figure()
         plt.plot(xData,yData, c='tab:blue', alpha=0.7)
-        plt.title("EMG Data")
+        plt.title("Bioelectric Data")
         
         plt.figure()
         filteredData = self.highPassFilter(yData)
@@ -303,7 +301,7 @@ class eogProtocol:
         # Find Peaks
         batchTopPeaks = self.find_peaks(xData, RMSData)
         xPeakTop, yPeakTop, yBase = zip(*batchTopPeaks.items())
-        xTopGrouping, featureSet = self.featureDefinition(RMSData, xPeakTop, yBase, 0)
+        featureLocsX, featureSet = self.featureDefinition(RMSData, xPeakTop, yBase, 0)
     
 
         
@@ -311,6 +309,17 @@ class eogProtocol:
 
 # --------------------------------------------------------------------------- #
 # ------------------------- Signal Analysis --------------------------------- #
+
+    def butter_lowpass(self, cutoff = 7, fs = 330, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        return b, a
+    
+    def butter_lowpass_filter(self, data, cutoff, fs, order=5):
+        b, a = self.butter_lowpass(cutoff, fs, order=order)
+        y = lfilter(b, a, data)
+        return y
 
     def highPassFilter(self, inputData):
         """
@@ -330,7 +339,7 @@ class eogProtocol:
     
     def RMSFilter(self, inputData, rmsWindow=250, stepSize=8):
         """
-        The Function loops through the given EMG Data, looking at batches of data
+        The Function loops through the given Bioelectric Data, looking at batches of data
             of size rmsWindow at every interval seperated by stepSize.
         In Each Window, we take the magnitude of the data vector (sqrt[a^2+b^2]
             for [a,b] data point)
@@ -339,7 +348,7 @@ class eogProtocol:
         The Final List has a length of 1 + math.floor((len(inputData) - rmsWindow) / stepSize)
         --------------------------------------------------------------------------
         Input Variable Definitions:
-            inputData: A List containing the  EMG Data
+            inputData: A List containing the  Bioelectric Data
             rmsWindow: The Amount of Data in the Groups we Analyze via RMS
             stepSize: The Distance Between Data Groups
         --------------------------------------------------------------------------
@@ -365,7 +374,7 @@ class eogProtocol:
             xTopLoc = xTop[peakNum]
             yBaseline = yBase[peakNum]
             # Get Peak's Points
-            featureWindow = RMSData[xTopLoc - self.featureDefinitionBuffer:xTopLoc + self.featureDefinitionBuffer]
+            featureWindow = RMSData[xTopLoc - self.rmsEdgeBuffer:xTopLoc + self.rmsEdgeBuffer]
             # Take the Average of the Peak as the Feature
             if len(featureWindow) > 0:
                 featureSet.append(np.mean(featureWindow) - yBaseline)
@@ -377,13 +386,13 @@ class eogProtocol:
         if featureSet == []:
             return {}, {}
             
-        # Group the Feature Sets Peaks into One EMG Signal/Group
+        # Group the Feature Sets Peaks into One Bioelectric Signal/Group
         peakSeperation = np.diff(xTop[0:len(xTop) - correctionTerm]) # Identify New Signal by Peak Seperation
         peakGrouping = {currentGroupNum:[featureSet[0]]}  # Holder for the Features
         xGrouping = {currentGroupNum:[xTop[0]]}        # Holder for the Corresponding Peaks
         for i, peakSep in enumerate(peakSeperation):
             # A Part of Previous Group
-            if peakSep < self.maxPeakSep:
+            if peakSep < self.minGroupSep:
                 peakGrouping[currentGroupNum].append(featureSet[i+1])
                 xGrouping[currentGroupNum].append(xTop[i+1])
             # New Group
@@ -416,8 +425,8 @@ class eogProtocol:
         # Find the New Peaks
         newTopPeaks = {}; yBase = []
         for i, xLoc in enumerate(xTop):
-            lastBottomPeak = max(max(self.xTopGrouping[channel].values(), default = [0]), default = 0)
-            if xLoc > lastBottomPeak and xLoc + self.featureDefinitionBuffer > len(RMSData):
+            lastBottomPeak = max(max(self.featureLocsX[channel].values(), default = [0]), default = 0)
+            if xLoc > lastBottomPeak and xLoc + self.rmsEdgeBuffer > len(RMSData):
                 # Record New Peaks and Add New Peaks to Ongoing list
                 newTopPeaks[xLoc] = yTop[i]
                 yBase.append(yBases[i])
@@ -447,7 +456,7 @@ class eogProtocol:
             if myModel:
                 print("Only One Small Signal Found; Not Moving Robot")
             for channelNum in range(self.numChannels):
-                self.badPeaks[channelNum].extend(self.xTopGrouping[channelNum][self.currentGroupNum])
+                self.badPeaks[channelNum].extend(self.featureLocsX[channelNum][self.currentGroupNum])
             self.currentGroupNum -= 1
             goodData = False
         # If it is Okay and We Have an ML Model, Predict the Movement
@@ -456,7 +465,7 @@ class eogProtocol:
             
         self.currentGroupNum += 1
         for channel in range(self.numChannels):
-            self.xTopGrouping[channel][self.currentGroupNum] = []
+            self.featureLocsX[channel][self.currentGroupNum] = []
             self.featureSetGrouping[channel][self.currentGroupNum] = []
         
         return goodData

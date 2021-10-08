@@ -29,6 +29,11 @@ class arduinoRead():
         self.emgArduino = self.initiateArduino(emgSerialNum)
         self.eegArduino = self.initiateArduino(eegSerialNum)
         self.handArduino = self.initiateArduino(handSerialNum)
+    
+    def printPortNums(self):
+        ports = serial.tools.list_ports.comports()
+        for port in ports:
+            print(port.serial_number)
         
     def initiateArduino(self, arduinoSerialNum):
         arduinoControl = None
@@ -163,8 +168,7 @@ class arduinoRead():
         remaining_bytes : byte string remaining, unparsed bytes.
         """
         # Initiate Variables to Hold [[Voltages (Y) -> ...], Time (X), Buffer]
-        arduinoData = [ [[] for channel in range(numChannels)] ] # List of yAxis Data
-        arduinoData.append([])  # xAxis Data
+        arduinoData = [ [[] for channel in range(numChannels)], [] ]
         # Keep Track of Buffer
         if len(read) == 0:
             arduinoData.append(b"")
@@ -180,12 +184,16 @@ class arduinoRead():
                 # Seperate the Arduino Data
                 arduinoValues = raw.split(",")
                 
-                # Store the Time and Voltage Data
-                arduinoData[1].append(int(arduinoValues[0]))
-                for channelIndex in range(numChannels):
-                    # Convert Arduino Data to Voltage Before Storing
-                    arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 5/1023)
+                if len(arduinoValues) == numChannels + 1:
+                    # Store the Time and Voltage Data
+                    arduinoData[1].append(int(arduinoValues[0]))
+                    for channelIndex in range(numChannels):
+                        # Convert Arduino Data to Voltage Before Storing
+                        arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 5/1023)
+                else:
+                    print("Bad Reading:", arduinoValues)
             except:
+                print("BAD:", raw)
                 pass
         # Return the Values
         return arduinoData
@@ -193,9 +201,9 @@ class arduinoRead():
 
 class emgArduinoRead(emgProtocol):
     
-    def __init__(self, arduinoRead, xWidth, moveDataFinger, numChannels, movementOptions, guiApp = None):
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
-        super().__init__(xWidth, moveDataFinger, numChannels, movementOptions)
+        super().__init__(numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData)
         
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
@@ -218,7 +226,7 @@ class emgArduinoRead(emgProtocol):
             self.guiApp.handArduino = self.handArduino
             self.guiApp.initiateRoboticMovement()
     
-    def streamEMGData(self, numPointsRead, seeFullPlot = False, myModel = None, Controller=None, numTrashReads=500, numPointsPerRead=400):
+    def streamEMGData(self, numPointsRead, myModel = None, Controller=None, numTrashReads=500, numPointsPerRead=400):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
     
@@ -236,7 +244,7 @@ class emgArduinoRead(emgProtocol):
         # Loop Through and Read the Arduino Data in Real-Time
         while len(self.data["timePoints"]) < numPointsRead:
             # Read in chunk of data
-            raw = arduinoRead.readAllNewlines(self.emgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+            raw = self.arduinoRead.readAllNewlines(ser=self.emgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
             
             # Parse it, passing if it is gibberish
             try:
@@ -246,13 +254,14 @@ class emgArduinoRead(emgProtocol):
                 startNum = len(self.data["timePoints"])
                 for i in range(len(timePoints)):
                     self.data["timePoints"].append(startNum+i)
-                for channel in range(self.numChannels,1):
-                    self.data['Channel' + str(channel)] += Voltages[channel]
-                            
+
+                for channelIndex in range(self.numChannels):
+                    self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
+
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
-                while pointNum - dataFinger >= self.xWidth:
-                    self.analyzeData(dataFinger, seeFullPlot, myModel = myModel, Controller = Controller)
+                while pointNum - dataFinger >= self.numTimePoints:
+                    self.analyzeData(dataFinger, self.plotStreamedData, myModel = None, Controller=None)
                     dataFinger += self.moveDataFinger
             except Exception as e:
                 print(e)
@@ -307,27 +316,27 @@ class emgArduinoRead(emgProtocol):
 
 class eogArduinoRead(eogProtocol):
     
-    def __init__(self, arduinoRead, xWidth, moveDataFinger, numChannels, movementOptions, guiApp = None):
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
-        super().__init__(xWidth, moveDataFinger, numChannels, movementOptions)
+        super().__init__(numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData)
         
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.eogArduino = arduinoRead.eogArduino
     
-    def streamEOGData(self, numPointsRead, seeFullPlot = False, myModel = None, Controller=None, numTrashReads=500, numPointsPerRead=400):
+    def streamEOGData(self, numPointsRead, myModel = None, Controller=None, numTrashReads=500, numPointsPerRead=400):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
-    
+            
         # Read and throw out first few reads
         for i in range(numTrashReads):
-            self.emgArduino.read_until()
+            self.eogArduino.read_until()
 
         readBuffer = b""; dataFinger = 0
         # Loop Through and Read the Arduino Data in Real-Time
         while len(self.data["timePoints"]) < numPointsRead:
             # Read in chunk of data
-            raw = arduinoRead.readAllNewlines(self.emgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+            raw = self.arduinoRead.readAllNewlines(ser=self.eogArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
             
             # Parse it, passing if it is gibberish
             try:
@@ -337,13 +346,14 @@ class eogArduinoRead(eogProtocol):
                 startNum = len(self.data["timePoints"])
                 for i in range(len(timePoints)):
                     self.data["timePoints"].append(startNum+i)
-                for channel in range(self.numChannels,1):
-                    self.data['Channel' + str(channel)] += Voltages[channel]
-                            
+
+                for channelIndex in range(self.numChannels):
+                    self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
+
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
-                while pointNum - dataFinger >= self.xWidth:
-                    self.analyzeData(dataFinger, seeFullPlot, myModel = myModel, Controller = Controller)
+                while pointNum - dataFinger >= self.numTimePoints:
+                    self.analyzeData(dataFinger, self.plotStreamedData, myModel = None, Controller=None)
                     dataFinger += self.moveDataFinger
             except Exception as e:
                 print(e)

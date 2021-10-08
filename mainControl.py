@@ -150,7 +150,7 @@ if __name__ == "__main__":
             # Save the Data Streamed in (if Wanted)
             if saveInputData:
                 saveInputs = excelData.saveExcel(numChannels)
-                saveInputs.saveData(readData.data, readData.xTopGrouping, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, handMovement)
+                saveInputs.saveData(readData.data, readData.featureLocsX, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, handMovement)
         # ------------------------- Train ML Model -------------------------- #
         elif trainModel:
             # Read in Training Data/Labels

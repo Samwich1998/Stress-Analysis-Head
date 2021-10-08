@@ -31,13 +31,14 @@ from sklearn.model_selection import train_test_split
 sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
 import readDataExcel as excelData       # Functions to Save/Read in Data from Excel
 import readDataArduino as streamData    # Functions to Read in Data from Arduino
+import eogAnalysis as eogAnalysis
 
 # Import Machine Learning Files
 sys.path.append('./Machine Learning/')  # Folder with Machine Learning Files
-import neuralNetwork as NeuralNet       # Functions for Neural Network
+import neuralNetwork as NeuralNet       # Functions for Neural Network Algorithm
+import Linear_Regression as LR          # Functions for Linear Regression Algorithm
 import KNN as KNN                       # Functions for K-Nearest Neighbors' Algorithm
-import SVM as SVM                       # Functions for K-Nearest Neighbors' Algorithm
-import Linear_Regression as LR          # Functions for K-Nearest Neighbors' Algorithm
+import SVM as SVM                       # Functions for Support Vector Machine algorithm
 
 
 if __name__ == "__main__":
@@ -46,23 +47,24 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
 
     # General Data Collection Information (You Will Likely Not Edit These)
-    eogSerialNum = '85735313333351E040A0'   # Arduino's Serial Number (port.serial_number)
-    numDataPoints = 10000  # The Number of Points to Stream into the Arduino
-    moveDataFinger = 200   # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
-    numChannels = 4        # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
-    xWidth = 2000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    eogSerialNum = '85735313333351E040A0'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
+    numDataPoints = 500000  # The Number of Points to Stream into the Arduino
+    moveDataFinger = 200    # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    numChannels = 4         # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
+    numFeatures = 4         # The Number of Features to Extract/Save/Train on
+    numTimePoints = 2000           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     
     # Protocol Switches: Only One Can be True; Only the First True Variable Excecutes
     streamArduinoData = True   # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
-    readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    readDataFromExcel = True  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False     # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Peaks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False         # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
-    # User Options During the Run: Any Number Can be Truee
-    saveInputData = True # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-    seeFullPlot = True    # Graph the Data to Show Incoming Signals + Analysis
-    saveModel = False     # Save the Machine Learning Model for Later Use
-    testModel = False     # Apply the Learning Algorithm to Decode the Signals
+    # User Options During the Run: Any Number Can be True
+    plotStreamedData = True  # Graph the Data to Show Incoming Signals + Analysis
+    saveInputData = False      # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveModel = False         # Save the Machine Learning Model for Later Use
+    testModel = False         # Apply the Learning Algorithm to Decode the Signals
     
     # ---------------------------------------------------------------------- #
     
@@ -74,8 +76,8 @@ if __name__ == "__main__":
     
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Input Data/Full Training Data/Lab Electrodes/Sam/May11/Samuel Solomon 2021-05-11 Round 2.xlsx" # Path to the Test Data
-        testSheetNum = 4   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testDataExcelFile = "../Input Data/All Data/Industry Electrodes//Samuel Solomon 2021-09-20 Round 1.xlsx" # Path to the Test Data
+        testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Use Previously Processed Data that was Saved; Extract Features for Training
     if reAnalyzePeaks or trainModel:
@@ -123,23 +125,24 @@ if __name__ == "__main__":
     #           Data Collection Program (Should Not Have to Edit)            #
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
-          
+    
+    eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData)
     # Stream in Data from Arduino
     if streamArduinoData:
         arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
-        readData = streamData.eogArduinoRead(arduinoRead, xWidth, moveDataFinger, numChannels, movementOptions, guiApp = None)
-        readData.streamEOGData(numDataPoints, seeFullPlot, myModel = MLModel)
+        readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData, guiApp = None)
+        readData.streamEOGData(numDataPoints, myModel = MLModel)
     # Take Data from Excel Sheet
     elif readDataFromExcel:
-        readData = excelData.readExcel(xWidth, moveDataFinger, numChannels, movementOptions)
-        readData.streamExcelData(testDataExcelFile, seeFullPlot, testSheetNum, myModel = MLModel)
+        readData = excelData.readExcel(eogProtocol)
+        readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, myModel = MLModel)
     # Redo Peak Analysis
     elif reAnalyzePeaks:
-        readData = excelData.readExcel(xWidth, moveDataFinger, numChannels, movementOptions)
+        readData = excelData.readExcel(eogProtocol)
         readData.getTrainingData(trainDataExcelFolder, movementOptions, mode='reAnalyze')
     # Take Preprocessed (Saved) Features from Excel Sheet
     elif trainModel:
-        readData = excelData.readExcel(xWidth, moveDataFinger, numChannels, movementOptions)
+        readData = excelData.readExcel(eogProtocol)
         signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, movementOptions, mode='Train')
         print("\nCollected Signal Data")
     
@@ -152,8 +155,8 @@ if __name__ == "__main__":
         verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
-            saveInputs = excelData.saveExcel(numChannels)
-            saveInputs.saveData(readData.data, readData.xTopGrouping, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, eyeMovement)
+            saveInputs = excelData.saveExcel(numChannels, numFeatures)
+            saveInputs.saveData(readData.data, readData.featureLocsX, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
     
@@ -187,7 +190,7 @@ if __name__ == "__main__":
             if saveSignals:
                 saveDataFolder = "../Output Data/"
                 saveExcelName = "Maped Data.xlsx" #"Signal Features with Predicted and True Labels New.xlsx"
-                saveInputs = excelData.saveExcel(numChannels)
+                saveInputs = excelData.saveExcel(numChannels, numFeatures)
                 saveInputs.saveLabeledPoints(map2D, signalLabels, MLModel.predictData(signalData), saveDataFolder, saveExcelName, sheetName = "Signal Data and Labels")
 
 

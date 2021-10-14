@@ -91,7 +91,7 @@ if __name__ == "__main__":
         applySVM = False
         applyLR = False
         # Initialize Machine Learning Parameters/Data
-        modelPath = "./Machine Learning Modules/Models/myModelKNNFull_SamArm1.pkl"
+        modelPath = "./Machine Learning Modules/Models/predictionModelKNNFull_SamArm1.pkl"
 
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
@@ -132,19 +132,19 @@ if __name__ == "__main__":
     if streamArduinoData:
         arduinoRead = streamData.arduinoRead(eogSerialNum = None, emgSerialNum = emgSerialNum, eegSerialNum = None, handSerialNum = handSerialNum)
         readData = streamData.emgArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, movementOptions, plotStreamedData, guiApp = None)
-        readData.streamEMGData(numDataPoints, myModel = MLModel)
+        readData.streamEMGData(numDataPoints, predictionModel = MLModel)
     # Take Data from Excel Sheet
     elif readDataFromExcel:
         readData = excelData.readExcel(emgProtocol)
-        readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, myModel = MLModel)
+        readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = MLModel)
     # Redo Peak Analysis
     elif reAnalyzePeaks:
         readData = excelData.readExcel(emgProtocol)
-        readData.getTrainingData(trainDataExcelFolder, movementOptions, mode='reAnalyze')
+        readData.getTrainingData(trainDataExcelFolder, numFeatures, movementOptions, mode='reAnalyze')
     # Take Preprocessed (Saved) Features from Excel Sheet
     elif trainModel:
         readData = excelData.readExcel(emgProtocol)
-        signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, movementOptions, mode='Train')
+        signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, numFeatures, movementOptions, mode='Train')
         print("\nCollected Signal Data")
     
     # Save the Data in Excel: EMG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels, numFeatures)
-            saveInputs.saveData(readData.data, readData.featureLocsX, readData.featureSetGrouping, saveDataFolder, saveExcelName, sheetName, eyeMovement)
+            saveInputs.saveData(readData.data, readData.featureLocsX, readData.featureGrouping, saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
     

@@ -1,7 +1,5 @@
 ﻿
-# Basic Modules
-import sys
-import time
+
 # Virtual Reality Modules
 import viz
 import vizact
@@ -20,11 +18,6 @@ viz.MainWindow.fov(60) # Input Into Degrees; 40 Degrees = Default
 
 # Test Gaze Control
 gazeControl = virtualRealityControl.gazeControl(viz, myWorld)
-gazeControl.moveLeft()
-gazeControl.moveRight()
-gazeControl.moveUp()
-gazeControl.moveDown()
-
 
 viz.MainView.getHeadLight().disable()
 

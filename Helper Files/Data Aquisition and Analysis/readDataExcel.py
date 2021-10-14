@@ -32,7 +32,7 @@ class readExcel():
         self.movementOptions = analysisProtocol.movementOptions
             
         
-    def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, myModel=None, Controller=None, analyzeSheet = None):
+    def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, predictionModel=None, Controller=None, analyzeSheet = None):
         """
         Extracts Biolectric Data from Excel Document (.xlsx). Data can be in any
         worksheet, which the user can specify using 'testSheetNum'.
@@ -47,7 +47,6 @@ class readExcel():
             testSheetNum: An Integer Representing the Excel Worksheet (0-indexed) of the data.
         --------------------------------------------------------------------------
         """
-        print(testDataExcelFile, plotStreamedData)
         # Reset Global Variable in Case it Was Previously Populated
         self.analysisProtocol.resetGlobalVariables()
     
@@ -64,13 +63,12 @@ class readExcel():
             if type(cellA.value) == type(1.1):
                 dataStartRow = cellA.row
                 break
-        
+
         dataFinger = 0; pointNum = 0
         # Loop Through the Excel Worksheet to collect all the data
         for arduinoData in analyzeSheet.iter_rows(min_col=1, min_row=dataStartRow, max_col=self.numChannels+1, max_row=analyzeSheet.max_row):
             # SafeGaurd: If User Edits Excel and Increases the Rows with Blanks, Stop Streaming
-
-            if arduinoData[1].value == None:
+            if arduinoData[0].value == None:
                 break
             
             # Add TimePoints
@@ -83,14 +81,18 @@ class readExcel():
             pointNum += 1
             # When Ready, Send Data Off for Analysis
             while pointNum - dataFinger >= self.numTimePoints:
-                self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, myModel = myModel, Controller = Controller)
+                import time
+                t1  = time.time()
+                self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel = predictionModel, Controller = Controller)
                 dataFinger += self.moveDataFinger
+                t2 = time.time()
+                print("HERE", t2-t1)
                 
         # Finished Data Collection: Report Back to User
         print("\tDone Data Collecting from File: ", analyzeSheet.title)
         
     
-    def getTrainingFeatures(self, excelSheet, Training_Data, Training_Labels, movementOptions, numFeatures):
+    def getTrainingFeatures(self, excelSheet, Training_Data, Training_Labels, numFeatures, movementOptions):
         # Get Current Label fo the Signal
         currentLabel = excelSheet.title.split(" - ")[1]
         featureLabelIndexArray = np.where(movementOptions == currentLabel.lower())[0]
@@ -108,7 +110,7 @@ class readExcel():
         # Create Data Structure to Hold Results
         featureList = [[] for _ in range(numFeatures)]
         # Loop Through the Excel Worksheet to collect all the data
-        for featureData in excelSheet.iter_rows(min_col=2+self.numChannels+numFeatures, min_row=dataStartRow, max_col=1+self.numChannels+2*numFeatures, max_row=excelSheet.max_row):
+        for featureData in excelSheet.iter_rows(min_col=2+self.numChannels, min_row=dataStartRow, max_col=1+self.numChannels+numFeatures, max_row=excelSheet.max_row):
             
             noFeatures = True
             # Extract Features from the Excel File
@@ -131,7 +133,7 @@ class readExcel():
         print("\tCollected Training Data for:", excelSheet.title)
         return Training_Data, Training_Labels
     
-    def getTrainingData(self, trainingDataExcelFolder, movementOptions, numFeatures, mode):
+    def getTrainingData(self, trainingDataExcelFolder, numFeatures, movementOptions, mode):
         """
         Parameters
         ----------
@@ -162,7 +164,7 @@ class readExcel():
                     
                     # Get the Training Data/Label from the Sheet
                     if mode == 'Train':
-                        Training_Data, Training_Labels = self.getTrainingFeatures(excelSheet, Training_Data, Training_Labels, movementOptions, numFeatures)
+                        Training_Data, Training_Labels = self.getTrainingFeatures(excelSheet, Training_Data, Training_Labels, numFeatures, movementOptions)
                     elif mode == 'reAnalyze':
                         print("\tReanalyzing Excel Sheet:", excelSheet.title)
                         # ReAnalyze Data (First Four Columns)
@@ -172,7 +174,7 @@ class readExcel():
                         handMovement = sheetName.split(" - ")[1]
                         WB.remove_sheet(excelSheet)
                         # Overwrite Excel Sheet with new Analysis
-                        saveExcelData.saveData(self.analysisProtocol.data, self.analysisProtocol.featureLocsX, self.analysisProtocol.featureSetGrouping, trainingDataExcelFolder, excelFile, sheetName=excelSheet, handMovement=handMovement, WB=WB)
+                        saveExcelData.saveData(self.analysisProtocol.data, self.analysisProtocol.featureLocsX, self.analysisProtocol.featureGrouping, trainingDataExcelFolder, excelFile, sheetName=excelSheet, handMovement=handMovement, WB=WB)
                         
         return Training_Data, Training_Labels
 
@@ -194,8 +196,8 @@ class saveExcel:
             5: "BC9E82",
             }
 
-    def saveData(self, data, featureLocsX, featureSetGrouping, saveDataFolder, saveExcelName,
-                     sheetName = "Trial 1 - No Gesture", handMovement="No Movement", WB=None):        
+    def saveData(self, data, featureGrouping, saveDataFolder, saveExcelName,
+                     sheetName = "Trial 1 - No Gesture", handMovement = "Data", WB=None):        
         # Create Output File Directory to Save Data: If None
         os.makedirs(saveDataFolder, exist_ok=True)
         
@@ -237,12 +239,10 @@ class saveExcel:
             print("Saving Sheet as", sheetName)
         
         channelHeader = ['Channel ' + str(channelNum) + " Data" for channelNum in range(1, 1+self.numChannels)]
-        xPeakHeader = ['Channel ' + str(featureNum) + " Loc" for featureNum in range(1, 1+self.numFeatures)]
         featureHeader = ['Channel ' + str(featureNum) + " Features" for featureNum in range(1, 1+self.numFeatures)]
         # Creater Header
         header = ["timePoints"]
         header.extend(channelHeader)
-        header.extend(xPeakHeader)
         header.extend(featureHeader)
         # Label First Row
         WB_worksheet.append(header)
@@ -258,25 +258,19 @@ class saveExcel:
         # Add Feature Locs (Next Columns) and Then Features (Next Next Columns)
         for channel in range(self.numFeatures):
             startIndex = 2 # Start at Secon Row (1-Indexed) After the Header
-            for peakNum in featureLocsX[channel]:
+            for peakNum in featureGrouping[channel]:
                 rowIndex = startIndex
                 peakColor = (peakNum-1)%(len(self.openpyxlColors))
                 cellColor = self.openpyxlColors[peakColor]
-                for xLoc in featureLocsX[channel][peakNum]:
+                for featureVal in featureGrouping[channel][peakNum]:
                     # Add X Location
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).value = xLoc
+                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).value = featureVal
                     WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).fill = PatternFill(fgColor=cellColor, fill_type = 'solid')
                     WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).alignment = alignCenter
                     
-                    # Add Feature
-                    featureVal = featureSetGrouping[channel][peakNum][0]
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + self.numFeatures + 2).value = featureVal
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + self.numFeatures + 2).fill = PatternFill(fgColor=cellColor, fill_type = 'solid')
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + self.numFeatures + 2).alignment = alignCenter
-                    
                     rowIndex += 1
                 # Set the Same Row Index for All
-                startIndex += 1 + len(max(featureLocsX.values(), key = lambda x: len(x[peakNum]))[peakNum])
+                startIndex += 1 + len(max(featureGrouping.values(), key = lambda x: len(x[peakNum]))[peakNum])
         
         # Center the Data in the Cells
         for rowInd in range(2, WB_worksheet.max_row + 1):
@@ -287,7 +281,7 @@ class saveExcel:
             length = max(len(str(cell.value) if cell.value else "") for cell in column_cells)
             WB_worksheet.column_dimensions[xl.utils.get_column_letter(column_cells[0].column)].width = length
         # Header Style
-        for colInd in range(1, self.numChannels + 2*self.numFeatures + 2):
+        for colInd in range(1, self.numChannels + self.numFeatures + 2):
             WB_worksheet.cell(row=1, column=colInd).font = Font(color='00FF0000', italic=True, bold=True)
             WB_worksheet.cell(row=1, column=colInd).alignment = alignCenter
         

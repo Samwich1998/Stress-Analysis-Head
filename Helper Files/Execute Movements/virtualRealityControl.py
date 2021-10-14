@@ -1,32 +1,47 @@
 ﻿
 # Virtual Reality Modules
 import viz
-import vizact
-import time
+#import vizact
 
-class controlReality:
-	def __init__(self, viz, myWorld):
-		# Virtual Reality GUI
-		self.viz = viz
-		self.myWorld = myWorld
+
+class virtualWorld:
+    
+    def __init__(self, virtualFile = 'piazza.osgb'):
+        # Enable full screen anti-aliasing (FSAA) to smooth edges
+        viz.setMultiSample(4)
+        
+        # Initialize the Reality
+        self.viz.go() # Initialize Empty Screen
+        self.myWorld = viz.addChild(virtualFile) # Add PreDetermined Image to the Screen
+        
+        # Set VR General Parameters
+        self.viz.MainWindow.fov(60) # Increase the Field of View of the User; Input Into Degrees; 40 Degrees = Default
+        self.viz.MainView.getHeadLight().disable()
+        self.viz.collision(viz.ON)
+
+class controlReality(virtualWorld):
+    def __init__(self, virtualFile):
+        # Setup Virtual Reality GUI
+        super().__init__(virtualFile)
 		
 		# Set Yaw, Pitch, and Roll Parameters
-		self.getYawPitchRoll()
+        self.getYawPitchRoll()
 	
-	def getYawPitchRoll(self):
+    def getYawPitchRoll(self):
 		# Set Yaw, Pitch, and Roll Parameters
-		self.yaw, self.pitch, self.roll = viz.MainView.getEuler()
+        self.yaw, self.pitch, self.roll = viz.MainView.getEuler()
+
 
 class gazeControl(controlReality):
-	def __init__(self, viz, myWorld): 
-		super().__init__(viz, myWorld)
+	def __init__(self, virtualFile): 
+		super().__init__(virtualFile)
 	
 	def moveLeft(self):
 		self.yaw -= 10
 		self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
 		
-		spinLeft = vizact.spin(0,1,0,90,1)
-		self.myWorld.addAction(spinLeft)
+		#spinLeft = vizact.spin(0,1,0,90,1)
+		#self.myWorld.addAction(spinLeft)
 	
 	def moveRight(self):
 		self.yaw += 20
@@ -39,10 +54,3 @@ class gazeControl(controlReality):
 	def moveDown(self):
 		self.pitch -= 40
 		self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
-		
-		
-#gazeControl = gazeControl(viz)
-#gazeControl.moveLeft()
-#gazeControl.moveRight()
-#gazeControl.moveUp()
-#gazeControl.moveDown()

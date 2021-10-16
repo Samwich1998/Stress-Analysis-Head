@@ -43,13 +43,13 @@ if __name__ == "__main__":
     numChannels = 2          # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     numTimePoints = 3000     # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     
-    # Protocol Switches: Only One Can be True; Only the First True Variable Excecutes
+    # Protocol Switches: Only the First True Variable Excecutes
     streamArduinoData = False   # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
     readDataFromExcel = True    # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     calibrateModel = False      # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True  # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True   # Graph the Data to Show Incoming Signals + Analysis
     saveInputData = True      # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     saveModel = False         # Save the Machine Learning Model for Later Use
     testModel = False         # Apply the Learning Algorithm to Decode the Signals
@@ -76,8 +76,8 @@ if __name__ == "__main__":
     # Stream in Data from Arduino
     if streamArduinoData:
         arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
-        readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None)
-        readData.streamEOGData(numDataPoints, predictionModel = None)
+        readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, calibrateModel, guiApp = None)
+        readData.streamEOGData(numDataPoints, calibrateModel = calibrateModel)
     # Take Data from Excel Sheet
     elif readDataFromExcel:
         readData = excelData.readExcel(eogProtocol)

@@ -24,8 +24,6 @@ class logisticRegression:
         
         # Plotting Styles
         self.stepSize = 0.01 # step size in the mesh
-        self.cmap_light = ListedColormap(['orange', 'cyan', 'cornflowerblue', 'red']) # Colormap
-        self.cmap_bold = ['darkorange', 'c', 'darkblue', 'darkred'] # Colormap
         
         # Initialize Model
         if os.path.exists(modelPath):

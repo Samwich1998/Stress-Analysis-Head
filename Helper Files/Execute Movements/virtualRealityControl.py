@@ -23,34 +23,37 @@ class controlReality(virtualWorld):
     def __init__(self, virtualFile):
         # Setup Virtual Reality GUI
         super().__init__(virtualFile)
-		
-		# Set Yaw, Pitch, and Roll Parameters
+        
+        # Set Yaw, Pitch, and Roll Parameters
         self.getYawPitchRoll()
-	
+    
     def getYawPitchRoll(self):
-		# Set Yaw, Pitch, and Roll Parameters
+        # Set Yaw, Pitch, and Roll Parameters
         self.yaw, self.pitch, self.roll = viz.MainView.getEuler()
 
 
 class gazeControl(controlReality):
-	def __init__(self, virtualFile): 
-		super().__init__(virtualFile)
-	
-	def moveLeft(self):
-		self.yaw -= 10
-		self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
-		
-		#spinLeft = vizact.spin(0,1,0,90,1)
-		#self.myWorld.addAction(spinLeft)
-	
-	def moveRight(self):
-		self.yaw += 20
-		self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
-	
-	def moveUp(self):
-		self.pitch += 30
-		self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
-	
-	def moveDown(self):
-		self.pitch -= 40
-		self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+    def __init__(self, virtualFile): 
+        super().__init__(virtualFile)
+        
+    def setGaze(self, channelAngles = []):
+        self.viz.MainView.setEuler([channelAngles[0], channelAngles[1], self.roll])
+    
+    def moveLeft(self):
+        self.yaw -= 10
+        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+        
+        #spinLeft = vizact.spin(0,1,0,90,1)
+        #self.myWorld.addAction(spinLeft)
+    
+    def moveRight(self):
+        self.yaw += 20
+        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+    
+    def moveUp(self):
+        self.pitch += 30
+        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+    
+    def moveDown(self):
+        self.pitch -= 40
+        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])

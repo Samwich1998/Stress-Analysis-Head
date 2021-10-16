@@ -24,11 +24,17 @@ from eogAnalysis import eogProtocol
 
 class arduinoRead():
     def __init__(self, eogSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None):
+        # Save Arduino Serial Numbers
+        self.eogSerialNum = eogSerialNum
+        self.emgSerialNum = emgSerialNum
+        self.eegSerialNum = eegSerialNum
+        self.handSerialNum = handSerialNum
+        
         # Connect to the Arduinos
-        self.eogArduino = self.initiateArduino(eogSerialNum)
-        self.emgArduino = self.initiateArduino(emgSerialNum)
-        self.eegArduino = self.initiateArduino(eegSerialNum)
-        self.handArduino = self.initiateArduino(handSerialNum)
+        self.eogArduino = self.initiateArduino(self.eogSerialNum)
+        self.emgArduino = self.initiateArduino(self.emgSerialNum)
+        self.eegArduino = self.initiateArduino(self.eegSerialNum)
+        self.handArduino = self.initiateArduino(self.handSerialNum)
     
     def printPortNums(self):
         ports = serial.tools.list_ports.comports()
@@ -50,6 +56,17 @@ class arduinoRead():
                 sys.exit()
         # Retun the Arduino Controller
         return arduinoControl
+    
+    def resetArduino(self, arduino, arduinoSerialNum, numTrashReads):
+        # Flush Arduino Signal (As There Was a Delay Induced)
+        arduino.flushOutput()
+        arduino.readAll()
+        arduino.close()
+        arduino = self.initiateArduino(arduinoSerialNum)
+        # Read and throw out first few reads
+        for i in range(numTrashReads):
+            arduino.read_until()
+        return arduino
     
     def findArduino(self, serialNum):
         """Get the name of the port that is connected to the Arduino."""
@@ -323,8 +340,13 @@ class eogArduinoRead(eogProtocol):
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.eogArduino = arduinoRead.eogArduino
+        self.eogSerialNum = arduinoRead.eogSerialNum
+        
+        # Pointers for Calibration
+        self.calibrateChannelNum = 0
+        self.channelCalibrationPointer = 0
     
-    def streamEOGData(self, numPointsRead, predictionModel = None, Controller=None, numTrashReads=500, numPointsPerRead=100):
+    def streamEOGData(self, numPointsRead, calibrateModel = False, Controller = None, numTrashReads=500, numPointsPerRead=100):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
         #numPointsPerRead = min(numPointsPerRead, int(numPointsRead/20))
@@ -335,6 +357,10 @@ class eogArduinoRead(eogProtocol):
             self.eogArduino.read_until()
         
         try:
+            # If Needed Calibrate the Model
+            if calibrateModel:
+                self.askForCalibration(numTrashReads)
+                
             readBuffer = b""; dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
             while len(self.data["timePoints"]) < numPointsRead:
@@ -352,14 +378,41 @@ class eogArduinoRead(eogProtocol):
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
-                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel = None, Controller=None)
+                    self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel = calibrateModel, Controller = None)
                     dataFinger += self.moveDataFinger
+                    
+                    # If You Need to Calibrate a Channel
+                    if calibrateModel:
+                        self.channelCalibrationPointer += 1
+                        # See If Calibration of the Channel is Complete
+                        if len(self.calibrationVoltages[self.calibrateChannelNum]) == len(self.calibrationAngles[self.calibrateChannelNum]):
+                            # Get Data to Calibrate
+                            xData = self.calibrationVoltages[self.calibrateChannelNum]
+                            yData = self.calibrationAngles[self.calibrateChannelNum]
+                            # Calibrate the Data
+                            self.fitCalibration(xData, yData, channelCalibrating = self.calibrateChannelNum, plotFit = False)
+                            # Move Onto the Next Channel
+                            self.calibrateChannelNum += 1
+                        # Check if All Channel Calibrations are Complete
+                        if self.calibrateChannelNum == self.numChannels:
+                            # Reset Arduino and Stop Calibration
+                            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
+                            calibrateModel = False        
+                        else:
+                            self.askForCalibration(numTrashReads)
+                        
         finally:
             self.eogArduino.close()
         
         print("Finished Streaming in Data; Closing Arduino\n")
         # Close the Arduinos at the End
         self.eogArduino.close()
+        
+    def askForCalibration(self, numTrashReads):
+        # Inform User of Next Angle; Then Flush Saved Outputs
+        input("Orient Eye at " + str(self.calibrationAngles[self.calibrateChannelNum][self.channelCalibrationPointer]) + " Degrees For Channel " + str(self.calibrateChannelNum))
+        # Reset Arduino
+        self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
  
     
  

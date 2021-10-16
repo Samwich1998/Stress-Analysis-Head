@@ -7,14 +7,20 @@ Created on Mon Jan 25 13:17:05 2021
 """
 
 # Basic Modules
+import sys
 import numpy as np
 # Peak Detection
 import scipy
 import scipy.signal
 # High/Low Pass Filters
 from scipy.signal import butter
+# Calibration Fitting
+from scipy.optimize import curve_fit
 # Plotting
 import matplotlib.pyplot as plt
+# Import Virtual Reality Control Files
+sys.path.append('../Execute Movements/')  # Folder with Virtual Reality Control Files
+import VizardVR_Home as controlVR
 
 
 # --------------------------------------------------------------------------- #
@@ -30,6 +36,9 @@ class eogProtocol:
         self.moveDataFinger = moveDataFinger      # The Amount of Data to Stream in Before Finding Peaks
         self.movementOptions = movementOptions    # Gesture Movement Options
         self.plotStreamedData = plotStreamedData  # Plot the Data
+        # Calibration Angles
+        self.calibrationAngles = [[-30, -15, 0, 15, 30] for _ in range(self.numChannels)]
+        self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         
         # High Pass Filter Parameters
         self.samplingFreq = samplingFreq          # Depends on the User's Hardware
@@ -55,13 +64,10 @@ class eogProtocol:
         for channelIndex in range(self.numChannels):
             self.data['Channel'+str(1+channelIndex)] = []
         
-        # Reset Mutable Variables
-        self.highestAnalyzedPeakX = 0
-        
         # Reset Last Eye Voltage (Volts)
-        self.currentEyeVoltages = [2.5 for _ in range(self.numChannels)]
+        self.currentEyeVoltage = [2.5 for _ in range(self.numChannels)]
         # Calibration Function for Eye Angle
-        self.predictEyeAngle = [lambda inputVolts: inputVolts*12 - 30 for _ in range(self.numChannels)]
+        self.predictEyeAngle = [None]*self.numChannels
         
         # Close Any Opened Plots
         if self.plotStreamedData:
@@ -135,24 +141,14 @@ class eogProtocol:
         # Hold Past Information
         self.trailingAverageData = {}
         for channelIndex in range(self.numChannels):
-            self.trailingAverageData[channelIndex] = np.zeros(self.numTimePoints)
+            self.trailingAverageData[channelIndex] = [0]*self.numTimePoints
         
     
-    def analyzeData(self, dataFinger, plotStreamedData = False, predictionModel = None, Controller=None):     
+    def analyzeData(self, dataFinger, plotStreamedData = False, calibrateModel = False, actionControl = None):     
         
-        # Get X Data: Shared Axis for All Channels
-        self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+        eyeAngles = []
         # Add incoming Data to Each Respective Channel's Plot
         for channelIndex in range(self.numChannels):
-            
-            # ------------------- Plot Biolectric Signal -------------------- #
-            if plotStreamedData:
-                # Get New Y Data
-                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
-                # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
-                self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
-                self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
-            # --------------------------------------------------------------- #
             
             # ---------------------- Band Pass Filter ----------------------- #    
             # Band Pass Filter to Remove Noise
@@ -165,33 +161,54 @@ class eogProtocol:
             # Get the Current Voltage (Take Average)
             currentEyeVoltage = self.findTraileringAverage(filteredData[-self.voltagePositionBuffer:], deviationThreshold = self.minVoltageMovement)
             # Compare Voltage Difference to Remove Small Shakes
-            if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
-                self.currentEyeVoltages[channelIndex] = currentEyeVoltage        
-            
+            if abs(currentEyeVoltage - self.currentEyeVoltage[channelIndex]) > self.minVoltageMovement:
+                self.currentEyeVoltage[channelIndex] = currentEyeVoltage        
             # Predict the Eye's Degree
-            eyeDegree = self.predictEyeAngle[channelIndex](self.currentEyeVoltages[channelIndex])
+            if self.predictEyeAngle[channelIndex]:
+                eyeAngle = self.predictEyeAngle[channelIndex](self.currentEyeVoltage[channelIndex])
+                eyeAngles.append(eyeAngle)
+            # --------------------------------------------------------------- #
             
-            # Plot the Eye's Angle
+            # --------------- Calibrate Angle Prediction Model -------------- #
+            if calibrateModel:
+                self.calibrationVoltages[channelIndex].append(eyeAngle)
+            # --------------------------------------------------------------- #
+            
+            # ------------------- Plot Biolectric Signals ------------------- #
             if plotStreamedData:
-                self.trailingAverageData[channelIndex] = np.append(self.trailingAverageData[channelIndex][self.moveDataFinger:], np.ones(self.moveDataFinger)*self.currentEyeVoltages[channelIndex])
-                # Plot the Filtered Data
+                # Get X Data: Shared Axis for All Channels
+                self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+                
+                # Get New Y Data
+                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
+                # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
+                self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
+                self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
+            
+                # Keep Track of Recently Digitized Data
+                self.trailingAverageData[channelIndex].extend([self.currentEyeVoltage[channelIndex]]*self.moveDataFinger)
+                self.trailingAverageData[channelIndex][self.moveDataFinger:]
+                # Plot the Filtered + Digitized Data
                 self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData)
                 self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex])
                 self.filteredBioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1]) 
-                self.filteredBioelectricPlotAxes[channelIndex].legend(["Eye's Angle: " + "%.3g"%eyeDegree], loc="upper left")
+                # Plot the Eye's Angle if Electrodes are Calibrated
+                if self.predictEyeAngle[channelIndex]:
+                    self.filteredBioelectricPlotAxes[channelIndex].legend(["Eye's Angle: " + "%.3g"%eyeAngle], loc="upper left")
             # --------------------------------------------------------------- #
             
-            # --------------------- Move Virtual Reality  ------------------- #
             
-            # --------------------------------------------------------------- #
+        # -------------------- Update Virtual Reality  ---------------------- #
+        if actionControl:
+            actionControl.setGaze(eyeAngles)
+        # ------------------------------------------------------------------- #
 
         # Update to Get New Data Next Round
         if plotStreamedData:
             self.fig.show()
             self.fig.canvas.flush_events()
             self.fig.canvas.draw()
-
-        # -------------------------------------------------------------------#
+        # --------------------------------------------------------------------#
     
 
     def analyzeFullBatch(self, channelNum = 1):
@@ -236,43 +253,6 @@ class eogProtocol:
         sos = self.butterParams(cutoffFreq, samplingFreq, order, filterType)
         return scipy.signal.sosfiltfilt(sos, data)
 
-    def featureDefinition(self, RMSData, xTop, yBase, currentGroupNum, predictionModel = None, Controller = None):
-        featureSet = []
-        correctionTerm = 0
-        # For Every Peak, Take the Average of the Points in Front of it
-        for peakNum in range(len(xTop)):
-            xTopLoc = xTop[peakNum]
-            yBaseline = yBase[peakNum]
-            # Get Peak's Points
-            featureWindow = RMSData[xTopLoc - self.rmsEdgeBuffer:xTopLoc + self.rmsEdgeBuffer]
-            # Take the Average of the Peak as the Feature
-            if len(featureWindow) > 0:
-                featureSet.append(np.mean(featureWindow) - yBaseline)
-            # Edge Effect: np.mean([]) = NaN -> Ignore This Peak Until Next Round
-            else:
-                correctionTerm += 1
-        
-        # If No Features/Peaks This Round, Return Empty Dictionaries
-        if featureSet == []:
-            return {}, {}
-            
-        # Group the Feature Sets Peaks into One Bioelectric Signal/Group
-        peakSeperation = np.diff(xTop[0:len(xTop) - correctionTerm]) # Identify New Signal by Peak Seperation
-        peakGrouping = {currentGroupNum:[featureSet[0]]}  # Holder for the Features
-        xGrouping = {currentGroupNum:[xTop[0]]}        # Holder for the Corresponding Peaks
-        for i, peakSep in enumerate(peakSeperation):
-            # A Part of Previous Group
-            if peakSep < self.minGroupSep:
-                peakGrouping[currentGroupNum].append(featureSet[i+1])
-                xGrouping[currentGroupNum].append(xTop[i+1])
-            # New Group
-            else:
-                goodData = self.createNewGroup(predictionModel, Controller)
-                if goodData:
-                    peakGrouping[currentGroupNum] = [featureSet[i+1]]
-                    xGrouping[currentGroupNum] = [xTop[i+1]]
-     
-        return xGrouping, peakGrouping
 
     def findTraileringAverage(self, recentData, deviationThreshold = 0.08):
         # Base Case in No Points Came in
@@ -281,90 +261,43 @@ class eogProtocol:
         
         # Keep Track of the trailingAverage
         trailingAverage = recentData[-1]
-        for dataPointInd in range(0, len(recentData)-1, 5):
+        for dataPointInd in range(2, len(recentData)-1, 5):
             # Get New dataPoint from the Back of the List
-            dataPoint = recentData[len(recentData) - dataPointInd - 2]
+            dataPoint = recentData[len(recentData) - dataPointInd]
             # If the dataPoint is Different from the trailingAverage by some Threshold, return the trailingAverage
             if abs(dataPoint - trailingAverage) > deviationThreshold:
                 return trailingAverage
             else:
-                numSamplesConsidered = dataPointInd + 2
-                trailingAverage = (trailingAverage*(numSamplesConsidered) + dataPoint)/(numSamplesConsidered+1)
+                trailingAverage = (trailingAverage*(dataPointInd - 1) + dataPoint)/(dataPointInd)
         # Else Return the Average
         return trailingAverage
-            
 
-
-    def findPeaks(self, xData, yData, channelIndex):
-        # Find New Peak Indices and Last Recorded Peak's xLocation
-        peakIndices = scipy.signal.find_peaks(yData, prominence=.1, height=0.01, rel_height=0.5)[0]
+    def sigmoid(self, x, k, x0):       
+        # Prediction Model
+        return 1.0 / (1 + np.exp(-k * (x - x0)))
+    
+    def fitCalibration(self, xData, yData, channelCalibrating, plotFit = False):
+        # Fit the curve
+        popt, pcov = curve_fit(self.sigmoid, xData, yData)
+        estimated_k, estimated_x0 = popt
+        # Save Calibration
+        self.predictEyeAngle[channelCalibrating] = lambda x: self.sigmoid(x, estimated_k, estimated_x0)
         
-        # Find Where the New Peaks Begin
-        xPeaksNew = []; yPeaksNew = []
-        for peakInd in peakIndices:
-            xPeakLoc = xData[peakInd]
-            # A New Peak is AFTER the Last Recorded Peak + Buffer
-            if xPeakLoc > self.highestAnalyzedPeakX + self.minGroupSep:
-                xPeaksNew.append(xPeakLoc)
-                yPeaksNew.append(yData[peakInd])
-
-        # Return New Peaks and Their Baselines
-        return xPeaksNew, yPeaksNew
-    
-    
-    def removePeakBackground(self, xTop, yTop, RMSData):
-        newY = []
-        for pointNum in range(len(xTop)):
-            baselineIndex = self.findLeftMinimum(RMSData, xTop[pointNum])
-            yPoint = yTop[pointNum] - RMSData[baselineIndex]
-            newY.append(yPoint)
-        return newY
-    
-    def createNewGroup(self, predictionModel, Controller, goodData = True):
-        # Get FeatureSet Point for Group
-        groupFeatures = []
-        for channel in range(self.numChannels):
-            # Get the Features for the Group and Take the First One
-            channelFeature = self.featureSetGrouping[channel][self.currentGroupNum]
-            groupFeatures.append((channelFeature or [0])[0])
-        featureArray = np.array([groupFeatures])
+        # Plot the Fit Results
+        if plotFit:
+            # Get Model's Data
+            xTest = np.arange(min(xData) - 10, max(xData) + 10, 0.01)
+            yTest = self.predictEyeAngle[channelCalibrating](xTest)
         
-        # If the Feature is Bad, Throw it Away
-        if len(featureArray[featureArray > 0]) <= 1 and np.sum(featureArray) <= 0.1:
-            if predictionModel:
-                print("Only One Small Signal Found; Not Moving Robot")
-            self.currentGroupNum -= 1
-            goodData = False
-        # If it is Okay and We Have an ML Model, Predict the Movement
-        elif predictionModel:
-            self.predictMovement(predictionModel, featureArray, Controller)
-            
-        self.currentGroupNum += 1
-        for channel in range(self.numChannels):
-            self.featureLocsX[channel][self.currentGroupNum] = []
-            self.featureSetGrouping[channel][self.currentGroupNum] = []
-        
-        return goodData
-    
-    def predictMovement(self, predictionModel, inputData, Controller = None):        
-        # Predict Data
-        predictedIndex = predictionModel.predictData(inputData)[0]
-        predictedLabel = self.movementOptions[predictedIndex]
-        print("The Predicted Label is", predictedLabel)
-        if Controller:
-            if predictedLabel == "left":
-                Controller.moveLeft()
-            elif predictedLabel == "right":
-                Controller.moveRight()
-            elif predictedLabel == "down":
-                Controller.moveDown()
-            elif predictedLabel == "up":
-                Controller.moveUp()
-            elif predictedLabel == "grab":
-                Controller.grabHand()
-            elif predictedLabel == "release":
-                Controller.releaseHand()
-
+            # Create the Plot
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            # Plot the Data      
+            ax.plot(xTest, yTest, '--', label='fitted')
+            ax.plot(xData, yData, '-', label='true')  
+            # Add Legend and Show
+            ax.legend()
+            plt.show()
 
 
  

@@ -7,13 +7,17 @@
     --------------------------------------------------------------------------
     
     Modules to Import Before Running the Program (Some May be Missing):
+        $ conda install scikit-learn
         $ conda install matplotlib
         $ conda install tensorflow
         $ conda install openpyxl
-        $ conda install sklearn
+        $ conda install pyserial
         $ conda install joblib
         $ conda install numpy
         $ conda install keras
+    
+    Programs to Install:
+        Vizard: https://www.worldviz.com/virtual-reality-software-downloads
         
     --------------------------------------------------------------------------
 """
@@ -28,7 +32,7 @@ import readDataArduino as streamData    # Functions to Read in Data from Arduino
 import eogAnalysis as eogAnalysis
 # Import Virtual Reality Control Files
 sys.path.append('./Execute Movements/')  # Folder with Virtual Reality Control Files
-import virtualRealityControl as vizardControl
+#import virtualRealityControl as vizardControl
 
 if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
@@ -37,22 +41,22 @@ if __name__ == "__main__":
 
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
-    samplingFreq = 800       # The Average Number of Points Steamed Into the Arduino Per Second
-    numDataPoints = 100000   # The Number of Points to Stream into the Arduino
-    moveDataFinger = 5      # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
-    numChannels = 2          # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
-    numTimePoints = 3000     # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    
+    samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second
+    numDataPoints = 10000         # The Number of Points to Stream into the Arduino
+    moveDataFinger = 200            # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
+    numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+     
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = False   # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = True    # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    calibrateModel = False      # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
+    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     
     # User Options During the Run: Any Number Can be True
-    saveCalibration = True   # Save the Calibration Model for Later Use
-    plotStreamedData = False   # Graph the Data to Show Incoming Signals + Analysis
-    saveInputData = False      # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-    controlVR = False         # Apply the Algorithm to Control the Virtual Reality View
+    calibrateModel = True        # Calibrate the EOG Voltage to Predict the Eye's Angle
+    saveCalibration = True        # Save the Calibration Model for Later Use
+    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    saveInputData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
     
     # ---------------------------------------------------------------------- #
     
@@ -82,7 +86,7 @@ if __name__ == "__main__":
     # Stream in Data from Arduino
     if streamArduinoData:
         arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
-        readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, calibrateModel, guiApp = None)
+        readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None)
         readData.streamEOGData(numDataPoints, calibrateModel = calibrateModel, actionControl = gazeControl)
     # Take Data from Excel Sheet
     elif readDataFromExcel:

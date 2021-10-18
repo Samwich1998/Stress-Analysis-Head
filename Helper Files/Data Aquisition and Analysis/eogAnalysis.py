@@ -34,7 +34,7 @@ class eogProtocol:
         self.movementOptions = movementOptions    # Gesture Movement Options
         self.plotStreamedData = plotStreamedData  # Plot the Data
         # Calibration Angles
-        self.calibrationAngles = [[-30, -15, 0, 15, 30] for _ in range(self.numChannels)]
+        self.calibrationAngles = [[-30, 30] for _ in range(self.numChannels)]
         self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         
         # High Pass Filter Parameters
@@ -45,16 +45,19 @@ class eogProtocol:
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
         self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
         self.bandPassBuffer = 1000        # Buffer in the Filtered Data that Represented BAD Filtering
+        
+        # Pointers for Calibration
+        self.calibrateChannelNum = 0
+        self.channelCalibrationPointer = 0
+        # Calibration Function for Eye Angle
+        self.predictEyeAngle = [None]*self.numChannels
                 
         # Start with Fresh Inputs
         self.resetGlobalVariables()
         
         # Define Class for Plotting Peaks
         if plotStreamedData:
-            # Hold Past Information
-            self.trailingAverageData = {}
-            for channelIndex in range(self.numChannels):
-                self.trailingAverageData[channelIndex] = [0]*self.numTimePoints
+            matplotlib.use('TkAgg')
                 
             # Initialize Plots
             self.initPlotPeaks()
@@ -65,10 +68,13 @@ class eogProtocol:
         for channelIndex in range(self.numChannels):
             self.data['Channel'+str(1+channelIndex)] = []
         
+        # Hold Past Information
+        self.trailingAverageData = {}
+        for channelIndex in range(self.numChannels):
+            self.trailingAverageData[channelIndex] = [0]*self.numTimePoints
+        
         # Reset Last Eye Voltage (Volts)
         self.currentEyeVoltages = [2.5 for _ in range(self.numChannels)]
-        # Calibration Function for Eye Angle
-        self.predictEyeAngle = [None]*self.numChannels
         
         # Close Any Opened Plots
         if self.plotStreamedData:
@@ -154,11 +160,12 @@ class eogProtocol:
             
             # --------------- Calibrate Angle Prediction Model -------------- #
             if calibrateModel:
-                self.calibrationVoltages[channelIndex].append(eyeAngle)
+                if self.calibrateChannelNum == channelIndex:
+                    self.calibrationVoltages[self.calibrateChannelNum].append(currentEyeVoltage)
             # --------------------------------------------------------------- #
             
             # ------------------- Plot Biolectric Signals ------------------- #
-            if plotStreamedData:
+            if plotStreamedData and not calibrateModel:
                 # Get X Data: Shared Axis for All Channels
                 self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
 
@@ -187,7 +194,7 @@ class eogProtocol:
         # ------------------------------------------------------------------- #
 
         # Update to Get New Data Next Round
-        if plotStreamedData:
+        if plotStreamedData and not calibrateModel:
             self.fig.show()
             self.fig.canvas.flush_events()
             self.fig.canvas.draw()
@@ -263,18 +270,18 @@ class eogProtocol:
         # Prediction Model
         return 1.0 / (1 + np.exp(-k * (x - x0)))
     
-    def fitCalibration(self, xData, yData, channelCalibrating, plotFit = False):
+    def fitCalibration(self, xData, yData, channelIndexCalibrating, plotFit = False):
         # Fit the curve
         popt, pcov = curve_fit(self.sigmoid, xData, yData)
         estimated_k, estimated_x0 = popt
         # Save Calibration
-        self.predictEyeAngle[channelCalibrating] = lambda x: self.sigmoid(x, estimated_k, estimated_x0)
+        self.predictEyeAngle[channelIndexCalibrating] = lambda x: self.sigmoid(x, estimated_k, estimated_x0)
         
         # Plot the Fit Results
         if plotFit:
             # Get Model's Data
             xTest = np.arange(min(xData) - 10, max(xData) + 10, 0.01)
-            yTest = self.predictEyeAngle[channelCalibrating](xTest)
+            yTest = self.predictEyeAngle[channelIndexCalibrating](xTest)
         
             # Create the Plot
             fig = plt.figure()

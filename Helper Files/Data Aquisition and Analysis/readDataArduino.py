@@ -29,18 +29,18 @@ class arduinoRead():
         self.emgSerialNum = emgSerialNum
         self.eegSerialNum = eegSerialNum
         self.handSerialNum = handSerialNum
-        
+
         # Connect to the Arduinos
         self.eogArduino = self.initiateArduino(self.eogSerialNum)
         self.emgArduino = self.initiateArduino(self.emgSerialNum)
         self.eegArduino = self.initiateArduino(self.eegSerialNum)
         self.handArduino = self.initiateArduino(self.handSerialNum)
-    
+
     def printPortNums(self):
         ports = serial.tools.list_ports.comports()
         for port in ports:
             print(port.serial_number)
-        
+
     def initiateArduino(self, arduinoSerialNum):
         arduinoControl = None
         if arduinoSerialNum:
@@ -56,18 +56,19 @@ class arduinoRead():
                 sys.exit()
         # Retun the Arduino actionControl
         return arduinoControl
-    
+
     def resetArduino(self, arduino, arduinoSerialNum, numTrashReads):
-        # Flush Arduino Signal (As There Was a Delay Induced)
-        arduino.flushOutput()
-        arduino.readAll()
-        arduino.close()
-        arduino = self.initiateArduino(arduinoSerialNum)
+        # Toggle DTR to reset Arduino
+        arduino.setDTR(False)
+        time.sleep(1)
+        # toss any data already received, see
+        arduino.flushInput()
+        arduino.setDTR(True)
         # Read and throw out first few reads
         for i in range(numTrashReads):
             arduino.read_until()
         return arduino
-    
+
     def findArduino(self, serialNum):
         """Get the name of the port that is connected to the Arduino."""
         port = None  # Initialize Blank Port
@@ -78,7 +79,7 @@ class arduinoRead():
             if p.serial_number == serialNum:
                 port = p.device
         return port
-    
+
     def handshakeArduino(self, arduino, sleep_time=1, print_handshake_message=False, handshake_code=0):
         """Make sure connection is established by sending
         and receiving bytes."""
@@ -89,7 +90,7 @@ class arduinoRead():
         # Set a long timeout to complete handshake
         timeout = arduino.timeout
         arduino.timeout = 2
-    
+
         # Read and discard everything that may be in the input buffer
         arduino.readAll()
         # Send request to Arduino
@@ -99,31 +100,31 @@ class arduinoRead():
         # Send and receive request again
         arduino.write(bytes([handshake_code]))
         handshake_message = arduino.read_until()
-    
+
         # Print the handshake message, if desired
         if print_handshake_message:
             print("Handshake message: " + handshake_message.decode())
-    
+
         # Reset the timeout
         arduino.timeout = timeout
-    
-    
+
+
     def readAll(self, ser, readBuffer=b"", **args):
         """Read all available bytes from the serial port
         and append to the read buffer.
-    
+
         Parameters
         ----------
         ser : serial.Serial() instance
             The device we are reading from.
         readBuffer : bytes, default b''
             Previous read buffer that is appended to.
-    
+
         Returns
         -------
         output : bytes
             Bytes object that contains readBuffer + read.
-    
+
         Notes
         -----
         .. `**args` appears, but is never used. This is for
@@ -133,19 +134,19 @@ class arduinoRead():
         # Set timeout to None to make sure we read all bytes
         previous_timeout = ser.timeout
         ser.timeout = None
-    
+
         in_waiting = ser.in_waiting
         read = ser.read(size=in_waiting)
-    
+
         # Reset to previous timeout
         ser.timeout = previous_timeout
-    
+
         return readBuffer + read
-    
-    
+
+
     def readAllNewlines(self, ser, readBuffer=b"", n_reads=400):
         """Read data in until encountering newlines.
-    
+
         Parameters
         ----------
         ser : serial.Serial() instance
@@ -154,12 +155,12 @@ class arduinoRead():
             The number of reads up to newlines
         readBuffer : bytes, default b''
             Previous read buffer that is appended to.
-    
+
         Returns
         -------
         output : bytes
             Bytes object that contains readBuffer + read.
-    
+
         Notes
         -----
         .. This is a drop-in replacement for readAll().
@@ -168,17 +169,17 @@ class arduinoRead():
         for _ in range(n_reads):
             raw += ser.read_until()
         return raw
-    
-    
+
+
     def parseRead(self, read, numChannels):
         """Parse a read with time, volage data
-    
+
         Parameters
         ----------
         read : byte string
             Byte string with comma delimited time/voltage
             measurements.
-    
+
         Returns a List of:
         -------
         voltage : list of floats; Voltages in volts.
@@ -192,16 +193,16 @@ class arduinoRead():
             arduinoData.append(b"")
         else:
             arduinoData.append(b'')  # Last Element Should = raw_list[-1].encode()
-    
+
         # Separate Time and Voltage Measurements
         pattern = re.compile(b"\d+|,|-")
         raw_list = [b"".join(pattern.findall(raw)).decode() for raw in read.split(b"\r\n")]
-    
+
         for raw in raw_list[:-1]:
             try:
                 # Seperate the Arduino Data
                 arduinoValues = raw.split(",")
-                
+
                 if len(arduinoValues) == numChannels + 1:
                     # Store the Time and Voltage Data
                     arduinoData[1].append(int(arduinoValues[0])/1000)
@@ -210,6 +211,7 @@ class arduinoRead():
                         arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 5/1023)
                 else:
                     print("Bad Arduino Reading:", arduinoValues)
+                    print("You May Want to Inrease 'moveDataFinger' to Not Fall Behind in Reading Points")
             except:
                 print("Cannot Read Arduino Value:", raw)
                 pass
@@ -217,16 +219,16 @@ class arduinoRead():
         return arduinoData
 
 class emgArduinoRead(emgProtocol):
-    
+
     def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, movementOptions, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
         super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, movementOptions, plotStreamedData)
-        
+
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.emgArduino = arduinoRead.emgArduino
         self.handArduino = arduinoRead.handArduino
-        
+
         # Variables for Hand Arduino's DistanceRead Funcion
         self.speed_x = 1 # speed_x = 1 when the arm is in fast mode, otherwise, speed_x = 0
         self.stop_x = 0  # stop_x = 1 when robot hand is stopped by the pressure sensor
@@ -236,37 +238,37 @@ class emgArduinoRead(emgProtocol):
         self.STOP = 9999 # when hand touch something, int(9999) will be sent to computer
         self.MOVE = 8888 # when hand does not touch anything, int(8888) will be sent to computer
         self.killDistanceRead = False
-        
+
         # Initiate the GUI: a Copy of the UI Window
         self.guiApp = guiApp
         if self.guiApp:
             self.guiApp.handArduino = self.handArduino
             self.guiApp.initiateRoboticMovement()
-    
+
     def streamEMGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
-    
+
         # Read and throw out first few reads
         for i in range(numTrashReads):
             self.emgArduino.read_until()
-        
+
         # Set Up Hand Arduino if Needed
         if self.handArduino:
             self.handArduino.readAll() # Throw Out Initial Readings
             # Set Up Laser Reading
             threading.Thread(target = self.distanceRead, args = (actionControl, numPointsRead), daemon=True).start()
-        
+
         readBuffer = b""; dataFinger = 0
         # Loop Through and Read the Arduino Data in Real-Time
         while len(self.data["timePoints"]) < numPointsRead:
             # Read in chunk of data
             raw = self.arduinoRead.readAllNewlines(ser=self.emgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
-            
+
             # Parse it, passing if it is gibberish
             try:
                 Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
-                
+
                 # Update data dictionary
                 startNum = len(self.data["timePoints"])
                 for i in range(len(timePoints)):
@@ -283,7 +285,7 @@ class emgArduinoRead(emgProtocol):
             except Exception as e:
                 print(e)
                 pass
-            
+
         print("Finished Streaming in Data; Closing Arduino\n")
         # Close the Arduinos at the End
         self.emgArduino.close()
@@ -293,8 +295,8 @@ class emgArduinoRead(emgProtocol):
         if self.guiApp:
             self.guiApp.handArduino = None
             self.guiApp.resetButton()
-        
-    
+
+
     def distanceRead(self, RoboArm, numPointsRead):
         print("In Distance Read")
         for _ in range(5):
@@ -304,7 +306,7 @@ class emgArduinoRead(emgProtocol):
             if self.handArduino.in_waiting > 0:
                 d_laser = self.handArduino.read_until()
                 distance = d_laser.decode()
-                
+
                 # Update Gui App Text
                 if self.guiApp:
                     self.guiApp.Number_distance.setText(self.guiApp.translate("MainWindow", str(distance)))
@@ -332,87 +334,95 @@ class emgArduinoRead(emgProtocol):
 
 
 class eogArduinoRead(eogProtocol):
-    
+
     def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
         super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
-        
+
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.eogArduino = arduinoRead.eogArduino
         self.eogSerialNum = arduinoRead.eogSerialNum
-        
-        # Pointers for Calibration
-        self.calibrateChannelNum = 0
-        self.channelCalibrationPointer = 0
-    
+
     def streamEOGData(self, numPointsRead, calibrateModel = False, actionControl = None, numTrashReads=500, numPointsPerRead=100):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
         #numPointsPerRead = min(numPointsPerRead, int(numPointsRead/20))
-        
+
         # Read and throw out first few reads
         self.eogArduino.read_until(b'')
         for i in range(numTrashReads):
             self.eogArduino.read_until()
-        
+
         try:
             # If Needed Calibrate the Model
             if calibrateModel:
                 self.askForCalibration(numTrashReads)
-                
+
             readBuffer = b""; dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
             while len(self.data["timePoints"]) < numPointsRead:
-                
+
                 # Read in chunk of data
                 raw = self.arduinoRead.readAllNewlines(ser=self.eogArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
                 # Parse it, passing if it is gibberish
                 Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
-                
+
                 # Update data dictionary
                 self.data["timePoints"].extend(timePoints)
                 for channelIndex in range(self.numChannels):
                     self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
-    
+
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
                     self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel = calibrateModel, actionControl = actionControl)
                     dataFinger += self.moveDataFinger
-                    
+
                     # If You Need to Calibrate a Channel
                     if calibrateModel:
-                        self.channelCalibrationPointer += 1
-                        # See If Calibration of the Channel is Complete
-                        if len(self.calibrationVoltages[self.calibrateChannelNum]) == len(self.calibrationAngles[self.calibrateChannelNum]):
-                            # Get Data to Calibrate
-                            xData = self.calibrationVoltages[self.calibrateChannelNum]
-                            yData = self.calibrationAngles[self.calibrateChannelNum]
-                            # Calibrate the Data
-                            self.fitCalibration(xData, yData, channelCalibrating = self.calibrateChannelNum, plotFit = False)
-                            # Move Onto the Next Channel
-                            self.calibrateChannelNum += 1
-                        # Check if All Channel Calibrations are Complete
-                        if self.calibrateChannelNum == self.numChannels:
-                            # Reset Arduino and Stop Calibration
-                            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
-                            calibrateModel = False        
-                        else:
-                            self.askForCalibration(numTrashReads)
-                        
+                        dataFinger = 0
+                        calibrateModel = self.performCalibration(numTrashReads)
+                        break
+
         finally:
             self.eogArduino.close()
-        
+
         print("Finished Streaming in Data; Closing Arduino\n")
         # Close the Arduinos at the End
         self.eogArduino.close()
+    
+    def performCalibration(self, numTrashReads, calibrateModel = True):
+        self.channelCalibrationPointer += 1
+
+        # See If Calibration of the Channel is Complete
+        if len(self.calibrationVoltages[self.calibrateChannelNum]) == len(self.calibrationAngles[self.calibrateChannelNum]):
+            # Get Data to Calibrate
+            xData = self.calibrationVoltages[self.calibrateChannelNum]
+            yData = self.calibrationAngles[self.calibrateChannelNum]
+            # Calibrate the Data
+            self.fitCalibration(xData, yData, channelIndexCalibrating = self.calibrateChannelNum, plotFit = False)
+            # Move Onto the Next Channel
+            self.calibrateChannelNum += 1
+            self.channelCalibrationPointer = 0
+
+        # Check if All Channel Calibrations are Complete
+        if self.calibrateChannelNum == self.numChannels:
+            # Reset Arduino and Stop Calibration
+            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
+            self.initPlotPeaks()
+            calibrateModel = False
+        else:
+            self.askForCalibration(numTrashReads)
         
+        # Reset Stream 
+        self.resetGlobalVariables()
+        return calibrateModel
+
     def askForCalibration(self, numTrashReads):
         # Inform User of Next Angle; Then Flush Saved Outputs
         input("Orient Eye at " + str(self.calibrationAngles[self.calibrateChannelNum][self.channelCalibrationPointer]) + " Degrees For Channel " + str(self.calibrateChannelNum))
         # Reset Arduino
         self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
- 
-    
- 
+
+

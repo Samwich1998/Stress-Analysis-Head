@@ -7,7 +7,6 @@ Created on Mon Jan 25 13:17:05 2021
 """
 
 # Basic Modules
-import sys
 import numpy as np
 # Peak Detection
 import scipy
@@ -17,10 +16,8 @@ from scipy.signal import butter
 # Calibration Fitting
 from scipy.optimize import curve_fit
 # Plotting
+import matplotlib
 import matplotlib.pyplot as plt
-# Import Virtual Reality Control Files
-sys.path.append('../Execute Movements/')  # Folder with Virtual Reality Control Files
-import VizardVR_Home as controlVR
 
 
 # --------------------------------------------------------------------------- #
@@ -28,7 +25,7 @@ import VizardVR_Home as controlVR
 
 class eogProtocol:
     
-    def __init__(self, numTimePoints = 2000, moveDataFinger = 200, numChannels = 4, samplingFreq = 800, movementOptions = [], plotStreamedData = True):
+    def __init__(self, numTimePoints = 3000, moveDataFinger = 10, numChannels = 2, samplingFreq = 800, movementOptions = [], plotStreamedData = True):
         
         # Input Parameters
         self.numChannels = numChannels            # Number of Bioelectric Signals
@@ -45,17 +42,21 @@ class eogProtocol:
         self.cutOffFreq = 8                       # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
         
         # Data Collection Parameters
-        self.minVoltageMovement = 0.1
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
-        self.peakDetectionBuffer = 500   # Buffer in Case Peaks are Only Half Formed at Edges
+        self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
         self.bandPassBuffer = 1000        # Buffer in the Filtered Data that Represented BAD Filtering
-        self.minGroupSep = 100            # Seperation that Defines a New Group
-        
+                
         # Start with Fresh Inputs
         self.resetGlobalVariables()
         
         # Define Class for Plotting Peaks
         if plotStreamedData:
+            # Hold Past Information
+            self.trailingAverageData = {}
+            for channelIndex in range(self.numChannels):
+                self.trailingAverageData[channelIndex] = [0]*self.numTimePoints
+                
+            # Initialize Plots
             self.initPlotPeaks()
 
     def resetGlobalVariables(self):
@@ -65,33 +66,20 @@ class eogProtocol:
             self.data['Channel'+str(1+channelIndex)] = []
         
         # Reset Last Eye Voltage (Volts)
-        self.currentEyeVoltage = [2.5 for _ in range(self.numChannels)]
+        self.currentEyeVoltages = [2.5 for _ in range(self.numChannels)]
         # Calibration Function for Eye Angle
         self.predictEyeAngle = [None]*self.numChannels
         
         # Close Any Opened Plots
         if self.plotStreamedData:
-            plt.close()
+            plt.close()        
 
 
     def initPlotPeaks(self): 
-
-        # Specify Figure Asthetics
-        self.peakCurrentRightColorOrder = {
-            0: "tab:red",
-            1: "tab:purple",
-            2: "tab:orange",
-            3: "tab:pink",
-            4: "tab:brown",
-            5: "tab:green",
-            6: "tab:gray",
-            7: "tab:cyan",
-            }
-
+        
         # use ggplot style for more sophisticated visuals
-        plt.style.use('seaborn-poster') #sets the size of the charts
-        #plt.style.use('ggplot')
-        #plt.ion()
+        plt.style.use('seaborn-poster')
+        #matplotlib.use( 'Qt5Agg' )
 
         # ------------------------------------------------------------------- #
         # --------- Plot Variables user Can Edit (Global Variables) --------- #
@@ -138,11 +126,6 @@ class eogProtocol:
         # Tighten Figure White Space (Must be After wW Add Fig Info)
         self.fig.tight_layout(pad=2.0);
         
-        # Hold Past Information
-        self.trailingAverageData = {}
-        for channelIndex in range(self.numChannels):
-            self.trailingAverageData[channelIndex] = [0]*self.numTimePoints
-        
     
     def analyzeData(self, dataFinger, plotStreamedData = False, calibrateModel = False, actionControl = None):     
         
@@ -153,7 +136,7 @@ class eogProtocol:
             # ---------------------- Band Pass Filter ----------------------- #    
             # Band Pass Filter to Remove Noise
             startBPFindex = max(dataFinger - self.bandPassBuffer, 0)
-            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints]
+            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints].copy()
             filteredData = self.butterFilter(yDataBuffer, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')[-self.numTimePoints:]
             # --------------------------------------------------------------- #
             
@@ -161,11 +144,11 @@ class eogProtocol:
             # Get the Current Voltage (Take Average)
             currentEyeVoltage = self.findTraileringAverage(filteredData[-self.voltagePositionBuffer:], deviationThreshold = self.minVoltageMovement)
             # Compare Voltage Difference to Remove Small Shakes
-            if abs(currentEyeVoltage - self.currentEyeVoltage[channelIndex]) > self.minVoltageMovement:
-                self.currentEyeVoltage[channelIndex] = currentEyeVoltage        
+            if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
+                self.currentEyeVoltages[channelIndex] = currentEyeVoltage        
             # Predict the Eye's Degree
             if self.predictEyeAngle[channelIndex]:
-                eyeAngle = self.predictEyeAngle[channelIndex](self.currentEyeVoltage[channelIndex])
+                eyeAngle = self.predictEyeAngle[channelIndex](self.currentEyeVoltages[channelIndex])
                 eyeAngles.append(eyeAngle)
             # --------------------------------------------------------------- #
             
@@ -178,7 +161,7 @@ class eogProtocol:
             if plotStreamedData:
                 # Get X Data: Shared Axis for All Channels
                 self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
-                
+
                 # Get New Y Data
                 newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
                 # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
@@ -186,8 +169,8 @@ class eogProtocol:
                 self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
             
                 # Keep Track of Recently Digitized Data
-                self.trailingAverageData[channelIndex].extend([self.currentEyeVoltage[channelIndex]]*self.moveDataFinger)
-                self.trailingAverageData[channelIndex][self.moveDataFinger:]
+                self.trailingAverageData[channelIndex].extend([self.currentEyeVoltages[channelIndex]]*self.moveDataFinger)
+                self.trailingAverageData[channelIndex] = self.trailingAverageData[channelIndex][self.moveDataFinger:]
                 # Plot the Filtered + Digitized Data
                 self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData)
                 self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex])
@@ -211,32 +194,36 @@ class eogProtocol:
         # --------------------------------------------------------------------#
     
 
-    def analyzeFullBatch(self, channelNum = 1):
+    def analyzeFullBatch(self, channelIndex = 1):
         print("Printing Seperate test plots")
         # Get Data to Plot
         xData = self.data['timePoints']
-        yData = self.data['Channel' + str(channelNum)]
+        yData = self.data['Channel' + str(channelIndex)]
         
         # Get Data and Filter
         plt.figure()
-        plt.plot(xData,yData, c='tab:blue', alpha=0.7)
+        plt.plot(xData, yData, c='tab:red', alpha=0.7)
         plt.title("Bioelectric Data")
         
         plt.figure()
-        filteredData = self.highPassFilter(yData)
+        filteredData = self.butterFilter(yData, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')
         plt.plot(xData,filteredData, c='tab:blue', alpha=0.7)
         plt.title("Filtered Data")
         
-        plt.figure()
-        RMSData = self.RMSFilter(filteredData, self.window, self.step)
-        plt.plot(xData[0:len(RMSData)],RMSData, c='tab:blue', alpha=0.7)
-        plt.title("RMS Data")
+        # Get the Current Voltage (Take Average)
+        eyeVoltages = []
+        self.currentEyeVoltages[channelIndex] = 2.5
+        for dataBatchInd in range(0, len(filteredData), self.moveDataFinger):
+            batchData = filteredData[dataBatchInd - self.voltagePositionBuffer:dataBatchInd + self.moveDataFinger]
+            currentEyeVoltage = self.findTraileringAverage(batchData, deviationThreshold = self.minVoltageMovement)
+            # Compare Voltage Difference to Remove Small Shakes
+            if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
+                self.currentEyeVoltages[channelIndex] = currentEyeVoltage
+            # Keep Track of Data
+            eyeVoltages.extend([self.currentEyeVoltages[channelIndex]]*len(filteredData[dataBatchInd:dataBatchInd + self.moveDataFinger]))
+        plt.plot(xData, eyeVoltages, c='k', alpha=0.7)
         
-        # Find Peaks
-        batchTopPeaks = self.find_peaks(xData, RMSData)
-        xPeakTop, yPeakTop, yBase = zip(*batchTopPeaks.items())
-        featureLocsX, featureSet = self.featureDefinition(RMSData, xPeakTop, yBase, 0)
-    
+
 # --------------------------------------------------------------------------- #
 # ------------------------- Signal Analysis --------------------------------- #
 
@@ -261,7 +248,7 @@ class eogProtocol:
         
         # Keep Track of the trailingAverage
         trailingAverage = recentData[-1]
-        for dataPointInd in range(2, len(recentData)-1, 5):
+        for dataPointInd in range(2, len(recentData)-1, -1):
             # Get New dataPoint from the Back of the List
             dataPoint = recentData[len(recentData) - dataPointInd]
             # If the dataPoint is Different from the trailingAverage by some Threshold, return the trailingAverage

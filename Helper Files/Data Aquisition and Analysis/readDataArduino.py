@@ -54,7 +54,7 @@ class arduinoRead():
                 print("Cannot Connect to Arudino", arduinoSerialNum);
                 print("Error Message:", e)
                 sys.exit()
-        # Retun the Arduino Controller
+        # Retun the Arduino actionControl
         return arduinoControl
     
     def resetArduino(self, arduino, arduinoSerialNum, numTrashReads):
@@ -243,7 +243,7 @@ class emgArduinoRead(emgProtocol):
             self.guiApp.handArduino = self.handArduino
             self.guiApp.initiateRoboticMovement()
     
-    def streamEMGData(self, numPointsRead, predictionModel = None, Controller=None, numTrashReads=500, numPointsPerRead=400):
+    def streamEMGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
     
@@ -255,7 +255,7 @@ class emgArduinoRead(emgProtocol):
         if self.handArduino:
             self.handArduino.readAll() # Throw Out Initial Readings
             # Set Up Laser Reading
-            threading.Thread(target = self.distanceRead, args = (Controller, numPointsRead), daemon=True).start()
+            threading.Thread(target = self.distanceRead, args = (actionControl, numPointsRead), daemon=True).start()
         
         readBuffer = b""; dataFinger = 0
         # Loop Through and Read the Arduino Data in Real-Time
@@ -278,7 +278,7 @@ class emgArduinoRead(emgProtocol):
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
-                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel = None, Controller=None)
+                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel = None, actionControl=None)
                     dataFinger += self.moveDataFinger
             except Exception as e:
                 print(e)
@@ -346,7 +346,7 @@ class eogArduinoRead(eogProtocol):
         self.calibrateChannelNum = 0
         self.channelCalibrationPointer = 0
     
-    def streamEOGData(self, numPointsRead, calibrateModel = False, Controller = None, numTrashReads=500, numPointsPerRead=100):
+    def streamEOGData(self, numPointsRead, calibrateModel = False, actionControl = None, numTrashReads=500, numPointsPerRead=100):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in Data from the Arduino")
         #numPointsPerRead = min(numPointsPerRead, int(numPointsRead/20))
@@ -378,7 +378,7 @@ class eogArduinoRead(eogProtocol):
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
-                    self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel = calibrateModel, Controller = None)
+                    self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel = calibrateModel, actionControl = actionControl)
                     dataFinger += self.moveDataFinger
                     
                     # If You Need to Calibrate a Channel

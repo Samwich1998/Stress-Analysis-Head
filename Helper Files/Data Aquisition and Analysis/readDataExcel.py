@@ -30,9 +30,8 @@ class readExcel():
         self.moveDataFinger = analysisProtocol.moveDataFinger
         self.numTimePoints = analysisProtocol.numTimePoints
         self.movementOptions = analysisProtocol.movementOptions
-            
         
-    def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, predictionModel=None, Controller=None, analyzeSheet = None):
+    def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, predictionModel=None, actionControl=None, analyzeSheet = None):
         """
         Extracts Biolectric Data from Excel Document (.xlsx). Data can be in any
         worksheet, which the user can specify using 'testSheetNum'.
@@ -59,8 +58,8 @@ class readExcel():
         
         # If Header Exists, Skip Until You Find the Data Data
         for row in analyzeSheet.rows:
-            cellA = row[1]
-            if type(cellA.value) == type(1.1):
+            cellA = row[0]
+            if type(cellA.value) in [int, float]:
                 dataStartRow = cellA.row
                 break
 
@@ -81,12 +80,8 @@ class readExcel():
             pointNum += 1
             # When Ready, Send Data Off for Analysis
             while pointNum - dataFinger >= self.numTimePoints:
-                import time
-                t1  = time.time()
-                self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel = predictionModel, Controller = Controller)
+                self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel, actionControl = actionControl)
                 dataFinger += self.moveDataFinger
-                t2 = time.time()
-                print("HERE", t2-t1)
                 
         # Finished Data Collection: Report Back to User
         print("\tDone Data Collecting from File: ", analyzeSheet.title)
@@ -103,7 +98,7 @@ class readExcel():
         
         # If Excel Header Exists (Any Words), Skip Until You Find the Numerical Data
         for row in excelSheet.rows:
-            if type(row[0].value) == type(1.1):
+            if type(row[0].value) in [int, float]:
                 dataStartRow = row[0].row
                 break
         
@@ -168,7 +163,7 @@ class readExcel():
                     elif mode == 'reAnalyze':
                         print("\tReanalyzing Excel Sheet:", excelSheet.title)
                         # ReAnalyze Data (First Four Columns)
-                        self.streamExcelData(trainingExcelFile, analyzeSheet=excelSheet)
+                        self.streamExcelData(trainingExcelFile, analyzeSheet = excelSheet)
                         # Delete the Previous Analysis from Excel (Save Name/Info)
                         sheetName = excelSheet.title
                         handMovement = sheetName.split(" - ")[1]

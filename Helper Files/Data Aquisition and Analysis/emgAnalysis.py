@@ -140,7 +140,7 @@ class emgProtocol:
         self.fig.tight_layout(pad=2.0); plt.show()
         
     
-    def analyzeData(self, dataFinger, plotStreamedData = False, predictionModel = None, Controller=None):  
+    def analyzeData(self, dataFinger, plotStreamedData = False, predictionModel = None, actionControl=None):  
         
         xPeaksHolder = []; yPeaksHolder = []
         # Get X Data: Shared Axis for All Channels
@@ -231,7 +231,7 @@ class emgProtocol:
             # ------------------------ Move Robot --------------------------- #
             # If New Peak Was Found with Enough Peak Seperation, Add Group 
             if abs(xDataRMS[-1] - self.highestAnalyzedPeakX) > self.minGroupSep and self.highestAnalyzedPeakX:
-                self.createNewGroup(predictionModel, Controller)
+                self.createNewGroup(predictionModel, actionControl)
             # --------------------------------------------------------------- #
             
             # ---------------------- Feature Analysis  ---------------------- #
@@ -241,7 +241,7 @@ class emgProtocol:
             numFeatures = len(newFeatures)
             self.featureList[-1][numFeatures*channelIndex:numFeatures*(channelIndex+1)] = newFeatures
             
-            goodData = self.createNewGroup(predictionModel, Controller)
+            goodData = self.createNewGroup(predictionModel, actionControl)
             if goodData:
                 self.featureList[channelIndex][self.currentGroupNum] = [featureSet[i+1]]
         
@@ -254,7 +254,7 @@ class emgProtocol:
                 goodData = False
             # If it is Okay and We Have an ML Model, Predict the Movement
             elif predictionModel:
-                self.predictMovement(predictionModel, featureArray, Controller)
+                self.predictMovement(predictionModel, featureArray, actionControl)
                 
             self.currentGroupNum += 1
             for channel in range(self.numChannels):
@@ -413,24 +413,24 @@ class emgProtocol:
         return peakFeatures
     
     
-    def predictMovement(self, predictionModel, inputData, Controller = None):        
+    def predictMovement(self, predictionModel, inputData, actionControl = None):        
         # Predict Data
         predictedIndex = predictionModel.predictData(inputData)[0]
         predictedLabel = self.movementOptions[predictedIndex]
         print("The Predicted Label is", predictedLabel)
-        if Controller:
+        if actionControl:
             if predictedLabel == "left":
-                Controller.moveLeft()
+                actionControl.moveLeft()
             elif predictedLabel == "right":
-                Controller.moveRight()
+                actionControl.moveRight()
             elif predictedLabel == "down":
-                Controller.moveDown()
+                actionControl.moveDown()
             elif predictedLabel == "up":
-                Controller.moveUp()
+                actionControl.moveUp()
             elif predictedLabel == "grab":
-                Controller.grabHand()
+                actionControl.grabHand()
             elif predictedLabel == "release":
-                Controller.releaseHand()
+                actionControl.releaseHand()
 
 
 

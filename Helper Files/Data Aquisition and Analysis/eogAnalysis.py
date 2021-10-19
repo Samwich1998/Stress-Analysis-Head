@@ -187,7 +187,7 @@ class eogProtocol:
             
             
         # -------------------- Update Virtual Reality  ---------------------- #
-        if actionControl:
+        if actionControl and not calibrateModel:
             actionControl.setGaze(eyeAngles)
         # ------------------------------------------------------------------- #
 

@@ -59,10 +59,10 @@ if __name__ == "__main__":
     readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = True         # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveInputData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-    controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
+    controlVR = True             # Apply the Algorithm to Control the Virtual Reality View
     
     # ---------------------------------------------------------------------- #
     

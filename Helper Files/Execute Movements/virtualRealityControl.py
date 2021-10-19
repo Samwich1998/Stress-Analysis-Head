@@ -11,13 +11,13 @@ class virtualWorld:
         viz.setMultiSample(4)
         
         # Initialize the Reality
-        self.viz.go() # Initialize Empty Screen
+        viz.go() # Initialize Empty Screen
         self.myWorld = viz.addChild(virtualFile) # Add PreDetermined Image to the Screen
         
         # Set VR General Parameters
-        self.viz.MainWindow.fov(60) # Increase the Field of View of the User; Input Into Degrees; 40 Degrees = Default
-        self.viz.MainView.getHeadLight().disable()
-        self.viz.collision(viz.ON)
+        viz.MainWindow.fov(60) # Increase the Field of View of the User; Input Into Degrees; 40 Degrees = Default
+        viz.MainView.getHeadLight().disable()
+        viz.collision(viz.ON)
 
 class controlReality(virtualWorld):
     def __init__(self, virtualFile):
@@ -37,23 +37,24 @@ class gazeControl(controlReality):
         super().__init__(virtualFile)
         
     def setGaze(self, channelAngles = []):
-        self.viz.MainView.setEuler([channelAngles[0], channelAngles[1], self.roll])
+        print(channelAngles)
+        viz.MainView.setEuler([channelAngles[0], channelAngles[1], self.roll])
     
     def moveLeft(self):
         self.yaw -= 10
-        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+        viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
         
         #spinLeft = vizact.spin(0,1,0,90,1)
         #self.myWorld.addAction(spinLeft)
     
     def moveRight(self):
         self.yaw += 20
-        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+        viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
     
     def moveUp(self):
         self.pitch += 30
-        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+        viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
     
     def moveDown(self):
         self.pitch -= 40
-        self.viz.MainView.setEuler([self.yaw, self.pitch, self.roll])
+        viz.MainView.setEuler([self.yaw, self.pitch, self.roll])

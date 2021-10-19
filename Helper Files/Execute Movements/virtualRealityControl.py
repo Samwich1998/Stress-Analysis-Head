@@ -17,7 +17,7 @@ class virtualWorld:
         # Set VR General Parameters
         viz.MainWindow.fov(60) # Increase the Field of View of the User; Input Into Degrees; 40 Degrees = Default
         viz.MainView.getHeadLight().disable()
-        viz.collision(viz.ON)
+        viz.MainView.collision(viz.ON)
 
 class controlReality(virtualWorld):
     def __init__(self, virtualFile):

@@ -49,7 +49,7 @@ class eogProtocol:
         self.calibrateChannelNum = 0
         self.channelCalibrationPointer = 0
         # Calibration Function for Eye Angle
-        self.predictEyeAngle = [None]*self.numChannels
+        self.predictEyeAngle = [lambda x: (x-2.5)*30]*self.numChannels
                 
         # Start with Fresh Inputs
         self.resetGlobalVariables()
@@ -187,7 +187,7 @@ class eogProtocol:
             
             
         # -------------------- Update Virtual Reality  ---------------------- #
-        if actionControl and not calibrateModel:
+        if actionControl and self.predictEyeAngle[channelIndex] and not calibrateModel:
             actionControl.setGaze(eyeAngles)
         # ------------------------------------------------------------------- #
 

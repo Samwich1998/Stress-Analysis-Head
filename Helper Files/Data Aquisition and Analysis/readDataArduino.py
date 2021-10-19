@@ -65,6 +65,10 @@ class arduinoRead():
         # toss any data already received, see
         arduino.flushInput()
         arduino.setDTR(True)
+        
+        self.readAll(arduino)
+        time.sleep(1)
+        self.readAll(arduino)
         # Read and throw out first few reads
         for i in range(numTrashReads):
             arduino.read_until()
@@ -411,8 +415,8 @@ class eogArduinoRead(eogProtocol):
         # Check if All Channel Calibrations are Complete
         if self.calibrateChannelNum == self.numChannels:
             # Reset Arduino and Stop Calibration
-            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
             self.initPlotPeaks()
+            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
             calibrateModel = False
         else:
             self.askForCalibration(numTrashReads)

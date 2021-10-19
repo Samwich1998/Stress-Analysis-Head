@@ -25,13 +25,12 @@ import matplotlib.pyplot as plt
 
 class eogProtocol:
     
-    def __init__(self, numTimePoints = 3000, moveDataFinger = 10, numChannels = 2, samplingFreq = 800, movementOptions = [], plotStreamedData = True):
+    def __init__(self, numTimePoints = 3000, moveDataFinger = 10, numChannels = 2, samplingFreq = 800, plotStreamedData = True):
         
         # Input Parameters
         self.numChannels = numChannels            # Number of Bioelectric Signals
         self.numTimePoints = numTimePoints        # The X-Wdith of the Plot (Number of Data-Points Shown)
         self.moveDataFinger = moveDataFinger      # The Amount of Data to Stream in Before Finding Peaks
-        self.movementOptions = movementOptions    # Gesture Movement Options
         self.plotStreamedData = plotStreamedData  # Plot the Data
         # Calibration Angles
         self.calibrationAngles = [[-30, 30] for _ in range(self.numChannels)]
@@ -58,7 +57,7 @@ class eogProtocol:
         # Define Class for Plotting Peaks
         if plotStreamedData:
             # Initialize Plots
-            matplotlib.use('TkAgg') # Set Plotting GUI Backend            
+            matplotlib.use('Qt5Agg') # Set Plotting GUI Backend            
             self.initPlotPeaks()    # Create the Plots
 
     def resetGlobalVariables(self):
@@ -268,13 +267,16 @@ class eogProtocol:
     def sigmoid(self, x, k, x0):       
         # Prediction Model
         return 1.0 / (1 + np.exp(-k * (x - x0)))
+
+    def line(self, x, A, B):
+        return A*x + B
     
     def fitCalibration(self, xData, yData, channelIndexCalibrating, plotFit = False):
         # Fit the curve
-        popt, pcov = curve_fit(self.sigmoid, xData, yData)
+        popt, pcov = curve_fit(self.line, xData, yData)
         estimated_k, estimated_x0 = popt
         # Save Calibration
-        self.predictEyeAngle[channelIndexCalibrating] = lambda x: self.sigmoid(x, estimated_k, estimated_x0)
+        self.predictEyeAngle[channelIndexCalibrating] = lambda x: self.line(x, estimated_k, estimated_x0)
         
         # Plot the Fit Results
         if plotFit:

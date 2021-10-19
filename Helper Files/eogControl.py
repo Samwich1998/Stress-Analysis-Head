@@ -59,9 +59,9 @@ if __name__ == "__main__":
     readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = True         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveInputData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveInputData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
     
     # ---------------------------------------------------------------------- #
@@ -89,7 +89,6 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
     
-    eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
     # Stream in Data from Arduino
     if streamArduinoData:
         arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
@@ -97,6 +96,7 @@ if __name__ == "__main__":
         readData.streamEOGData(numDataPoints, calibrateModel = calibrateModel, actionControl = gazeControl)
     # Take Data from Excel Sheet
     elif readDataFromExcel:
+        eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
         readData = excelData.readExcel(eogProtocol)
         readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = None, actionControl = None)
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels, numFeatures = 0)
-            saveInputs.saveData(eogProtocol.data, None, saveDataFolder, saveExcelName, "Trial 1 - EOG")
+            saveInputs.saveData(readData.data, None, saveDataFolder, saveExcelName, "Trial 1 - EOG")
         else:
             print("User Chose Not to Save the Data")
     

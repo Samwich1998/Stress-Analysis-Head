@@ -11,6 +11,7 @@ import re
 import sys
 import time
 import threading
+import matplotlib.pyplot as plt
 # Stream Data from Arduino
 import serial
 import serial.tools.list_ports
@@ -357,6 +358,7 @@ class eogArduinoRead(eogProtocol):
         try:
             # If Needed Calibrate the Model
             if calibrateModel:
+                plt.close()
                 self.askForCalibration(numTrashReads)
 
             readBuffer = b""; dataFinger = 0

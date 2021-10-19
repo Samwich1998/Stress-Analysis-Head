@@ -3,7 +3,14 @@
     
     --------------------------------------------------------------------------
     Data Aquisition:
-    
+        
+    Virtual Reality:
+        Vizard Must be Installed (See Below). Program MUST be run in Vizard IDE
+        The Python Spyder IDE does NOT have 'import viz' (at least the correct viz)
+        
+    Plotting:
+        If Plotting, You Need an GUI Backend -> In Spyder IDE Use: %matplotlib qt5
+        Some IDEs (Spyder Included) may Naturally Plot in GUI.
     --------------------------------------------------------------------------
     
     Modules to Import Before Running the Program (Some May be Missing):
@@ -32,7 +39,7 @@ import readDataArduino as streamData    # Functions to Read in Data from Arduino
 import eogAnalysis as eogAnalysis
 # Import Virtual Reality Control Files
 sys.path.append('./Execute Movements/')  # Folder with Virtual Reality Control Files
-#import virtualRealityControl as vizardControl
+
 
 if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
@@ -52,9 +59,8 @@ if __name__ == "__main__":
     readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     
     # User Options During the Run: Any Number Can be True
-    calibrateModel = True        # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveCalibration = True        # Save the Calibration Model for Later Use
     plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    calibrateModel = True         # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveInputData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
     
@@ -71,6 +77,7 @@ if __name__ == "__main__":
         testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     if controlVR:
+        import virtualRealityControl as vizardControl
         virtualFile = "./Execute Movements/Virtual Reality Files/piazza.osgb"
         gazeControl = vizardControl.gazeControl(virtualFile)
     else:

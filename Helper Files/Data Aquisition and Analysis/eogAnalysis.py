@@ -57,10 +57,9 @@ class eogProtocol:
         
         # Define Class for Plotting Peaks
         if plotStreamedData:
-            matplotlib.use('TkAgg')
-                
             # Initialize Plots
-            self.initPlotPeaks()
+            matplotlib.use('TkAgg') # Set Plotting GUI Backend            
+            self.initPlotPeaks()    # Create the Plots
 
     def resetGlobalVariables(self):
         # Data to Read in

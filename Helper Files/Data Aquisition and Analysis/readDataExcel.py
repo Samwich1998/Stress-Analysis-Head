@@ -29,7 +29,6 @@ class readExcel():
         self.numChannels = analysisProtocol.numChannels
         self.moveDataFinger = analysisProtocol.moveDataFinger
         self.numTimePoints = analysisProtocol.numTimePoints
-        self.movementOptions = analysisProtocol.movementOptions
         
     def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, predictionModel=None, actionControl=None, analyzeSheet = None):
         """
@@ -87,10 +86,10 @@ class readExcel():
         print("\tDone Data Collecting from File: ", analyzeSheet.title)
         
     
-    def getTrainingFeatures(self, excelSheet, Training_Data, Training_Labels, numFeatures, movementOptions):
+    def getTrainingFeatures(self, excelSheet, Training_Data, Training_Labels, numFeatures, gestureClasses):
         # Get Current Label fo the Signal
         currentLabel = excelSheet.title.split(" - ")[1]
-        featureLabelIndexArray = np.where(movementOptions == currentLabel.lower())[0]
+        featureLabelIndexArray = np.where(gestureClasses == currentLabel.lower())[0]
         # If Label Does Not Exist ... Warn User and Exit
         if len(featureLabelIndexArray) == 0:
             print("Class Label", "'"+str(currentLabel)+"'", "Not Found")
@@ -128,12 +127,12 @@ class readExcel():
         print("\tCollected Training Data for:", excelSheet.title)
         return Training_Data, Training_Labels
     
-    def getTrainingData(self, trainingDataExcelFolder, numFeatures, movementOptions, mode):
+    def getTrainingData(self, trainingDataExcelFolder, numFeatures, gestureClasses, mode):
         """
         Parameters
         ----------
         trainingDataExcelFolder: The Folder with ONLY the Training Data Excel Files
-        movementOptions: A List of Possible Classes (Represented as Strings)
+        gestureClasses: A List of Possible Classes (Represented as Strings)
         numFeatures: The Number of Features to Extract
         mode: The Type of Program to Run
             'Train' -> Get Trainign Data and Labels
@@ -159,7 +158,7 @@ class readExcel():
                     
                     # Get the Training Data/Label from the Sheet
                     if mode == 'Train':
-                        Training_Data, Training_Labels = self.getTrainingFeatures(excelSheet, Training_Data, Training_Labels, numFeatures, movementOptions)
+                        Training_Data, Training_Labels = self.getTrainingFeatures(excelSheet, Training_Data, Training_Labels, numFeatures, gestureClasses)
                     elif mode == 'reAnalyze':
                         print("\tReanalyzing Excel Sheet:", excelSheet.title)
                         # ReAnalyze Data (First Four Columns)
@@ -169,7 +168,7 @@ class readExcel():
                         handMovement = sheetName.split(" - ")[1]
                         WB.remove_sheet(excelSheet)
                         # Overwrite Excel Sheet with new Analysis
-                        saveExcelData.saveData(self.analysisProtocol.data, self.analysisProtocol.featureLocsX, self.analysisProtocol.featureGrouping, trainingDataExcelFolder, excelFile, sheetName=excelSheet, handMovement=handMovement, WB=WB)
+                        saveExcelData.saveData(self.analysisProtocol.data, self.analysisProtocol.featureList, trainingDataExcelFolder, excelFile, sheetName=excelSheet, handMovement=handMovement, WB=WB)
                         
         return Training_Data, Training_Labels
 
@@ -191,7 +190,7 @@ class saveExcel:
             5: "BC9E82",
             }
 
-    def saveData(self, data, featureGrouping, saveDataFolder, saveExcelName,
+    def saveData(self, data, featureList, saveDataFolder, saveExcelName,
                      sheetName = "Trial 1 - No Gesture", handMovement = "Data", WB=None):        
         # Create Output File Directory to Save Data: If None
         os.makedirs(saveDataFolder, exist_ok=True)
@@ -251,21 +250,28 @@ class saveExcel:
         
         alignCenter = Alignment(horizontal='center', vertical='center', wrap_text=True)  
         # Add Feature Locs (Next Columns) and Then Features (Next Next Columns)
-        for channel in range(self.numFeatures):
+        for channelIndex in range(self.numFeatures):
             startIndex = 2 # Start at Secon Row (1-Indexed) After the Header
-            for peakNum in featureGrouping[channel]:
+            for groupNum in range(len(featureList[channelIndex])):
                 rowIndex = startIndex
-                peakColor = (peakNum-1)%(len(self.openpyxlColors))
+                peakColor = (groupNum-1)%(len(self.openpyxlColors))
                 cellColor = self.openpyxlColors[peakColor]
-                for featureVal in featureGrouping[channel][peakNum]:
-                    # Add X Location
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).value = featureVal
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).fill = PatternFill(fgColor=cellColor, fill_type = 'solid')
-                    WB_worksheet.cell(row=rowIndex, column=channel + self.numChannels + 2).alignment = alignCenter
-                    
-                    rowIndex += 1
+                for featureValList in featureList[channelIndex][groupNum]:
+                    for featureVal in featureValList:
+                        # Add X Location
+                        WB_worksheet.cell(row=rowIndex, column=channelIndex + self.numChannels + 2).value = featureVal
+                        WB_worksheet.cell(row=rowIndex, column=channelIndex + self.numChannels + 2).fill = PatternFill(fgColor=cellColor, fill_type = 'solid')
+                        WB_worksheet.cell(row=rowIndex, column=channelIndex + self.numChannels + 2).alignment = alignCenter
+                        
+                        rowIndex += 1
                 # Set the Same Row Index for All
-                startIndex += 1 + len(max(featureGrouping.values(), key = lambda x: len(x[peakNum]))[peakNum])
+                maxFeatures = 0
+                for channelNum in featureList:
+                    newFeatureNum = len(channelNum[groupNum])
+                    if maxFeatures < newFeatureNum:
+                        maxFeatures = newFeatureNum
+                            
+                startIndex += 1 + maxFeatures
         
         # Center the Data in the Cells
         for rowInd in range(2, WB_worksheet.max_row + 1):

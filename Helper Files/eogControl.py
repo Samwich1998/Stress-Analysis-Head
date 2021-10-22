@@ -35,11 +35,11 @@ import sys
 import threading
 # Import Data Aquisition and Analysis Files
 sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
-import readDataExcel as excelData       # Functions to Save/Read in Data from Excel
-import readDataArduino as streamData    # Functions to Read in Data from Arduino
-import eogAnalysis as eogAnalysis
+import readDataExcel as excelData         # Functions to Save/Read in Data from Excel
+import readDataArduino as streamData      # Functions to Read in Data from Arduino
+import eogAnalysis as eogAnalysis         # Functions to Analyze the EOG Data
 # Import Virtual Reality Control Files
-sys.path.append('./Execute Movements/')  # Folder with Virtual Reality Control Files
+sys.path.append('./Execute Movements/')   # Folder with Virtual Reality Control Files
 
 
 if __name__ == "__main__":
@@ -51,19 +51,19 @@ if __name__ == "__main__":
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second
     numDataPoints = 10000         # The Number of Points to Stream into the Arduino
-    moveDataFinger = 200            # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
-    numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
      
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = True       # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveInputData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-    controlVR = True             # Apply the Algorithm to Control the Virtual Reality View
+    controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
     
     # ---------------------------------------------------------------------- #
     
@@ -74,11 +74,13 @@ if __name__ == "__main__":
     
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Input Data/All Data/Industry Electrodes/Samuel Solomon 2021-10-08.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-10-08.xlsx" # Path to the Test Data
         testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     if controlVR:
+        # Import the VR File (MUST BE RUNNING INSIDE VIZARD!)
         import virtualRealityControl as vizardControl
+        # Specify the VR File and Create the VR World
         virtualFile = "./Execute Movements/Virtual Reality Files/piazza.osgb"
         gazeControl = vizardControl.gazeControl(virtualFile)
     else:
@@ -115,7 +117,11 @@ if __name__ == "__main__":
             else:
                 print("User Chose Not to Save the Data")
     
-    threading.Thread(target = executeProtocol, args = (), daemon=True).start()
+    # The VR Requires Threading to Update the Game + Process the Biolectric Signals
+    if controlVR:
+        threading.Thread(target = executeProtocol, args = (), daemon=True).start()
+    else:
+        executeProtocol()
     
 
     

@@ -83,8 +83,7 @@ class eogProtocol:
         
         # use ggplot style for more sophisticated visuals
         plt.style.use('seaborn-poster')
-        #matplotlib.use( 'Qt5Agg' )
-
+        
         # ------------------------------------------------------------------- #
         # --------- Plot Variables user Can Edit (Global Variables) --------- #
 

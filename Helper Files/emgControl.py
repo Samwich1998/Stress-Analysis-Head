@@ -10,7 +10,9 @@
     Provide Decent Spacing Between the Electrodes (Noticeable Gap)
     
     HardWare Processing:
-    The Following Code Used the Following Electronic Board from Olimex:    
+    The Code Below Used the Following Electronic Material from Olimex:  
+        Circuit Board: https://www.olimex.com/Products/Duino/Shields/SHIELD-EKG-EMG/open-source-hardware
+        Electrodes: https://www.olimex.com/Products/Duino/Shields/SHIELD-EKG-EMG-PRO/
     
     --------------------------------------------------------------------------
     
@@ -54,16 +56,16 @@ if __name__ == "__main__":
     handSerialNum = None    # Arduino Serial Number for the Robotic Hand Control. Leave None if NOT Controlling the Hand
     numDataPoints = 50000   # The Number of Points to Stream into the Arduino
     numTimePoints = 3000    # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 250    # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
-    samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second
+    moveDataFinger = 100    # The Number of NEW Data Points to Analyze at a Time; My Beta-Test Used 200 Points with Plotting (100 Without). This CAN Change How SOME Peaks are Found (be Careful)
+    samplingFreq = 800      # The Average Number of Points Steamed Into the Arduino Per Second
     numChannels = 4         # The Number of Arduino Channels with EMG Signals Read in; My Beta-Test Used 4 Channels
     numFeatures = 4         # The Number of Features to Extract/Save/Train on
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(["Up", "Down", "Left", "Right", "Grab", "Release"])  # Define Labels as Array
     
     # Protocol Switches: Only One Can be True; Only the First True Variable Excecutes
-    streamArduinoData = False   # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
-    readDataFromExcel = True  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = False  # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
+    readDataFromExcel = True   # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False     # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Peaks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False         # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
@@ -107,12 +109,13 @@ if __name__ == "__main__":
     #           Data Collection Program (Should Not Have to Edit)            #
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
-        
-    emgProtocol = emgAnalysis.emgProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData)
+    
+    if not streamArduinoData:
+        emgProtocol = emgAnalysis.emgProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData)
     # Stream in Data from Arduino
     if streamArduinoData:
-        arduinoRead = streamData.arduinoRead(eogSerialNum = None, emgSerialNum = emgSerialNum, eegSerialNum = None, handSerialNum = handSerialNum)
-        readData = streamData.emgArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None)
+        arduinoRead = streamData.arduinoRead(eogSerialNum = None, ppgSerialNum = None, emgSerialNum = emgSerialNum, eegSerialNum = None, handSerialNum = handSerialNum)
+        readData = streamData.emgArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData, guiApp = None)
         readData.streamEMGData(numDataPoints, predictionModel = predictionModel, actionControl = None)
     # Take Data from Excel Sheet
     elif readDataFromExcel:

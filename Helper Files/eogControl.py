@@ -52,7 +52,7 @@ if __name__ == "__main__":
     samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second
     numDataPoints = 10000         # The Number of Points to Stream into the Arduino
     numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    moveDataFinger = 2289          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
      
     # Protocol Switches: Only the First True Variable Excecutes
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     def executeProtocol():
         # Stream in Data from Arduino
         if streamArduinoData:
-            arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
+            arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, ppgSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
             readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None)
             readData.streamEOGData(numDataPoints, calibrateModel = calibrateModel, actionControl = gazeControl)
         # Take Data from Excel Sheet
@@ -103,7 +103,7 @@ if __name__ == "__main__":
             eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
             readData = excelData.readExcel(eogProtocol)
             readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = None, actionControl = None)
-
+            
         # ---------------------------------------------------------------------- #
         # -------------------------- Save Input data --------------------------- #
         # Save the Data in Excel: EOG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)

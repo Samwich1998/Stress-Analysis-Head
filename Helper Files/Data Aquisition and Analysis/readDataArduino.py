@@ -18,21 +18,24 @@ import serial.tools.list_ports
 # Import Bioelectric Analysis Files
 from emgAnalysis import emgProtocol
 from eogAnalysis import eogProtocol
+from ppgAnalysis import ppgProtocol
 
 
 # --------------------------------------------------------------------------- #
 # ----------------- Stream Data from Arduino Can Edit ----------------------- #
 
 class arduinoRead():
-    def __init__(self, eogSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None):
+    def __init__(self, eogSerialNum = None, ppgSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None):
         # Save Arduino Serial Numbers
         self.eogSerialNum = eogSerialNum
+        self.ppgSerialNum = ppgSerialNum
         self.emgSerialNum = emgSerialNum
         self.eegSerialNum = eegSerialNum
         self.handSerialNum = handSerialNum
 
         # Connect to the Arduinos
         self.eogArduino = self.initiateArduino(self.eogSerialNum)
+        self.ppgArduino = self.initiateArduino(self.ppgSerialNum)
         self.emgArduino = self.initiateArduino(self.emgSerialNum)
         self.eegArduino = self.initiateArduino(self.eegSerialNum)
         self.handArduino = self.initiateArduino(self.handSerialNum)
@@ -265,7 +268,6 @@ class emgArduinoRead(emgProtocol):
             # Set Up Laser Reading
             threading.Thread(target = self.distanceRead, args = (actionControl, numPointsRead), daemon=True).start()
 
-
         try:
             readBuffer = b""; dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
@@ -284,8 +286,12 @@ class emgArduinoRead(emgProtocol):
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
-                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel = None, actionControl=None)
+                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
                     dataFinger += self.moveDataFinger
+            # At the End, Analyze Any Data Left
+            if dataFinger < len(self.analysisProtocol.data["timePoints"]):
+                self.analysisProtocol.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
+
         finally:
             self.emgArduino.close()
 
@@ -387,6 +393,9 @@ class eogArduinoRead(eogProtocol):
                         dataFinger = 0
                         calibrateModel = self.performCalibration(numTrashReads)
                         break
+            # At the End, Analyze Any Data Left
+            if dataFinger < len(self.analysisProtocol.data["timePoints"]):
+                self.analysisProtocol.analyzeData(dataFinger, self.plotStreamedData, calibrateModel, actionControl)
 
         finally:
             self.eogArduino.close()
@@ -427,5 +436,60 @@ class eogArduinoRead(eogProtocol):
         input("Orient Eye at " + str(self.calibrationAngles[self.calibrateChannelNum][self.channelCalibrationPointer]) + " Degrees For Channel " + str(self.calibrateChannelNum))
         # Reset Arduino
         self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
+
+class ppgArduinoRead(ppgProtocol):
+
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData, guiApp = None):
+        # Get Variables from Peak Analysis File
+        super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+
+        # Store the arduinoRead Instance
+        self.arduinoRead = arduinoRead
+        self.ppgArduino = arduinoRead.ppgArduino
+
+    def streamPPGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
+        """Obtain `numPointsRead` data points from an Arduino stream"""
+        print("Streaming in EMG Data from the Arduino")
+        
+        # Read and throw out first few reads
+        self.ppgArduino.read_until(b'')
+        for i in range(numTrashReads):
+            self.ppgArduino.read_until()
+            
+        try:
+            readBuffer = b""; dataFinger = 0
+            # Loop Through and Read the Arduino Data in Real-Time
+            while len(self.data["timePoints"]) < numPointsRead:
+
+                # Read in chunk of data
+                raw = self.arduinoRead.readAllNewlines(ser=self.ppgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+                # Parse it, passing if it is gibberish
+                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
+
+                # Update data dictionary
+                self.data["timePoints"].extend(timePoints)
+                for channelIndex in range(self.numChannels):
+                    self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
+
+                # When Ready, Send Data Off for Analysis
+                pointNum = len(self.data["timePoints"])
+                while pointNum - dataFinger >= self.numTimePoints:
+                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
+                    dataFinger += self.moveDataFinger
+            # At the End, Analyze Any Data Left
+            if dataFinger < len(self.analysisProtocol.data["timePoints"]):
+                self.analysisProtocol.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
+        finally:
+            self.ppgArduino.close()
+
+        print("Finished Streaming in Data; Closing Arduino\n")
+        # Close the Arduinos at the End
+        self.ppgArduino.close()
+        if self.handArduino:
+            self.handArduino.write(str.encode('s0')) # turn off the laser
+            self.handArduino.close()
+        if self.guiApp:
+            self.guiApp.handArduino = None
+            self.guiApp.resetButton()
 
 

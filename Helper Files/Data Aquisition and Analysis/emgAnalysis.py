@@ -7,11 +7,13 @@ Created on Mon Jan 25 13:17:05 2021
 """
 
 # Basic Modules
+import sys
 import math
 import numpy as np
 # Peak Detection
 import scipy
 import scipy.signal
+from  itertools import chain
 # High/Low Pass Filters
 from scipy.signal import lfilter
 # Plotting
@@ -46,9 +48,15 @@ class emgProtocol:
         
         # Data Collection Parameters
         self.highPassBuffer = max(self.rmsWindow + self.stepSize, 5000)  # Must be > rmsWindow + stepSize
-        self.peakDetectionBuffer = 500  # Buffer in Case Peaks are Only Half Formed at Edges
-        self.numPointsRMS = 5000       # Number of Root Mean Squared Data (After HPF) to Plot
-        self.minGroupSep = 0.5          # Seperation that Defines a New Group
+        self.peakDetectionBuffer = 2000  # Buffer in Case Peaks are Only Half Formed at Edges
+        self.numPointsRMS = 5000         # Number of Root Mean Squared Data (After HPF) to Plot
+        # Peak Grouping Threshold
+        maxSecondsPerGroup = 0.5                               # Seperation in Time that Defines a New Group
+        secondsPerPointRMS = self.stepSize/self.samplingFreq   # Seconds per Delta RMS Point
+        self.pointsPerGroupRMS = maxSecondsPerGroup/secondsPerPointRMS  # The Number of Points for 1 Group
+        
+        # Check to See if Parameters Make Sense
+        self.checkParams()
         
         # Start with Fresh Inputs
         self.resetGlobalVariables()
@@ -76,6 +84,14 @@ class emgProtocol:
         # Close Any Opened Plots
         if self.plotStreamedData:
             plt.close()
+    
+    def checkParams(self):
+        if self.moveDataFinger > self.numTimePoints:
+            print("You are Analyzing Too Much Data in a Batch. 'moveDataFinger' MUST be Less than 'numTimePoints'")
+            sys.exit()
+        elif self.rmsWindow < self.stepSize:
+            print("'stepSize' Should NOT be Greater Than 'rmsWindow'. This Means You are JUMPING OVER Datapoints (Missing Point).")
+            sys.exit()
 
 
     def initPlotPeaks(self): 
@@ -154,32 +170,31 @@ class emgProtocol:
             
             # ---------------------- High pass Filter ----------------------- #
             # Find New Points That Need Filtering
-            totalPreviousPointsRMS = max(1 + math.floor((dataFinger + self.numTimePoints - self.moveDataFinger - self.rmsWindow) / self.stepSize), 0) if dataFinger else 0
+            totalPreviousPointsRMS = max(1 + math.floor((dataFinger + len(self.timePoints) - self.moveDataFinger - self.rmsWindow) / self.stepSize), 0) if dataFinger else 0
             dataPointerRMS = self.stepSize*totalPreviousPointsRMS
             # Add Buffer to New Points as HPF is Bad at Edge
             startHPF = max(dataPointerRMS - self.highPassBuffer, 0)
             
             # High Pass Filter to Remove Noise
-            numNewDataForRMS = dataFinger + self.numTimePoints - dataPointerRMS
-            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startHPF:dataFinger + self.numTimePoints]
+            numNewDataForRMS = dataFinger + len(self.timePoints) - dataPointerRMS
+            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startHPF:dataFinger + len(self.timePoints)]
             filteredData = self.highPassFilter(yDataBuffer)[-(numNewDataForRMS):]   
             # --------------------------------------------------------------- #
     
             # --------------------- Root Mean Squared ----------------------- #
             # Calculated the RMS and Add the Data to the Stored Buffer from the Last Round
-            totalCurrentPointsRMS = max(1 + math.floor((dataFinger + self.numTimePoints - self.rmsWindow) / self.stepSize), 0)
             dataRMS = self.RMSFilter(filteredData, self.previousDataRMS[channelIndex], self.rmsWindow, self.stepSize)            
-            xDataRMS = np.arange(max(totalCurrentPointsRMS - self.numPointsRMS, 0), totalCurrentPointsRMS, 1)
+            xDataRMS = np.arange(max(len(dataRMS) - self.numPointsRMS, 0), len(dataRMS), 1)
 
             # Make Sure You are Saving Enough Points for the Next Round
-            savePointsRMS = max(self.peakDetectionBuffer + self.stepSize, self.numPointsRMS if self.plotStreamedData else 0)
+            savePointsRMS = self.peakDetectionBuffer + self.stepSize + self.highPassBuffer + self.numPointsRMS
             self.previousDataRMS[channelIndex] = dataRMS[-savePointsRMS:] # Store RMS Data Needed for Next Round
             # --------------------------------------------------------------- #
             
             # ------------------- Plot Biolectric Signal -------------------- #
             if plotStreamedData:
                 # Get New Y Data
-                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
+                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + len(self.timePoints)]
                 # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
                 self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
                 self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
@@ -191,7 +206,7 @@ class emgProtocol:
 
             # ----------------------- Peak Detection ------------------------ #
             # Get Most Current RMS Data (Add Buffer in Case the peak is Cut Off)
-            numNewPointsRMS = totalCurrentPointsRMS - totalPreviousPointsRMS
+            numNewPointsRMS = len(dataRMS) - totalPreviousPointsRMS
             bufferRMSData = dataRMS[-(numNewPointsRMS + self.peakDetectionBuffer):]
             bufferRMSDataX = xDataRMS[-(numNewPointsRMS + self.peakDetectionBuffer):]
             # Find Peaks from the New Data
@@ -212,6 +227,7 @@ class emgProtocol:
 
         # ---------------------- Group Peaks Together ----------------------- #
         # Initialize Variables to Group Peaks
+        currentGroupInd = len(self.xPeaksList[0]) - 1
         lastAnalyzedGroup = len(self.xPeaksList[0]) - 1
         peakPointers = [0 for _ in range(self.numChannels)]
             
@@ -235,9 +251,9 @@ class emgProtocol:
                 break
                 
             # If the Peak is Far from the Last Group, Make a New Group
-            if nextPeak - self.highestAnalyzedGroupStartX > self.minGroupSep:
+            if nextPeak - self.highestAnalyzedGroupStartX > self.pointsPerGroupRMS:
                 # Check to See if you Need More Data to Establish a Group
-                if nextPeak > self.timePoints[-1] - self.minGroupSep:
+                if nextPeak > self.timePoints[-1] - self.pointsPerGroupRMS:
                     break
                 # Update Group Holders
                 for channelInd in range(self.numChannels):
@@ -255,21 +271,33 @@ class emgProtocol:
         
         # ------------------------ Predict Movement ------------------------- #
         # If New Peak Group was Found, Predict the movement
-        if predictionModel and lastAnalyzedGroup != len(self.xPeaksList[0]) - 1:
+        if predictionModel and lastAnalyzedGroup != -1:
             
-            for currentGroupInd in range(lastAnalyzedGroup+1, len(self.xPeaksList[0])):
+            for currentGroupInd in range(lastAnalyzedGroup, len(self.xPeaksList[0])):
+                
+                # Find the Smallest Peak Added to Unanalyzed Group
+                smallestNewPeak = 0
+                for channelPeaks in self.xPeaksList:
+                    if channelPeaks and channelPeaks[currentGroupInd]:
+                        if channelPeaks[currentGroupInd][0] < smallestNewPeak or not smallestNewPeak:
+                            smallestNewPeak = channelPeaks[currentGroupInd][0]
+                # Check that New Group has Enough Peak Seperation
+                if smallestNewPeak > xDataRMS[-1] - self.pointsPerGroupRMS:
+                    break
+                    
                 featureArray = []; numFeaturesFound = 0
                 # Take the First Feature in Each Channel's Group
                 for channelInd in range(self.numChannels):
+                    
                     # Check to See if Feature was Present in the Channel
-                    if self.featureList[channelInd][currentGroupInd]:
+                    if len(self.featureList[channelInd][currentGroupInd]) == 0:
                         channelFeature = 0
                     else:
                         numFeaturesFound += 1;
-                        channelFeature = self.featureList[channelInd][currentGroupInd[0]]
+                        channelFeature = self.featureList[channelInd][currentGroupInd][0][0]
                     # Store the Feature
                     featureArray.append(channelFeature)
-                
+
                 # Check if Features are Good
                 if numFeaturesFound <= 1 and np.sum(featureArray) <= 0.1:
                     print("Only One Small Signal Found; Not Moving Robot"); continue
@@ -298,9 +326,12 @@ class emgProtocol:
                         self.filteredBioelectricPeakPlots[channelIndex].append(groupPeakPlot)
                     # Get Peak Points
                     if len(self.xPeaksList[channelIndex][groupNum]) != 0:
+                        # Take the First Peak and See if You Should Plot it
                         xPeaksNew = self.xPeaksList[channelIndex][groupNum][0]
                         if xDataRMS[0] <= xPeaksNew:
-                            yPeaksNew = self.yPeaksList[channelIndex][groupNum][0]
+                            # Get All the Peak
+                            xPeaksNew = self.xPeaksList[channelIndex][groupNum]
+                            yPeaksNew = self.yPeaksList[channelIndex][groupNum]
                             # Plot the Peaks in the Group'
                             groupPeakPlot.set_data(xPeaksNew, yPeaksNew)
                     
@@ -393,8 +424,9 @@ class emgProtocol:
         xPeaksNew = []; yPeaksNew = []; peakInds = []
         for peakInd in peakIndices:
             xPeakLoc = xData[peakInd]
-            # A New Peak is AFTER the Last Recorded Peak + Buffer
-            if xPeakLoc > self.highestAnalyzedGroupStartX + self.minGroupSep:
+            # If it is a New Peak NOT Seen in This Channel
+            print(len(xData), self.xPeaksList[channelIndex])
+            if xPeakLoc not in chain(*self.xPeaksList[channelIndex]):
                 xPeaksNew.append(xPeakLoc)
                 yPeaksNew.append(yData[peakInd])
                 peakInds.append(peakInd)
@@ -465,7 +497,7 @@ peakSeperation = np.diff(xPeaksNew);
 for peakSepInd in range(len(peakSeperation)):
     peakSep = peakSeperation[peakSepInd]
     # Only Taking the First Peak, If the Peak Seperation is Big Enough
-    if peakSep > self.minGroupSep - jumpDifference:
+    if peakSep > self.pointsPerGroupRMS - jumpDifference:
         # Make a New Group
         jumpDifference = 0
         self.xPeaksList.append(xPeaksNew[peakSepInd + 1])

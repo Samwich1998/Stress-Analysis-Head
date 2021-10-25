@@ -81,7 +81,10 @@ class readExcel():
             while pointNum - dataFinger >= self.numTimePoints:
                 self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel, actionControl = actionControl)
                 dataFinger += self.moveDataFinger
-                
+        # At the End, Analyze Any Data Left
+        if dataFinger < len(self.analysisProtocol.data["timePoints"]):
+            self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel, actionControl = actionControl)
+
         # Finished Data Collection: Report Back to User
         print("\tDone Data Collecting from File: ", analyzeSheet.title)
         

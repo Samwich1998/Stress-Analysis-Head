@@ -7,6 +7,7 @@ Created on Mon Jan 25 13:17:05 2021
 """
 
 # Basic Modules
+import sys
 import numpy as np
 # Peak Detection
 import scipy
@@ -50,6 +51,9 @@ class eogProtocol:
         self.channelCalibrationPointer = 0
         # Calibration Function for Eye Angle
         self.predictEyeAngle = [lambda x: (x-2.5)*30]*self.numChannels
+        
+        # Check to See if Parameters Make Sense
+        self.checkParams
                 
         # Start with Fresh Inputs
         self.resetGlobalVariables()
@@ -76,8 +80,12 @@ class eogProtocol:
         
         # Close Any Opened Plots
         if self.plotStreamedData:
-            plt.close()        
-
+            plt.close()
+    
+    def checkParams(self):
+        if self.moveDataFinger > self.numTimePoints:
+            print("You are Analyzing Too Much Data in a Batch. 'moveDataFinger' MUST be Less than 'numTimePoints'")
+            sys.exit()
 
     def initPlotPeaks(self): 
         
@@ -171,13 +179,13 @@ class eogProtocol:
                 # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
                 self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
                 self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
-            
+                            
                 # Keep Track of Recently Digitized Data
                 self.trailingAverageData[channelIndex].extend([self.currentEyeVoltages[channelIndex]]*self.moveDataFinger)
                 self.trailingAverageData[channelIndex] = self.trailingAverageData[channelIndex][self.moveDataFinger:]
                 # Plot the Filtered + Digitized Data
-                self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData)
-                self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex])
+                self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData[-len(self.timePoints)])
+                self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex][-len(self.timePoints)])
                 self.filteredBioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1]) 
                 # Plot the Eye's Angle if Electrodes are Calibrated
                 if self.predictEyeAngle[channelIndex]:

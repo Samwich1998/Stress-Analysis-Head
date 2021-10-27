@@ -39,12 +39,12 @@ class eogProtocol:
         
         # High Pass Filter Parameters
         self.samplingFreq = samplingFreq          # Depends on the User's Hardware
-        self.cutOffFreq = 8                       # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
+        self.cutOffFreq = 50                      # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
         
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
         self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
-        self.bandPassBuffer = 1000        # Buffer in the Filtered Data that Represented BAD Filtering
+        self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
         
         # Pointers for Calibration
         self.calibrateChannelNum = 0

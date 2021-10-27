@@ -394,8 +394,8 @@ class eogArduinoRead(eogProtocol):
                         calibrateModel = self.performCalibration(numTrashReads)
                         break
             # At the End, Analyze Any Data Left
-            if dataFinger < len(self.analysisProtocol.data["timePoints"]):
-                self.analysisProtocol.analyzeData(dataFinger, self.plotStreamedData, calibrateModel, actionControl)
+            if dataFinger < len(self.data["timePoints"]):
+                self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel, actionControl)
 
         finally:
             self.eogArduino.close()

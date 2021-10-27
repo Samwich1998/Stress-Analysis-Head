@@ -49,20 +49,20 @@ if __name__ == "__main__":
 
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
-    samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second
-    numDataPoints = 10000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 2289          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    samplingFreq = 980            # The Average Number of Points Steamed Into the Arduino Per Second
+    numDataPoints = 30000         # The Number of Points to Stream into the Arduino
+    numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
      
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
     readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
-    calibrateModel = True       # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveInputData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    calibrateModel = False       # Calibrate the EOG Voltage to Predict the Eye's Angle
+    saveInputData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
     
     # ---------------------------------------------------------------------- #
@@ -116,12 +116,14 @@ if __name__ == "__main__":
                 saveInputs.saveData(readData.data, None, saveDataFolder, saveExcelName, "Trial 1 - EOG")
             else:
                 print("User Chose Not to Save the Data")
+        
+        return readData
     
     # The VR Requires Threading to Update the Game + Process the Biolectric Signals
     if controlVR:
         threading.Thread(target = executeProtocol, args = (), daemon=True).start()
     else:
-        executeProtocol()
+        readData = executeProtocol()
     
 
     

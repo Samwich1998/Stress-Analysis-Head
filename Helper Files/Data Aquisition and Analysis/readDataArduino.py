@@ -62,19 +62,15 @@ class arduinoRead():
         return arduinoControl
 
     def resetArduino(self, arduino, arduinoSerialNum, numTrashReads):
-        # Toggle DTR to reset Arduino
-        arduino.setDTR(False)
-        time.sleep(1)
-        # toss any data already received, see
+        # Toss any data already received, see
         arduino.flushInput()
-        arduino.setDTR(True)
         
-        self.readAll(arduino)
-        time.sleep(1)
-        self.readAll(arduino)
         # Read and throw out first few reads
         for i in range(numTrashReads):
+            self.readAll(arduino)
             arduino.read_until()
+        arduino.read_until()
+        arduino.read_until()
         return arduino
 
     def findArduino(self, serialNum):
@@ -436,6 +432,7 @@ class eogArduinoRead(eogProtocol):
         input("Orient Eye at " + str(self.calibrationAngles[self.calibrateChannelNum][self.channelCalibrationPointer]) + " Degrees For Channel " + str(self.calibrateChannelNum))
         # Reset Arduino
         self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
+        print("Orient Now")
 
 class ppgArduinoRead(ppgProtocol):
 

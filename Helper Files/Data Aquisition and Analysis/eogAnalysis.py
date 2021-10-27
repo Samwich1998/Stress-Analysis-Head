@@ -39,12 +39,12 @@ class eogProtocol:
         
         # High Pass Filter Parameters
         self.samplingFreq = samplingFreq          # Depends on the User's Hardware
-        self.cutOffFreq = 50                      # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
+        self.cutOffFreq = 8                       # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
         
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
         self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
-        self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
+        self.bandPassBuffer = 5000       # Buffer in the Filtered Data that Represented BAD Filtering
         
         # Pointers for Calibration
         self.calibrateChannelNum = 0
@@ -100,7 +100,7 @@ class eogProtocol:
         self.fig, axes = plt.subplots(self.numChannels, 2, sharey=False, sharex = 'col', figsize=(figWidth, figHeight))
         
         # Plot the Raw Data
-        yLimLow = 0; yLimHigh = 5; 
+        yLimLow = 0; yLimHigh = 3.5; 
         self.bioelectricDataPlots = []; self.bioelectricPlotAxes = []
         for channelIndex in range(self.numChannels):
             # Create Plots
@@ -148,6 +148,11 @@ class eogProtocol:
             # Band Pass Filter to Remove Noise
             startBPFindex = max(dataFinger - self.bandPassBuffer, 0)
             yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints].copy()
+            
+            if not self.samplingFreq:
+                self.samplingFreq = (dataFinger + self.numTimePoints - startBPFindex)/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
+                print("Setting Sampling Frequency to", self.samplingFreq)
+            
             filteredData = self.butterFilter(yDataBuffer, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')[-self.numTimePoints:]
             # --------------------------------------------------------------- #
             
@@ -166,7 +171,16 @@ class eogProtocol:
             # --------------- Calibrate Angle Prediction Model -------------- #
             if calibrateModel:
                 if self.calibrateChannelNum == channelIndex:
-                    self.calibrationVoltages[self.calibrateChannelNum].append(currentEyeVoltage)
+                    argMax = np.argmax(filteredData)
+                    argMin = np.argmin(filteredData)
+                    earliestExtrema = argMax if argMax < argMin else argMin
+                    
+                    self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+                    plt.plot(self.timePoints, filteredData)
+                    plt.plot(self.timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
+                    plt.show()
+                    
+                    self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 10]))
             # --------------------------------------------------------------- #
             
             # ------------------- Plot Biolectric Signals ------------------- #
@@ -184,8 +198,8 @@ class eogProtocol:
                 self.trailingAverageData[channelIndex].extend([self.currentEyeVoltages[channelIndex]]*self.moveDataFinger)
                 self.trailingAverageData[channelIndex] = self.trailingAverageData[channelIndex][self.moveDataFinger:]
                 # Plot the Filtered + Digitized Data
-                self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData[-len(self.timePoints)])
-                self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex][-len(self.timePoints)])
+                self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData[-len(self.timePoints):])
+                self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex][-len(self.timePoints):])
                 self.filteredBioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1]) 
                 # Plot the Eye's Angle if Electrodes are Calibrated
                 if self.predictEyeAngle[channelIndex]:

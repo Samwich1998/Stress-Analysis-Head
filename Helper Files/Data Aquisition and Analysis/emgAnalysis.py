@@ -38,11 +38,9 @@ class emgProtocol:
         self.previousDataRMS = {}
         
         # High Pass Filter Parameters
-        f1 = 100; f3 = 50;
+        self.f1 = 100; self.f3 = 50;
         self.samplingFreq = samplingFreq
         self.Rp = 0.1; self.Rs = 30;
-        self.Wp = 2*math.pi*f1/self.samplingFreq
-        self.Ws = 2*math.pi*f3/self.samplingFreq
         # Root Mean Squared (RMS) Parameters
         self.rmsWindow = 250; self.stepSize = 8;
         
@@ -51,9 +49,11 @@ class emgProtocol:
         self.peakDetectionBuffer = 2000  # Buffer in Case Peaks are Only Half Formed at Edges
         self.numPointsRMS = 5000         # Number of Root Mean Squared Data (After HPF) to Plot
         # Peak Grouping Threshold
-        maxSecondsPerGroup = 0.5                               # Seperation in Time that Defines a New Group
-        secondsPerPointRMS = self.stepSize/self.samplingFreq   # Seconds per Delta RMS Point
-        self.pointsPerGroupRMS = maxSecondsPerGroup/secondsPerPointRMS  # The Number of Points for 1 Group
+        self.maxSecondsPerGroup = 0.5    # Seperation in Time that Defines a New Group
+        
+        # Parameters That Rely on Sampling Frequency
+        if self.samplingFreq:
+            self.initParamsFromSamplingRate()
         
         # Check to See if Parameters Make Sense
         self.checkParams()
@@ -66,6 +66,13 @@ class emgProtocol:
             # Initialize Plots
             matplotlib.use('Qt5Agg') # Set Plotting GUI Backend            
             self.initPlotPeaks()    # Create the Plots
+    
+    def initParamsFromSamplingRate(self):
+        self.Wp = 2*math.pi*self.f1/self.samplingFreq
+        self.Ws = 2*math.pi*self.f3/self.samplingFreq
+        # Calculate Number of Streamed Points Per RMS Point
+        secondsPerPointRMS = self.stepSize/self.samplingFreq   # Seconds per Delta RMS Point
+        self.pointsPerGroupRMS = self.maxSecondsPerGroup/secondsPerPointRMS  # The Number of Points for 1 Group
 
     def resetGlobalVariables(self):
         # Data to Read in
@@ -174,6 +181,14 @@ class emgProtocol:
             dataPointerRMS = self.stepSize*totalPreviousPointsRMS
             # Add Buffer to New Points as HPF is Bad at Edge
             startHPF = max(dataPointerRMS - self.highPassBuffer, 0)
+            
+            if not self.samplingFreq:
+                print(len(self.data['timePoints'][startHPF:]), dataFinger + self.numTimePoints - startHPF)
+                # Calculate Sampling Frequency
+                self.samplingFreq = (dataFinger + self.numTimePoints - startHPF)/(self.data['timePoints'][-1] - self.data['timePoints'][startHPF])
+                print("Setting Sampling Frequency to", self.samplingFreq)
+                # Parameters That Rely on Sampling Rate
+                self.initParamsFromSamplingRate()
             
             # High Pass Filter to Remove Noise
             numNewDataForRMS = dataFinger + len(self.timePoints) - dataPointerRMS
@@ -381,7 +396,7 @@ class emgProtocol:
         Rp: attDB (0.1)
         Rs: cutOffDB (30)
         samplingFreq: Frequecy You Take Data
-        """
+        """            
         [n, wn] = scipy.signal.cheb1ord(self.Wp/math.pi, self.Ws/math.pi, self.Rp, self.Rs)
         [bz1, az1] = scipy.signal.cheby1(n, self.Rp, self.Wp/math.pi, 'High')
         filteredData = lfilter(bz1, az1, inputData)
@@ -425,7 +440,6 @@ class emgProtocol:
         for peakInd in peakIndices:
             xPeakLoc = xData[peakInd]
             # If it is a New Peak NOT Seen in This Channel
-            print(len(xData), self.xPeaksList[channelIndex])
             if xPeakLoc not in chain(*self.xPeaksList[channelIndex]):
                 xPeaksNew.append(xPeakLoc)
                 yPeaksNew.append(yData[peakInd])

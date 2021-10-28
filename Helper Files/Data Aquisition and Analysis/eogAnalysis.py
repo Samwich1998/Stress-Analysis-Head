@@ -34,7 +34,7 @@ class eogProtocol:
         self.moveDataFinger = moveDataFinger      # The Amount of Data to Stream in Before Finding Peaks
         self.plotStreamedData = plotStreamedData  # Plot the Data
         # Calibration Angles
-        self.calibrationAngles = [[-30, 30] for _ in range(self.numChannels)]
+        self.calibrationAngles = [[-45, 0, 45] for _ in range(self.numChannels)]
         self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         
         # High Pass Filter Parameters
@@ -150,6 +150,7 @@ class eogProtocol:
             yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints].copy()
             
             if not self.samplingFreq:
+                print(len(self.data['timePoints'][startBPFindex:]), dataFinger + self.numTimePoints - startBPFindex)
                 self.samplingFreq = (dataFinger + self.numTimePoints - startBPFindex)/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
                 print("Setting Sampling Frequency to", self.samplingFreq)
             

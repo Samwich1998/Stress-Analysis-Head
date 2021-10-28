@@ -28,7 +28,6 @@
         
     --------------------------------------------------------------------------
 """
-# Use '%matplotlib qt' to View Plot
 
 # Basic Modules
 import sys
@@ -57,7 +56,7 @@ if __name__ == "__main__":
     numDataPoints = 50000   # The Number of Points to Stream into the Arduino
     numTimePoints = 3000    # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 100    # The Number of NEW Data Points to Analyze at a Time; My Beta-Test Used 200 Points with Plotting (100 Without). This CAN Change How SOME Peaks are Found (be Careful)
-    samplingFreq = 800      # The Average Number of Points Steamed Into the Arduino Per Second
+    samplingFreq = 800      # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numChannels = 4         # The Number of Arduino Channels with EMG Signals Read in; My Beta-Test Used 4 Channels
     numFeatures = 4         # The Number of Features to Extract/Save/Train on
     # Specify the Type of Movements to Learn
@@ -65,12 +64,12 @@ if __name__ == "__main__":
     
     # Protocol Switches: Only One Can be True; Only the First True Variable Excecutes
     streamArduinoData = False  # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
-    readDataFromExcel = True   # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    reAnalyzePeaks = False     # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Peaks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
+    readDataFromExcel = False   # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    reAnalyzePeaks = True      # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Peaks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False         # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True    # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = False    # Graph the Data to Show Incoming Signals + Analysis
     saveModel = False          # Save the Machine Learning Model for Later Use
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     saveData = False           # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName' or map2D if Training
@@ -82,9 +81,9 @@ if __name__ == "__main__":
         saveExcelName = "Samuel Solomon 2021-10-06 Circles.xlsx"  # The Name of the Saved File
         saveDataFolder = "../Output Data/EMG Data/"  # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
-        eyeMovement = "Up".lower() # Make Sure it is Lowercase
-        if eyeMovement not in gestureClasses:
-            print("The Gesture", "'" + eyeMovement + "'", "is Not in", gestureClasses)
+        currentMovement = "Up".lower() # Make Sure it is Lowercase
+        if currentMovement not in gestureClasses:
+            print("The Gesture", "'" + currentMovement + "'", "is Not in", gestureClasses)
             
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
@@ -93,7 +92,7 @@ if __name__ == "__main__":
     
     # Use Previously Processed Data that was Saved; Extract Features for Training
     if reAnalyzePeaks or trainModel:
-        trainDataExcelFolder = "../Input Data/Full Training Data/Lab Electrodes/Sam/May11/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "../Input Data/EMG Data/"  # Path to the Training Data Folder; All .xlsx Data Used
 
     if trainModel or testModel:
         # Pick the Machine Learning Module to Use
@@ -101,6 +100,7 @@ if __name__ == "__main__":
         modelPath = "./Machine Learning Modules/Models/predictionModelKNNFull_SamArm1.pkl" # Path to Model (Creates New if it Doesn't Exist)
         # Get the Machine Learning Module
         performMachineLearning = machineLearningMain.predictionModelHead(modelType, modelPath, dataDim = numChannels, gestureClasses = gestureClasses)
+        predictionModel = performMachineLearning.predictionModel
     else:
         predictionModel = None
 
@@ -143,17 +143,17 @@ if __name__ == "__main__":
              performMachineLearning.predictionModel.saveModel(modelPath)
         
     
-    # Save the Data in Excel: EMG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
+    # Save the Data in Excel
     if saveData and not trainModel and not reAnalyzePeaks:
         # Format Sheet Name
         sheetName = "Trial 1 - "  # If SheetName Already Exists, Increase Trial # by One
-        sheetName = sheetName + eyeMovement
+        sheetName = sheetName + currentMovement
         # Double Check to See if User Wants to Save the Data
         verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels, numFeatures)
-            saveInputs.saveData(emgProtocol.data, emgProtocol.featureList, saveDataFolder, saveExcelName, sheetName, eyeMovement)
+            saveInputs.saveData(emgProtocol.data, emgProtocol.featureList, saveDataFolder, saveExcelName, sheetName, currentMovement)
         else:
             print("User Chose Not to Save the Data")
 

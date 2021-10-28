@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # General Data Collection Information (You Will Likely Not Edit These)
     ppgSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
-    samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second
+    samplingFreq = 800            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 10000         # The Number of Points to Stream into the Arduino
     numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points

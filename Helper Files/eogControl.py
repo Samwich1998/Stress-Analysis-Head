@@ -50,9 +50,9 @@ if __name__ == "__main__":
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 100000         # The Number of Points to Stream into the Arduino
+    numDataPoints = 20000         # The Number of Points to Stream into the Arduino
     numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 5          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
      
     # Protocol Switches: Only the First True Variable Excecutes
@@ -61,9 +61,9 @@ if __name__ == "__main__":
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
-    calibrateModel = True         # Calibrate the EOG Voltage to Predict the Eye's Angle
+    calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveInputData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-    controlVR = True             # Apply the Algorithm to Control the Virtual Reality View
+    controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
     
     # ---------------------------------------------------------------------- #
     

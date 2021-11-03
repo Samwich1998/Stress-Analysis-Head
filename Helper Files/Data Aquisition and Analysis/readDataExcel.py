@@ -30,7 +30,7 @@ class readExcel():
         self.moveDataFinger = analysisProtocol.moveDataFinger
         self.numTimePoints = analysisProtocol.numTimePoints
         
-    def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, predictionModel=None, actionControl=None, analyzeSheet = None):
+    def streamExcelData(self, testDataExcelFile, plotStreamedData = False, testSheetNum = 0, predictionModel = None, actionControl=None, analyzeSheet = None):
         """
         Extracts Biolectric Data from Excel Document (.xlsx). Data can be in any
         worksheet, which the user can specify using 'testSheetNum'.
@@ -81,6 +81,7 @@ class readExcel():
             while pointNum - dataFinger >= self.numTimePoints:
                 self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel, actionControl = actionControl)
                 dataFinger += self.moveDataFinger
+                
         # At the End, Analyze Any Data Left
         if dataFinger < len(self.analysisProtocol.data["timePoints"]):
             self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel, actionControl = actionControl)

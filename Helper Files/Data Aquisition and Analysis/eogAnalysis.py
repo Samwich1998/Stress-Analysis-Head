@@ -8,6 +8,7 @@ Created on Mon Jan 25 13:17:05 2021
 
 # Basic Modules
 import sys
+import math
 import numpy as np
 # Peak Detection
 import scipy
@@ -44,7 +45,11 @@ class eogProtocol:
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
         self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
-        self.bandPassBuffer = 5000       # Buffer in the Filtered Data that Represented BAD Filtering
+        self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
+        
+        # Eye Gesture Prediction Parameters
+        self.minVoltageThreshold = 0.01
+        self.steadyStateEye = 5/2
         
         # Pointers for Calibration
         self.calibrateChannelNum = 0
@@ -77,6 +82,10 @@ class eogProtocol:
         
         # Reset Last Eye Voltage (Volts)
         self.currentEyeVoltages = [2.5 for _ in range(self.numChannels)]
+        
+        self.featureList = [[] for _ in range(self.numChannels)]
+        self.triggerHolders = [[] for _ in range(self.numChannels)]
+        self.lastTriggersAnalyzed = [[0,0] for _ in range(self.numChannels)]
         
         # Close Any Opened Plots
         if self.plotStreamedData:
@@ -138,7 +147,7 @@ class eogProtocol:
         self.fig.tight_layout(pad=2.0);
         
     
-    def analyzeData(self, dataFinger, plotStreamedData = False, calibrateModel = False, actionControl = None):     
+    def analyzeData(self, dataFinger, plotStreamedData = False, predictionModel = None, actionControl = None, calibrateModel = False):     
         
         eyeAngles = []
         # Add incoming Data to Each Respective Channel's Plot
@@ -150,8 +159,7 @@ class eogProtocol:
             yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints].copy()
             
             if not self.samplingFreq:
-                print(len(self.data['timePoints'][startBPFindex:]), dataFinger + self.numTimePoints - startBPFindex)
-                self.samplingFreq = (dataFinger + self.numTimePoints - startBPFindex)/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
+                self.samplingFreq = len(self.data['timePoints'][startBPFindex:])/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
                 print("Setting Sampling Frequency to", self.samplingFreq)
             
             filteredData = self.butterFilter(yDataBuffer, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')[-self.numTimePoints:]
@@ -168,6 +176,47 @@ class eogProtocol:
                 eyeAngle = self.predictEyeAngle[channelIndex](self.currentEyeVoltages[channelIndex])
                 eyeAngles.append(eyeAngle)
             # --------------------------------------------------------------- #
+            
+            # -------------------- Extract Eye Gestures  -------------------- #
+
+            # Read in New Points and Check for Features
+            for pointInd in range(self.lastTriggersAnalyzed[channelIndex][0] + 1, len(self.data['timePoints'])):
+                # Extract X,Y Data
+                timePoint = self.data['timePoints'][pointInd]
+                dataPoint = filteredData[pointInd - startBPFindex]
+                # Check to See if the Gesture has Just Started
+                if abs(dataPoint - self.steadyStateEye) > self.minVoltageThreshold:
+                    if not self.lastTriggersAnalyzed[channelIndex][0] or len(self.triggerHolders[channelIndex][-1]) == 2:
+                        # Store the Start of the Gesture
+                        self.lastTriggersAnalyzed[channelIndex][0] = pointInd
+                        self.triggerHolders[channelIndex].append([(self.lastTriggersAnalyzed[channelIndex][0], timePoint, dataPoint)])
+                # Else, Check if the Gesture Has Just Finished
+                elif self.lastTriggersAnalyzed[channelIndex][0] and len(self.triggerHolders[channelIndex][-1]) == 1:
+                    # If the Peak Only Touches Above the Trigger Slightly
+                    if pointInd - self.lastTriggersAnalyzed[channelIndex][0] < 100:
+                        # Remove the Trigger
+                        self.triggerHolders[channelIndex].pop()
+                        continue
+                    # Save the New Last Trigger
+                    self.lastTriggersAnalyzed[channelIndex][1] = pointInd
+                    # Save the Endpoint if Enough of a Peak is Showing
+                    self.triggerHolders[channelIndex][-1].append((pointInd, timePoint, dataPoint))
+                    print("HERE", self.triggerHolders[channelIndex][-1][0][0],self.triggerHolders[channelIndex][-1][1][0])
+                    plt.plot(self.data['timePoints'], self.data['Channel' + str(channelIndex+1)])
+                    plt.plot(self.data['timePoints'][self.triggerHolders[channelIndex][-1][0][0]], self.data['Channel' + str(channelIndex+1)][self.triggerHolders[channelIndex][-1][0][0]], 'o', markersize=5)
+                    plt.plot(self.data['timePoints'][self.triggerHolders[channelIndex][-1][1][0]], self.data['Channel' + str(channelIndex+1)][self.triggerHolders[channelIndex][-1][1][0]], 'o', markersize=5)
+                    plt.plot([0, 6], [self.steadyStateEye + self.minVoltageThreshold, self.steadyStateEye + self.minVoltageThreshold])
+                    plt.plot([0, 6], [self.steadyStateEye - self.minVoltageThreshold, self.steadyStateEye - self.minVoltageThreshold])
+
+                    leftBaselineIndex = self.findNearbyMinimum(self.data['Channel' + str(channelIndex+1)], self.triggerHolders[channelIndex][-1][0][0], binarySearchWindow = -25, maxPointsSearch = 1000)
+                    rightBaselineIndex = self.findNearbyMinimum(self.data['Channel' + str(channelIndex+1)], self.triggerHolders[channelIndex][-1][1][0], binarySearchWindow = 25, maxPointsSearch = 1000)
+                    plt.plot(self.data['timePoints'][leftBaselineIndex], self.data['Channel' + str(channelIndex+1)][leftBaselineIndex], 'o', markersize=5)
+                    plt.plot(self.data['timePoints'][rightBaselineIndex], self.data['Channel' + str(channelIndex+1)][rightBaselineIndex], 'o', markersize=5)
+                    
+                    timePoints1 = self.data['timePoints'][-len(filteredData):]
+                    plt.plot(timePoints1, filteredData)
+
+                    plt.show()
             
             # --------------- Calibrate Angle Prediction Model -------------- #
             if calibrateModel:
@@ -205,14 +254,20 @@ class eogProtocol:
                 # Plot the Eye's Angle if Electrodes are Calibrated
                 if self.predictEyeAngle[channelIndex]:
                     self.filteredBioelectricPlotAxes[channelIndex].legend(["Eye's Angle: " + "%.3g"%eyeAngle], loc="upper left")
-            # --------------------------------------------------------------- #
-            
+            # --------------------------------------------------------------- #    
+        # ------------------------------------------------------------------- #
+        # ------------------------------------------------------------------- #
             
         # -------------------- Update Virtual Reality  ---------------------- #
         if actionControl and self.predictEyeAngle[channelIndex] and not calibrateModel:
             actionControl.setGaze(eyeAngles)
         # ------------------------------------------------------------------- #
 
+        # ------------------------ Predict Movement ------------------------- #
+
+        # ------------------------------------------------------------------- #
+
+        # ------------------------------------------------------------------- #
         # Update to Get New Data Next Round
         if plotStreamedData and not calibrateModel:
             self.fig.show()
@@ -285,6 +340,27 @@ class eogProtocol:
                 trailingAverage = (trailingAverage*(dataPointInd - 1) + dataPoint)/(dataPointInd)
         # Else Return the Average
         return trailingAverage
+
+    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 10, maxPointsSearch = 400):
+        """
+        Search Right: binarySearchWindow > 0
+        Search Left: binarySearchWindow < 0
+        """
+        # Base Case
+        if abs(binarySearchWindow) <= 1:
+            return xPointer
+        
+        maxHeight = data[xPointer]; searchDirection = int(binarySearchWindow/abs(binarySearchWindow))
+        # Binary Search Data to the Left to Find Minimum (Skip Over Small Bumps)
+        for dataPointer in range(max(xPointer, 0), max(0, min(xPointer + searchDirection*maxPointsSearch, len(data))), binarySearchWindow):
+            # If the Point is Greater Than
+            if data[dataPointer] > maxHeight:
+                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, math.floor(binarySearchWindow/10), maxPointsSearch - (xPointer - dataPointer - binarySearchWindow))
+            else:
+                maxHeight = data[dataPointer]
+
+        # If Your Binary Search is Too Small, Reduce it
+        return self.findNearbyMinimum(data, xPointer, math.floor(binarySearchWindow/2), maxPointsSearch)
 
     def sigmoid(self, x, k, x0):       
         # Prediction Model

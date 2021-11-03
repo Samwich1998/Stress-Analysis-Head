@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import serial
 import serial.tools.list_ports
 # Import Bioelectric Analysis Files
+from eegAnalysis import eegProtocol
 from emgAnalysis import emgProtocol
 from eogAnalysis import eogProtocol
 from ppgAnalysis import ppgProtocol
@@ -338,6 +339,58 @@ class emgArduinoRead(emgProtocol):
             time.sleep(0.05)
 
 
+class eegArduinoRead(eegProtocol):
+
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None):
+        # Get Variables from Peak Analysis File
+        super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+
+        # Store the arduinoRead Instance
+        self.arduinoRead = arduinoRead
+        self.eegArduino = arduinoRead.eegArduino
+
+
+    def streamEMGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
+        """Obtain `numPointsRead` data points from an Arduino stream"""
+        print("Streaming in EMG Data from the Arduino")
+        
+        # Read and throw out first few reads
+        self.eegArduino.read_until(b'')
+        for i in range(numTrashReads):
+            self.eegArduino.read_until()
+        
+        try:
+            readBuffer = b""; dataFinger = 0
+            # Loop Through and Read the Arduino Data in Real-Time
+            while len(self.data["timePoints"]) < numPointsRead:
+
+                # Read in chunk of data
+                raw = self.arduinoRead.readAllNewlines(ser=self.eegArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+                # Parse it, passing if it is gibberish
+                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
+
+                # Update data dictionary
+                self.data["timePoints"].extend(timePoints)
+                for channelIndex in range(self.numChannels):
+                    self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
+
+                # When Ready, Send Data Off for Analysis
+                pointNum = len(self.data["timePoints"])
+                while pointNum - dataFinger >= self.numTimePoints:
+                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
+                    dataFinger += self.moveDataFinger
+            # At the End, Analyze Any Data Left
+            if dataFinger < len(self.analysisProtocol.data["timePoints"]):
+                self.analysisProtocol.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
+
+        finally:
+            self.eegArduino.close()
+
+        print("Finished Streaming in Data; Closing Arduino\n")
+        # Close the Arduinos at the End
+        self.eegArduino.close()
+
+
 class eogArduinoRead(eogProtocol):
 
     def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None):
@@ -349,7 +402,7 @@ class eogArduinoRead(eogProtocol):
         self.eogArduino = arduinoRead.eogArduino
         self.eogSerialNum = arduinoRead.eogSerialNum
 
-    def streamEOGData(self, numPointsRead, calibrateModel = False, actionControl = None, numTrashReads=500, numPointsPerRead=100):
+    def streamEOGData(self, numPointsRead, predictionModel = None, actionControl = None, calibrateModel = False, numTrashReads=500, numPointsPerRead=100):
         """Obtain `numPointsRead` data points from an Arduino stream"""
         print("Streaming in EOG Data from the Arduino")
 
@@ -381,7 +434,7 @@ class eogArduinoRead(eogProtocol):
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
-                    self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel = calibrateModel, actionControl = actionControl)
+                    self.analyzeData(dataFinger, self.plotStreamedData, predictionModel = predictionModel, actionControl = actionControl, calibrateModel = calibrateModel)
                     dataFinger += self.moveDataFinger
 
                     # If You Need to Calibrate a Channel
@@ -391,7 +444,7 @@ class eogArduinoRead(eogProtocol):
                         break
             # At the End, Analyze Any Data Left
             if dataFinger < len(self.data["timePoints"]):
-                self.analyzeData(dataFinger, self.plotStreamedData, calibrateModel, actionControl)
+                self.analyzeData(dataFinger, self.plotStreamedData, predictionModel = predictionModel, actionControl = actionControl, calibrateModel = calibrateModel)
 
         finally:
             self.eogArduino.close()

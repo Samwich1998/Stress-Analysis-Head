@@ -15,6 +15,7 @@ import scipy
 import scipy.signal
 from  itertools import chain
 # High/Low Pass Filters
+from scipy.signal import butter
 from scipy.signal import lfilter
 # Plotting
 import matplotlib
@@ -24,15 +25,14 @@ import matplotlib.pyplot as plt
 # --------------------------------------------------------------------------- #
 # ------------------ User Can Edit (Global Variables) ----------------------- #
 
-class emgProtocol:
+class eegProtocol:
     
-    def __init__(self, numTimePoints = 2000, moveDataFinger = 200, numChannels = 4, samplingFreq = 800, gestureClasses = [], plotStreamedData = False):
+    def __init__(self, numTimePoints = 2000, moveDataFinger = 200, numChannels = 4, samplingFreq = 800, plotStreamedData = False):
         
         # Input Parameters
-        self.numChannels = numChannels        # Number of EMG Signals
+        self.numChannels = numChannels        # Number of EEG Signals
         self.numTimePoints = numTimePoints                  # The X-Wdith of the Plot (Number of Data-Points Shown)
         self.moveDataFinger = moveDataFinger  # The Amount of Data to Stream in Before Finding Peaks
-        self.gestureClasses = gestureClasses
         self.plotStreamedData = plotStreamedData
         # Data Holders
         self.previousDataRMS = {}
@@ -60,7 +60,7 @@ class emgProtocol:
         
         # Start with Fresh Inputs
         self.resetGlobalVariables()
-        
+                
         # Define Class for Plotting Peaks
         if plotStreamedData:
             # Initialize Plots
@@ -367,7 +367,7 @@ class emgProtocol:
         # Get Data and Filter
         plt.figure()
         plt.plot(xData,yData, c='tab:blue', alpha=0.7)
-        plt.title("EMG Data")
+        plt.title("EEG Data")
         
         plt.figure()
         filteredData = self.highPassFilter(yData)
@@ -388,6 +388,19 @@ class emgProtocol:
 # ------------------------- Signal Analysis --------------------------------- #
 
 
+    def butterParams(self, cutoffFreq = 50, samplingFreq = 800, order = 3, filterType = 'low'):
+        nyq = 0.5 * samplingFreq
+        if filterType == "band":
+            normal_cutoff = [freq/nyq for freq in cutoffFreq]
+        else:
+            normal_cutoff = cutoffFreq / nyq
+        sos = butter(order, normal_cutoff, btype = filterType, analog = False, output='sos')
+        return sos
+    
+    def butterFilter(self, data, cutoffFreq, samplingFreq, order = 3, filterType = 'low'):
+        sos = self.butterParams(cutoffFreq, samplingFreq, order, filterType)
+        return scipy.signal.sosfiltfilt(sos, data)
+    
     def highPassFilter(self, inputData):
         """
         data: Data to Filter
@@ -404,7 +417,7 @@ class emgProtocol:
     
     def RMSFilter(self, inputData, RMSData = [], rmsWindow=250, stepSize=8):
         """
-        The Function loops through the given EMG Data, looking at batches of data
+        The Function loops through the given EEG Data, looking at batches of data
             of size rmsWindow at every interval seperated by stepSize.
         In Each Window, we take the magnitude of the data vector (sqrt[a^2+b^2]
             for [a,b] data point)
@@ -413,7 +426,7 @@ class emgProtocol:
         The Final List has a length of 1 + math.floor((len(inputData) - rmsWindow) / stepSize)
         --------------------------------------------------------------------------
         Input Variable Definitions:
-            inputData: A List containing the  EMG Data
+            inputData: A List containing the  EEG Data
             rmsWindow: The Amount of Data in the Groups we Analyze via RMS
             stepSize: The Distance Between Data Groups
         --------------------------------------------------------------------------
@@ -480,7 +493,6 @@ class emgProtocol:
             # Minimize Group Seperation
             if not self.pointsPerGroupRMS:
                 self.pointsPerGroupRMS = (xPointer - leftBaselineIndex)
-                print(self.pointsPerGroupRMS)
         #    plt.plot(peakAnalysisData)
         #    plt.plot(xPointer, peakAnalysisData[xPointer], 'o')
         #    plt.plot(leftBaselineIndex, peakAnalysisData[leftBaselineIndex], 'o')

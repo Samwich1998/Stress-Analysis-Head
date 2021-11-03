@@ -33,6 +33,8 @@
 # Basic Modules
 import sys
 import threading
+import numpy as np
+from pathlib import Path
 # Import Data Aquisition and Analysis Files
 sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
 import readDataExcel as excelData         # Functions to Save/Read in Data from Excel
@@ -40,6 +42,10 @@ import readDataArduino as streamData      # Functions to Read in Data from Ardui
 import eogAnalysis as eogAnalysis         # Functions to Analyze the EOG Data
 # Import Virtual Reality Control Files
 sys.path.append('./Execute Movements/')   # Folder with Virtual Reality Control Files
+
+# Import Files for Machine Learning
+sys.path.append('./Machine Learning/')  # Folder with Machine Learning Files
+import machineLearningMain  # Class Header for All Machine Learning
 
 
 if __name__ == "__main__":
@@ -54,28 +60,49 @@ if __name__ == "__main__":
     numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
-     
+    # Specify the Type of Movements to Learn
+    numFeatures = 10              # The Number of Features to Extract/Save/Train on
+    gestureClasses = np.char.lower(["Blink", "No Blink"])  # Define Labels as Array
+
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = True      # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = True       # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveInputData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
+
     
     # ---------------------------------------------------------------------- #
     
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
-    if saveInputData:
+    if saveData:
         saveExcelName = "Samuel Solomon 2021-10-08 BAD.xlsx"  # The Name of the Saved File
         saveDataFolder = "../Input Data/All Data/Industry Electrodes/"   # Data Folder to Save the Excel Data; MUST END IN '/'
     
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-10-08.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-10-08 BAD.xlsx" # Path to the Test Data
         testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+    
+    # Input Training Paramaters 
+    if trainModel:
+        saveModel = False   # Save the Machine Learning Model for Later Use
+        trainDataExcelFolder = "../Input Data/EMG Data/"  # Path to the Training Data Folder; All .xlsx Data Used
+    # Train or Test the Data with the Machine Learning Model
+    if trainModel or testModel:
+        # Pick the Machine Learning Module to Use
+        modelType = "KNN"  # Machine Learning Options: NN, RF, LR, KNN, SVM
+        modelPath = "./Machine Learning Modules/Models/predictionModelKNNFull_SamArm1.pkl" # Path to Model (Creates New if it Doesn't Exist)
+        # Get the Machine Learning Module
+        performMachineLearning = machineLearningMain.predictionModelHead(modelType, modelPath, dataDim = numChannels, gestureClasses = gestureClasses)
+        predictionModel = performMachineLearning.predictionModel
+    else:
+        predictionModel = None
     
     if controlVR:
         # Import the VR File (MUST BE RUNNING INSIDE VIZARD!)
@@ -97,23 +124,39 @@ if __name__ == "__main__":
         if streamArduinoData:
             arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, ppgSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
             readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None)
-            readData.streamEOGData(numDataPoints, calibrateModel = calibrateModel, actionControl = gazeControl)
+            readData.streamEOGData(numDataPoints, predictionModel = predictionModel, actionControl = gazeControl, calibrateModel = calibrateModel)
         # Take Data from Excel Sheet
         elif readDataFromExcel:
             eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
             readData = excelData.readExcel(eogProtocol)
-            readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = None, actionControl = None)
+            readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
+        # Take Preprocessed (Saved) Features from Excel Sheet
+        elif trainModel:
+            # Extract the Data
+            readData = excelData.readExcel(eogProtocol)
+            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, numFeatures, gestureClasses, mode='Train')
+            print("\nCollected Signal Data")
+            # Train the Data on the Gestures
+            performMachineLearning.trainModel(signalData, signalLabels)
+            # Save Signals and Labels
+            if saveData and performMachineLearning.map2D:
+                saveInputs = excelData.saveExcel(numChannels, numFeatures)
+                saveExcelNameMap = Path(saveExcelName).stem + "_mapedData.xlsx" #"Signal Features with Predicted and True Labels New.xlsx"
+                saveInputs.saveLabeledPoints(performMachineLearning.map2D, signalLabels,  performMachineLearning.predictionModel.predictData(signalData), saveDataFolder, saveExcelNameMap, sheetName = "Signal Data and Labels")
+            # Save the Neural Network (The Weights of Each Edge)
+            if saveModel:
+                 performMachineLearning.predictionModel.saveModel(modelPath)
             
         # ---------------------------------------------------------------------- #
         # -------------------------- Save Input data --------------------------- #
         # Save the Data in Excel: EOG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
-        if saveInputData:
+        if saveData:
             # Double Check to See if User Wants to Save the Data
             verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
             if verifiedSave.upper() == "Y":
                 # Initialize Class to Save the Data and Save
                 saveInputs = excelData.saveExcel(numChannels, numFeatures = 0)
-                saveInputs.saveData(readData.data, None, saveDataFolder, saveExcelName, "Trial 1 - EOG")
+                saveInputs.saveData(readData.data, eogProtocol.featureList, saveDataFolder, saveExcelName, "Trial 1 - EOG")
             else:
                 print("User Chose Not to Save the Data")
         

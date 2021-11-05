@@ -13,6 +13,7 @@ import numpy as np
 # Peak Detection
 import scipy
 import scipy.signal
+from  itertools import chain
 # High/Low Pass Filters
 from scipy.signal import butter
 # Calibration Fitting
@@ -44,11 +45,11 @@ class eogProtocol:
         
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
-        self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
+        self.minVoltageMovement = 0.1    # Min Voltage Change Threshold to Move the Gaze
         self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
         
         # Eye Gesture Prediction Parameters
-        self.minVoltageThreshold = 0.01
+        self.minVoltageThreshold = 0.05
         self.steadyStateEye = 5/2
         
         # Pointers for Calibration
@@ -83,6 +84,8 @@ class eogProtocol:
         # Reset Last Eye Voltage (Volts)
         self.currentEyeVoltages = [2.5 for _ in range(self.numChannels)]
         
+        self.xPeaksListTop = [[0] for _ in range(self.numChannels)]
+        self.xPeaksListBottom = [[0] for _ in range(self.numChannels)]
         self.featureList = [[] for _ in range(self.numChannels)]
         self.triggerHolders = [[] for _ in range(self.numChannels)]
         self.lastTriggersAnalyzed = [[0,0] for _ in range(self.numChannels)]
@@ -178,12 +181,19 @@ class eogProtocol:
             # --------------------------------------------------------------- #
             
             # -------------------- Extract Eye Gestures  -------------------- #
+            # Extarct EOG Peaks
+            filteredDataX = self.data['timePoints'][-len(filteredData):]
+            xPeaksNew, yPeaksNew, peakInds = self.findPeaks(filteredDataX, filteredData, channelIndex)
+            
+            # Extract Features from the Peaks
+            newFeatures = self.extractFeatures(filteredDataX, filteredData, peakInds, channelIndex)
 
+            """
             # Read in New Points and Check for Features
             for pointInd in range(self.lastTriggersAnalyzed[channelIndex][0] + 1, len(self.data['timePoints'])):
                 # Extract X,Y Data
                 timePoint = self.data['timePoints'][pointInd]
-                dataPoint = filteredData[pointInd - startBPFindex]
+                dataPoint = filteredData[pointInd - (len(self.data['timePoints']) - len(filteredData))]
                 # Check to See if the Gesture has Just Started
                 if abs(dataPoint - self.steadyStateEye) > self.minVoltageThreshold:
                     if not self.lastTriggersAnalyzed[channelIndex][0] or len(self.triggerHolders[channelIndex][-1]) == 2:
@@ -217,7 +227,7 @@ class eogProtocol:
                     plt.plot(timePoints1, filteredData)
 
                     plt.show()
-            
+            """            
             # --------------- Calibrate Angle Prediction Model -------------- #
             if calibrateModel:
                 if self.calibrateChannelNum == channelIndex:
@@ -321,27 +331,74 @@ class eogProtocol:
     def butterFilter(self, data, cutoffFreq, samplingFreq, order = 3, filterType = 'band'):
         sos = self.butterParams(cutoffFreq, samplingFreq, order, filterType)
         return scipy.signal.sosfiltfilt(sos, data)
+    
+    
+    def findPeaks(self, xData, yData, channelIndex):
+        # Find New Peak Indices and Last Recorded Peak's xLocation   
+        peakIndicesTop = scipy.signal.find_peaks(yData, prominence=.01, height = self.steadyStateEye + self.minVoltageThreshold, width=30, distance = 30)[0]
+        peakIndicesBottom = scipy.signal.find_peaks(-yData, prominence=.01, height = - self.steadyStateEye + self.minVoltageThreshold, width=30, distance = 30)[0]
 
+        # Find Where the New Peaks Begin
+        xPeaksNew = []; yPeaksNew = []; peakInds = []
+        for peakInd in peakIndicesTop:
+            xPeakLoc = xData[peakInd]
+            # If it is a New Peak NOT Seen in This Channel
+            if xPeakLoc not in self.xPeaksListTop[channelIndex] and xPeakLoc > self.xPeaksListTop[channelIndex][-1]:
+                # Add the Peak
+                xPeaksNew.append(xPeakLoc)
+                yPeaksNew.append(yData[peakInd])
+                peakInds.append(peakInd)
 
-    def findTraileringAverage(self, recentData, deviationThreshold = 0.08):
-        # Base Case in No Points Came in
-        if len(recentData) == 0:
-            return 2.5
-        
-        # Keep Track of the trailingAverage
-        trailingAverage = recentData[-1]
-        for dataPointInd in range(2, len(recentData)-1, -1):
-            # Get New dataPoint from the Back of the List
-            dataPoint = recentData[len(recentData) - dataPointInd]
-            # If the dataPoint is Different from the trailingAverage by some Threshold, return the trailingAverage
-            if abs(dataPoint - trailingAverage) > deviationThreshold:
-                return trailingAverage
+        for peakInd in peakIndicesBottom:
+            xPeakLoc = xData[peakInd]
+            # If it is a New Peak NOT Seen in This Channel
+            if xPeakLoc not in self.xPeaksListBottom[channelIndex] and xPeakLoc > self.xPeaksListBottom[channelIndex][-1]:
+                # Add the Peak
+                xPeaksNew.append(xPeakLoc)
+                yPeaksNew.append(yData[peakInd])
+                peakInds.append(peakInd)
+
+        # Return New Peaks and Their Baselines
+        return xPeaksNew, yPeaksNew, peakInds
+
+    def extractFeatures(self, xData, yData, peakInds, channelIndex):
+        peakFeatures = []
+        for xPointer in peakInds:
+            peakFeatures.append([])
+            xPeakLoc = xData[xPointer]
+            # Take Average of the Signal (Only Left Side As I Want to Decipher Motor Intention as Fast as I Can; Plus the Signal is generally Symmetric)       
+            if yData[xPointer] > self.steadyStateEye:
+                leftBaselineIndex = self.findNearbyMinimum(yData, xPointer, binarySearchWindow = -40, maxPointsSearch = 1000)
+                rightBaselineIndex = self.findNearbyMinimum(yData, xPointer, binarySearchWindow = 40, maxPointsSearch = 1000)
+                if xPeakLoc not in self.xPeaksListTop[channelIndex] and (len(yData) - rightBaselineIndex > 40 or leftBaselineIndex > 40):
+                    self.xPeaksListTop[channelIndex].append(xPeakLoc)
+                else:
+                    continue
             else:
-                trailingAverage = (trailingAverage*(dataPointInd - 1) + dataPoint)/(dataPointInd)
-        # Else Return the Average
-        return trailingAverage
+                leftBaselineIndex = self.findNearbyMinimum(-yData, xPointer, binarySearchWindow = -40, maxPointsSearch = 1000)
+                rightBaselineIndex = self.findNearbyMinimum(-yData, xPointer, binarySearchWindow = 40, maxPointsSearch = 1000)
+                if xPeakLoc not in self.xPeaksListBottom[channelIndex] and len(yData) - rightBaselineIndex > 40 or leftBaselineIndex > 40:
+                    self.xPeaksListBottom[channelIndex].append(xPeakLoc)
+                else:
+                    continue
 
-    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 10, maxPointsSearch = 400):
+            plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
+            plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
+            plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
+            plt.plot(xData, yData)
+            plt.show()
+            
+            peakAverage = np.mean(yData[leftBaselineIndex:xPointer+1])
+            peakFeatures[-1].append(peakAverage)
+        #    plt.plot(peakAnalysisData)
+        #    plt.plot(xPointer, peakAnalysisData[xPointer], 'o')
+        #    plt.plot(leftBaselineIndex, peakAnalysisData[leftBaselineIndex], 'o')
+        #    plt.show()
+        #    print(leftBaselineIndex, xPointer)
+        # Return Features
+        return peakFeatures
+
+    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 50, maxPointsSearch = 2000):
         """
         Search Right: binarySearchWindow > 0
         Search Left: binarySearchWindow < 0
@@ -361,6 +418,24 @@ class eogProtocol:
 
         # If Your Binary Search is Too Small, Reduce it
         return self.findNearbyMinimum(data, xPointer, math.floor(binarySearchWindow/2), maxPointsSearch)
+
+    def findTraileringAverage(self, recentData, deviationThreshold = 0.08):
+        # Base Case in No Points Came in
+        if len(recentData) == 0:
+            return 2.5
+        
+        # Keep Track of the trailingAverage
+        trailingAverage = recentData[-1]
+        for dataPointInd in range(2, len(recentData)-1, -1):
+            # Get New dataPoint from the Back of the List
+            dataPoint = recentData[len(recentData) - dataPointInd]
+            # If the dataPoint is Different from the trailingAverage by some Threshold, return the trailingAverage
+            if abs(dataPoint - trailingAverage) > deviationThreshold:
+                return trailingAverage
+            else:
+                trailingAverage = (trailingAverage*(dataPointInd - 1) + dataPoint)/(dataPointInd)
+        # Else Return the Average
+        return trailingAverage
 
     def sigmoid(self, x, k, x0):       
         # Prediction Model

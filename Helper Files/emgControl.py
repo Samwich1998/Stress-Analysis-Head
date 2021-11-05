@@ -55,7 +55,7 @@ if __name__ == "__main__":
     handSerialNum = None    # Arduino Serial Number for the Robotic Hand Control. Leave None if NOT Controlling the Hand
     numDataPoints = 50000   # The Number of Points to Stream into the Arduino
     numTimePoints = 3000    # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 50    # The Number of NEW Data Points to Analyze at a Time; My Beta-Test Used 200 Points with Plotting (100 Without). This CAN Change How SOME Peaks are Found (be Careful)
+    moveDataFinger = 200    # The Number of NEW Data Points to Analyze at a Time; My Beta-Test Used 200 Points with Plotting (100 Without). This CAN Change How SOME Peaks are Found (be Careful)
     samplingFreq = 800      # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numChannels = 4         # The Number of Arduino Channels with EMG Signals Read in; My Beta-Test Used 4 Channels
     numFeatures = 4         # The Number of Features to Extract/Save/Train on
@@ -63,13 +63,13 @@ if __name__ == "__main__":
     gestureClasses = np.char.lower(["Up", "Down", "Left", "Right", "Grab", "Release"])  # Define Labels as Array
     
     # Protocol Switches: Only One Can be True; Only the First True Variable Excecutes
-    streamArduinoData = False  # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
+    streamArduinoData = True  # Stream in Data from the Arduino and Analyze; Input 'testModel' = True to Apply Learning
     readDataFromExcel = True   # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False      # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Peaks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False         # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = False    # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True    # Graph the Data to Show Incoming Signals + Analysis
     saveModel = False          # Save the Machine Learning Model for Later Use
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     saveData = False           # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName' or map2D if Training

@@ -58,7 +58,7 @@ if __name__ == "__main__":
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 40000         # The Number of Points to Stream into the Arduino
     numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 500          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    moveDataFinger = 150          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     numFeatures = 10              # The Number of Features to Extract/Save/Train on
@@ -66,14 +66,14 @@ if __name__ == "__main__":
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Random'])  # Define Labels as Array
 
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
     readDataFromExcel = True       # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
 
@@ -91,8 +91,8 @@ if __name__ == "__main__":
             
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-10-08 BAD.xlsx" # Path to the Test Data
-        testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
+        testSheetNum = 2   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:

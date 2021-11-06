@@ -45,7 +45,7 @@ class eogProtocol:
         
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
-        self.minVoltageMovement = 0.1    # Min Voltage Change Threshold to Move the Gaze
+        self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
         self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
         
         # Eye Gesture Prediction Parameters
@@ -172,12 +172,14 @@ class eogProtocol:
             # --------------------- Predict Eye Movement  ------------------- #
             # Get the Current Voltage (Take Average)
             channelVoltages = []
-            for segment in range(0, self.moveDataFinger, self.predictEyeAngleGap):
-                currentEyeVoltage = self.findTraileringAverage(filteredData[segment - self.voltagePositionBuffer:], deviationThreshold = self.minVoltageMovement)
+            for segment in range(self.moveDataFinger-self.predictEyeAngleGap, -self.predictEyeAngleGap, -self.predictEyeAngleGap):
+                endPos = -segment if -segment != 0 else len(filteredData)
+                currentEyeVoltage = self.findTraileringAverage(filteredData[-segment - self.voltagePositionBuffer:endPos], deviationThreshold = self.minVoltageMovement)
                 # Compare Voltage Difference to Remove Small Shakes
                 if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
                     self.currentEyeVoltages[channelIndex] = currentEyeVoltage 
                 channelVoltages.append(self.currentEyeVoltages[channelIndex])
+                
             # Predict the Eye's Degree
             if self.predictEyeAngle[channelIndex]:
                 eyeAngle = self.predictEyeAngle[channelIndex](self.currentEyeVoltages[channelIndex])
@@ -309,7 +311,7 @@ class eogProtocol:
         
         # Get the Current Voltage (Take Average)
         eyeVoltages = []
-        self.currentEyeVoltages[channelIndex] = 2.5
+        self.currentEyeVoltages[channelIndex] = self.steadyStateEye
         for dataBatchInd in range(0, len(filteredData), self.moveDataFinger):
             batchData = filteredData[dataBatchInd - self.voltagePositionBuffer:dataBatchInd + self.moveDataFinger]
             currentEyeVoltage = self.findTraileringAverage(batchData, deviationThreshold = self.minVoltageMovement)
@@ -387,11 +389,11 @@ class eogProtocol:
                 else:
                     continue
 
-            #plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
-            #plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
-            #plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
-            #plt.plot(xData, yData)
-            #plt.show()
+            plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
+            plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
+            plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
+            plt.plot(xData, yData)
+            plt.show()
             
             peakAverage = np.mean(yData[leftBaselineIndex:xPointer+1])
             peakFeatures[-1].append(peakAverage)
@@ -427,11 +429,11 @@ class eogProtocol:
     def findTraileringAverage(self, recentData, deviationThreshold = 0.08):
         # Base Case in No Points Came in
         if len(recentData) == 0:
-            return 2.5
+            return self.steadyStateEye
         
         # Keep Track of the trailingAverage
         trailingAverage = recentData[-1]
-        for dataPointInd in range(2, len(recentData)-1, -1):
+        for dataPointInd in range(2, len(recentData)-1, -2):
             # Get New dataPoint from the Back of the List
             dataPoint = recentData[len(recentData) - dataPointInd]
             # If the dataPoint is Different from the trailingAverage by some Threshold, return the trailingAverage

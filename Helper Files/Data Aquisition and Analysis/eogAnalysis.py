@@ -49,14 +49,15 @@ class eogProtocol:
         self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
         
         # Eye Gesture Prediction Parameters
+        self.predictEyeAngleGap = 5
         self.minVoltageThreshold = 0.05
-        self.steadyStateEye = 5/2
+        self.steadyStateEye = 3.3/2
         
         # Pointers for Calibration
         self.calibrateChannelNum = 0
         self.channelCalibrationPointer = 0
         # Calibration Function for Eye Angle
-        self.predictEyeAngle = [lambda x: (x-2.5)*30]*self.numChannels
+        self.predictEyeAngle = [lambda x: (x - self.steadyStateEye)*30]*self.numChannels
         
         # Check to See if Parameters Make Sense
         self.checkParams
@@ -82,7 +83,7 @@ class eogProtocol:
             self.trailingAverageData[channelIndex] = [0]*self.numTimePoints
         
         # Reset Last Eye Voltage (Volts)
-        self.currentEyeVoltages = [2.5 for _ in range(self.numChannels)]
+        self.currentEyeVoltages = [self.steadyStateEye for _ in range(self.numChannels)]
         
         self.xPeaksListTop = [[0] for _ in range(self.numChannels)]
         self.xPeaksListBottom = [[0] for _ in range(self.numChannels)]
@@ -170,10 +171,13 @@ class eogProtocol:
             
             # --------------------- Predict Eye Movement  ------------------- #
             # Get the Current Voltage (Take Average)
-            currentEyeVoltage = self.findTraileringAverage(filteredData[-self.voltagePositionBuffer:], deviationThreshold = self.minVoltageMovement)
-            # Compare Voltage Difference to Remove Small Shakes
-            if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
-                self.currentEyeVoltages[channelIndex] = currentEyeVoltage        
+            channelVoltages = []
+            for segment in range(0, self.moveDataFinger, self.predictEyeAngleGap):
+                currentEyeVoltage = self.findTraileringAverage(filteredData[segment - self.voltagePositionBuffer:], deviationThreshold = self.minVoltageMovement)
+                # Compare Voltage Difference to Remove Small Shakes
+                if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
+                    self.currentEyeVoltages[channelIndex] = currentEyeVoltage 
+                channelVoltages.append(self.currentEyeVoltages[channelIndex])
             # Predict the Eye's Degree
             if self.predictEyeAngle[channelIndex]:
                 eyeAngle = self.predictEyeAngle[channelIndex](self.currentEyeVoltages[channelIndex])
@@ -255,8 +259,9 @@ class eogProtocol:
                 self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
                             
                 # Keep Track of Recently Digitized Data
-                self.trailingAverageData[channelIndex].extend([self.currentEyeVoltages[channelIndex]]*self.moveDataFinger)
-                self.trailingAverageData[channelIndex] = self.trailingAverageData[channelIndex][self.moveDataFinger:]
+                for voltageInd in range(len(channelVoltages)):
+                    self.trailingAverageData[channelIndex].extend([channelVoltages[voltageInd]]*self.predictEyeAngleGap)
+                self.trailingAverageData[channelIndex] = self.trailingAverageData[channelIndex][len(channelVoltages)*self.predictEyeAngleGap:]
                 # Plot the Filtered + Digitized Data
                 self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData[-len(self.timePoints):])
                 self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex][-len(self.timePoints):])

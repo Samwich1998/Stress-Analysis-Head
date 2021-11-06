@@ -79,8 +79,14 @@ class readExcel():
             pointNum += 1
             # When Ready, Send Data Off for Analysis
             while pointNum - dataFinger >= self.numTimePoints:
+                import time
+                t1 = time.time()
+                
                 self.analysisProtocol.analyzeData(dataFinger, plotStreamedData, predictionModel, actionControl = actionControl)
                 dataFinger += self.moveDataFinger
+                
+                t2 = time.time()
+                print(t2-t1)
                 
         # At the End, Analyze Any Data Left
         if dataFinger < len(self.analysisProtocol.data["timePoints"]):

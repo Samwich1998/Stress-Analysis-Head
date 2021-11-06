@@ -58,7 +58,7 @@ if __name__ == "__main__":
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 40000         # The Number of Points to Stream into the Arduino
     numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
+    moveDataFinger = 500          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     numFeatures = 10              # The Number of Features to Extract/Save/Train on

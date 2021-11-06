@@ -56,23 +56,24 @@ if __name__ == "__main__":
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 20000         # The Number of Points to Stream into the Arduino
+    numDataPoints = 40000         # The Number of Points to Stream into the Arduino
     numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     numFeatures = 10              # The Number of Features to Extract/Save/Train on
-    gestureClasses = np.char.lower(["Blink", "No Blink"])  # Define Labels as Array
+    gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
+    gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Random'])  # Define Labels as Array
 
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
     readDataFromExcel = True       # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
 
@@ -81,9 +82,13 @@ if __name__ == "__main__":
     
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
-        saveExcelName = "Samuel Solomon 2021-10-08 BAD.xlsx"  # The Name of the Saved File
-        saveDataFolder = "../Input Data/All Data/Industry Electrodes/"   # Data Folder to Save the Excel Data; MUST END IN '/'
-    
+        saveExcelName = "Samuel Solomon 2021-11-05 Movements.xlsx"  # The Name of the Saved File
+        saveDataFolder = "../Input Data/EOG Data/All Data/Industry Electrodes/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        # Speficy the eye Movement You Will Perform
+        eyeMovement = "Random".lower() # Make Sure it is Lowercase
+        if eyeMovement not in gestureClasses:
+            print("The Gesture", "'" + eyeMovement + "'", "is Not in", gestureClasses)
+            
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
         testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-10-08 BAD.xlsx" # Path to the Test Data
@@ -146,28 +151,30 @@ if __name__ == "__main__":
             # Save the Neural Network (The Weights of Each Edge)
             if saveModel:
                  performMachineLearning.predictionModel.saveModel(modelPath)
-            
-        # ---------------------------------------------------------------------- #
-        # -------------------------- Save Input data --------------------------- #
-        # Save the Data in Excel: EOG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
-        if saveData:
-            # Double Check to See if User Wants to Save the Data
-            verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
-            if verifiedSave.upper() == "Y":
-                # Initialize Class to Save the Data and Save
-                saveInputs = excelData.saveExcel(numChannels, numFeatures = 0)
-                saveInputs.saveData(readData.data, eogProtocol.featureList, saveDataFolder, saveExcelName, "Trial 1 - EOG")
-            else:
-                print("User Chose Not to Save the Data")
         
         return readData
+            
     
     # The VR Requires Threading to Update the Game + Process the Biolectric Signals
     if controlVR:
-        threading.Thread(target = executeProtocol, args = (), daemon=True).start()
+        readData = threading.Thread(target = executeProtocol, args = (), daemon=True).start()
     else:
         readData = executeProtocol()
     
-
+    # ---------------------------------------------------------------------- #
+    # -------------------------- Save Input data --------------------------- #
+    # Save the Data in Excel: EOG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
+    if saveData:
+        # Double Check to See if User Wants to Save the Data
+        verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
+        sheetName = "Trial 1 - "  # If SheetName Already Exists, Increase Trial # by One
+        sheetName = sheetName + eyeMovement
+        if verifiedSave.upper() == "Y":
+            # Initialize Class to Save the Data and Save
+            saveInputs = excelData.saveExcel(numChannels, numFeatures = 0)
+            saveInputs.saveData(readData.data, readData.featureList, saveDataFolder, saveExcelName, sheetName)
+        else:
+            print("User Chose Not to Save the Data")
+    
     
 

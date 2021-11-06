@@ -382,11 +382,11 @@ class eogProtocol:
                 else:
                     continue
 
-            plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
-            plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
-            plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
-            plt.plot(xData, yData)
-            plt.show()
+            #plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
+            #plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
+            #plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
+            #plt.plot(xData, yData)
+            #plt.show()
             
             peakAverage = np.mean(yData[leftBaselineIndex:xPointer+1])
             peakFeatures[-1].append(peakAverage)

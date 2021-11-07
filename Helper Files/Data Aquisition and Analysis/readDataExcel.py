@@ -222,7 +222,7 @@ class saveExcel:
         elif WB:
             print("\tOverWriting Excel File:", excel_file)
             WB_worksheet = WB.create_sheet(sheetName.title)
-            print("\tSaving Sheet as", WB_worksheet.title)
+            print("\tSaving Sheet as", WB_worksheet.title, "\n")
         # Loading in Previous Excel File, Creating New Sheet, Editing Trial Number in SheetName
         else:
             print("Excel File Already Exists. Loading File")
@@ -312,7 +312,7 @@ class saveExcel:
         
         # If the File is Not Present: Create The Excel File
         if not os.path.isfile(excel_file):
-            print("\nSaving the Data as New Excel Workbook")
+            print("\nSaving the Data as New Excel Workbook", "\n")
             # Make Excel WorkBook
             WB = xl.Workbook()
             WB_worksheet = WB.active 
@@ -322,7 +322,7 @@ class saveExcel:
             print("Excel File Already Exists. Loading File")
             WB = xl.load_workbook(excel_file, read_only=False)
             WB_worksheet = WB.create_sheet(sheetName)
-            print("Saving Sheet as", sheetName)
+            print("Saving Sheet as", sheetName, "\n")
         
         header = ['Feature Number ' + str(featureNum) for featureNum in range(1, 1+self.numFeatures)]
         header.extend(['Signal Labels True', 'Signal Labels Predicted'])

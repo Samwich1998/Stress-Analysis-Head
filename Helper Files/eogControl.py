@@ -14,9 +14,9 @@
     --------------------------------------------------------------------------
     
     Modules to Import Before Running the Program (Some May be Missing):
+        $ conda install -c conda-forge tensorflow
         $ conda install scikit-learn
         $ conda install matplotlib
-        $ conda install tensorflow
         $ conda install openpyxl
         $ conda install pyserial
         $ conda install joblib
@@ -57,8 +57,8 @@ if __name__ == "__main__":
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 40000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 5000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 150          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numTimePoints = 20000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 10000          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     numFeatures = 10              # The Number of Features to Extract/Save/Train on
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
         testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 2   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testSheetNum =0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
@@ -124,6 +124,10 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
     
+    eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+    readData = excelData.readExcel(eogProtocol)
+    readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
+    sys.exit()
     def executeProtocol():
         # Stream in Data from Arduino
         if streamArduinoData:

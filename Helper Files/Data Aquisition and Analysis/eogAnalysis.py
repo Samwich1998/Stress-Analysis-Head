@@ -189,7 +189,7 @@ class eogProtocol:
             # -------------------- Extract Eye Gestures  -------------------- #
             # Extarct EOG Peaks
             filteredDataX = self.data['timePoints'][-len(filteredData):]
-            xPeaksNew, yPeaksNew, peakInds = self.findPeaks(filteredDataX, filteredData, channelIndex)
+            xPeaksNew, yPeaksNew, peakInds = self.findBlinks(filteredDataX, filteredData, channelIndex)
             
             # Extract Features from the Peaks
             newFeatures = self.extractFeatures(filteredDataX, filteredData, peakInds, channelIndex)
@@ -340,30 +340,110 @@ class eogProtocol:
         return scipy.signal.sosfiltfilt(sos, data)
     
     
-    def findPeaks(self, xData, yData, channelIndex):
-        # Find New Peak Indices and Last Recorded Peak's xLocation   
-        peakIndicesTop = scipy.signal.find_peaks(yData, prominence=.01, height = self.steadyStateEye + self.minVoltageThreshold, width=30, distance = 30)[0]
-        peakIndicesBottom = scipy.signal.find_peaks(-yData, prominence=.01, height = - self.steadyStateEye + self.minVoltageThreshold, width=30, distance = 30)[0]
+    def findBlinks(self, xData, yData, channelIndex):
+        
+        # Find Blink Parameters
+        findNewPeak = True
+        highestRecorderedBlinkX = 0
+        threshold = 0.25; peakDistance = 110
+        minRisePoints = 50; maxRisePoints = 500
+        peakIndices = []
+        leftBaselineIndexes = []
+                
+        doubleBlinkMaxSep = 200
+        
+        initBlink = [[]]; downGesture = [[]]
+        
+        addOn = 3; firstDer = [0]*addOn
+        # Caluclate the Running Slope of the Data
+        for peakInd in range(addOn, len(yData)):
+            # Calculate the First Derivative
+            deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
+            deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
+            firstDer.append(deltaY/deltaX)
+            
+            # --------------------------------------------------------------- #
+            # Track Blink as it Rises
+            if findNewPeak and firstDer[-1] > threshold and peakInd > highestRecorderedBlinkX + peakDistance:
+                # If it is the First Point, Label it as the Baseline
+                if not initBlink[-1]:
+                    leftBaselineIndexes.append(peakInd)
+                # Record the Peak
+                initBlink[-1].append(firstDer[-1])
+                
+            # Remove Blink if Too Many or Little Points
+            elif initBlink[-1] and (len(initBlink[-1]) < minRisePoints or len(initBlink[-1]) > maxRisePoints):
+                # Reset Blink Detection Parameters
+                initBlink.pop(); initBlink.append([])
+                if leftBaselineIndexes:
+                    leftBaselineIndexes.pop()
+                
+            # Once the Slope is Negative, the Peak Rise is Complete
+            elif firstDer[-1] < firstDer[-3]:
+                # If There is a Peak to Detect
+                if initBlink[-1]:
+                    # Check if it is a Dobule Peak (Associated with the Last)
+                    if peakIndices and peakInd - peakIndices[-1] < doubleBlinkMaxSep and yData[leftBaselineIndexes[-2]+2] < yData[leftBaselineIndexes[-1]]:
+                        print("Double Peak")
+                    if peakIndices:
+                        try:
+                            a = self.ax
+                        except:
+                            self.ax = plt.axes(projection='3d')
+                        self.ax.scatter3D([max(initBlink[-1])], [xData[peakIndices[-1]]-xData[leftBaselineIndexes[-1]]], [yData[peakIndices[-1]]-yData[leftBaselineIndexes[-1]]])
+                    # Record the Peak
+                    peakIndices.append(peakInd)
+                    initBlink.append([])   
+                # Stop Looking for a Peak
+                findNewPeak = False
+                
+            # Once the Derivative GOes Negative, We can Start Looking Again
+            elif firstDer[-1] < 0:
+                findNewPeak = True  
+            # --------------------------------------------------------------- #
+            
+            # --------------------------------------------------------------- #
+            if findNewPeak and firstDer[-1] > threshold and peakInd > highestRecorderedBlinkX + peakDistance:
+                i = 1
+                
+        firstDer = np.array(firstDer)
+        if False:
+            plt.plot(xData, yData); plt.plot(xData, firstDer/20 + 3.3/2, 'o', markersize = 2)
+            plt.show()
+            if peakIndices:
+                print(np.diff(peakIndices))
+                xData = np.array(xData); yData = np.array(yData)
+                plt.plot(xData, yData); plt.plot(xData[peakIndices], yData[peakIndices], 'o', markersize = 2)
+                plt.plot(xData[leftBaselineIndexes], yData[leftBaselineIndexes], 'ro', markersize = 2)
+                plt.show()
+        
+        return [], [], []
 
+        # Find New Peak Indices and Last Recorded Peak's xLocation   
+        peakIndicesTop = scipy.signal.find_peaks(yData, prominence=.03, width=20, distance = 20)[0]
+      #  peakIndicesBottom = scipy.signal.find_peaks(-yData, prominence=.01, height = - self.steadyStateEye + self.minVoltageThreshold, width=30, distance = 30)[0]
+          
         # Find Where the New Peaks Begin
         xPeaksNew = []; yPeaksNew = []; peakInds = []
+        return [], [], []
         for peakInd in peakIndicesTop:
             xPeakLoc = xData[peakInd]
+            print(xPeakLoc, chain(*self.xPeaksListTop[channelIndex]), self.xPeaksListTop[channelIndex][-1])
             # If it is a New Peak NOT Seen in This Channel
-            if xPeakLoc not in self.xPeaksListTop[channelIndex] and xPeakLoc > self.xPeaksListTop[channelIndex][-1]:
+            if xPeakLoc not in chain(*self.xPeaksListTop[channelIndex]) and xPeakLoc > self.xPeaksListTop[channelIndex][-1]:
                 # Add the Peak
                 xPeaksNew.append(xPeakLoc)
                 yPeaksNew.append(yData[peakInd])
                 peakInds.append(peakInd)
 
-        for peakInd in peakIndicesBottom:
-            xPeakLoc = xData[peakInd]
-            # If it is a New Peak NOT Seen in This Channel
-            if xPeakLoc not in self.xPeaksListBottom[channelIndex] and xPeakLoc > self.xPeaksListBottom[channelIndex][-1]:
-                # Add the Peak
-                xPeaksNew.append(xPeakLoc)
-                yPeaksNew.append(yData[peakInd])
-                peakInds.append(peakInd)
+     #   for peakInd in peakIndicesBottom:
+     #       xPeakLoc = xData[peakInd]
+     #       # If it is a New Peak NOT Seen in This Channel
+     #       if xPeakLoc not in self.xPeaksListBottom[channelIndex] and xPeakLoc > self.xPeaksListBottom[channelIndex][-1]:
+     #           # Add the Peak
+     #           xPeaksNew.append(xPeakLoc)
+     #           yPeaksNew.append(yData[peakInd])
+     #           peakInds.append(peakInd)
 
         # Return New Peaks and Their Baselines
         return xPeaksNew, yPeaksNew, peakInds
@@ -405,7 +485,7 @@ class eogProtocol:
         # Return Features
         return peakFeatures
 
-    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 50, maxPointsSearch = 2000):
+    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 50, maxPointsSearch = 1000):
         """
         Search Right: binarySearchWindow > 0
         Search Left: binarySearchWindow < 0
@@ -419,8 +499,9 @@ class eogProtocol:
         for dataPointer in range(max(xPointer, 0), max(0, min(xPointer + searchDirection*maxPointsSearch, len(data))), binarySearchWindow):
             # If the Point is Greater Than
             if data[dataPointer] > maxHeight:
-                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, math.floor(binarySearchWindow/10), maxPointsSearch - (xPointer - dataPointer - binarySearchWindow))
+                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, math.floor(binarySearchWindow/8), maxPointsSearch - (xPointer - dataPointer - binarySearchWindow))
             else:
+                xPointer = dataPointer
                 maxHeight = data[dataPointer]
 
         # If Your Binary Search is Too Small, Reduce it

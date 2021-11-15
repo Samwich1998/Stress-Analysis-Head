@@ -64,6 +64,7 @@ if __name__ == "__main__":
     numFeatures = 10              # The Number of Features to Extract/Save/Train on
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Random'])  # Define Labels as Array
+    gestureClasses = np.char.lower(['Blink', 'No Blink'])  # Define Labels as Array
 
     # Protocol Switches: Only the First True Variable Excecutes
     streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
         testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
-        testSheetNum =0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testSheetNum = 4   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
@@ -181,4 +182,46 @@ if __name__ == "__main__":
             print("User Chose Not to Save the Data")
     
     
+"""
+https://www.frontiersin.org/articles/10.3389/fnins.2017.00012/full
+https://www.sciencedirect.com/science/article/pii/S221509861931403X#f0015
 
+x = readData.analysisProtocol.data['timePoints']
+y = readData.analysisProtocol.data['Channel1']
+
+# Basic Modules
+import sys
+import math
+import numpy as np
+# Peak Detection
+import scipy
+import scipy.signal
+from  itertools import chain
+# High/Low Pass Filters
+from scipy.signal import butter
+# Calibration Fitting
+from scipy.optimize import curve_fit
+# Plotting
+import matplotlib
+import matplotlib.pyplot as plt
+
+def butterParams(cutoffFreq = [0.1, 7], samplingFreq = 800, order=3, filterType = 'band'):
+    nyq = 0.5 * samplingFreq
+    if filterType == "band":
+        normal_cutoff = [freq/nyq for freq in cutoffFreq]
+    else:
+        normal_cutoff = cutoffFreq / nyq
+    sos = butter(order, normal_cutoff, btype = filterType, analog = False, output='sos')
+    return sos
+
+def butterFilter(data, cutoffFreq, samplingFreq, order = 3, filterType = 'band'):
+    sos = butterParams(cutoffFreq, samplingFreq, order, filterType)
+    return scipy.signal.sosfiltfilt(sos, data)
+    
+filteredData = butterFilter(y, 8, 1006, 3, 'low')
+
+startInd = 0; stopInd = len(x)
+xData = x[startInd:stopInd]
+yData = filteredData[startInd:stopInd]
+xData = np.array(xData); yData = np.array(yData)
+"""

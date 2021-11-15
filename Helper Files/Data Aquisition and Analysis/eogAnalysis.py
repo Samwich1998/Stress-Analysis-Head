@@ -41,7 +41,7 @@ class eogProtocol:
         
         # High Pass Filter Parameters
         self.samplingFreq = samplingFreq          # Depends on the User's Hardware
-        self.cutOffFreq = 8                       # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
+        self.cutOffFreq = 25                       # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
         
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
@@ -342,108 +342,144 @@ class eogProtocol:
     
     def findBlinks(self, xData, yData, channelIndex):
         
-        # Find Blink Parameters
-        findNewPeak = True
-        highestRecorderedBlinkX = 0
-        threshold = 0.25; peakDistance = 110
-        minRisePoints = 50; maxRisePoints = 500
-        peakIndices = []
-        leftBaselineIndexes = []
-                
-        doubleBlinkMaxSep = 200
         
-        initBlink = [[]]; downGesture = [[]]
-        
-        addOn = 3; firstDer = [0]*addOn
-        # Caluclate the Running Slope of the Data
-        for peakInd in range(addOn, len(yData)):
-            # Calculate the First Derivative
-            deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
-            deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
-            firstDer.append(deltaY/deltaX)
-            
-            # --------------------------------------------------------------- #
-            # Track Blink as it Rises
-            if findNewPeak and firstDer[-1] > threshold and peakInd > highestRecorderedBlinkX + peakDistance:
-                # If it is the First Point, Label it as the Baseline
-                if not initBlink[-1]:
-                    leftBaselineIndexes.append(peakInd)
-                # Record the Peak
-                initBlink[-1].append(firstDer[-1])
-                
-            # Remove Blink if Too Many or Little Points
-            elif initBlink[-1] and (len(initBlink[-1]) < minRisePoints or len(initBlink[-1]) > maxRisePoints):
-                # Reset Blink Detection Parameters
-                initBlink.pop(); initBlink.append([])
-                if leftBaselineIndexes:
-                    leftBaselineIndexes.pop()
-                
-            # Once the Slope is Negative, the Peak Rise is Complete
-            elif firstDer[-1] < firstDer[-3]:
-                # If There is a Peak to Detect
-                if initBlink[-1]:
-                    # Check if it is a Dobule Peak (Associated with the Last)
-                    if peakIndices and peakInd - peakIndices[-1] < doubleBlinkMaxSep and yData[leftBaselineIndexes[-2]+2] < yData[leftBaselineIndexes[-1]]:
-                        print("Double Peak")
-                    if peakIndices:
-                        try:
-                            a = self.ax
-                        except:
-                            self.ax = plt.axes(projection='3d')
-                        self.ax.scatter3D([max(initBlink[-1])], [xData[peakIndices[-1]]-xData[leftBaselineIndexes[-1]]], [yData[peakIndices[-1]]-yData[leftBaselineIndexes[-1]]])
-                    # Record the Peak
-                    peakIndices.append(peakInd)
-                    initBlink.append([])   
-                # Stop Looking for a Peak
-                findNewPeak = False
-                
-            # Once the Derivative GOes Negative, We can Start Looking Again
-            elif firstDer[-1] < 0:
-                findNewPeak = True  
-            # --------------------------------------------------------------- #
-            
-            # --------------------------------------------------------------- #
-            if findNewPeak and firstDer[-1] > threshold and peakInd > highestRecorderedBlinkX + peakDistance:
-                i = 1
-                
-        firstDer = np.array(firstDer)
         if False:
-            plt.plot(xData, yData); plt.plot(xData, firstDer/20 + 3.3/2, 'o', markersize = 2)
-            plt.show()
-            if peakIndices:
-                print(np.diff(peakIndices))
-                xData = np.array(xData); yData = np.array(yData)
-                plt.plot(xData, yData); plt.plot(xData[peakIndices], yData[peakIndices], 'o', markersize = 2)
-                plt.plot(xData[leftBaselineIndexes], yData[leftBaselineIndexes], 'ro', markersize = 2)
+            # Find Blink Parameters
+            findNewPeak = True; findRightBaseline = False
+            highestRecorderedBlinkX = 0
+            threshold = 0.1; 
+            peakDistance = 0.05;    # 50 ms Interval Between Peaks. See "BLINKER: Automated Extraction of Ocular Indices from EEG Enabling Large-Scale Analysis"
+            minRiseTime = 0.0;
+            maxRiseTime = 0.54;
+            peakIndices = []
+            leftBaselineIndexes = []
+            rightBaselineIndexes = []
+            
+            runningMean = np.mean(yData)
+            runningSTD = np.std(yData)
+                 
+            doubleBlinkMaxSep = 200
+            
+            initBlink = [[]];
+            blinkPoints = [[]]
+            
+            addOn = 0; firstDer = [0]*addOn
+            # Caluclate the Running Slope of the Data
+            for peakInd in range(addOn, len(yData)):
+             # Calculate the First Derivative
+             deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
+             deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
+             firstDer.append(deltaY/deltaX)
+             
+             # --------------------------------------------------------------- #
+             peakLoc = xData[peakInd]
+             # Track Blink as it Rises
+             if findNewPeak and firstDer[-1] > threshold and peakLoc > highestRecorderedBlinkX + peakDistance:
+                 # If it is the First Point, Label it as the Baseline
+                 if not initBlink[-1]:
+                     leftBaselineIndexes.append(peakInd)
+                 # Record the Peak
+                 initBlink[-1].append(firstDer[-1])
+                 blinkPoints[-1].append(peakInd)
+                 
+             # Remove Blink if Too Many or Little Points
+             elif initBlink[-1] and (maxRiseTime < xData[peakInd] - xData[leftBaselineIndexes[-1]] or xData[peakInd] - xData[leftBaselineIndexes[-1]] < minRiseTime):
+                 # Reset Blink Detection Parameters
+                 initBlink.pop(); initBlink.append([])
+                 blinkPoints.pop(); blinkPoints.append([])
+                 if leftBaselineIndexes:
+                     leftBaselineIndexes.pop()
+                 
+             # Once the Slope is Negative, the Peak Rise is Complete
+             elif findNewPeak and len(firstDer) > 3 and firstDer[-1] < firstDer[-3]:
+                 # If There is a Peak to Detect
+                 if initBlink[-1]:
+                     if runningMean + 1.5*runningSTD < yData[peakInd]:
+                         # Check if it is a Dobule Peak (Associated with the Last)
+                         if peakIndices and peakInd - peakIndices[-1] < doubleBlinkMaxSep and yData[leftBaselineIndexes[-2]+2] < yData[leftBaselineIndexes[-1]]:
+                             print("Double Peak")
+                         if peakIndices:
+                             ax = plt.axes(projection='3d')
+                             ax.scatter3D([max(initBlink[-1])], [xData[peakIndices[-1]]-xData[leftBaselineIndexes[-1]]], [yData[peakIndices[-1]]-yData[leftBaselineIndexes[-1]]])
+                         # Record the Peak
+                         highestRecorderedBlinkX = peakLoc
+                         peakIndices.append(peakInd)
+                         # Stop Looking for a Peak
+                         findNewPeak = False
+                     else:
+                         # Reset Blink Detection Parameters
+                         initBlink.pop(); initBlink.append([])
+                         blinkPoints.pop(); blinkPoints.append([])
+                         if leftBaselineIndexes:
+                             leftBaselineIndexes.pop()
+             elif not findRightBaseline and not findNewPeak and firstDer[-1] < -threshold:
+                 findRightBaseline = True
+                 
+                 
+             # Once the Derivative GOes Negative, We can Start Looking Aga
+             elif findRightBaseline and not findNewPeak and firstDer[-1] > -.01:
+                 # If There is a Peak to Detect
+                 peakWidth = peakLoc - xData[leftBaselineIndexes[-1]]; 
+                 if abs(yData[peakInd] - yData[leftBaselineIndexes[-1]]) < (yData[peakIndices[-1]] - np.mean([yData[peakInd], yData[leftBaselineIndexes[-1]]]))/3:
+                     peakWidth = peakLoc - xData[leftBaselineIndexes[-1]]
+                 elif yData[peakInd] > yData[leftBaselineIndexes[-1]]:
+                     peakWidth = (xData[peakIndices[-1]] - xData[leftBaselineIndexes[-1]])*1.5
+                 else:
+                     peakWidth = (peakLoc - xData[peakIndices[-1]])*1.5
+            
+                     
+                     
+                 if initBlink[-1] and peakWidth < 0.3:
+                     highestRecorderedBlinkX = peakLoc
+                     initBlink.append([])
+                     blinkPoints.append([])
+                     rightBaselineIndexes.append(peakInd)
+                 else:
+                     # Reset Blink Detection Parameters
+                     initBlink.pop(); initBlink.append([])
+                     blinkPoints.pop(); blinkPoints.append([])
+                     if leftBaselineIndexes:
+                         leftBaselineIndexes.pop()
+                         peakIndices.pop()
+                     
+                 findNewPeak = True 
+                 findRightBaseline = False
+                    
+                    
+             # --------------------------------------------------------------- #
+             
+             # --------------------------------------------------------------- #
+             if findNewPeak and firstDer[-1] > threshold and peakInd > highestRecorderedBlinkX + peakDistance:
+                 i = 1
+                 
+            firstDer = np.array(firstDer)
+            if True:
+                plt.plot(xData, yData); plt.plot(xData, firstDer/20 + 3.3/2, 'o', markersize = 2)
                 plt.show()
-        
-        return [], [], []
-
+                if peakIndices:
+                    print(np.diff(peakIndices))
+                    xData = np.array(xData); yData = np.array(yData)
+                    plt.plot(xData, yData); plt.plot(xData[peakIndices], yData[peakIndices], 'o', markersize = 2)
+                    plt.plot(xData[leftBaselineIndexes], yData[leftBaselineIndexes], 'ro', markersize = 2)
+                    plt.plot(xData[rightBaselineIndexes], yData[rightBaselineIndexes], 'ko', markersize = 2)
+                    plt.show()
+                
         # Find New Peak Indices and Last Recorded Peak's xLocation   
-        peakIndicesTop = scipy.signal.find_peaks(yData, prominence=.03, width=20, distance = 20)[0]
-      #  peakIndicesBottom = scipy.signal.find_peaks(-yData, prominence=.01, height = - self.steadyStateEye + self.minVoltageThreshold, width=30, distance = 30)[0]
-          
+        peakIndices = scipy.signal.find_peaks(yData, prominence=.1, width=40, distance = 30)[0]; 
+   #     xData = np.array(xData); yData = np.array(yData)
+   #     plt.plot(xData, yData); plt.plot(xData[peakIndices], yData[peakIndices], 'o', markersize = 2)
+   #     plt.show()
+
         # Find Where the New Peaks Begin
         xPeaksNew = []; yPeaksNew = []; peakInds = []
-        return [], [], []
-        for peakInd in peakIndicesTop:
+        for peakInd in peakIndices:
             xPeakLoc = xData[peakInd]
-            print(xPeakLoc, chain(*self.xPeaksListTop[channelIndex]), self.xPeaksListTop[channelIndex][-1])
             # If it is a New Peak NOT Seen in This Channel
-            if xPeakLoc not in chain(*self.xPeaksListTop[channelIndex]) and xPeakLoc > self.xPeaksListTop[channelIndex][-1]:
+            if xPeakLoc not in self.xPeaksListTop[channelIndex] and xPeakLoc > self.xPeaksListTop[channelIndex][-1]:
                 # Add the Peak
                 xPeaksNew.append(xPeakLoc)
                 yPeaksNew.append(yData[peakInd])
                 peakInds.append(peakInd)
-
-     #   for peakInd in peakIndicesBottom:
-     #       xPeakLoc = xData[peakInd]
-     #       # If it is a New Peak NOT Seen in This Channel
-     #       if xPeakLoc not in self.xPeaksListBottom[channelIndex] and xPeakLoc > self.xPeaksListBottom[channelIndex][-1]:
-     #           # Add the Peak
-     #           xPeaksNew.append(xPeakLoc)
-     #           yPeaksNew.append(yData[peakInd])
-     #           peakInds.append(peakInd)
 
         # Return New Peaks and Their Baselines
         return xPeaksNew, yPeaksNew, peakInds
@@ -468,12 +504,13 @@ class eogProtocol:
                     self.xPeaksListBottom[channelIndex].append(xPeakLoc)
                 else:
                     continue
-
-            plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
-            plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
-            plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
-            plt.plot(xData, yData)
-            plt.show()
+            
+            if False:
+                plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
+                plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
+                plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
+                plt.plot(xData, yData)
+                plt.show()
             
             peakAverage = np.mean(yData[leftBaselineIndex:xPointer+1])
             peakFeatures[-1].append(peakAverage)
@@ -506,6 +543,36 @@ class eogProtocol:
 
         # If Your Binary Search is Too Small, Reduce it
         return self.findNearbyMinimum(data, xPointer, math.floor(binarySearchWindow/2), maxPointsSearch)
+
+    def findBaselineIndex(self, xData, yData, xPointer, searchDirection = 1):
+        
+        if searchDirection == 1:
+            endSearch = len(yData)
+        elif searchDirection == -1:
+            endSearch = -1
+        else:
+            print("Wrong Search Direction")
+            sys.exit()
+        
+        addOn = 5; firstDer = [0]*addOn; skipPoints = 40;
+        foundDrop = False; maxSlope = 0
+        # Caluclate the Running Slope of the Data
+        for peakInd in range(xPointer + searchDirection*(addOn+skipPoints), endSearch, searchDirection):
+            # Calculate the First Derivative
+            deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
+            deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
+            firstDeriv = deltaY/deltaX
+            firstDer.append(deltaY/deltaX)
+            
+            # Verify Major Slope Drop
+            if abs(firstDeriv) > 1:
+                foundDrop = True
+                maxSlope = max(maxSlope, abs(firstDeriv))
+            
+            if foundDrop and abs(firstDeriv) < maxSlope/10:
+                return peakInd
+        return peakInd
+                
 
     def findTraileringAverage(self, recentData, deviationThreshold = 0.08):
         # Base Case in No Points Came in
@@ -556,4 +623,88 @@ class eogProtocol:
             plt.show()
 
 
- 
+"""
+yDiff4 = []
+xDiff4 = []
+blinkDurations = []
+leftIndices = []
+rightIndices = []
+finalInds = []
+toBaselines = 15;
+fitPercent = 0.7
+peakIndices = scipy.signal.find_peaks(yData, prominence=.3, width=50)[0];
+for peakInd in peakIndices:
+    leftBaselineIndex = findBaselineIndex(xData, yData, peakInd, searchDirection = -1)
+    rightBaselineIndex = findBaselineIndex(xData, yData, peakInd, searchDirection = 1)
+
+    if leftBaselineIndex == peakInd or rightBaselineIndex == peakInd:
+        continue
+
+    blinkDuration = xData[rightBaselineIndex] - xData[leftBaselineIndex]
+  #  if xData[rightBaselineIndex] - xData[leftBaselineIndex] > 0.2:
+  #      continue
+    if blinkDuration < 2:
+
+        # Find Place to Start
+        baseIndexes = [leftBaselineIndex, rightBaselineIndex]
+        closestBaseline = np.argmin([yData[leftBaselineIndex], yData[rightBaselineIndex]])
+        distanceFromPeak = int(0.95*(abs(peakInd - baseIndexes[closestBaseline])))
+
+        # Find Start Indices of the Line
+        secondDerivLeft = np.gradient(np.gradient(yData[leftBaselineIndex:peakInd]))
+        beginLeftLineInd = np.argmax(secondDerivLeft)
+        endLeftLineInd = np.argmin(secondDerivLeft)
+
+        secondDerivRight = np.gradient(np.gradient(yData[peakInd:rightBaselineIndex]))
+        beginRightLineInd = np.argmin(secondDerivRight)
+        endRightLineInd = np.argmax(secondDerivRight)
+
+        # Define Left Line Bounds
+        startLeftLine = leftBaselineIndex + beginLeftLineInd + 15
+        endLeftLine = leftBaselineIndex + endLeftLineInd - 15
+        # Define Right Line Bounds
+        startRightLine = peakInd + beginRightLineInd + 15
+        endRightLine = peakInd + endRightLineInd - 15
+
+        if endRightLine <= startRightLine or endLeftLine <= startLeftLine:
+            continue
+
+
+        # Define Lines
+        leftLine = np.polyfit(xData[startLeftLine:endLeftLine], yData[startLeftLine:endLeftLine], 1)
+        rightLine = np.polyfit(xData[startRightLine:endRightLine], yData[startRightLine:endRightLine], 1)
+
+        xIntersect = (rightLine[1] - leftLine[1])/(leftLine[0] - rightLine[0])
+        yIntersect = leftLine[0]*xIntersect + leftLine[1]
+
+        if yIntersect - yData[peakInd] < 0.3:
+            yDiff4.append(yIntersect - yData[peakInd])
+            xDiff4.append(xIntersect - xData[peakInd])
+            blinkDurations.append(blinkDuration)
+            finalInds.append(peakInd)
+            leftIndices.append(leftBaselineIndex)
+            rightIndices.append(rightBaselineIndex)
+
+        if True:
+            plt.plot(xData[peakInd], yData[peakInd], 'ro');
+            plt.plot(xData, yData); plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'go');
+            plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro');
+            plt.plot(xIntersect, yIntersect, 'ko')
+            plt.plot(xData[startLeftLine:endLeftLine], leftLine[0]*xData[startLeftLine:endLeftLine] + leftLine[1])
+            plt.plot(xData[startRightLine:endRightLine], rightLine[0]*xData[startRightLine:endRightLine] + rightLine[1])
+            plt.xlim([xData[leftBaselineIndex], xData[rightBaselineIndex]])
+            plt.show()
+plt.plot(xData, yData); plt.plot(xData[finalInds], yData[finalInds], 'o');
+plt.plot(xData[leftIndices], yData[leftIndices], 'go');
+plt.plot(xData[rightIndices], yData[rightIndices], 'ro');
+plt.xlim([5, 20])
+plt.show()
+xDiff4 = np.array(xDiff4); yDiff4 = np.array(yDiff4)
+#ax = plt.axes(projection='3d')
+plt.plot(xDiff4, yDiff4, 'o'); #plt.xlim([-0.05, 0]); plt.ylim([-.15, 0.05])
+
+
+# array([-5.18623727,  0.06458267])
+
+
+"""

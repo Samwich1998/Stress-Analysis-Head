@@ -549,7 +549,7 @@ class eogProtocol:
         if searchDirection == 1:
             endSearch = len(yData)
         elif searchDirection == -1:
-            endSearch = -1
+            endSearch = max(-1, xPointer - 1000)
         else:
             print("Wrong Search Direction")
             sys.exit()
@@ -565,7 +565,7 @@ class eogProtocol:
             firstDer.append(deltaY/deltaX)
             
             # Verify Major Slope Drop
-            if abs(firstDeriv) > 1:
+            if abs(firstDeriv) > 0.5:
                 foundDrop = True
                 maxSlope = max(maxSlope, abs(firstDeriv))
             

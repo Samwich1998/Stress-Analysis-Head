@@ -22,6 +22,11 @@ from scipy.optimize import curve_fit
 import matplotlib
 import matplotlib.pyplot as plt
 
+from scipy.stats import skew
+from scipy.stats import kurtosis
+
+
+
 
 # --------------------------------------------------------------------------- #
 # ------------------ User Can Edit (Global Variables) ----------------------- #
@@ -41,7 +46,7 @@ class eogProtocol:
         
         # High Pass Filter Parameters
         self.samplingFreq = samplingFreq          # Depends on the User's Hardware
-        self.cutOffFreq = 25                       # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
+        self.cutOffFreq = 25                      # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
         
         # Data Collection Parameters
         self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
@@ -624,6 +629,36 @@ class eogProtocol:
 
 
 """
+
+def findBaselineIndex(xData, yData, xPointer, searchDirection = 1):
+    
+    if searchDirection == 1:
+        endSearch = len(yData)
+    elif searchDirection == -1:
+        endSearch = max(-1, xPointer - 1000)
+    else:
+        print("Wrong Search Direction")
+        sys.exit()
+    
+    addOn = 5; firstDer = [0]*addOn; skipPoints = 40;
+    foundDrop = False; maxSlope = 0
+    # Caluclate the Running Slope of the Data
+    for peakInd in range(xPointer + searchDirection*(addOn+skipPoints), endSearch, searchDirection):
+        # Calculate the First Derivative
+        deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
+        deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
+        firstDeriv = deltaY/deltaX
+        firstDer.append(deltaY/deltaX)
+        
+        # Verify Major Slope Drop
+        if abs(firstDeriv) > 0.5:
+            foundDrop = True
+            maxSlope = max(maxSlope, abs(firstDeriv))
+        
+        if foundDrop and abs(firstDeriv) < maxSlope/10:
+            return peakInd
+    return peakInd
+
 yDiff4 = []
 xDiff4 = []
 blinkDurations = []
@@ -707,4 +742,11 @@ plt.plot(xDiff4, yDiff4, 'o'); #plt.xlim([-0.05, 0]); plt.ylim([-.15, 0.05])
 # array([-5.18623727,  0.06458267])
 
 
+
+# Find the Start Index of the Left Line
+secondDerivLeft = np.diff(yData[leftBaselineIndex:peakInd], 2)
+midLeftLine = int((np.argmax(secondDerivLeft) + np.argmin(secondDerivLeft))/2)
+# Find the Start Index of the Right Line
+secondDerivRight = np.diff(yData[peakInd:rightBaselineIndex], 2)
+midRightLine = int((np.argmin(secondDerivRight) + np.argmax(secondDerivRight))/2)
 """

@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
         saveExcelName = "Samuel Solomon 2021-11-05 Movements.xlsx"  # The Name of the Saved File
-        saveDataFolder = "../Input Data/EOG Data/All Data/Industry Electrodes/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/"   # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
         eyeMovement = "Random".lower() # Make Sure it is Lowercase
         if eyeMovement not in gestureClasses:
@@ -92,8 +92,8 @@ if __name__ == "__main__":
             
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Input Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 4   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
+        testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
@@ -218,10 +218,9 @@ def butterFilter(data, cutoffFreq, samplingFreq, order = 3, filterType = 'band')
     sos = butterParams(cutoffFreq, samplingFreq, order, filterType)
     return scipy.signal.sosfiltfilt(sos, data)
     
-filteredData = butterFilter(y, 8, 1006, 3, 'low')
+filteredData = butterFilter(y, 25, 1006, 3, 'low')
 
 startInd = 0; stopInd = len(x)
-xData = x[startInd:stopInd]
-yData = filteredData[startInd:stopInd]
-xData = np.array(xData); yData = np.array(yData)
+xData = np.array(x[startInd:stopInd])
+yData = np.array(filteredData[startInd:stopInd])
 """

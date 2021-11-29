@@ -98,7 +98,7 @@ if __name__ == "__main__":
     # Input Training Paramaters 
     if trainModel:
         saveModel = False   # Save the Machine Learning Model for Later Use
-        trainDataExcelFolder = "../Input Data/EMG Data/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "..//Users/samuelsolomon/Desktop/Gao Group/Projects/AR-VR Full-Body Sensors/Virtual Reality Software/Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx Data/EMG Data/"  # Path to the Training Data Folder; All .xlsx Data Used
     # Train or Test the Data with the Machine Learning Model
     if trainModel or testModel:
         # Pick the Machine Learning Module to Use
@@ -167,7 +167,7 @@ if __name__ == "__main__":
         readData = executeProtocol()
     
     # ---------------------------------------------------------------------- #
-    # -------------------------- Save Input data --------------------------- #
+    # -------------------------- Save Data --------------------------- #
     # Save the Data in Excel: EOG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
     if saveData:
         # Double Check to See if User Wants to Save the Data

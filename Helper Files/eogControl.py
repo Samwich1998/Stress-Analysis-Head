@@ -56,14 +56,14 @@ if __name__ == "__main__":
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 50000         # The Number of Points to Stream into the Arduino
+    numDataPoints = 1000000         # The Number of Points to Stream into the Arduino
     numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     numFeatures = 10              # The Number of Features to Extract/Save/Train on
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
-    gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Random'])  # Define Labels as Array
+    gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
     #gestureClasses = np.char.lower(['Blink', 'No Blink'])  # Define Labels as Array
 
     # Protocol Switches: Only the First True Variable Excecutes
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # User Options During the Run: Any Number Can be True
     plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
 
@@ -83,17 +83,17 @@ if __name__ == "__main__":
     
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
-        saveExcelName = "Samuel Solomon 2021-11-29 Movements.xlsx"  # The Name of the Saved File
-        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        saveExcelName = "Changhao 2021-12-1 Movements.xlsx"  # The Name of the Saved File
+        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/Movement Trial 2021-12-1/"   # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
-        eyeMovement = "Random".lower() # Make Sure it is Lowercase
+        eyeMovement = "Blink".lower() # Make Sure it is Lowercase
         if eyeMovement not in gestureClasses:
             print("The Gesture", "'" + eyeMovement + "'", "is Not in", gestureClasses)
             
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-29 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
+        testSheetNum = 3   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
@@ -177,10 +177,9 @@ if __name__ == "__main__":
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels, numFeatures = 0)
-            saveInputs.saveData(readData.data, readData.featureList, saveDataFolder, saveExcelName, sheetName)
+            saveInputs.saveData(readData.data, readData.featureList, saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
-    
     
 """
 https://www.frontiersin.org/articles/10.3389/fnins.2017.00012/full

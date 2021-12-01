@@ -171,10 +171,10 @@ class readExcel():
                         self.streamExcelData(trainingExcelFile, analyzeSheet = excelSheet)
                         # Delete the Previous Analysis from Excel (Save Name/Info)
                         sheetName = excelSheet.title
-                        handMovement = sheetName.split(" - ")[1]
+                        currentGesture = sheetName.split(" - ")[1]
                         WB.remove_sheet(excelSheet)
                         # Overwrite Excel Sheet with new Analysis
-                        saveExcelData.saveData(self.analysisProtocol.data, self.analysisProtocol.featureList, trainingDataExcelFolder, excelFile, sheetName=excelSheet, handMovement=handMovement, WB=WB)
+                        saveExcelData.saveData(self.analysisProtocol.data, self.analysisProtocol.featureList, trainingDataExcelFolder, excelFile, sheetName=excelSheet, currentGesture=currentGesture, WB=WB)
                         
         return Training_Data, Training_Labels
 
@@ -197,7 +197,7 @@ class saveExcel:
             }
 
     def saveData(self, data, featureList, saveDataFolder, saveExcelName,
-                     sheetName = "Trial 1 - No Gesture", handMovement = "Data", WB=None):        
+                     sheetName = "Trial 1 - No Gesture", currentGesture = "Data", WB=None):        
         # Create Output File Directory to Save Data: If None
         os.makedirs(saveDataFolder, exist_ok=True)
         
@@ -225,10 +225,10 @@ class saveExcel:
             currentMovementSheets = []
             for sheet in currentSheets:
                 movement = sheet.split(" - ")
-                if handMovement == movement[1]:
+                if currentGesture == movement[1]:
                     currentMovementSheets.append(sheet)
             # Get the Last Trial for this Hand Movement
-            sheetName = max(currentMovementSheets, key=lambda x: int(re.findall(r'\d+', x.split(" - ")[0])[0]), default= "Trial 0 - " + handMovement)
+            sheetName = max(currentMovementSheets, key=lambda x: int(re.findall(r'\d+', x.split(" - ")[0])[0]), default= "Trial 0 - " + currentGesture)
             # Edit SheetName
             sheetInfo = sheetName.split(" - ")
             currentTrial = re.findall(r'\d+', sheetInfo[0])[0]

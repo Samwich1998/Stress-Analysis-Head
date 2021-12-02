@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 1000000         # The Number of Points to Stream into the Arduino
+    numDataPoints = 200000         # The Number of Points to Stream into the Arduino
     numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # User Options During the Run: Any Number Can be True
     plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
         saveExcelName = "Changhao 2021-12-1 Movements.xlsx"  # The Name of the Saved File
         saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/Movement Trial 2021-12-1/"   # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
-        eyeMovement = "Blink".lower() # Make Sure it is Lowercase
+        eyeMovement = "Cold".lower() # Make Sure it is Lowercase
         if eyeMovement not in gestureClasses:
             print("The Gesture", "'" + eyeMovement + "'", "is Not in", gestureClasses)
             

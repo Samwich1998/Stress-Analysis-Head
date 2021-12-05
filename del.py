@@ -7,16 +7,15 @@ from scipy.stats import kurtosis
 from BaselineRemoval import BaselineRemoval
 
 
-def normalizePulseBaseline(pulseData, polynomialDegree):
+def normalizePulseBaseline(curveData, polynomialDegree):
     """
     ----------------------------------------------------------------------
     Input Parameters:
-        pulseData:  y-Axis Data for a Single Pulse (Start-End)
+        curveData:  y-Axis Data for Baseline Removal
         polynomialDegree: Polynomials Used in Baseline Subtraction
     Output Parameters:
-        pulseData: y-Axis Data for a Baseline-Normalized Pulse (Start, End = 0)
-    Use Case: Shift the Pulse to the x-Axis (Removing non-Horizontal Base)
-    Assumption in Function: pulseData is Positive
+        curveData: y-Axis Data for a Baseline-Normalized Curve
+    Assumption in Function: curveData is Positive
     ----------------------------------------------------------------------
     Further API Information Can be Found in the Following Link:
     https://pypi.org/project/BaselineRemoval/
@@ -25,11 +24,11 @@ def normalizePulseBaseline(pulseData, polynomialDegree):
     # Perform Baseline Removal Twice to Ensure Baseline is Gone
     for _ in range(2):
         # Baseline Removal Procedure
-        baseObj = BaselineRemoval(pulseData)  # Create Baseline Object
-        pulseData = baseObj.ModPoly(polynomialDegree) # Perform Modified multi-polynomial Fit Removal
+        baseObj = BaselineRemoval(curveData)  # Create Baseline Object
+        curveData = baseObj.ModPoly(polynomialDegree) # Perform Modified multi-polynomial Fit Removal
 
     # Return the Data With Removed Baseline
-    return pulseData
+    return curveData
 
 
 
@@ -184,8 +183,6 @@ for peakInd in peakIndices:
     elif yData[peakInd] - yData[leftBaselineIndex] < minPeakHeight or yData[peakInd] - yData[rightBaselineIndex] < minPeakHeight:
    #    print("Too Close", xData[peakInd])
         continue
-    
-    #blinkDuration = xData[rightBaselineIndex] - xData[leftBaselineIndex]
     # ----------------------------------------------------------------------- #
     
     # ---------------- Find leftStroke and rightStroke Lines ---------------- #
@@ -212,7 +209,7 @@ for peakInd in peakIndices:
     if baseLinesSkewed:
         averageBaselineY = min(yData[rightBaselineIndex], yData[leftBaselineIndex])
     else:
-     #   delY = yData[rightBaselineIndex] - yData[leftBaselineIndex]
+        delY = yData[rightBaselineIndex] - yData[leftBaselineIndex]
         delX = xData[rightBaselineIndex] - xData[leftBaselineIndex]
         averageBaselineY = yData[leftBaselineIndex] + (delY/delX)*(xData[peakInd] - xData[leftBaselineIndex])
         
@@ -249,20 +246,13 @@ for peakInd in peakIndices:
     dx_dt = np.gradient(xData[peakInd - fromPeakInd:peakInd + fromPeakInd + 1])
     dy_dt = np.gradient(yData[peakInd - fromPeakInd:peakInd + fromPeakInd + 1])
     dy_dt = np.gradient(normalizePulseBaseline(yData[peakInd - fromPeakInd:peakInd + fromPeakInd + 1], 1))
-    
     velocity = np.array([ [dx_dt[i], dy_dt[i]] for i in range(len(dx_dt))])
     ds_dt = np.sqrt(dx_dt * dx_dt + dy_dt * dy_dt)
     tangent = np.array([1/ds_dt] * 2).transpose() * velocity
-
-
     d2s_dt2 = np.gradient(ds_dt)
     d2x_dt2 = np.gradient(dx_dt)
     d2y_dt2 = np.gradient(dy_dt)
-    
     curvature = np.abs(d2x_dt2 * dy_dt - dx_dt * d2y_dt2) / (dx_dt * dx_dt + dy_dt * dy_dt)**1.5
-
-    
-
     # ----------------------------------------------------------------------- #
     
     # ------------------------ Cull Potential Blinks ------------------------ #

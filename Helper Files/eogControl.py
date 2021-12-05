@@ -57,30 +57,33 @@ if __name__ == "__main__":
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 200000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 3000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 200          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numTimePoints = 10000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 900          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
-    numFeatures = 10              # The Number of Features to Extract/Save/Train on
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
-    #gestureClasses = np.char.lower(['Blink', 'No Blink'])  # Define Labels as Array
 
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = True      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = False       # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = True       # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = True         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
-    controlVR = False             # Apply the Algorithm to Control the Virtual Reality View
+    controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
+    
+    blinkFeatures = ['peakTentY', 'blinkAmpTent', 'blinkAmpPeak', 'blinkAmp50Y', 'blinkAmp90Y', 'amplitudeRatio_90_50']   
+    blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction'])
+    blinkFeatures.extend(['tentDeviationX', 'tentDeviationY', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
+    blinkFeatures.extend(['peakSkew', 'peakKurtosis', 'peakEntropy', 'maxCurvature', 'maxAcceleration', 'maxSpeed'])
+    blinkFeatures.extend(['velPeakDuration', 'accPeakDuration1', 'accPeakDuration1', 'velUpAmp', 'velDownAmp', 'accelAmp1', 'accelAmp2', 'accelAmp3'])
+    blinkFeatures.extend(['peakClosingVel1', 'peakClosingVel2', 'peakClosingAccel1', 'peakClosingAccel2', 'peakClosingAccel3', 'velRatio', 'accelRatio', 'halfAmpDuration2', 'amplitudeVelRatio1', 'amplitudeVelRatio2'])
 
-    
-    # ---------------------------------------------------------------------- #
-    
+    # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
         saveExcelName = "Changhao 2021-12-1 Movements.xlsx"  # The Name of the Saved File
@@ -92,13 +95,17 @@ if __name__ == "__main__":
             
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 3   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+     #   testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
+     #   testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Ben 2021-12-1 Movements.xlsx" # Path to the Test Data
+     #   testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/You 2021-12-1 Movements.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Changhao 2021-12-1 Movements.xlsx" # Path to the Test Data
+        testSheetNum = 5   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
-        saveModel = False   # Save the Machine Learning Model for Later Use
-        trainDataExcelFolder = "..//Users/samuelsolomon/Desktop/Gao Group/Projects/AR-VR Full-Body Sensors/Virtual Reality Software/Data/EOG Data/All Data/Industry Electrodes/Samuel Solomon 2021-11-05 Movements.xlsx Data/EMG Data/"  # Path to the Training Data Folder; All .xlsx Data Used
+        saveModel = False  # Save the Machine Learning Model for Later Use
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/"  # Path to the Training Data Folder; All .xlsx Data Used
+    
     # Train or Test the Data with the Machine Learning Model
     if trainModel or testModel:
         # Pick the Machine Learning Module to Use
@@ -144,13 +151,13 @@ if __name__ == "__main__":
         elif trainModel:
             # Extract the Data
             readData = excelData.readExcel(eogProtocol)
-            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, numFeatures, gestureClasses, mode='Train')
+            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, gestureClasses, mode='Train')
             print("\nCollected Signal Data")
             # Train the Data on the Gestures
             performMachineLearning.trainModel(signalData, signalLabels)
             # Save Signals and Labels
             if saveData and performMachineLearning.map2D:
-                saveInputs = excelData.saveExcel(numChannels, numFeatures)
+                saveInputs = excelData.saveExcel(numChannels)
                 saveExcelNameMap = Path(saveExcelName).stem + "_mapedData.xlsx" #"Signal Features with Predicted and True Labels New.xlsx"
                 saveInputs.saveLabeledPoints(performMachineLearning.map2D, signalLabels,  performMachineLearning.predictionModel.predictData(signalData), saveDataFolder, saveExcelNameMap, sheetName = "Signal Data and Labels")
             # Save the Neural Network (The Weights of Each Edge)
@@ -176,7 +183,7 @@ if __name__ == "__main__":
         sheetName = sheetName + eyeMovement
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
-            saveInputs = excelData.saveExcel(numChannels, numFeatures = 0)
+            saveInputs = excelData.saveExcel(numChannels)
             saveInputs.saveData(readData.data, readData.featureList, saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
@@ -222,4 +229,192 @@ filteredData = butterFilter(y, 25, 1006, 3, 'low')
 startInd = 0; stopInd = len(x)
 xData = np.array(x[startInd:stopInd])
 yData = np.array(filteredData[startInd:stopInd])
+
+
+plt.plot(xData, yData)
+plt.xlim(122.5,123)
+
+# Calculate Derivatives
+dx_dt = np.gradient(xData); dy_dt = np.gradient(yData)
+d2x_dt2 = np.gradient(dx_dt); d2y_dt2 = np.gradient(dy_dt,2)
+d2y_dt2_ABS = abs(d2y_dt2)
+# Calculate Peak Shape parameters
+speed = np.sqrt(dx_dt * dx_dt + dy_dt * dy_dt)
+acceleration = np.sqrt(d2x_dt2 * d2x_dt2 + d2y_dt2 * d2y_dt2)
+curvature = np.abs((d2x_dt2 * dy_dt - dx_dt * d2y_dt2)) / speed**3
+# Pull Out Peak Shape Features
+velInds = scipy.signal.find_peaks(speed, prominence=.000001, width=20, height=np.mean(speed))[0];
+accelInds = scipy.signal.find_peaks(d2y_dt2_ABS, prominence=.000001, width=10, height=np.mean(d2y_dt2_ABS))[0];
+
+plt.plot(xData[accelInds], (d2y_dt2_ABS*2/max(d2y_dt2_ABS))[accelInds], 'o')
+plt.plot(xData, d2y_dt2_ABS*2/max(d2y_dt2_ABS))
+plt.plot(xData, speed*2/max(speed))
+#plt.plot(xData[speedInds], (speed*2/max(speed))[speedInds], 'o')
+#plt.plot(xData, d2y_dt2*2/max(d2y_dt2))
+#plt.plot(xData[accelInds], (d2y_dt2*2/max(d2y_dt2))[accelInds])
+
+
+importantFeatures = np.array(readData.analysisProtocol.importantArrays)
+importantFeatures = np.array(readData.analysisProtocol.importantArrays)
+i = 0
+for curvature in importantFeatures[:,2]:
+    i += 1
+    plt.plot(curvature[int(len(curvature)/2)-30:int(len(curvature)/2)+31], 'o')
+    if i == 10:
+        break
+
+
+jiahongFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
+benFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
+youFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
+changhaoFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
+personListBlink = [jiahongFeaturesBlink, benFeaturesBlink, youFeaturesBlink, changhaoFeaturesBlink]
+personListBlink = [changhaoFeaturesBlink]
+
+jiahongFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
+benFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
+youFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
+changhaoFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
+personListDoubleBlink = [jiahongFeaturesDoubleBlink, benFeaturesDoubleBlink, youFeaturesDoubleBlink, changhaoFeaturesDoubleBlink]
+personListDoubleBlink = [changhaoFeaturesDoubleBlink]
+
+jiahongFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
+benFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
+youFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
+changhaoFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
+personListRelaxed = [jiahongFeaturesRelaxed, benFeaturesRelaxed, youFeaturesRelaxed, changhaoFeaturesRelaxed]
+personListRelaxed = [changhaoFeaturesRelaxed]
+
+jiahongFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
+benFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
+youFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
+changhaoFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
+personListCold = [jiahongFeaturesCold, benFeaturesCold, youFeaturesCold, changhaoFeaturesCold]
+personListCold = [changhaoFeaturesCold]
+
+colorList = ['b','k','r','m']
+colorList1 = ['b','k','r','m']
+for i in range(len(personListBlink[0][0])):
+    for j in range(i+1, len(personListBlink[0][0])):
+        fig = plt.figure()
+        
+        for personNum in range(len(personListBlink)):
+            personFeatures = personListBlink[personNum]
+            feature1 = personFeatures[:,i]
+            feature2 = personFeatures[:,j]
+            plt.plot(feature1, feature2, colorList[personNum]+'o')
+        
+        for personNum in range(len(personListDoubleBlink)):
+            personFeatures = personListDoubleBlink[personNum]
+            feature1 = personFeatures[:,i]
+            feature2 = personFeatures[:,j]
+            plt.plot(feature1, feature2, colorList[personNum]+'^')
+                
+        for personNum in range(len(personListRelaxed)):
+            personFeatures = personListRelaxed[personNum]
+            feature1 = personFeatures[:,i]
+            feature2 = personFeatures[:,j]
+            plt.plot(feature1, feature2, colorList[personNum]+'x', zorder = 150)
+        
+        for personNum in range(len(personListCold)):
+            personFeatures = personListCold[personNum]
+            feature1 = personFeatures[:,i]
+            feature2 = personFeatures[:,j]
+            plt.scatter(feature1, feature2, c='w',edgecolors=colorList[personNum], zorder = 100)
+                
+        plt.xlabel(blinkFeatures[i])
+        plt.ylabel(blinkFeatures[j])
+        #fig.savefig('../output/' + blinkFeatures[i] + ' VS ' + blinkFeatures[j] + ".png", dpi=300, bbox_inches='tight')
+        plt.show()
+        
+for i in range(len(personListBlink[0][0])):
+    fig = plt.figure()
+    
+    for personNum in range(len(personListBlink)):
+        personFeatures = personListBlink[personNum]
+        feature1 = personFeatures[:,i]
+        plt.plot(feature1, feature2, colorList[personNum]+'o')
+    
+    for personNum in range(len(personListDoubleBlink)):
+        personFeatures = personListDoubleBlink[personNum]
+        feature1 = personFeatures[:,i]
+        plt.plot(feature1, feature2, colorList[personNum]+'^')
+            
+    for personNum in range(len(personListRelaxed)):
+        personFeatures = personListRelaxed[personNum]
+        feature1 = personFeatures[:,i]
+        plt.plot(feature1, feature2, colorList[personNum]+'x', zorder = 150)
+    
+    for personNum in range(len(personListCold)):
+        personFeatures = personListCold[personNum]
+        feature1 = personFeatures[:,i]
+        plt.scatter(np.arange(0, len(feature1), 1), feature1, c='w',edgecolors=colorList[personNum], zorder = 100)
+            
+    plt.xlabel("Blinks")
+    plt.ylabel(blinkFeatures[i])
+    #fig.savefig('../output/' + blinkFeatures[i] + ".png", dpi=300, bbox_inches='tight')
+    plt.show()
+        
+        
+        
+signalData = []; signalLabels = []
+for personNum in range(len(personListBlink)):
+    personFeatures = personListBlink[personNum]
+    for personFeature in personFeatures:
+        signalData.append(personFeature)
+        signalLabels.append(0)
+
+for personNum in range(len(personListDoubleBlink)):
+    personFeatures = personListDoubleBlink[personNum]
+    for personFeature in personFeatures:
+        signalData.append(personFeature)
+        signalLabels.append(0)
+
+for personNum in range(len(personListRelaxed)):
+    personFeatures = personListRelaxed[personNum]
+    for personFeature in personFeatures:
+        signalData.append(personFeature)
+        signalLabels.append(0)
+
+for personNum in range(len(personListCold)):
+    personFeatures = personListCold[personNum]
+    for personFeature in personFeatures:
+        signalData.append(personFeature)
+        signalLabels.append(1)
+
+
+model = neighbors.KNeighborsClassifier(n_neighbors = 2, weights = 'distance', algorithm = 'auto', 
+                        leaf_size = 30, p = 1, metric = 'minkowski', metric_params = None, n_jobs = None)
+Training_Data, Testing_Data, Training_Labels, Testing_Labels = train_test_split(signalData, signalLabels, test_size=0.33, shuffle= True, stratify=signalLabels)
+model.fit(Training_Data, Training_Labels)
+model.score(signalData, signalLabels)
+
+
+
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Dense(units=len(Training_Data[0]), activation='sigmoid'))
+model.add(tf.keras.layers.Dense(units=1, activation='softmax'))
+
+opt = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
+loss = 'categorical_crossentropy'
+metric = ['accuracy', 'binary_crossentropy']
+
+model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
+
+# For mini-batch gradient decent we want it small (not full batch) to better generalize data
+max_batch_size = 128  # Keep Batch sizes relatively small (no more than 64 or 128)
+mini_batch_gd = min(len(Training_Data)//4, max_batch_size)
+mini_batch_gd = max(1, mini_batch_gd)  # For really small data samples at least take 1 data point
+# For every Epoch (loop), run the Neural Network by:
+    # With uninitialized weights, bring data through network
+    # Calculate the loss based on the data
+    # Perform optimizer to update the weights
+history = model.fit(Training_Data, Training_Labels, validation_split=0.33, epochs=int(epochs), shuffle=True, batch_size = int(mini_batch_gd), verbose = seeTrainingSteps)
+# Score the Model
+results = model.evaluate(Testing_Data, Testing_Labels, batch_size=mini_batch_gd, verbose = seeTrainingSteps)
+score = results[0]; accuracy = results[1]; 
+print('Test score:', score)
+print('Test accuracy:', accuracy)
+
+
 """

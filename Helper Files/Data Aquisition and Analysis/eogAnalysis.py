@@ -13,7 +13,6 @@ import numpy as np
 # Peak Detection
 import scipy
 import scipy.signal
-from  itertools import chain
 # High/Low Pass Filters
 from scipy.signal import butter
 # Calibration Fitting
@@ -21,12 +20,14 @@ from scipy.optimize import curve_fit
 # Plotting
 import matplotlib
 import matplotlib.pyplot as plt
-
+# Feature Extraction
 from scipy.stats import skew
+from scipy import interpolate
 from scipy.stats import kurtosis
+from BaselineRemoval import BaselineRemoval
 
-
-
+from scipy.stats import entropy
+import heapq
 
 # --------------------------------------------------------------------------- #
 # ------------------ User Can Edit (Global Variables) ----------------------- #
@@ -89,12 +90,15 @@ class eogProtocol:
         
         # Reset Last Eye Voltage (Volts)
         self.currentEyeVoltages = [self.steadyStateEye for _ in range(self.numChannels)]
+        # Reset Feature Extraction
+        self.blinkFeatures = []
+        # Reset Blink Indices
+        self.singleBlinksX = []
+        self.multipleBlinksX = []
+        self.blinksXLocs = []
+        self.blinksYLocs = []
         
-        self.xPeaksListTop = [[0] for _ in range(self.numChannels)]
-        self.xPeaksListBottom = [[0] for _ in range(self.numChannels)]
-        self.featureList = [[] for _ in range(self.numChannels)]
-        self.triggerHolders = [[] for _ in range(self.numChannels)]
-        self.lastTriggersAnalyzed = [[0,0] for _ in range(self.numChannels)]
+        self.importantArrays = []
         
         # Close Any Opened Plots
         if self.plotStreamedData:
@@ -135,16 +139,18 @@ class eogProtocol:
             self.bioelectricPlotAxes[channelIndex].set_ylabel("Bioelectric Signal (Volts)")
             
         # Create the Data Plots
-        self.filteredBioelectricPlotAxes = [] 
-        self.filteredBioelectricDataPlots = []
+        self.eyeBlinks = []
         self.trailingAveragePlots = []
+        self.filteredBioelectricDataPlots = []
+        self.filteredBioelectricPlotAxes = [] 
         for channelIndex in range(self.numChannels):
             # Create Plot Axes
             self.filteredBioelectricPlotAxes.append(axes[channelIndex, 1])
             # Plot Flitered Peaks
             self.filteredBioelectricDataPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
             self.trailingAveragePlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:blue", linewidth=1, alpha = 0.65)[0])
-            
+            self.eyeBlinks.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], 'o', c="tab:blue", markersize=7, alpha = 0.65)[0])
+
             # Set Figure Limits
             self.filteredBioelectricPlotAxes[channelIndex].set_ylim(yLimLow, yLimHigh)
             # Label Axis + Add Title
@@ -167,6 +173,7 @@ class eogProtocol:
             startBPFindex = max(dataFinger - self.bandPassBuffer, 0)
             yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints].copy()
             
+            # Get the Sampling Frequency from the First Batch (If Not Given)
             if not self.samplingFreq:
                 self.samplingFreq = len(self.data['timePoints'][startBPFindex:])/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
                 print("Setting Sampling Frequency to", self.samplingFreq)
@@ -191,67 +198,25 @@ class eogProtocol:
                 eyeAngles.append(eyeAngle)
             # --------------------------------------------------------------- #
             
-            # -------------------- Extract Eye Gestures  -------------------- #
-            # Extarct EOG Peaks
-            filteredDataX = self.data['timePoints'][-len(filteredData):]
-            xPeaksNew, yPeaksNew, peakInds = self.findBlinks(filteredDataX, filteredData, channelIndex)
+            # ------------------- Extract Blink Features  ------------------- #
+            # Extarct EOG Peaks from Up Channel
+            if channelIndex == 0:
+                filteredDataX = self.data['timePoints'][-len(filteredData):]
+                self.findBlinks(filteredDataX, filteredData, channelIndex)
+            # --------------------------------------------------------------- #
             
-            # Extract Features from the Peaks
-            newFeatures = self.extractFeatures(filteredDataX, filteredData, peakInds, channelIndex)
-
-            """
-            # Read in New Points and Check for Features
-            for pointInd in range(self.lastTriggersAnalyzed[channelIndex][0] + 1, len(self.data['timePoints'])):
-                # Extract X,Y Data
-                timePoint = self.data['timePoints'][pointInd]
-                dataPoint = filteredData[pointInd - (len(self.data['timePoints']) - len(filteredData))]
-                # Check to See if the Gesture has Just Started
-                if abs(dataPoint - self.steadyStateEye) > self.minVoltageThreshold:
-                    if not self.lastTriggersAnalyzed[channelIndex][0] or len(self.triggerHolders[channelIndex][-1]) == 2:
-                        # Store the Start of the Gesture
-                        self.lastTriggersAnalyzed[channelIndex][0] = pointInd
-                        self.triggerHolders[channelIndex].append([(self.lastTriggersAnalyzed[channelIndex][0], timePoint, dataPoint)])
-                # Else, Check if the Gesture Has Just Finished
-                elif self.lastTriggersAnalyzed[channelIndex][0] and len(self.triggerHolders[channelIndex][-1]) == 1:
-                    # If the Peak Only Touches Above the Trigger Slightly
-                    if pointInd - self.lastTriggersAnalyzed[channelIndex][0] < 100:
-                        # Remove the Trigger
-                        self.triggerHolders[channelIndex].pop()
-                        continue
-                    # Save the New Last Trigger
-                    self.lastTriggersAnalyzed[channelIndex][1] = pointInd
-                    # Save the Endpoint if Enough of a Peak is Showing
-                    self.triggerHolders[channelIndex][-1].append((pointInd, timePoint, dataPoint))
-                    print("HERE", self.triggerHolders[channelIndex][-1][0][0],self.triggerHolders[channelIndex][-1][1][0])
-                    plt.plot(self.data['timePoints'], self.data['Channel' + str(channelIndex+1)])
-                    plt.plot(self.data['timePoints'][self.triggerHolders[channelIndex][-1][0][0]], self.data['Channel' + str(channelIndex+1)][self.triggerHolders[channelIndex][-1][0][0]], 'o', markersize=5)
-                    plt.plot(self.data['timePoints'][self.triggerHolders[channelIndex][-1][1][0]], self.data['Channel' + str(channelIndex+1)][self.triggerHolders[channelIndex][-1][1][0]], 'o', markersize=5)
-                    plt.plot([0, 6], [self.steadyStateEye + self.minVoltageThreshold, self.steadyStateEye + self.minVoltageThreshold])
-                    plt.plot([0, 6], [self.steadyStateEye - self.minVoltageThreshold, self.steadyStateEye - self.minVoltageThreshold])
-
-                    leftBaselineIndex = self.findNearbyMinimum(self.data['Channel' + str(channelIndex+1)], self.triggerHolders[channelIndex][-1][0][0], binarySearchWindow = -25, maxPointsSearch = 1000)
-                    rightBaselineIndex = self.findNearbyMinimum(self.data['Channel' + str(channelIndex+1)], self.triggerHolders[channelIndex][-1][1][0], binarySearchWindow = 25, maxPointsSearch = 1000)
-                    plt.plot(self.data['timePoints'][leftBaselineIndex], self.data['Channel' + str(channelIndex+1)][leftBaselineIndex], 'o', markersize=5)
-                    plt.plot(self.data['timePoints'][rightBaselineIndex], self.data['Channel' + str(channelIndex+1)][rightBaselineIndex], 'o', markersize=5)
-                    
-                    timePoints1 = self.data['timePoints'][-len(filteredData):]
-                    plt.plot(timePoints1, filteredData)
-
-                    plt.show()
-            """            
-            # --------------- Calibrate Angle Prediction Model -------------- #
-            if calibrateModel:
-                if self.calibrateChannelNum == channelIndex:
-                    argMax = np.argmax(filteredData)
-                    argMin = np.argmin(filteredData)
-                    earliestExtrema = argMax if argMax < argMin else argMin
-                    
-                    self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
-                    plt.plot(self.timePoints, filteredData)
-                    plt.plot(self.timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
-                    plt.show()
-                    
-                    self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 10]))
+            # --------------------- Calibrate Eye Angle --------------------- #
+            if calibrateModel and self.calibrateChannelNum == channelIndex:
+                argMax = np.argmax(filteredData)
+                argMin = np.argmin(filteredData)
+                earliestExtrema = argMax if argMax < argMin else argMin
+                
+                self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+                plt.plot(self.timePoints, filteredData)
+                plt.plot(self.timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
+                plt.show()
+                
+                self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 10]))
             # --------------------------------------------------------------- #
             
             # ------------------- Plot Biolectric Signals ------------------- #
@@ -276,27 +241,24 @@ class eogProtocol:
                 # Plot the Eye's Angle if Electrodes are Calibrated
                 if self.predictEyeAngle[channelIndex]:
                     self.filteredBioelectricPlotAxes[channelIndex].legend(["Eye's Angle: " + "%.3g"%eyeAngle], loc="upper left")
-            # --------------------------------------------------------------- #    
-        # ------------------------------------------------------------------- #
-        # ------------------------------------------------------------------- #
+                # Add Eye Blink Peaks
+                if channelIndex == 0:
+                    self.eyeBlinks[channelIndex].set_data(self.blinksXLocs, self.blinksYLocs)
+            # --------------------------------------------------------------- #   
             
         # -------------------- Update Virtual Reality  ---------------------- #
         if actionControl and self.predictEyeAngle[channelIndex] and not calibrateModel:
             actionControl.setGaze(eyeAngles)
         # ------------------------------------------------------------------- #
 
-        # ------------------------ Predict Movement ------------------------- #
-
-        # ------------------------------------------------------------------- #
-
-        # ------------------------------------------------------------------- #
+        # -------------------------- Update Plots --------------------------- #
         # Update to Get New Data Next Round
         if plotStreamedData and not calibrateModel:
             self.fig.show()
             self.fig.canvas.flush_events()
             self.fig.canvas.draw()
-        # --------------------------------------------------------------------#
-    
+        # --------------------------------------------------------------------#  
+        
 
     def analyzeFullBatch(self, channelIndex = 1):
         print("Printing Seperate test plots")
@@ -344,188 +306,265 @@ class eogProtocol:
         sos = self.butterParams(cutoffFreq, samplingFreq, order, filterType)
         return scipy.signal.sosfiltfilt(sos, data)
     
-    
     def findBlinks(self, xData, yData, channelIndex):
+        minBaselinePoints = 10
+        minChi2 = 5*10E-5
+        minPeakHeight = 0.1   # No Less Than 0.11
+        multPeakSepMax = 0.5  # No Less Than 0.25
         
-        
-        if False:
-            # Find Blink Parameters
-            findNewPeak = True; findRightBaseline = False
-            highestRecorderedBlinkX = 0
-            threshold = 0.1; 
-            peakDistance = 0.05;    # 50 ms Interval Between Peaks. See "BLINKER: Automated Extraction of Ocular Indices from EEG Enabling Large-Scale Analysis"
-            minRiseTime = 0.0;
-            maxRiseTime = 0.54;
-            peakIndices = []
-            leftBaselineIndexes = []
-            rightBaselineIndexes = []
-            
-            runningMean = np.mean(yData)
-            runningSTD = np.std(yData)
-                 
-            doubleBlinkMaxSep = 200
-            
-            initBlink = [[]];
-            blinkPoints = [[]]
-            
-            addOn = 0; firstDer = [0]*addOn
-            # Caluclate the Running Slope of the Data
-            for peakInd in range(addOn, len(yData)):
-             # Calculate the First Derivative
-             deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
-             deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
-             firstDer.append(deltaY/deltaX)
-             
-             # --------------------------------------------------------------- #
-             peakLoc = xData[peakInd]
-             # Track Blink as it Rises
-             if findNewPeak and firstDer[-1] > threshold and peakLoc > highestRecorderedBlinkX + peakDistance:
-                 # If it is the First Point, Label it as the Baseline
-                 if not initBlink[-1]:
-                     leftBaselineIndexes.append(peakInd)
-                 # Record the Peak
-                 initBlink[-1].append(firstDer[-1])
-                 blinkPoints[-1].append(peakInd)
-                 
-             # Remove Blink if Too Many or Little Points
-             elif initBlink[-1] and (maxRiseTime < xData[peakInd] - xData[leftBaselineIndexes[-1]] or xData[peakInd] - xData[leftBaselineIndexes[-1]] < minRiseTime):
-                 # Reset Blink Detection Parameters
-                 initBlink.pop(); initBlink.append([])
-                 blinkPoints.pop(); blinkPoints.append([])
-                 if leftBaselineIndexes:
-                     leftBaselineIndexes.pop()
-                 
-             # Once the Slope is Negative, the Peak Rise is Complete
-             elif findNewPeak and len(firstDer) > 3 and firstDer[-1] < firstDer[-3]:
-                 # If There is a Peak to Detect
-                 if initBlink[-1]:
-                     if runningMean + 1.5*runningSTD < yData[peakInd]:
-                         # Check if it is a Dobule Peak (Associated with the Last)
-                         if peakIndices and peakInd - peakIndices[-1] < doubleBlinkMaxSep and yData[leftBaselineIndexes[-2]+2] < yData[leftBaselineIndexes[-1]]:
-                             print("Double Peak")
-                         if peakIndices:
-                             ax = plt.axes(projection='3d')
-                             ax.scatter3D([max(initBlink[-1])], [xData[peakIndices[-1]]-xData[leftBaselineIndexes[-1]]], [yData[peakIndices[-1]]-yData[leftBaselineIndexes[-1]]])
-                         # Record the Peak
-                         highestRecorderedBlinkX = peakLoc
-                         peakIndices.append(peakInd)
-                         # Stop Looking for a Peak
-                         findNewPeak = False
-                     else:
-                         # Reset Blink Detection Parameters
-                         initBlink.pop(); initBlink.append([])
-                         blinkPoints.pop(); blinkPoints.append([])
-                         if leftBaselineIndexes:
-                             leftBaselineIndexes.pop()
-             elif not findRightBaseline and not findNewPeak and firstDer[-1] < -threshold:
-                 findRightBaseline = True
-                 
-                 
-             # Once the Derivative GOes Negative, We can Start Looking Aga
-             elif findRightBaseline and not findNewPeak and firstDer[-1] > -.01:
-                 # If There is a Peak to Detect
-                 peakWidth = peakLoc - xData[leftBaselineIndexes[-1]]; 
-                 if abs(yData[peakInd] - yData[leftBaselineIndexes[-1]]) < (yData[peakIndices[-1]] - np.mean([yData[peakInd], yData[leftBaselineIndexes[-1]]]))/3:
-                     peakWidth = peakLoc - xData[leftBaselineIndexes[-1]]
-                 elif yData[peakInd] > yData[leftBaselineIndexes[-1]]:
-                     peakWidth = (xData[peakIndices[-1]] - xData[leftBaselineIndexes[-1]])*1.5
-                 else:
-                     peakWidth = (peakLoc - xData[peakIndices[-1]])*1.5
-            
-                     
-                     
-                 if initBlink[-1] and peakWidth < 0.3:
-                     highestRecorderedBlinkX = peakLoc
-                     initBlink.append([])
-                     blinkPoints.append([])
-                     rightBaselineIndexes.append(peakInd)
-                 else:
-                     # Reset Blink Detection Parameters
-                     initBlink.pop(); initBlink.append([])
-                     blinkPoints.pop(); blinkPoints.append([])
-                     if leftBaselineIndexes:
-                         leftBaselineIndexes.pop()
-                         peakIndices.pop()
-                     
-                 findNewPeak = True 
-                 findRightBaseline = False
-                    
-                    
-             # --------------------------------------------------------------- #
-             
-             # --------------------------------------------------------------- #
-             if findNewPeak and firstDer[-1] > threshold and peakInd > highestRecorderedBlinkX + peakDistance:
-                 i = 1
-                 
-            firstDer = np.array(firstDer)
-            if True:
-                plt.plot(xData, yData); plt.plot(xData, firstDer/20 + 3.3/2, 'o', markersize = 2)
-                plt.show()
-                if peakIndices:
-                    print(np.diff(peakIndices))
-                    xData = np.array(xData); yData = np.array(yData)
-                    plt.plot(xData, yData); plt.plot(xData[peakIndices], yData[peakIndices], 'o', markersize = 2)
-                    plt.plot(xData[leftBaselineIndexes], yData[leftBaselineIndexes], 'ro', markersize = 2)
-                    plt.plot(xData[rightBaselineIndexes], yData[rightBaselineIndexes], 'ko', markersize = 2)
-                    plt.show()
-                
-        # Find New Peak Indices and Last Recorded Peak's xLocation   
-        peakIndices = scipy.signal.find_peaks(yData, prominence=.1, width=40, distance = 30)[0]; 
-   #     xData = np.array(xData); yData = np.array(yData)
-   #     plt.plot(xData, yData); plt.plot(xData[peakIndices], yData[peakIndices], 'o', markersize = 2)
-   #     plt.show()
-
-        # Find Where the New Peaks Begin
-        xPeaksNew = []; yPeaksNew = []; peakInds = []
+        # Find All Potential Blinks in the Data
+        peakIndices = scipy.signal.find_peaks(yData, prominence=.01, width=20)[0];
+        # Extract the True Blinks and Their Features
         for peakInd in peakIndices:
-            xPeakLoc = xData[peakInd]
-            # If it is a New Peak NOT Seen in This Channel
-            if xPeakLoc not in self.xPeaksListTop[channelIndex] and xPeakLoc > self.xPeaksListTop[channelIndex][-1]:
-                # Add the Peak
-                xPeaksNew.append(xPeakLoc)
-                yPeaksNew.append(yData[peakInd])
-                peakInds.append(peakInd)
-
-        # Return New Peaks and Their Baselines
-        return xPeaksNew, yPeaksNew, peakInds
-
-    def extractFeatures(self, xData, yData, peakInds, channelIndex):
-        peakFeatures = []
-        for xPointer in peakInds:
-            peakFeatures.append([])
-            xPeakLoc = xData[xPointer]
-            # Take Average of the Signal (Only Left Side As I Want to Decipher Motor Intention as Fast as I Can; Plus the Signal is generally Symmetric)       
-            if yData[xPointer] > self.steadyStateEye:
-                leftBaselineIndex = self.findNearbyMinimum(yData, xPointer, binarySearchWindow = -40, maxPointsSearch = 1000)
-                rightBaselineIndex = self.findNearbyMinimum(yData, xPointer, binarySearchWindow = 40, maxPointsSearch = 1000)
-                if xPeakLoc not in self.xPeaksListTop[channelIndex] and (len(yData) - rightBaselineIndex > 40 or leftBaselineIndex > 40):
-                    self.xPeaksListTop[channelIndex].append(xPeakLoc)
+            peakLocX = xData[peakInd]
+            
+            # If the Peak Has Already Been Recorded, Don't ReAnalyze
+            if self.blinksXLocs and peakLocX <= self.blinksXLocs[-1]+0.1:
+                continue
+            
+            # ------------------ Find the Blink's Baselines ----------------- #
+            # Calculate the Left and Right Baseline of the Peak
+            leftBaselineIndex = self.findBaselineIndex(xData, yData, peakInd, searchDirection = -1)
+            rightBaselineIndex = self.findBaselineIndex(xData, yData, peakInd, searchDirection = 1)
+            
+            # If No Baseline is Found, Ignore the Blink (Too Noisy, Probably Not a Blink)
+            if leftBaselineIndex >= peakInd - minBaselinePoints or rightBaselineIndex <= peakInd + minBaselinePoints:
+                continue
+            # If the Peak is Too Small, Remove the Peak
+            elif yData[peakInd] - yData[leftBaselineIndex] < minPeakHeight or yData[peakInd] - yData[rightBaselineIndex] < minPeakHeight:
+                #print("Too Small", peakLocX)
+                continue
+            # --------------------------------------------------------------- #
+            
+            # ------------ Find leftStroke and rightStroke Lines ------------ #
+            # Calculate the leftStroke and rightStroke Lines
+            leftLineParams, startLeftLineInd, endLeftLineInd = self.findPeakLines_TWO(xData, yData, leftBaselineIndex, peakInd, minChi2, searchDirection = 1)
+            rightLineParams, startRightLineInd, endRightLineInd = self.findPeakLines_TWO(xData, yData, rightBaselineIndex, peakInd, minChi2, searchDirection = -1)
+        
+            # Remove Peaks Without a Good Line
+            if not startLeftLineInd or not startRightLineInd:
+                print("No Line", peakLocX)
+                continue
+            # --------------------------------------------------------------- #
+            
+            # -------------------- Extract Blink Features ------------------- #
+            newFeatures = self.extractFeatures(xData, yData, peakInd, leftBaselineIndex, rightBaselineIndex, leftLineParams, rightLineParams)
+            
+            # Remove Peaks with Bad Blink Features
+            if len(newFeatures) == 0:
+                continue
+            # Else, Add the New Features
+            self.blinkFeatures.append(newFeatures)
+            # --------------------------------------------------------------- #
+            
+            # ----------------- Singular or Multiple Blinks? ---------------- #
+            # Check if the Blink is a Part of a Multiple Blink Sequence
+            if self.singleBlinksX and peakLocX - self.singleBlinksX[-1] < multPeakSepMax:
+                # If So, Remove the Last Single Blink as its a Multiple
+                lastBlinkX = self.singleBlinksX.pop()
+                # Check if Other Associated Multiples Have Been Found
+                if self.multipleBlinksX and peakLocX - self.multipleBlinksX[-1][-1] < multPeakSepMax:
+                    self.multipleBlinksX[-1].append(peakInd)
                 else:
-                    continue
+                    self.multipleBlinksX.append([lastBlinkX, peakLocX])
             else:
-                leftBaselineIndex = self.findNearbyMinimum(-yData, xPointer, binarySearchWindow = -40, maxPointsSearch = 1000)
-                rightBaselineIndex = self.findNearbyMinimum(-yData, xPointer, binarySearchWindow = 40, maxPointsSearch = 1000)
-                if xPeakLoc not in self.xPeaksListBottom[channelIndex] and len(yData) - rightBaselineIndex > 40 or leftBaselineIndex > 40:
-                    self.xPeaksListBottom[channelIndex].append(xPeakLoc)
-                else:
-                    continue
+                self.singleBlinksX.append(peakLocX)
+            # Record the Blink's Location
+            self.blinksXLocs.append(peakLocX)
+            self.blinksYLocs.append(yData[peakInd])
+            # --------------------------------------------------------------- #
             
+            # ----------------------- Plot Tent Shape ----------------------- #
             if False:
-                plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'bo', markersize=5)
-                plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro', markersize=5)
-                plt.plot(xData[xPointer], yData[xPointer], 'ko', markersize=5)
-                plt.plot(xData, yData)
+                peakTentX, peakTentY = newFeatures[0], newFeatures[1]
+                xData = np.array(xData); yData = np.array(yData)
+                # Plot the Peak
+                plt.plot(xData, yData);
+                plt.plot(xData[peakInd], yData[peakInd], 'ko');
+                plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'go');
+                plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro');
+                plt.plot(peakTentX, peakTentY, 'kx')
+                #plt.plot([leftBlinkBaselineX, rightBlinkBaselineX], [leftBlinkBaselineY, rightBlinkBaselineY], 'bo');
+                plt.plot(xData[startLeftLineInd:endLeftLineInd], leftLineParams[0]*xData[startLeftLineInd:endLeftLineInd] + leftLineParams[1])
+                plt.plot(xData[startRightLineInd:endRightLineInd], rightLineParams[0]*xData[startRightLineInd:endRightLineInd] + rightLineParams[1])
+                # Figure Aesthetics
+                plt.xlim([xData[leftBaselineIndex], xData[rightBaselineIndex]])
                 plt.show()
-            
-            peakAverage = np.mean(yData[leftBaselineIndex:xPointer+1])
-            peakFeatures[-1].append(peakAverage)
-        #    plt.plot(peakAnalysisData)
-        #    plt.plot(xPointer, peakAnalysisData[xPointer], 'o')
-        #    plt.plot(leftBaselineIndex, peakAnalysisData[leftBaselineIndex], 'o')
-        #    plt.show()
-        #    print(leftBaselineIndex, xPointer)
-        # Return Features
-        return peakFeatures
+            # --------------------------------------------------------------- #
+    
+    def findIntersectionPoint(self, leftLineParams, rightLineParams):
+        xPoint = (rightLineParams[1] - leftLineParams[1])/(leftLineParams[0] - rightLineParams[0])
+        yPoint = leftLineParams[0]*xPoint + leftLineParams[1]
+        return xPoint, yPoint
+
+    def findClosestInd(self, data, val):
+        return data[np.argmin(abs(data - val))]
+    
+    def organizeVelInds(self, xData, speed, velInds):
+        newInds = []
+        
+        
+        return newInds
+
+    def organizeDerivPeaks(self, dy_dt_ABS, peakInd, velIndsTotal, accelInds):    
+        # Take the Highest Indices
+        velInds = [max(velIndsTotal[velIndsTotal < peakInd], key = lambda velInd: dy_dt_ABS[velInd])]
+        velInds.append(max(velIndsTotal[velIndsTotal > peakInd], key = lambda velInd: dy_dt_ABS[velInd]))
+        # Verify That the Index is Correct, Else Remove the Peak (Improper Blink)
+        if velInds[0] > peakInd or velInds[1] < peakInd:
+            print("Bad Peak ... WHAT")
+            return [], []
+        # Get the Correct Accel Inds
+        newIndsAccel = [accelInds[accelInds < velInds[0]][-1]]
+        newIndsAccel.append(accelInds[accelInds > velInds[0]][0])
+        
+        return velInds, newIndsAccel
+    
+    def quantifyPeakShape(self, xData, yData, peakInd, peakAmp):
+        # Calculate Derivatives
+        dx_dt = np.gradient(xData); dy_dt = np.gradient(yData)
+        d2x_dt2 = np.gradient(dx_dt); d2y_dt2 = np.gradient(dy_dt)
+        d2y_dt2_ABS = abs(d2y_dt2); dy_dt_ABS = abs(dy_dt)
+        # Calculate Peak Shape parameters
+        speed = np.sqrt(dx_dt * dx_dt + dy_dt * dy_dt)
+        acceleration = np.sqrt(d2x_dt2 * d2x_dt2 + d2y_dt2 * d2y_dt2)
+        curvature = np.abs((d2x_dt2 * dy_dt - dx_dt * d2y_dt2)) / speed**3
+        # Pull Out Peak Shape Features
+        velIndsTotal = scipy.signal.find_peaks(dy_dt_ABS, prominence=.000001, width=20, height=np.mean(dy_dt_ABS))[0];
+        accelIndsTotal = scipy.signal.find_peaks(d2y_dt2_ABS, prominence=.000001, width=10, height=np.mean(d2y_dt2_ABS))[0];
+
+        if len(velIndsTotal) >= 2 and len(accelIndsTotal) >= 2:
+            # For Good Derivative, Find the Features
+            velInds, accelInds = self.organizeDerivPeaks(dy_dt_ABS, peakInd, velIndsTotal, accelIndsTotal)
+            # Extract Blink Velocities
+            peakClosingVelRatio = dy_dt_ABS[velInds[0]]/(peakAmp - yData[velInds[0]])
+            peakOpeningVelRatio = dy_dt_ABS[velInds[1]]/(peakAmp - yData[velInds[1]])
+            # Extract Blink Acceleration
+            peakClosingAccelRatio = d2y_dt2_ABS[accelInds[0]]/(peakAmp - yData[accelInds[0]])
+            peakMidClosedAccelRatio = d2y_dt2_ABS[accelInds[1]]/(peakAmp - yData[accelInds[1]])
+            # Ratio
+            velRatio = peakOpeningVelRatio/peakClosingVelRatio
+            accelRatio = peakClosingAccelRatio/peakMidClosedAccelRatio
+            # New Half Duration
+            halfAmpDuration2 = xData[int(len(yData)/2):][np.argmin(abs(yData[int(len(yData)/2):] - dy_dt_ABS[velInds[0]]))] - xData[velInds[0]]
+            rightHalfAmpDuration = xData[velInds[1]] - xData[0:int(len(yData)/2)][np.argmin(abs(yData[int(len(yData)/2):] - dy_dt_ABS[velInds[1]]))]
+            # Durations
+            velPeakDuration = xData[velInds[1]] - xData[velInds[0]]
+            accPeakDuration1 = xData[accelInds[1]] - xData[accelInds[0]]
+            # Compile the Features
+            indexParams = [peakClosingVelRatio, peakOpeningVelRatio, peakClosingAccelRatio, peakMidClosedAccelRatio]
+            indexParams.extend([velRatio, accelRatio, halfAmpDuration2, velPeakDuration, accPeakDuration1, rightHalfAmpDuration])
+            # Reduce the Derivatives
+            return speed, acceleration, curvature, indexParams
+        # Else, Remove the Blink
+        else:
+            return None, None, None, []
+        
+        
+
+    def extractFeatures(self, xData, yData, peakInd, leftBaselineIndex, rightBaselineIndex, leftLineParams, rightLineParams):
+        peakShapeBuffer = 15
+        
+        # ----------------------- Remove Peak Baseline ---------------------- #
+        # Account for Skewed Baseline: Probably From Eye Movement Alongside Blink
+        baseLinesSkewed = abs(yData[rightBaselineIndex] - yData[leftBaselineIndex]) > 0.5*(yData[peakInd] - max(yData[rightBaselineIndex], yData[leftBaselineIndex]))
+        # Calculate Baseline of the Peak
+        if baseLinesSkewed:
+            # If Skewed, Ignore the Skewed Point, and Take the Minimum Baseline
+            peakBaselineY = min(yData[rightBaselineIndex], yData[leftBaselineIndex])
+        else:
+            # If Proper, Take a Linear Fit of the Base Points
+            delY = yData[rightBaselineIndex] - yData[leftBaselineIndex]
+            delX = xData[rightBaselineIndex] - xData[leftBaselineIndex]
+            peakBaselineY = yData[leftBaselineIndex] + (delY/delX)*(xData[peakInd] - xData[leftBaselineIndex])
+        
+        # Calculate New Baseline Points of the Peak
+        leftBlinkBaselineX, _ = self.findIntersectionPoint([0, peakBaselineY], leftLineParams)
+        rightBlinkBaselineX, _ = self.findIntersectionPoint(rightLineParams, [0, peakBaselineY])
+        # Fit the Full Peak
+        peakFunc = interpolate.interp1d(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1])
+        # ------------------------------------------------------------------- #
+        
+        # ---------------------- Extract Blink Features --------------------- #
+        # Find Peak's Tent
+        peakTentX, peakTentY = self.findIntersectionPoint(leftLineParams, rightLineParams)
+        tentDeviationX = peakTentX - xData[peakInd]
+        tentDeviationY = peakTentY - yData[peakInd]
+        # Calculate Blink Amplitudes
+        blinkAmpTent = peakTentY - peakBaselineY                  # Distance from the Tent to the Baseline
+        blinkAmpPeak = yData[peakInd] - peakBaselineY             # Distance from the Peak to the Baseline
+        # Calculate the Standard Blink Duration
+        blinkDuration = rightBlinkBaselineX - leftBlinkBaselineX  # The Total Time of the Blink
+        closingTime = peakTentX - leftBlinkBaselineX              # Eye's Closing Time
+        openingTime = rightBlinkBaselineX - peakTentX             # Eye's Opening Time
+        closingFraction = closingTime/blinkDuration
+        openingFraction = openingTime/blinkDuration
+        # Calculate the Half Amplitude Duration
+        blinkAmp50Y = peakBaselineY + blinkAmpPeak*0.5        
+        blinkAmp50Right = xData[peakInd:rightBaselineIndex][np.argmin(abs(yData[peakInd:rightBaselineIndex] - blinkAmp50Y))]
+        blinkAmp50Left = xData[leftBaselineIndex:peakInd][np.argmin(abs(yData[leftBaselineIndex:peakInd] - blinkAmp50Y))]
+        halfClosedTime = blinkAmp50Right - blinkAmp50Left
+        # Calculate Time the Eyes are Closed
+        blinkAmp90Y = peakBaselineY + blinkAmpPeak*0.9
+        blinkAmp90Right = xData[peakInd:rightBaselineIndex][np.argmin(abs(yData[peakInd:rightBaselineIndex] - blinkAmp90Y))]
+        blinkAmp90Left = xData[leftBaselineIndex:peakInd][np.argmin(abs(yData[leftBaselineIndex:peakInd] - blinkAmp90Y))]
+        eyesClosedTime = blinkAmp90Right - blinkAmp90Left
+        
+        percentTimeClosed = eyesClosedTime/halfClosedTime
+        
+        amplitudeRatio_90_50 = blinkAmp50Y/blinkAmp90Y
+
+        # Calculate Speed, Acceleration, Curvature
+        speed, acceleration, curvature, indexParams = self.quantifyPeakShape(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1], peakInd-leftBaselineIndex, peakTentY)
+        if len(indexParams) == 0:
+            return []
+        scaledCurvature = curvature * (xData[peakInd + peakShapeBuffer] - xData[peakInd - peakShapeBuffer])  
+        scaledCurvature = scaledCurvature/max(scaledCurvature)
+        scaledCurvature = (1/curvature[peakShapeBuffer])*curvature * (-xData[peakInd-peakShapeBuffer] + xData[peakInd+peakShapeBuffer])
+        #
+        maxCurvature = max(curvature)
+        maxAcceleration = max(acceleration)
+        maxSpeed = max(speed)
+        # Calculate Peak Shape Parameters
+        peakEntropy = entropy(yData[leftBaselineIndex:rightBaselineIndex])
+        peakSkew = skew(yData[leftBaselineIndex:rightBaselineIndex], bias=False)
+        peakKurtosis = kurtosis(yData[leftBaselineIndex:rightBaselineIndex], fisher=False, bias = False)
+        #peakFitX = np.arange(xData[peakInd - peakShapeBuffer], xData[peakInd + peakShapeBuffer], .001); peakFitY = peakFunc(peakFitX)
+        peakShape = np.array(xData[peakInd - peakShapeBuffer:peakInd + peakShapeBuffer+1]); peakShape -= peakShape[0]
+
+        # Finalize the Features
+        blinkFeatures = [peakTentY, blinkAmpTent, blinkAmpPeak, blinkAmp50Y, blinkAmp90Y, amplitudeRatio_90_50]
+        blinkFeatures.extend([blinkDuration, closingTime, openingTime, closingFraction, openingFraction])
+        blinkFeatures.extend([tentDeviationX, tentDeviationY, halfClosedTime, eyesClosedTime, percentTimeClosed])
+        blinkFeatures.extend([peakSkew, peakKurtosis, peakEntropy, maxCurvature, maxAcceleration, maxSpeed])
+        blinkFeatures.extend(indexParams)
+        self.importantArrays.append([speed, acceleration, curvature, scaledCurvature, peakShape])
+        # ------------------------------------------------------------------- #
+        
+        # ---------------------- Cull Potential Blinks ---------------------- #
+        # If the Blink is Shorter Than 50ms or Longer Than 500ms, Ignore the Blink (Probably Eye Movement)
+        if 0.5 < blinkDuration < 0.05:
+            print("Bad Blink Duration:", blinkDuration)
+            return []
+        # If the Closing Time is Longer Than 150ms, it is Probably Not an Involuntary Blink
+        elif closingTime > 0.15:
+            print("Bad Closing Time:", closingTime)
+            return []
+        # If the Tent Peak is Malformed, Ignore the Peak
+        #elif abs((peakTentY - yData[peakInd]) + (peakTentX - xData[peakInd])) > 0.1:
+        #    print("Improper Peak Tent", xData[peakInd])
+        #    return []
+    
+        #currentShape = yData[peakInd - peakShapeBuffer:peakInd + peakShapeBuffer + 1]
+        #peakDome = np.diff(currentShape)/np.diff(currentShape)[0]
+        #if max(peakDome) > 1 or min(peakDome) < -1:
+        #    print("Bad Peak Dome", xData[peakInd])
+        #    return []
+        
+        # If the Blink is Good, Return the Features
+        return blinkFeatures
+        # ------------------------------------------------------------------- #
+
 
     def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 50, maxPointsSearch = 1000):
         """
@@ -545,10 +584,10 @@ class eogProtocol:
             else:
                 xPointer = dataPointer
                 maxHeight = data[dataPointer]
-
+    
         # If Your Binary Search is Too Small, Reduce it
         return self.findNearbyMinimum(data, xPointer, math.floor(binarySearchWindow/2), maxPointsSearch)
-
+    
     def findBaselineIndex(self, xData, yData, xPointer, searchDirection = 1):
         
         if searchDirection == 1:
@@ -559,15 +598,14 @@ class eogProtocol:
             print("Wrong Search Direction")
             sys.exit()
         
-        addOn = 5; firstDer = [0]*addOn; skipPoints = 40;
+        addOn = 5; minimumPeakPoints = 10;
         foundDrop = False; maxSlope = 0
         # Caluclate the Running Slope of the Data
-        for peakInd in range(xPointer + searchDirection*(addOn+skipPoints), endSearch, searchDirection):
+        for peakInd in range(xPointer + searchDirection*(addOn+minimumPeakPoints), endSearch, searchDirection):
             # Calculate the First Derivative
             deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
             deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
             firstDeriv = deltaY/deltaX
-            firstDer.append(deltaY/deltaX)
             
             # Verify Major Slope Drop
             if abs(firstDeriv) > 0.5:
@@ -575,8 +613,61 @@ class eogProtocol:
                 maxSlope = max(maxSlope, abs(firstDeriv))
             
             if foundDrop and abs(firstDeriv) < maxSlope/10:
-                return peakInd
-        return peakInd
+                return self.findNearbyMinimum(yData, peakInd, binarySearchWindow = searchDirection*20, maxPointsSearch = 50) #peakInd
+        return xPointer
+    
+    def normalizePulseBaseline(self, curveData, polynomialDegree):
+        """
+        ----------------------------------------------------------------------
+        Input Parameters:
+            curveData:  y-Axis Data for Baseline Removal
+            polynomialDegree: Polynomials Used in Baseline Subtraction
+        Output Parameters:
+            curveData: y-Axis Data for a Baseline-Normalized Curve
+        Assumption in Function: curveData is Positive
+        ----------------------------------------------------------------------
+        Further API Information Can be Found in the Following Link:
+        https://pypi.org/project/BaselineRemoval/
+        ----------------------------------------------------------------------
+        """
+        # Perform Baseline Removal Twice to Ensure Baseline is Gone
+        for _ in range(2):
+            # Baseline Removal Procedure
+            baseObj = BaselineRemoval(curveData)  # Create Baseline Object
+            curveData = baseObj.ModPoly(polynomialDegree) # Perform Modified multi-polynomial Fit Removal
+    
+        # Return the Data With Removed Baseline
+        return curveData
+    
+    
+    def findPeakLines_TWO(self, xData, yData, baselineIndex, peakInd, minChi2, searchDirection = 1):
+        # Find the Starting/Ending Points Representing the Inner 70% of the Peak Amplitude
+        peakAmp = yData[peakInd] - yData[baselineIndex]
+        startLineY = yData[baselineIndex] + peakAmp*0.3
+        endLineY = yData[baselineIndex] + peakAmp*0.6
+        
+        # Find the Closest Starting Point in the Curve
+        if searchDirection == 1:
+            # Find Left Line
+            startLineInd = baselineIndex + np.argmin(abs(yData[baselineIndex:peakInd+1] - startLineY))
+            endLineInd = baselineIndex + np.argmin(abs(yData[baselineIndex:peakInd+1] - endLineY))
+        else:
+            # Find Right Line
+            startLineInd = peakInd + np.argmin(abs(yData[peakInd:baselineIndex+1] - endLineY))
+            endLineInd = peakInd + np.argmin(abs(yData[peakInd:baselineIndex+1] - startLineY))
+        # If No Line Found, Return 0
+        if endLineInd - startLineInd < 5:
+            return [0,0],0,0
+        
+        # Calculate the Line Parameters: [Slope, Y-Cross]
+        lineParams, residuals, _, _, _ = np.polyfit(xData[startLineInd:endLineInd+1], yData[startLineInd:endLineInd+1], 1, full=True)
+        if len(residuals) != 0:
+            # Calculate the Chi2
+            lineCHI2 = residuals[0] / (endLineInd - startLineInd - 1)
+            # 
+            if lineCHI2 < minChi2:
+                return lineParams, startLineInd, endLineInd
+        return [0,0],0,0
                 
 
     def findTraileringAverage(self, recentData, deviationThreshold = 0.08):
@@ -640,10 +731,10 @@ def findBaselineIndex(xData, yData, xPointer, searchDirection = 1):
         print("Wrong Search Direction")
         sys.exit()
     
-    addOn = 5; firstDer = [0]*addOn; skipPoints = 40;
+    addOn = 5; firstDer = [0]*addOn; minimumPeakPoints = 40;
     foundDrop = False; maxSlope = 0
     # Caluclate the Running Slope of the Data
-    for peakInd in range(xPointer + searchDirection*(addOn+skipPoints), endSearch, searchDirection):
+    for peakInd in range(xPointer + searchDirection*(addOn+minimumPeakPoints), endSearch, searchDirection):
         # Calculate the First Derivative
         deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
         deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)

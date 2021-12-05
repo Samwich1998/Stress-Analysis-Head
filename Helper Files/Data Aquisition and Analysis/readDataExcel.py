@@ -89,7 +89,7 @@ class readExcel():
         print("\tDone Data Collecting from File: ", analyzeSheet.title)
         
     
-    def getTrainingFeatures(self, excelSheet, Training_Data, Training_Labels, numFeatures, gestureClasses):
+    def getTrainingFeatures(self, excelSheet, Training_Data, Training_Labels, gestureClasses):
         # Get Current Label fo the Signal
         currentLabel = excelSheet.title.split(" - ")[1]
         featureLabelIndexArray = np.where(gestureClasses == currentLabel.lower())[0]
@@ -107,7 +107,7 @@ class readExcel():
         # Create Data Structure to Hold Results
         featureList = []
         # Loop Through the Excel Worksheet to collect all the data
-        for featureData in excelSheet.iter_rows(min_col=2+self.numChannels, min_row=dataStartRow, max_col=1+self.numChannels+numFeatures, max_row=excelSheet.max_row):
+        for featureData in excelSheet.iter_rows(min_col=2+self.numChannels, min_row=dataStartRow, max_col=excelSheet.max_col, max_row=excelSheet.max_row):
             
             # Extract Features from the Excel File
             featureRow = []; numEmptyFeatures = 0
@@ -133,13 +133,12 @@ class readExcel():
         print("\tCollected Training Data for:", excelSheet.title)
         return Training_Data, Training_Labels
     
-    def getTrainingData(self, trainingDataExcelFolder, numFeatures, gestureClasses, mode):
+    def getTrainingData(self, trainingDataExcelFolder, gestureClasses, mode):
         """
         Parameters
         ----------
         trainingDataExcelFolder: The Folder with ONLY the Training Data Excel Files
         gestureClasses: A List of Possible Classes (Represented as Strings)
-        numFeatures: The Number of Features to Extract
         mode: The Type of Program to Run
             'Train' -> Get Trainign Data and Labels
             'reAnalyze' -> ReAnalyze All Data and Overwrite Excel File
@@ -158,13 +157,13 @@ class readExcel():
                     WB = xl.load_workbook(trainingExcelFile, data_only=True, read_only=False)
                 WB_worksheets = WB.worksheets
                 # Loop Over Each Sheet in the File
-                saveExcelData = saveExcel(self.numChannels, numFeatures)
+                saveExcelData = saveExcel(self.numChannels)
                 for excelSheet in WB_worksheets:
                     self.analysisProtocol.resetGlobalVariables()
                     
                     # Get the Training Data/Label from the Sheet
                     if mode == 'Train':
-                        Training_Data, Training_Labels = self.getTrainingFeatures(excelSheet, Training_Data, Training_Labels, numFeatures, gestureClasses)
+                        Training_Data, Training_Labels = self.getTrainingFeatures(excelSheet, Training_Data, Training_Labels, gestureClasses)
                     elif mode == 'reAnalyze':
                         print("\tReanalyzing Excel Sheet:", excelSheet.title)
                         # ReAnalyze Data (First Four Columns)
@@ -181,10 +180,9 @@ class readExcel():
 
 
 class saveExcel:
-    def __init__(self, numChannels, numFeatures):
+    def __init__(self, numChannels):
         # Input Parameters
         self.numChannels = numChannels  # The Number of Biolectric Channels
-        self.numFeatures = numFeatures   # The Number of Features Extracted
         
         # Specify OpenPyxl Asthetics
         self.openpyxlColors = {
@@ -238,8 +236,9 @@ class saveExcel:
             WB_worksheet = WB.create_sheet(sheetName)
             print("Saving Sheet as", sheetName)
         
+        numFeatures = len(featureList[0]) if featureList else 0
         channelHeader = ['Channel ' + str(channelNum) + " Data" for channelNum in range(1, 1+self.numChannels)]
-        featureHeader = ['Channel ' + str(featureNum) + " Features" for featureNum in range(1, 1+self.numFeatures)]
+        featureHeader = ['Channel ' + str(featureNum) + " Features" for featureNum in range(1, 1+numFeatures)]
         # Creater Header
         header = ["timePoints"]
         header.extend(channelHeader)
@@ -256,7 +255,7 @@ class saveExcel:
         
         alignCenter = Alignment(horizontal='center', vertical='center', wrap_text=True)  
         # Add Feature Locs (Next Columns) and Then Features (Next Next Columns)
-        for channelIndex in range(self.numFeatures):
+        for channelIndex in range(numFeatures):
             startIndex = 2 # Start at Secon Row (1-Indexed) After the Header
             for groupNum in range(len(featureList[channelIndex])):
                 rowIndex = startIndex
@@ -285,7 +284,7 @@ class saveExcel:
             length = max(len(str(cell.value) if cell.value else "") for cell in column_cells)
             WB_worksheet.column_dimensions[xl.utils.get_column_letter(column_cells[0].column)].width = length
         # Header Style
-        for colInd in range(1, self.numChannels + self.numFeatures + 2):
+        for colInd in range(1, self.numChannels + numFeatures + 2):
             WB_worksheet.cell(row=1, column=colInd).font = Font(color='00FF0000', italic=True, bold=True)
             WB_worksheet.cell(row=1, column=colInd).alignment = alignCenter
         

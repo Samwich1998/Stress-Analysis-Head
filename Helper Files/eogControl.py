@@ -57,8 +57,8 @@ if __name__ == "__main__":
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 200000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 10000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 900          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numTimePoints = 30000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 29000          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
@@ -76,13 +76,15 @@ if __name__ == "__main__":
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
     
-    blinkFeatures = ['peakTentY', 'blinkAmpTent', 'blinkAmpPeak', 'blinkAmp50Y', 'blinkAmp90Y', 'amplitudeRatio_90_50']   
+    blinkFeatures = ['tentDeviationX', 'tentDeviationY', 'tentDeviationRatioY', 'blinkAmpRatio', 'amplitudeRatio_50', 'amplitudeRatio_90']
     blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction'])
-    blinkFeatures.extend(['tentDeviationX', 'tentDeviationY', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
-    blinkFeatures.extend(['peakSkew', 'peakKurtosis', 'peakEntropy', 'maxCurvature', 'maxAcceleration', 'maxSpeed'])
-    blinkFeatures.extend(['velPeakDuration', 'accPeakDuration1', 'accPeakDuration1', 'velUpAmp', 'velDownAmp', 'accelAmp1', 'accelAmp2', 'accelAmp3'])
-    blinkFeatures.extend(['peakClosingVel1', 'peakClosingVel2', 'peakClosingAccel1', 'peakClosingAccel2', 'peakClosingAccel3', 'velRatio', 'accelRatio', 'halfAmpDuration2', 'amplitudeVelRatio1', 'amplitudeVelRatio2'])
-
+    blinkFeatures.extend(['halfClosedTime', 'eyesClosedTime', 'percentTimeClosed', 'closingSlope', 'openingSlope'])
+    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakSkew', 'peakKurtosis', 'peakEntropy'])
+    blinkFeatures.extend(['peakClosingVelRatio', 'peakOpeningVelRatio', 'peakClosingAccelRatio', 'peakMidClosedAccelRatio'])
+    blinkFeatures.extend(['velOpenRatio', 'velClosedRatio', 'accelOpenRatio1', 'accelOpenRatio2'])
+    blinkFeatures.extend(['velRatio', 'accelRatio', 'halfAmpDuration2', 'velPeakDuration', 'accPeakDuration', 'rightHalfAmpDuration', 'midDurationRatio'])
+    blinkFeatures.extend(['velOpenVal', 'velClosedVal', 'accelOpenVal1', 'accelOpenVal2'])
+    blinkFeatures.extend(['curvatureRatio', 'velSlope', 'velSlope2'])    
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
@@ -99,7 +101,7 @@ if __name__ == "__main__":
      #   testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Ben 2021-12-1 Movements.xlsx" # Path to the Test Data
      #   testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/You 2021-12-1 Movements.xlsx" # Path to the Test Data
         testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Changhao 2021-12-1 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 5   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testSheetNum = 2   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
@@ -268,28 +270,28 @@ jiahongFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
 benFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
 youFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
 changhaoFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
-personListBlink = [jiahongFeaturesBlink, benFeaturesBlink, youFeaturesBlink, changhaoFeaturesBlink]
+#personListBlink = [jiahongFeaturesBlink, benFeaturesBlink, youFeaturesBlink, changhaoFeaturesBlink]
 personListBlink = [changhaoFeaturesBlink]
 
 jiahongFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
 benFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
 youFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
 changhaoFeaturesDoubleBlink = np.array(readData.analysisProtocol.blinkFeatures)
-personListDoubleBlink = [jiahongFeaturesDoubleBlink, benFeaturesDoubleBlink, youFeaturesDoubleBlink, changhaoFeaturesDoubleBlink]
+#personListDoubleBlink = [jiahongFeaturesDoubleBlink, benFeaturesDoubleBlink, youFeaturesDoubleBlink, changhaoFeaturesDoubleBlink]
 personListDoubleBlink = [changhaoFeaturesDoubleBlink]
 
 jiahongFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
 benFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
 youFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
 changhaoFeaturesRelaxed = np.array(readData.analysisProtocol.blinkFeatures)
-personListRelaxed = [jiahongFeaturesRelaxed, benFeaturesRelaxed, youFeaturesRelaxed, changhaoFeaturesRelaxed]
+#personListRelaxed = [jiahongFeaturesRelaxed, benFeaturesRelaxed, youFeaturesRelaxed, changhaoFeaturesRelaxed]
 personListRelaxed = [changhaoFeaturesRelaxed]
 
 jiahongFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
 benFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
 youFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
 changhaoFeaturesCold = np.array(readData.analysisProtocol.blinkFeatures)
-personListCold = [jiahongFeaturesCold, benFeaturesCold, youFeaturesCold, changhaoFeaturesCold]
+#personListCold = [jiahongFeaturesCold, benFeaturesCold, youFeaturesCold, changhaoFeaturesCold]
 personListCold = [changhaoFeaturesCold]
 
 colorList = ['b','k','r','m']
@@ -333,17 +335,17 @@ for i in range(len(personListBlink[0][0])):
     for personNum in range(len(personListBlink)):
         personFeatures = personListBlink[personNum]
         feature1 = personFeatures[:,i]
-        plt.plot(feature1, feature2, colorList[personNum]+'o')
+        plt.plot(feature1, colorList[personNum]+'o')
     
     for personNum in range(len(personListDoubleBlink)):
         personFeatures = personListDoubleBlink[personNum]
         feature1 = personFeatures[:,i]
-        plt.plot(feature1, feature2, colorList[personNum]+'^')
+        plt.plot(feature1, colorList[personNum]+'^')
             
     for personNum in range(len(personListRelaxed)):
         personFeatures = personListRelaxed[personNum]
         feature1 = personFeatures[:,i]
-        plt.plot(feature1, feature2, colorList[personNum]+'x', zorder = 150)
+        plt.plot(feature1, colorList[personNum]+'x', zorder = 150)
     
     for personNum in range(len(personListCold)):
         personFeatures = personListCold[personNum]
@@ -352,7 +354,7 @@ for i in range(len(personListBlink[0][0])):
             
     plt.xlabel("Blinks")
     plt.ylabel(blinkFeatures[i])
-    #fig.savefig('../output/' + blinkFeatures[i] + ".png", dpi=300, bbox_inches='tight')
+    #fig.savefig('../outputSingle/' + blinkFeatures[i] + ".png", dpi=300, bbox_inches='tight')
     plt.show()
         
         
@@ -381,7 +383,8 @@ for personNum in range(len(personListCold)):
     for personFeature in personFeatures:
         signalData.append(personFeature)
         signalLabels.append(1)
-
+        
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
 
 model = neighbors.KNeighborsClassifier(n_neighbors = 2, weights = 'distance', algorithm = 'auto', 
                         leaf_size = 30, p = 1, metric = 'minkowski', metric_params = None, n_jobs = None)
@@ -393,11 +396,12 @@ model.score(signalData, signalLabels)
 
 model = tf.keras.Sequential()
 model.add(tf.keras.layers.Dense(units=len(Training_Data[0]), activation='sigmoid'))
-model.add(tf.keras.layers.Dense(units=1, activation='softmax'))
+model.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
 
+epochs = 500; seeTrainingSteps = False
 opt = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
-loss = 'categorical_crossentropy'
-metric = ['accuracy', 'binary_crossentropy']
+loss = 'binary_crossentropy'
+metric = ['accuracy']
 
 model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
 
@@ -416,5 +420,26 @@ score = results[0]; accuracy = results[1];
 print('Test score:', score)
 print('Test accuracy:', accuracy)
 
+pyplot.title('Loss')
+pyplot.plot(history.history['loss'], label='train')
+pyplot.plot(history.history['val_loss'], label='test')
 
+from keras.utils.vis_utils import plot_model
+plot_model(model, show_shapes=True, show_layer_names=True)
+
+from ann_visualizer.visualize import ann_viz
+ann_viz(model)
+
+
+
+
+from sklearn.feature_selection import RFE
+from sklearn.svm import SVR
+
+blinkFeatures=np.array(blinkFeatures)
+estimator = SVR(kernel="linear")
+selector = RFE(estimator, n_features_to_select=5, step=1)
+selector = selector.fit(Training_Data, Training_Labels)
+print(blinkFeatures[selector.support_])
+selector.ranking_
 """

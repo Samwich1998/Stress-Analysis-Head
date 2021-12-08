@@ -38,7 +38,7 @@ from matplotlib import pyplot
 from tensorflow.python.keras.utils import losses_utils
 import itertools
 
-sys.path.append('../Data Aquisition and Analysis/')  # Folder with Machine Learning Files
+sys.path.append('./Data Aquisition and Analysis/')  # Folder with Machine Learning Files
 import createHeatMap as createMap       # Functions for Neural Network
 
 # ---------------------------------------------------------------------------#
@@ -176,7 +176,7 @@ class Neural_Network:
             self.model = load_model(modelPath)
         print("NN Model Loaded")
     
-    def createModel(self, dataDim, opt=None, loss=None, metric=None):
+    def createModel(self, numFeatures, opt=None, loss=None, metric=None):
         """
         Parameters
         ----------
@@ -190,18 +190,13 @@ class Neural_Network:
             # Dense: Adds a layer of neurons
                 # (unit = # neurons in layer, activation function, *if first layer* shape of input data)
             # Input_shape: The dimension of 1 Data Point (# of rows in one column)
-        model = tf.keras.Sequential()
+        self.model = tf.keras.Sequential()
         
         # Model Layers
         #model.add(tf.keras.layers.Reshape((1,4)))
         #model.add(tf.keras.layers.LSTM(256))
-        model.add(tf.keras.layers.Dense(units=4, activation=tf.nn.tanh))
-        #model.add(tf.keras.layers.Dense(units=8, activation=tf.nn.tanh))
-        #model.add(tf.keras.layers.Dense(units=12, activation=tf.nn.tanh))
-        model.add(tf.keras.layers.Dense(units=8, activation=tf.nn.tanh))
-        #model.add(tf.keras.layers.Dense(units=3, activation=tf.nn.tanh))
-        #model.add(tf.keras.layers.Dropout(.02, input_shape=(dim,)))
-        model.add(tf.keras.layers.Dense(units=6, activation='softmax'))
+        self.model.add(tf.keras.layers.Dense(units = numFeatures, activation='sigmoid'))
+        self.model.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
         
         # Define the Loss Function and Optimizer for the Model
             # Compile: Initializing the optimizer and the loss in the Neural Network
@@ -210,14 +205,12 @@ class Neural_Network:
         if opt == None:
             opt = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
         if loss == None:
-            loss = 'cosine_similarity'
+            loss = 'binary_crossentropy'
         if metric == None:
-            metric = ['accuracy', 'logcosh']
+            metric = ['accuracy']
         
         # Compile the Model
-        model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
-        # Store the Model in the Class
-        self.model = model
+        self.model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
         print("NN Model Created")
     
     def trainModel(self, Training_Data, Training_Labels, Testing_Data, Testing_Labels, epochs = 500, seeTrainingSteps = False):
@@ -229,8 +222,8 @@ class Neural_Network:
             # With uninitialized weights, bring data through network
             # Calculate the loss based on the data
             # Perform optimizer to update the weights
-        self.history = self.model.fit(Training_Data, Training_Labels, validation_split=0.33,
-                                 epochs=epochs, shuffle=True, batch_size = mini_batch_gd, verbose = seeTrainingSteps)
+        print(Training_Data, Training_Labels)
+        self.history = self.model.fit(Training_Data, Training_Labels, validation_split=0.33, epochs=int(epochs), shuffle=True, batch_size = int(mini_batch_gd), verbose = seeTrainingSteps)
         # Score the Model
         results = self.model.evaluate(Testing_Data, Testing_Labels, batch_size=mini_batch_gd, verbose = seeTrainingSteps)
         score = results[0]; accuracy = results[1]; 

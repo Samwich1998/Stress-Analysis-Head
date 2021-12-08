@@ -52,7 +52,8 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     #    User Parameters to Edit (More Complex Edits are Inside the Files)   #
     # ---------------------------------------------------------------------- #
-
+    
+    sys.exit()
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
@@ -76,15 +77,19 @@ if __name__ == "__main__":
     testModel = False          # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
     
-    blinkFeatures = ['tentDeviationX', 'tentDeviationY', 'tentDeviationRatioY', 'blinkAmpRatio', 'amplitudeRatio_50', 'amplitudeRatio_90']
-    blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction'])
-    blinkFeatures.extend(['halfClosedTime', 'eyesClosedTime', 'percentTimeClosed', 'closingSlope', 'openingSlope'])
-    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakSkew', 'peakKurtosis', 'peakEntropy'])
-    blinkFeatures.extend(['peakClosingVelRatio', 'peakOpeningVelRatio', 'peakClosingAccelRatio', 'peakMidClosedAccelRatio'])
-    blinkFeatures.extend(['velOpenRatio', 'velClosedRatio', 'accelOpenRatio1', 'accelOpenRatio2'])
-    blinkFeatures.extend(['velRatio', 'accelRatio', 'halfAmpDuration2', 'velPeakDuration', 'accPeakDuration', 'rightHalfAmpDuration', 'midDurationRatio'])
-    blinkFeatures.extend(['velOpenVal', 'velClosedVal', 'accelOpenVal1', 'accelOpenVal2'])
-    blinkFeatures.extend(['curvatureRatio', 'velSlope', 'velSlope2'])    
+    blinkFeatures = ['blinkHeight', 'peakTentY', 'tentDeviationX', 'tentDeviationY', 'blinkAmpRatio', 'tentRatio', 'tentDeviationRatio']
+    blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
+    blinkFeatures.extend(['closingSlope0', 'closingSlope1', 'closingSlope2', 'openingSlope1', 'openingSlope2', 'openingSlope3'])
+    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakEntropy', 'peakSkew', 'peakKurtosis', 'maxCurvature'])
+    # Compile the Features
+    blinkFeatures.extend(['peakClosingVel', 'peakOpeningVel', 'peakClosingAccel1', 'peakClosingAccel2', 'peakopeningAccel1', 'peakopeningAccel2'])
+    blinkFeatures.extend(['velOpenRatio', 'velClosedRatio', 'accelClosedRatio1', 'accelClosedRatio2', 'accelOpenRatio1', 'accelOpenRatio2'])
+    blinkFeatures.extend(['velClosedVal', 'velOpenVal', 'accelClosedVal1', 'accelClosedVal2', 'accelOpenVal1', 'accelOpenVal2'])
+    blinkFeatures.extend(['velRatio', 'accelRatio1', 'accelRatio2', 'velRatioYData', 'accelRatioYData1', 'accelRatioYData2'])
+    blinkFeatures.extend(['durationByVel1', 'durationByVel2', 'durationByAccel1', 'durationByAccel2', 'durationByAccel3', 'midDurationRatio'])
+    blinkFeatures.extend(['startToAccel', 'accelCloseingPeakDuration', 'accelToPeak', 'peakToAccel', 'accelOpeningPeakDuration', 'accelToEnd'])
+    blinkFeatures.extend(['velPeakDuration', 'startToVel', 'velToPeak', 'peakToVel', 'velToEnd'])
+        
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
@@ -99,9 +104,9 @@ if __name__ == "__main__":
     if readDataFromExcel:
         testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
         testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Ben 2021-12-1 Movements.xlsx" # Path to the Test Data
-     #   testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/You 2021-12-1 Movements.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/You 2021-12-1 Movements.xlsx" # Path to the Test Data
         testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Changhao 2021-12-1 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 6   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        testSheetNum = 5   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if trainModel:
@@ -266,6 +271,23 @@ for curvature in importantFeatures[:,2]:
         break
 
 
+personListBlink = [youFeaturesBlink]
+personListDoubleBlink = [youFeaturesDoubleBlink]
+personListRelaxed = [youFeaturesDoubleBlink]
+personListCold = [youFeaturesCold]
+
+personListBlink = [changhaoFeaturesBlink]
+personListDoubleBlink = [changhaoFeaturesDoubleBlink]
+personListRelaxed = [changhaoFeaturesRelaxed]
+personListCold = [changhaoFeaturesCold]
+
+personListBlink = [jiahongFeaturesBlink, benFeaturesBlink, youFeaturesBlink, changhaoFeaturesBlink]
+personListDoubleBlink = [jiahongFeaturesDoubleBlink, benFeaturesDoubleBlink, youFeaturesDoubleBlink, changhaoFeaturesDoubleBlink]
+personListRelaxed = [jiahongFeaturesRelaxed, benFeaturesRelaxed, youFeaturesRelaxed, changhaoFeaturesRelaxed]
+personListCold = [jiahongFeaturesCold, benFeaturesCold, youFeaturesCold, changhaoFeaturesCold]
+
+
+
 jiahongFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
 benFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
 youFeaturesBlink = np.array(readData.analysisProtocol.blinkFeatures)
@@ -394,6 +416,7 @@ model.score(signalData, signalLabels)
 
 
 
+Training_Data, Testing_Data, Training_Labels, Testing_Labels = train_test_split(signalData, signalLabels, test_size=0.33, shuffle= True, stratify=signalLabels)
 model = tf.keras.Sequential()
 model.add(tf.keras.layers.Dense(units=len(Training_Data[0]), activation='sigmoid'))
 model.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
@@ -442,4 +465,17 @@ selector = RFE(estimator, n_features_to_select=5, step=1)
 selector = selector.fit(Training_Data, Training_Labels)
 print(blinkFeatures[selector.support_])
 selector.ranking_
+
+
+
+
+
+testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
+testSheetNum = 5
+
+predictionModel = model
+moveDataFinger = 1000
+eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+readData = excelData.readExcel(eogProtocol)
+readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
 """

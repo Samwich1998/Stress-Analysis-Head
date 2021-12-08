@@ -18,8 +18,11 @@ import pandas as pd
 import matplotlib
 from matplotlib import pyplot
 import matplotlib.pyplot as plt
+import matplotlib.animation as manimation
 
 # Import Machine Learning Modules
+from sklearn.manifold import MDS
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.inspection import permutation_importance
@@ -65,55 +68,89 @@ class randomForest:
         self.model.fit(Training_Data, Training_Labels)
         # Score the Model
         if len(newData) > 0:
-            self.scoreModel(newData, newLabels, scoreType)
+            modelScore = self.scoreModel(newData, newLabels, scoreType)
+            return modelScore
     
     def scoreModel(self, signalData, signalLabels, scoreType = "Score:"):
-        print(scoreType, self.model.score(signalData, signalLabels))
+        return self.model.score(signalData, signalLabels)
         
         # Evaluate the model
-        cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=5, random_state=1)
-        n_scores = cross_val_score(self.model, signalData, signalLabels, scoring='accuracy', cv=cv, n_jobs=-1, error_score='raise')
-        # report performance
-        print('Cross-Validation Accuracy: %.3f (%.3f)' % (np.mean(n_scores), np.std(n_scores)))
-
-
+    #    cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=5, random_state=1)
+    #    n_scores = cross_val_score(self.model, signalData, signalLabels, scoring='accuracy', cv=cv, n_jobs=-1, error_score='raise')
+    #    # report performance
+    #    print('Cross-Validation Accuracy: %.3f (%.3f)' % (np.mean(n_scores), np.std(n_scores)))
     
     def predictData(self, New_Data):
         # Predict Label based on new Data
         return self.model.predict(New_Data)
         
-    def accuracyDistributionPlot(self, signalData, trueLabels, predicatedLabels, signalLabelsTitles, saveFolder = "./Output Data/Machine Learning Results/", name = "Accuracy Distribution"):
+
+    def plotModel(self, signalData, signalLabels):
+    
+        # Create Mesh (X,Y Points) to Predict Classifier's Space
+        stepSize = 0.01 # step size in the mesh
+        x_min, x_max = signalData[:, 0].min(), signalData[:, 0].max()  # Channel 1
+        y_min, y_max = signalData[:, 1].min(), signalData[:, 1].max()  # Channel 2
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, stepSize), np.arange(y_min, y_max, stepSize))
         
-        # Calculate the Accuracy Matrix
-        accMat = np.zeros((len(signalLabelsTitles), len(signalLabelsTitles)))
-        for ind, channelFeatures in enumerate(signalData):
-            # Sum(Row) = # of Gestures Made with that Label
-            # Each Column in a Row = The Number of Times that Gesture Was Predicted as Column Label #
-            accMat[trueLabels[ind]][predicatedLabels[ind]] += 1
+        # Define MovieWriter to Mave Movie
+        FFMpegWriter = manimation.writers['ffmpeg']
+        metadata = dict(title="", artist='Matplotlib', comment='Movie support!')
+        writer = FFMpegWriter(fps=3, metadata=metadata)
+        # Define Movie Plot
+        fig = plt.figure()
         
-        # Scale Each Row to 100
-        for label in range(len(signalLabelsTitles)):
-            accMat[label] = 100*accMat[label]/np.sum(accMat[label])
+        # Set Channel4 as Constant: Display Data ONLY in This Range
+        setPointX4 = 0.1; # Channel 4's Value
+        errorPoint = 0.005; # Width of Channel 4's Values
+        x4 = np.ones(np.shape(xx.ravel())[0])*setPointX4
+        dataWithinChannel4 = signalData[abs(signalData[:, 3] - setPointX4) <= errorPoint]
+        # Initialize Relevant Channel 3 Range
+        channel3Vals = np.arange(0.0, dataWithinChannel4[:,2].max(initial=0), 0.01)
+        if len(channel3Vals) == 0:
+            print("No Values Found in Channel 4")
+            return None
         
-        # Make plot
-        fig, ax = plt.subplots()
-        fig.set_size_inches(8,8)
-        
-        # Make heatmap on plot
-        im, cbar = createMap.heatmap(accMat, signalLabelsTitles, signalLabelsTitles, ax=ax,
-                           cmap="copper", cbarlabel="Label Accuracy (%)")
-        createMap.annotate_heatmap(im, accMat, valfmt="{x:.2f}",)
-        
-        # Style the Fonts
-        font = {'family' : 'verdana',
-                'weight' : 'bold',
-                'size'   : 9}
-        matplotlib.rc('font', **font)
+        # Plot Data with Different Channel 3 Values, and Save as Movie
+        with writer.saving(fig, "./Machine Learning Modules/ML Videos/KNN_" + self.weight + ".mp4", 300):
+            for setPointX3 in channel3Vals:
+                # Define New Channel 3 Points
+                x3 = np.ones(np.shape(xx.ravel())[0])*setPointX3
                 
-        # Format, save, and show
-        fig.tight_layout()
-        plt.savefig(saveFolder + name + ".png", dpi=300, bbox_inches='tight')
-        plt.show()
+                # Predict Every Point's Class With the Trained Model
+                handMovements = self.predictData(np.c_[xx.ravel(), yy.ravel(), x3, x4])
+                # Rearrange the Data to Match the 2D Plot                  
+                handMovements = handMovements.reshape(xx.shape)
+                # Plot the Predicted Classes
+                plt.contourf(xx, yy, handMovements, cmap=plt.cm.get_cmap('cubehelix', 6), alpha=0.7, vmin=0, vmax=5)
+                
+                # Get the Real Data with the Real Labels in this Space
+                xPoints = []; yPoints = []; yLabelPoints = []
+                for j, point in enumerate(signalData):
+                    if abs(point[2] - setPointX3) <= errorPoint and abs(point[3] - setPointX4) <= errorPoint:
+                        xPoints.append(point[0])
+                        yPoints.append(point[1])
+                        yLabelPoints.append(signalLabels[j])
+                # Plot the Real Data with the Real Labels in this Space
+                plt.scatter(xPoints, yPoints, c=yLabelPoints, cmap=plt.cm.get_cmap('cubehelix', 6), edgecolors='grey', s=50, vmin=0, vmax=5)
+                
+                # Figure Labels/Limits
+                plt.xlim(xx.min(), xx.max())
+                plt.ylim(yy.min(), yy.max())
+                plt.xlabel('Channel 1')
+                plt.ylabel('Channel 2')
+                plt.title("Channel3 = " + str(round(setPointX3,3)) + "; Channel4 = " + str(setPointX4) + "; Error = " + str(errorPoint))
+                
+                # Figure Aesthetics
+                cb = plt.colorbar(ticks=range(6), label='digit value')
+                plt.rcParams['figure.dpi'] = 300
+                plt.clim(-0.5, 5.5)
+                
+                # Write to Video
+                writer.grab_frame()
+                # Clear Previous Frame
+                plt.cla()
+                cb.remove()
 
 
     def plotImportance(self, perm_importance_result, headerTitles):

@@ -355,7 +355,7 @@ class eogProtocol:
             # --------------------------------------------------------------- #
             
             # -------------------- Extract Blink Features ------------------- #
-            newFeatures = self.extractFeatures(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1], peakInd-leftBaselineIndex)
+            newFeatures = self.extractFeatures(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1].copy(), peakInd-leftBaselineIndex)
             
             # Remove Peaks with Bad Blink Features
             if len(newFeatures) == 0:
@@ -421,12 +421,15 @@ class eogProtocol:
             newIndsAccel.append(accelInds[accelInds > velInds[0]][0])
             newIndsAccel.append(accelInds[accelInds < velInds[1]][-1])
             newIndsAccel.append(accelInds[accelInds > velInds[1]][0])
+            
+            if newIndsAccel[1] >= peakInd-1:
+                return [],[]
 
-            i = 1
+            i = 0
             for accelInd in accelInds[accelInds > newIndsAccel[-1]]:
                 newIndsAccel.append(accelInd)
                 i += 1
-                if i == 2:
+                if i == 3:
                     break
         except Exception as e:
             print(e)
@@ -455,81 +458,6 @@ class eogProtocol:
         return dy_dt_ABS, d2y_dt2_ABS, curvature
 
 
-    def extractDerivFeatures(self, xData, yData, dy_dt_ABS, d2y_dt2_ABS, peakInd, peakAmp, velInds, accelInds):
-        # Extract Normalized Blink Velocities
-        peakClosingVel = dy_dt_ABS[velInds[0]]
-        peakOpeningVel = dy_dt_ABS[velInds[1]]
-        # Extract Normalized Blink Acceleration
-        peakClosingAccel1 = d2y_dt2_ABS[accelInds[0]]
-        peakClosingAccel2 = d2y_dt2_ABS[accelInds[1]]
-        peakopeningAccel1 = d2y_dt2_ABS[accelInds[2]]
-        peakopeningAccel2 = d2y_dt2_ABS[accelInds[3]]
-        peakTailAccel1 = d2y_dt2_ABS[accelInds[4]]
-        peakTailAccel2 = d2y_dt2_ABS[accelInds[5]]
-        # Extract Amplitude Ratios
-        velClosedRatio = yData[velInds[0]]/peakAmp
-        velOpenRatio = yData[velInds[1]]/peakAmp
-        accelClosedRatio1 = yData[accelInds[0]]/peakAmp
-        accelClosedRatio2 = yData[accelInds[1]]/peakAmp
-        accelOpenRatio1 = yData[accelInds[2]]/peakAmp
-        accelOpenRatio2 = yData[accelInds[3]]/peakAmp
-        # Extract Amplitudes
-        velClosedVal = dy_dt_ABS[velInds[0]]
-        velOpenVal = dy_dt_ABS[velInds[1]]
-        accelClosedVal1 = d2y_dt2_ABS[accelInds[0]]
-        accelClosedVal2 = d2y_dt2_ABS[accelInds[1]]
-        accelOpenVal1 = d2y_dt2_ABS[accelInds[2]]
-        accelOpenVal2 = d2y_dt2_ABS[accelInds[3]]
-        # Ratio
-        velRatio = dy_dt_ABS[velInds[0]]/dy_dt_ABS[velInds[1]]
-        accelRatio1 = d2y_dt2_ABS[accelInds[0]]/d2y_dt2_ABS[accelInds[1]]
-        accelRatio2 = d2y_dt2_ABS[accelInds[2]]/d2y_dt2_ABS[accelInds[3]]
-        # Ratio with yData
-        velRatioYData = yData[velInds[0]]/yData[velInds[1]]
-        accelRatioYData1 = yData[accelInds[0]]/yData[accelInds[1]]
-        accelRatioYData2 = yData[accelInds[2]]/yData[accelInds[3]]
-        
-        # New Half Duration
-        durationByVel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[velInds[0]]))] - xData[velInds[0]]
-        durationByVel2 = xData[velInds[1]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[velInds[1]]))]
-        durationByAccel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[0]]))] - xData[accelInds[0]]
-        durationByAccel2 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[1]]))] - xData[accelInds[1]]
-        durationByAccel3 = xData[accelInds[2]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[accelInds[2]]))]
-        midDurationRatio = durationByVel1/durationByVel2
-        # Diving the Peak by Acceleration
-        startToAccel = xData[accelInds[0]] - leftBlinkBaselineX
-        accelCloseingPeakDuration = xData[accelInds[1]] - xData[accelInds[0]]
-        accelToPeak = xData[peakInd] - xData[accelInds[1]]
-        peakToAccel = xData[accelInds[2]] - xData[peakInd]
-        accelOpeningPeakDuration = xData[accelInds[3]] - xData[accelInds[2]]
-        accelToEnd = rightBlinkBaselineX - xData[accelInds[3]]
-        # Diving the Peak by Velocity
-        velPeakDuration = xData[velInds[1]] - xData[velInds[0]]
-        startToVel = xData[velInds[0]] - leftBlinkBaselineX
-        velToPeak = xData[peakInd] - xData[velInds[0]]
-        peakToVel = xData[velInds[1]] - xData[peakInd]
-        velToEnd = rightBlinkBaselineX - xData[velInds[1]]
-        # Compile the Features
-        indexParams = [peakClosingVel, peakOpeningVel, peakClosingAccel1, peakClosingAccel2, peakopeningAccel1, peakopeningAccel2, peakTailAccel1, peakTailAccel2]
-        indexParams.extend([velOpenRatio, velClosedRatio, accelClosedRatio1, accelClosedRatio2, accelOpenRatio1, accelOpenRatio2])
-        indexParams.extend([velClosedVal, velOpenVal, accelClosedVal1, accelClosedVal2, accelOpenVal1, accelOpenVal2])
-        indexParams.extend([velRatio, accelRatio1, accelRatio2, velRatioYData, accelRatioYData1, accelRatioYData2])
-        
-        indexParams.extend([durationByVel1, durationByVel2, durationByAccel2, midDurationRatio])
-        indexParams.extend([velPeakDuration, startToVel, velToEnd, velToPeak, peakToVel])
-        indexParams.extend([accelCloseingPeakDuration, accelOpeningPeakDuration, accelToPeak, peakToAccel, startToAccel, accelToEnd])
-        indexParams.extend([maxCurvature, closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
-        # Save Blink Shpaes
-        peakShape = np.array(xData[peakInd - self.peakShapeBuffer:peakInd + self.peakShapeBuffer+1]); peakShape -= peakShape[0]
-        scaledCurvature = curvature * (xData[peakInd + self.peakShapeBuffer] - xData[peakInd - self.peakShapeBuffer])  
-        scaledCurvature = scaledCurvature/max(scaledCurvature)
-        scaledCurvature = (1/curvature[self.peakShapeBuffer])*curvature * (-xData[peakInd-self.peakShapeBuffer] + xData[peakInd+self.peakShapeBuffer])
-        self.importantArrays.append([speed, acceleration, curvature, scaledCurvature, peakShape])
-        # Reduce the Derivatives
-        return indexParams, velInds, accelInds
-        
-        
-
     def extractFeatures(self, xData, yData, peakInd):
         
         # ------------------- Subtract the Blink's Baseline ----------------- #
@@ -557,9 +485,14 @@ class eogProtocol:
         # If Not Enough Velocty/Acceleration Peaks Found, Cull the Blink
         if len(velIndsTotal) >= 2 and len(accelIndsTotal) >= 6:
             # For Good Derivative, Pull Out the Important Peaks
-            velInds, accelInds = self.organizeDerivPeaks(dy_dt_ABS, peakInd, velIndsTotal, accelIndsTotal)
+            velInds, accelInds = self.organizeDerivPeaks(dy_dt_ABS, peakInd, velIndsTotal, accelIndsTotal) 
+            
+            # plt.plot(xData, yData/max(yData))
+            # plt.plot(xData, dy_dt_ABS/max(dy_dt_ABS))
+            # plt.plot(xData, d2y_dt2_ABS/max(d2y_dt2_ABS))
+            # plt.show()
             # If Not Enough Good Peaks, Cull the Blink
-            if len(velInds) == 0:
+            if len(accelInds) < 6:
                 return []
         else:
             return []
@@ -569,7 +502,7 @@ class eogProtocol:
         # Linearly Fit the Peak's Base
         startBlinkLineParams = np.polyfit(xData[accelInds[0]: velInds[0]], yData[accelInds[0]: velInds[0]], 1)
         endBlinkLineparams1 = np.polyfit(xData[velInds[1]: accelInds[3]], yData[velInds[1]: accelInds[3]], 1)
-        endBlinkLineparams2 = np.polyfit(xData[accelInds[4]: accelInds[5]], yData[accelInds[4]: accelInds[5]], 1)
+        endBlinkLineparams2 = np.polyfit(xData[accelInds[4]: accelInds[-1]], yData[accelInds[4]: accelInds[-1]], 1)
         
         # Calculate the New Baseline of the Peak
         startBlinkX, _ = self.findIntersectionPoint([0, 0], startBlinkLineParams)
@@ -595,7 +528,7 @@ class eogProtocol:
         
         # -------------------- Extract Duration Features -------------------- #
         # Find the Standard Blink Durations
-        blinkDuration = startBlinkX - endBlinkX      # The Total Time of the Blink
+        blinkDuration = endBlinkX - startBlinkX      # The Total Time of the Blink
         closingTime = peakTentX - startBlinkX        # The Time for the Eye to Close
         openingTime = endBlinkX - peakTentX          # The Time for the Eye to Open
         # Calculate the Duration Ratios
@@ -616,6 +549,7 @@ class eogProtocol:
         
         # ---------------------- Extract Slope Features --------------------- #
         # Extract Slopes
+        closingSlope0 = np.polyfit(xData[startBlinkInd: velInds[0]], yData[startBlinkInd: velInds[0]], 1)[0]
         closingSlope1 = startBlinkLineParams[0]
         closingSlope2 = np.polyfit(xData[accelInds[1]: peakInd], yData[accelInds[1]: peakInd], 1)[0]
         openingSlope1 = np.polyfit(xData[peakInd: velInds[1]], yData[peakInd: velInds[1]], 1)[0]
@@ -627,39 +561,111 @@ class eogProtocol:
         # Calculate Peak Shape Parameters
         peakAverage = np.mean(yData[startBlinkInd:endBlinkInd])
         peakAverageRatio = peakAverage/blinkHeight
-        peakEntropy = entropy(yData)
+        peakEntropy = entropy(yData-min(yData)+10E-5)
         peakSkew = skew(yData, bias=False)
         peakKurtosis = kurtosis(yData, fisher=True, bias = False)
-        maxCurvature = max(curvature[peakInd - 15: peakInd + 15])
+        maxCurvature = max(curvature[peakInd - 25: peakInd + 25])
+        # ------------------------------------------------------------------- #
         
-        # Extract Derivative Features
-        blinkFeatures = self.extractDerivFeatures(xData, yData, dy_dt_ABS, d2y_dt2_ABS, peakInd, blinkHeight, velInds, accelInds)
-        if len(blinkFeatures) == 0:
-            return []
+        # -------------------- Extract Derivative Features ------------------ #
+        # Extract Normalized Blink Velocities
+        peakClosingVel = dy_dt_ABS[velInds[0]]
+        peakOpeningVel = dy_dt_ABS[velInds[1]]
+        # Extract Normalized Blink Acceleration
+        peakClosingAccel1 = d2y_dt2_ABS[accelInds[0]]
+        peakClosingAccel2 = d2y_dt2_ABS[accelInds[1]]
+        peakopeningAccel1 = d2y_dt2_ABS[accelInds[2]]
+        peakopeningAccel2 = d2y_dt2_ABS[accelInds[3]]
+        # Extract Amplitude Ratios
+        velClosedRatio = yData[velInds[0]]/blinkHeight
+        velOpenRatio = yData[velInds[1]]/blinkHeight
+        accelClosedRatio1 = yData[accelInds[0]]/blinkHeight
+        accelClosedRatio2 = yData[accelInds[1]]/blinkHeight
+        accelOpenRatio1 = yData[accelInds[2]]/blinkHeight
+        accelOpenRatio2 = yData[accelInds[3]]/blinkHeight
+        # Extract Amplitudes
+        velClosedVal = dy_dt_ABS[velInds[0]]
+        velOpenVal = dy_dt_ABS[velInds[1]]
+        accelClosedVal1 = d2y_dt2_ABS[accelInds[0]]
+        accelClosedVal2 = d2y_dt2_ABS[accelInds[1]]
+        accelOpenVal1 = d2y_dt2_ABS[accelInds[2]]
+        accelOpenVal2 = d2y_dt2_ABS[accelInds[3]]
+        # Ratio
+        velRatio = dy_dt_ABS[velInds[0]]/dy_dt_ABS[velInds[1]]
+        accelRatio1 = d2y_dt2_ABS[accelInds[0]]/d2y_dt2_ABS[accelInds[1]]
+        accelRatio2 = d2y_dt2_ABS[accelInds[2]]/d2y_dt2_ABS[accelInds[3]]
+        # Ratio with yData
+        velRatioYData = yData[velInds[0]]/yData[velInds[1]]
+        accelRatioYData1 = yData[accelInds[0]]/yData[accelInds[1]]
+        accelRatioYData2 = yData[accelInds[2]]/yData[accelInds[3]]
+        
+        # New Half Duration
+        durationByVel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[velInds[0]]))] - xData[velInds[0]]
+        durationByVel2 = xData[velInds[1]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[velInds[1]]))]
+        durationByAccel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[0]]))] - xData[accelInds[0]]
+        durationByAccel2 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[1]]))] - xData[accelInds[1]]
+        durationByAccel3 = xData[accelInds[2]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[accelInds[2]]))]
+        midDurationRatio = durationByVel1/durationByVel2
+
+        # Divide the Peak by Acceleration
+        startToAccel = xData[accelInds[0]] - startBlinkX
+        accelCloseingPeakDuration = xData[accelInds[1]] - xData[accelInds[0]]
+        accelToPeak = xData[peakInd] - xData[accelInds[1]]
+        peakToAccel = xData[accelInds[2]] - xData[peakInd]
+        accelOpeningPeakDuration = xData[accelInds[3]] - xData[accelInds[2]]
+        accelToEnd = endBlinkX - xData[accelInds[3]]
+        # Divide the Peak by Velocity
+        velPeakDuration = xData[velInds[1]] - xData[velInds[0]]
+        startToVel = xData[velInds[0]] - startBlinkX
+        velToPeak = xData[peakInd] - xData[velInds[0]]
+        peakToVel = xData[velInds[1]] - xData[peakInd]
+        velToEnd = endBlinkX - xData[velInds[1]]
         # ------------------------------------------------------------------- #
 
         # ------------------ Consolidate the Blink Features ----------------- #
         # Finalize the Features
-        blinkFeatures.extend([blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentRatio, tentDeviationRatio])
+        blinkFeatures = [blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentRatio, tentDeviationRatio]
         blinkFeatures.extend([blinkDuration, closingTime, openingTime, closingFraction, openingFraction, halfClosedTime, eyesClosedTime, percentTimeClosed])
-        blinkFeatures.extend([closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
+        blinkFeatures.extend([closingSlope0, closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
         blinkFeatures.extend([peakAverage, peakAverageRatio, peakEntropy, peakSkew, peakKurtosis, maxCurvature])
+        # Compile the Features
+        blinkFeatures.extend([peakClosingVel, peakOpeningVel, peakClosingAccel1, peakClosingAccel2, peakopeningAccel1, peakopeningAccel2])
+        blinkFeatures.extend([velOpenRatio, velClosedRatio, accelClosedRatio1, accelClosedRatio2, accelOpenRatio1, accelOpenRatio2])
+        blinkFeatures.extend([velClosedVal, velOpenVal, accelClosedVal1, accelClosedVal2, accelOpenVal1, accelOpenVal2])
+        blinkFeatures.extend([velRatio, accelRatio1, accelRatio2, velRatioYData, accelRatioYData1, accelRatioYData2])
+        blinkFeatures.extend([durationByVel1, durationByVel2, durationByAccel1, durationByAccel2, durationByAccel3, midDurationRatio])
+        blinkFeatures.extend([startToAccel, accelCloseingPeakDuration, accelToPeak, peakToAccel, accelOpeningPeakDuration, accelToEnd])
+        blinkFeatures.extend([velPeakDuration, startToVel, velToPeak, peakToVel, velToEnd])
         # ------------------------------------------------------------------- #
-        
-        
-        sepInds = [startBlinkX, accelInds[0], accelInds[1], peakInd, accelInds[3], endBlinkX]
-        self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
-        
+
+
         # ---------------------- Cull Potential Blinks ---------------------- #
         # If the Blink is Shorter Than 50ms or Longer Than 500ms, Ignore the Blink (Probably Eye Movement)
-        if 0.5 < blinkDuration < 0.05:
+        if 0.5 < blinkDuration or blinkDuration < 0.05:
             print("Bad Blink Duration:", blinkDuration)
             return []
         # If the Closing Time is Longer Than 150ms, it is Probably Not an Involuntary Blink
         elif closingTime > 0.15:
             print("Bad Closing Time:", closingTime)
             return []
-        # If the Tent Peak is Malformed, Ignore the Peak
+        elif 0.5 < openingTime:
+            print("Bad Opening Time:", closingTime)
+            return []
+        elif 4 < accelRatio1:
+            print("Bad accelRatio1:", accelRatio1)
+            return []
+        elif 0.5 < accelToEnd:
+            print("Bad accelToEnd:", accelToEnd)
+            return []
+        elif peakSkew < -1:
+            print("Bad peakSkew:", peakSkew)
+            return []   
+        elif 6 < velRatio:
+            print("Bad velRatio:", velRatio)
+            return []     
+        elif 0.5 < velToEnd:
+            print("Bad velToEnd:", velToEnd)
+            return []            # If the Tent Peak is Malformed, Ignore the Peak
         #elif abs((peakTentY - yData[peakInd]) + (peakTentX - xData[peakInd])) > 0.1:
         #    print("Improper Peak Tent", xData[peakInd])
         #    return []
@@ -671,6 +677,10 @@ class eogProtocol:
         #    return []
         
         # If the Blink is Good, Return the Features
+        
+        #sepInds = [startBlinkInd, accelInds[0], accelInds[1], peakInd, accelInds[3], endBlinkInd]
+        #self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
+      
         return blinkFeatures
         # ------------------------------------------------------------------- #
 
@@ -798,10 +808,14 @@ class eogProtocol:
         return trailingAverage
     
     def predictMovement(self, inputData, predictionModel): 
+        predictionProbs = predictionModel.predict(np.reshape(inputData, (1,68)))[0][0]
+        print(predictionProbs, int(predictionProbs + 0.5))
+        predictedIndex = int(predictionProbs + 0.5)
+        self.currentState = self.blinkTypes[predictedIndex] 
         # Predict Data
-        predictedIndex = predictionModel.predictData(np.array([inputData]))[0]
-        self.currentState = self.blinkTypes[predictedIndex]
-        print("\tThe Blink is ", self.currentState)
+  #      predictedIndex = predictionModel.predictData(np.array([inputData]))[0]
+  #      self.currentState = self.blinkTypes[predictedIndex]
+  #      print("\tThe Blink is ", self.currentState)
 
     def sigmoid(self, x, k, x0):       
         # Prediction Model
@@ -867,125 +881,3 @@ class eogProtocol:
             plt.show()
 
 
-"""
-
-def findBaselineIndex(xData, yData, xPointer, searchDirection = 1):
-    
-    if searchDirection == 1:
-        endSearch = len(yData)
-    elif searchDirection == -1:
-        endSearch = max(-1, xPointer - 1000)
-    else:
-        print("Wrong Search Direction")
-        sys.exit()
-    
-    addOn = 5; firstDer = [0]*addOn; minimumPeakPoints = 40;
-    foundDrop = False; maxSlope = 0
-    # Caluclate the Running Slope of the Data
-    for peakInd in range(xPointer + searchDirection*(addOn+minimumPeakPoints), endSearch, searchDirection):
-        # Calculate the First Derivative
-        deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
-        deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
-        firstDeriv = deltaY/deltaX
-        firstDer.append(deltaY/deltaX)
-        
-        # Verify Major Slope Drop
-        if abs(firstDeriv) > 0.5:
-            foundDrop = True
-            maxSlope = max(maxSlope, abs(firstDeriv))
-        
-        if foundDrop and abs(firstDeriv) < maxSlope/10:
-            return peakInd
-    return peakInd
-
-yDiff4 = []
-xDiff4 = []
-blinkDurations = []
-leftIndices = []
-rightIndices = []
-finalInds = []
-toBaselines = 15;
-fitPercent = 0.7
-peakIndices = scipy.signal.find_peaks(yData, prominence=.3, width=50)[0];
-for peakInd in peakIndices:
-    leftBaselineIndex = findBaselineIndex(xData, yData, peakInd, searchDirection = -1)
-    rightBaselineIndex = findBaselineIndex(xData, yData, peakInd, searchDirection = 1)
-
-    if leftBaselineIndex == peakInd or rightBaselineIndex == peakInd:
-        continue
-
-    blinkDuration = xData[rightBaselineIndex] - xData[leftBaselineIndex]
-  #  if xData[rightBaselineIndex] - xData[leftBaselineIndex] > 0.2:
-  #      continue
-    if blinkDuration < 2:
-
-        # Find Place to Start
-        baseIndexes = [leftBaselineIndex, rightBaselineIndex]
-        closestBaseline = np.argmin([yData[leftBaselineIndex], yData[rightBaselineIndex]])
-        distanceFromPeak = int(0.95*(abs(peakInd - baseIndexes[closestBaseline])))
-
-        # Find Start Indices of the Line
-        secondDerivLeft = np.gradient(np.gradient(yData[leftBaselineIndex:peakInd]))
-        beginLeftLineInd = np.argmax(secondDerivLeft)
-        endLeftLineInd = np.argmin(secondDerivLeft)
-
-        secondDerivRight = np.gradient(np.gradient(yData[peakInd:rightBaselineIndex]))
-        beginRightLineInd = np.argmin(secondDerivRight)
-        endRightLineInd = np.argmax(secondDerivRight)
-
-        # Define Left Line Bounds
-        startLeftLine = leftBaselineIndex + beginLeftLineInd + 15
-        endLeftLine = leftBaselineIndex + endLeftLineInd - 15
-        # Define Right Line Bounds
-        startRightLine = peakInd + beginRightLineInd + 15
-        endRightLine = peakInd + endRightLineInd - 15
-
-        if endRightLine <= startRightLine or endLeftLine <= startLeftLine:
-            continue
-
-
-        # Define Lines
-        leftLine = np.polyfit(xData[startLeftLine:endLeftLine], yData[startLeftLine:endLeftLine], 1)
-        rightLine = np.polyfit(xData[startRightLine:endRightLine], yData[startRightLine:endRightLine], 1)
-
-        xIntersect = (rightLine[1] - leftLine[1])/(leftLine[0] - rightLine[0])
-        yIntersect = leftLine[0]*xIntersect + leftLine[1]
-
-        if yIntersect - yData[peakInd] < 0.3:
-            yDiff4.append(yIntersect - yData[peakInd])
-            xDiff4.append(xIntersect - xData[peakInd])
-            blinkDurations.append(blinkDuration)
-            finalInds.append(peakInd)
-            leftIndices.append(leftBaselineIndex)
-            rightIndices.append(rightBaselineIndex)
-
-        if True:
-            plt.plot(xData[peakInd], yData[peakInd], 'ro');
-            plt.plot(xData, yData); plt.plot(xData[leftBaselineIndex], yData[leftBaselineIndex], 'go');
-            plt.plot(xData[rightBaselineIndex], yData[rightBaselineIndex], 'ro');
-            plt.plot(xIntersect, yIntersect, 'ko')
-            plt.plot(xData[startLeftLine:endLeftLine], leftLine[0]*xData[startLeftLine:endLeftLine] + leftLine[1])
-            plt.plot(xData[startRightLine:endRightLine], rightLine[0]*xData[startRightLine:endRightLine] + rightLine[1])
-            plt.xlim([xData[leftBaselineIndex], xData[rightBaselineIndex]])
-            plt.show()
-plt.plot(xData, yData); plt.plot(xData[finalInds], yData[finalInds], 'o');
-plt.plot(xData[leftIndices], yData[leftIndices], 'go');
-plt.plot(xData[rightIndices], yData[rightIndices], 'ro');
-plt.xlim([5, 20])
-plt.show()
-xDiff4 = np.array(xDiff4); yDiff4 = np.array(yDiff4)
-#ax = plt.axes(projection='3d')
-plt.plot(xDiff4, yDiff4, 'o'); #plt.xlim([-0.05, 0]); plt.ylim([-.15, 0.05])
-
-
-# array([-5.18623727,  0.06458267])
-
-
-
-# Find the Start Index of the Left Line
-secondDerivLeft = np.diff(yData[leftBaselineIndex:peakInd], 2)
-midLeftLine = int((np.argmax(secondDerivLeft) + np.argmin(secondDerivLeft))/2)
-# Find the Start Index of the Right Line
-secondDerivRight = np.diff(yData[peakInd:rightBaselineIndex], 2)
-midRightLine = int((np.argmin(secondDerivRight) + np.argmax(secondDerivRight))/2)
-"""

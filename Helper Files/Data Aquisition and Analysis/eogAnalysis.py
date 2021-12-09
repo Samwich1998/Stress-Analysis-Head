@@ -93,7 +93,7 @@ class eogProtocol:
         # Reset Last Eye Voltage (Volts)
         self.currentEyeVoltages = [self.steadyStateEye for _ in range(self.numChannels)]
         # Reset Feature Extraction
-        self.blinkFeatures = []
+        self.featureList = []
         # Reset Blink Indices
         self.singleBlinksX = []
         self.multipleBlinksX = []
@@ -180,7 +180,7 @@ class eogProtocol:
             # Get the Sampling Frequency from the First Batch (If Not Given)
             if not self.samplingFreq:
                 self.samplingFreq = len(self.data['timePoints'][startBPFindex:])/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
-                print("Setting Sampling Frequency to", self.samplingFreq)
+                print("\tSetting Sampling Frequency to", self.samplingFreq)
             
             filteredData = self.butterFilter(yDataBuffer, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')[-self.numTimePoints:]
             # --------------------------------------------------------------- #
@@ -361,7 +361,7 @@ class eogProtocol:
             if len(newFeatures) == 0:
                 continue
             # Else, Add the New Features
-            self.blinkFeatures.append(newFeatures)
+            self.featureList.append(newFeatures)
             # --------------------------------------------------------------- #
             
             # ----------------- Singular or Multiple Blinks? ---------------- #
@@ -413,7 +413,7 @@ class eogProtocol:
         velInds.append(max(velIndsTotal[velIndsTotal > peakInd], key = lambda velInd: dy_dt_ABS[velInd]))
         # Verify That the Index is Correct, Else Remove the Peak (Improper Blink)
         if velInds[0] > peakInd or velInds[1] < peakInd:
-            print("Bad Peak ... WHAT")
+            print("\tBad Peak ... WHAT")
             return [], []
         try:
             # Get the Correct Accel Inds
@@ -506,7 +506,7 @@ class eogProtocol:
         
         # Calculate the New Baseline of the Peak
         startBlinkX, _ = self.findIntersectionPoint([0, 0], startBlinkLineParams)
-        endBlinkX, _ = self.findIntersectionPoint(endBlinkLineparams2, [0, 0])
+        endBlinkX, _ = self.findIntersectionPoint(endBlinkLineparams1, [0, 0])
         # Calculate the New Baseline's Index
         startBlinkInd = np.argmin(abs(xData - startBlinkX))
         endBlinkInd = np.argmin(abs(xData - endBlinkX))
@@ -624,48 +624,51 @@ class eogProtocol:
 
         # ------------------ Consolidate the Blink Features ----------------- #
         # Finalize the Features
-        blinkFeatures = [blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentRatio, tentDeviationRatio]
-        blinkFeatures.extend([blinkDuration, closingTime, openingTime, closingFraction, openingFraction, halfClosedTime, eyesClosedTime, percentTimeClosed])
-        blinkFeatures.extend([closingSlope0, closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
-        blinkFeatures.extend([peakAverage, peakAverageRatio, peakEntropy, peakSkew, peakKurtosis, maxCurvature])
+        featureList = [blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentRatio, tentDeviationRatio]
+        featureList.extend([blinkDuration, closingTime, openingTime, closingFraction, openingFraction, halfClosedTime, eyesClosedTime, percentTimeClosed])
+        featureList.extend([closingSlope0, closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
+        featureList.extend([peakAverage, peakAverageRatio, peakEntropy, peakSkew, peakKurtosis, maxCurvature])
         # Compile the Features
-        blinkFeatures.extend([peakClosingVel, peakOpeningVel, peakClosingAccel1, peakClosingAccel2, peakopeningAccel1, peakopeningAccel2])
-        blinkFeatures.extend([velOpenRatio, velClosedRatio, accelClosedRatio1, accelClosedRatio2, accelOpenRatio1, accelOpenRatio2])
-        blinkFeatures.extend([velClosedVal, velOpenVal, accelClosedVal1, accelClosedVal2, accelOpenVal1, accelOpenVal2])
-        blinkFeatures.extend([velRatio, accelRatio1, accelRatio2, velRatioYData, accelRatioYData1, accelRatioYData2])
-        blinkFeatures.extend([durationByVel1, durationByVel2, durationByAccel1, durationByAccel2, durationByAccel3, midDurationRatio])
-        blinkFeatures.extend([startToAccel, accelCloseingPeakDuration, accelToPeak, peakToAccel, accelOpeningPeakDuration, accelToEnd])
-        blinkFeatures.extend([velPeakDuration, startToVel, velToPeak, peakToVel, velToEnd])
+        featureList.extend([peakClosingVel, peakOpeningVel, peakClosingAccel1, peakClosingAccel2, peakopeningAccel1, peakopeningAccel2])
+        featureList.extend([velOpenRatio, velClosedRatio, accelClosedRatio1, accelClosedRatio2, accelOpenRatio1, accelOpenRatio2])
+        featureList.extend([velClosedVal, velOpenVal, accelClosedVal1, accelClosedVal2, accelOpenVal1, accelOpenVal2])
+        featureList.extend([velRatio, accelRatio1, accelRatio2, velRatioYData, accelRatioYData1, accelRatioYData2])
+        featureList.extend([durationByVel1, durationByVel2, durationByAccel1, durationByAccel2, durationByAccel3, midDurationRatio])
+        featureList.extend([startToAccel, accelCloseingPeakDuration, accelToPeak, peakToAccel, accelOpeningPeakDuration, accelToEnd])
+        featureList.extend([velPeakDuration, startToVel, velToPeak, peakToVel, velToEnd])
         # ------------------------------------------------------------------- #
 
 
         # ---------------------- Cull Potential Blinks ---------------------- #
         # If the Blink is Shorter Than 50ms or Longer Than 500ms, Ignore the Blink (Probably Eye Movement)
         if 0.5 < blinkDuration or blinkDuration < 0.05:
-            print("Bad Blink Duration:", blinkDuration)
+            print("\tBad Blink Duration:", blinkDuration)
             return []
         # If the Closing Time is Longer Than 150ms, it is Probably Not an Involuntary Blink
         elif closingTime > 0.15:
-            print("Bad Closing Time:", closingTime)
+            print("\tBad Closing Time:", closingTime)
             return []
         elif 0.5 < openingTime:
-            print("Bad Opening Time:", closingTime)
+            print("\tBad Opening Time:", closingTime)
             return []
         elif 4 < accelRatio1:
-            print("Bad accelRatio1:", accelRatio1)
+            print("\tBad accelRatio1:", accelRatio1)
             return []
         elif 0.5 < accelToEnd:
-            print("Bad accelToEnd:", accelToEnd)
+            print("\tBad accelToEnd:", accelToEnd)
             return []
         elif peakSkew < -1:
-            print("Bad peakSkew:", peakSkew)
+            print("\tBad peakSkew:", peakSkew)
             return []   
         elif 6 < velRatio:
-            print("Bad velRatio:", velRatio)
+            print("\tBad velRatio:", velRatio)
             return []     
         elif 0.5 < velToEnd:
-            print("Bad velToEnd:", velToEnd)
-            return []            # If the Tent Peak is Malformed, Ignore the Peak
+            print("\tBad velToEnd:", velToEnd)
+            return []    
+        elif 5 < midDurationRatio:
+            print("\tBad velToEnd:", midDurationRatio)
+            return []           # If the Tent Peak is Malformed, Ignore the Peak
         #elif abs((peakTentY - yData[peakInd]) + (peakTentX - xData[peakInd])) > 0.1:
         #    print("Improper Peak Tent", xData[peakInd])
         #    return []
@@ -673,7 +676,7 @@ class eogProtocol:
         #currentShape = yData[peakInd - self.peakShapeBuffer:peakInd + self.peakShapeBuffer + 1]
         #peakDome = np.diff(currentShape)/np.diff(currentShape)[0]
         #if max(peakDome) > 1 or min(peakDome) < -1:
-        #    print("Bad Peak Dome", xData[peakInd])
+        #    print("\tBad Peak Dome", xData[peakInd])
         #    return []
         
         # If the Blink is Good, Return the Features
@@ -681,7 +684,7 @@ class eogProtocol:
         #sepInds = [startBlinkInd, accelInds[0], accelInds[1], peakInd, accelInds[3], endBlinkInd]
         #self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
       
-        return blinkFeatures
+        return featureList
         # ------------------------------------------------------------------- #
 
 
@@ -808,7 +811,7 @@ class eogProtocol:
         return trailingAverage
     
     def predictMovement(self, inputData, predictionModel): 
-        predictionProbs = predictionModel.predict(np.reshape(inputData, (1,68)))[0][0]
+        predictionProbs = predictionModel.predict(np.reshape(inputData, (1,68)))[0]
         print(predictionProbs, int(predictionProbs + 0.5))
         predictedIndex = int(predictionProbs + 0.5)
         self.currentState = self.blinkTypes[predictedIndex] 

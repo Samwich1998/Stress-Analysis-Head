@@ -150,7 +150,7 @@ class Neural_Network:
     """
     Define a Neural Network Class
     """
-    def __init__(self, modelPath, dataDim):
+    def __init__(self, modelPath, numFeatures):
         """
         Input:
             name: The Name of the Neural Network to Save/Load
@@ -167,7 +167,7 @@ class Neural_Network:
             self.loadModel(modelPath)
         else:
             # Else, Create the Model
-            self.createModel(dataDim, opt=None, loss=None, metric=None)
+            self.createModel(numFeatures, opt=None, loss=None, metric=None)
 
 
     def loadModel(self, modelPath):
@@ -215,20 +215,20 @@ class Neural_Network:
     
     def trainModel(self, Training_Data, Training_Labels, Testing_Data, Testing_Labels, epochs = 500, seeTrainingSteps = False):
         # For mini-batch gradient decent we want it small (not full batch) to better generalize data
-        max_batch_size = 128  # Keep Batch sizes relatively small (no more than 64 or 128)
+        max_batch_size = 32  # Keep Batch sizes relatively small (no more than 64 or 128)
         mini_batch_gd = min(len(Training_Data)//4, max_batch_size)
         mini_batch_gd = max(1, mini_batch_gd)  # For really small data samples at least take 1 data point
         # For every Epoch (loop), run the Neural Network by:
             # With uninitialized weights, bring data through network
             # Calculate the loss based on the data
             # Perform optimizer to update the weights
-        print(Training_Data, Training_Labels)
         self.history = self.model.fit(Training_Data, Training_Labels, validation_split=0.33, epochs=int(epochs), shuffle=True, batch_size = int(mini_batch_gd), verbose = seeTrainingSteps)
         # Score the Model
         results = self.model.evaluate(Testing_Data, Testing_Labels, batch_size=mini_batch_gd, verbose = seeTrainingSteps)
         score = results[0]; accuracy = results[1]; 
         print('Test score:', score)
         print('Test accuracy:', accuracy)
+        return accuracy
     
     
     def predictData(self, New_Data):
@@ -255,24 +255,7 @@ class Neural_Network:
         #pyplot.legend()
         pyplot.show()
         
-        
-    def plot3DLabels(self, signalData, signalLabels, saveFolder = "../Output Data/", name = "Channel Feature Distribution"):
-        # Plot and Save
-        fig = plt.figure()
-        fig.set_size_inches(10,10)
-        ax = plt.axes(projection='3d')
-        
-        # Scatter Plot
-        ax.scatter(signalData[:, 3], signalData[:, 1], signalData[:, 2], "o", c = signalLabels, cmap = plt.cm.get_cmap('cubehelix', 6), linewidth = 0.2, s = 30)
-        
-        ax.set_title('Channel Feature Distribution');
-        ax.set_xlabel("Channel 4")
-        ax.set_ylabel("Channel 2")
-        ax.set_zlabel("Channel 3")
-        #fig.tight_layout()
-        fig.savefig(saveFolder + name + ".png", dpi=200, bbox_inches='tight')
-        plt.show() # Must be the Last Line
-        
+    
     def accuracyDistributionPlot(self, signalData, signalLabelsTrue, signalLabelsML, movementOptions, saveFolder = "../Output Data/", name = "Accuracy Distribution"):
         
         # Calculate the Accuracy Matrix
@@ -306,72 +289,6 @@ class Neural_Network:
         plt.savefig(saveFolder + name + ".png", dpi=150, bbox_inches='tight')
         plt.show()
     
-    def plotModel(self, signalData, signalLabels):
-    
-        # Create Mesh (X,Y Points) to Predict Classifier's Space
-        stepSize = 0.01 # step size in the mesh
-        x_min, x_max = signalData[:, 0].min(), signalData[:, 0].max()  # Channel 1
-        y_min, y_max = signalData[:, 1].min(), signalData[:, 1].max()  # Channel 2
-        xx, yy = np.meshgrid(np.arange(x_min, x_max, stepSize), np.arange(y_min, y_max, stepSize))
-        
-        # Define MovieWriter to Mave Movie
-        FFMpegWriter = manimation.writers['ffmpeg']
-        metadata = dict(title="", artist='Matplotlib', comment='Movie support!')
-        writer = FFMpegWriter(fps=3, metadata=metadata)
-        # Define Movie Plot
-        fig = plt.figure()
-        
-        # Set Channel4 as Constant: Display Data ONLY in This Range
-        setPointX4 = 0.002; # Channel 4's Value
-        errorPoint = 0.003; # Width of Channel 4's Values
-        x4 = np.ones(np.shape(xx.ravel())[0])*setPointX4
-        dataWithinChannel4 = signalData[abs(signalData[:, 3] - setPointX4) <= errorPoint]
-        # Initialize Relevant Channel 3 Range
-        channel3Vals = np.arange(0.0, dataWithinChannel4[:,2].max(initial=0), 0.01)
-        if len(channel3Vals) == 0:
-            print("No Values Found in Channel 3")
-            return None
-        
-        # Plot Data with Different Channel 3 Values, and Save as Movie
-        with writer.saving(fig, "./Machine Learning Modules/ML Videos/NN.mp4", 300):
-            for setPointX3 in channel3Vals:
-                # Define New Channel 3 Points
-                x3 = np.ones(np.shape(xx.ravel())[0])*setPointX3
-                
-                # Predict Every Point's Class With the Trained Model
-                handMovements = self.predictData(np.c_[xx.ravel(), yy.ravel(), x3, x4])
-                # Rearrange the Data to Match the 2D Plot                  
-                handMovements = handMovements.reshape(xx.shape)
-                # Plot the Predicted Classes
-                plt.contourf(xx, yy, handMovements, cmap=plt.cm.get_cmap('cubehelix', 6), alpha=0.7, vmin=0, vmax=5)
-                
-                # Get the Real Data with the Real Labels in this Space
-                xPoints = []; yPoints = []; yLabelPoints = []
-                for j, point in enumerate(signalData):
-                    if abs(point[2] - setPointX3) <= errorPoint and abs(point[3] - setPointX4) <= errorPoint:
-                        xPoints.append(point[0])
-                        yPoints.append(point[1])
-                        yLabelPoints.append(np.argmax(signalLabels[j]))
-                # Plot the Real Data with the Real Labels in this Space
-                plt.scatter(xPoints, yPoints, c=yLabelPoints, cmap=plt.cm.get_cmap('cubehelix', 6), edgecolors='grey', s=50, vmin=0, vmax=5)
-                
-                # Figure Labels/Limits
-                plt.xlim(xx.min(), xx.max())
-                plt.ylim(yy.min(), yy.max())
-                plt.xlabel('Channel 1')
-                plt.ylabel('Channel 2')
-                plt.title("Channel3 = " + str(round(setPointX3,3)) + "; Channel4 = " + str(setPointX4) + "; Error = " + str(errorPoint))
-                
-                # Figure Aesthetics
-                cb = plt.colorbar(ticks=range(6), label='digit value')
-                plt.rcParams['figure.dpi'] = 300
-                plt.clim(-0.5, 5.5)
-            
-                # Write to Video
-                writer.grab_frame()
-                # Clear Previous Frame
-                plt.cla()
-                cb.remove()
 
 
 

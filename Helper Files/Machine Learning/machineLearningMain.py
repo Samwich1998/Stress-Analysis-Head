@@ -41,7 +41,7 @@ import createHeatMap as createMap       # Functions for Neural Network
 
 class predictionModelHead:
     
-    def __init__(self, modelType, modelPath, dataDim, gestureClasses, saveDataFolder):
+    def __init__(self, modelType, modelPath, numFeatures, gestureClasses, saveDataFolder):
         # Store Parameters
         self.modelType = modelType
         self.modelPath = modelPath
@@ -52,17 +52,17 @@ class predictionModelHead:
         # Holder Variables
         self.map2D = []
         # Get Prediction Model
-        self.predictionModel = self.getModel(modelType, modelPath, dataDim)
+        self.predictionModel = self.getModel(modelType, modelPath, numFeatures)
         if saveDataFolder:
             # Create Output File Directory to Save Data: If None
             os.makedirs(self.saveDataFolder, exist_ok=True)
         
     
-    def getModel(self, modelType, modelPath, dataDim):
+    def getModel(self, modelType, modelPath, numFeatures):
         # Get the Machine Learning Model
         if modelType == "NN":
-            # dataDim = The dimensionality of one data point
-            predictionModel = NeuralNet.Neural_Network(modelPath = modelPath, dataDim = dataDim)
+            # numFeatures = The dimensionality of one data point
+            predictionModel = NeuralNet.Neural_Network(modelPath = modelPath, numFeatures = numFeatures)
         elif modelType == "RF":
             predictionModel = randomForest.randomForest(modelPath = modelPath)
         elif modelType == "LR":
@@ -87,18 +87,19 @@ class predictionModelHead:
             print("The Number of Feature Labels Provided Does Not Match the Number of Features")
             print("Removing Feature Labels")
             featureLabels = []
+        print(len(featureLabels))
             
         signalData = np.array(signalData); signalLabels = np.array(signalLabels)
         # Split the Data into Training and Validation Sets
         Training_Data, Testing_Data, Training_Labels, Testing_Labels = train_test_split(signalData, signalLabels, test_size=0.33, shuffle= True, stratify=signalLabels)
         
-        if self.modelType in ['RF', 'LR', 'KNN', 'SVM']:
+        if self.modelType in ['RF', 'LR', 'KNN', 'SVM', 'NN']:
             # Train the Model Multiple Times
             means = []
-            for _ in range(3):
+            for _ in range(1):
                 modelScore = []
                 # Taking the Average Score Each Time
-                for _ in range(100):
+                for _ in range(1):
                     # Train the Model with the Training Data
                     Training_Data, Testing_Data, Training_Labels, Testing_Labels = train_test_split(signalData, signalLabels, test_size=0.33, shuffle= True, stratify=signalLabels)
                     modelScore.append(self.predictionModel.trainModel(Training_Data, Training_Labels, Testing_Data, Testing_Labels))
@@ -114,35 +115,11 @@ class predictionModelHead:
             self.accuracyDistributionPlot(signalData, signalLabels,  self.predictionModel.predictData(signalData), self.gestureClasses)
             # Extract Feature Importance
             self.featureImportance(signalData, signalLabels, signalData, signalLabels, featureLabels = featureLabels, numTrials = 100)
-            # Plot Model (Right Now it Only Works for 6 Gestures; Just Change the Labeling of the Classes in cmap)
-            if self.numClasses == 6:
-                self.plot3DLabels(signalData, signalLabels)
-                #self.predictionModel.plotModel(signalData, signalLabels) # Must Edit if you Want to Use
-                self.plot3DLabelsMovie(signalData, signalLabels)
-                self.map2D = self.mapTo2DPlot(signalData, signalLabels)
 
-        elif self.modelType == "NN":
-            Training_LabelsArray = []; maxLabel = max(Training_Labels) + 1
-            for label in Training_Labels:
-                newLabel = np.zeros(maxLabel).astype(int)
-                newLabel[label] = 1
-                Training_LabelsArray.append(list(newLabel))
-            Training_LabelsArray  = np.array(Training_LabelsArray).astype(int)
-
-            Testing_LabelsArray = []; maxLabel = max(Training_Labels) + 1
-            for label in Testing_Labels:
-                newLabel = np.zeros(maxLabel).astype(int)
-                newLabel[label] = 1
-                Testing_LabelsArray.append(list(newLabel))
-            Testing_LabelsArray  = np.array(Testing_LabelsArray).astype(int)
-                
-            # Train the NN with the Training Data
-            self.predictionModel.trainModel(Training_Data, Training_Labels, Testing_Data, Training_Labels, 500, seeTrainingSteps = False)
+        if self.modelType == "NN":
             # Plot the training loss    
-            self.predictionModel.plotModel(signalData, signalLabels)
-            self.predictionModel.plot3DLabels(signalData, signalLabels)
-            self.predictionModel.accuracyDistributionPlot(signalData, signalLabels,  self.predictionModel.predictData(signalData), self.gestureClasses)
             self.predictionModel.plotStats()
+            
 
         # Find the Data Distribution
         classDistribution = collections.Counter(signalLabels)
@@ -313,8 +290,9 @@ class predictionModelHead:
         Randomly Permute a Feature's Column and Return the Average Deviation in the Score: |oldScore - newScore|
         NOTE: ONLY Compare Feature on the Same Scale: Time and Distance CANNOT be Compared
         """
-        importanceResults = permutation_importance(self.predictionModel.model, signalData, signalLabels, n_repeats=numTrials)
-        self.plotImportance(importanceResults, featureLabels)
+      #  if self.modelType not in ["NN"]:
+      #      importanceResults = permutation_importance(self.predictionModel.model, signalData, signalLabels, n_repeats=numTrials)
+      #      self.plotImportance(importanceResults, featureLabels)
         
         if self.modelType == "RF":
             # get importance
@@ -374,6 +352,9 @@ class predictionModelHead:
             dataPoint = 10
             featurePoint = 20
             
+            """
+            dataPoint = 10
+            featurePoint = 20
             
             featureLabels = blinkFeatures
             testingDataPD = pd.DataFrame(Testing_Data, columns = featureLabels)
@@ -402,6 +383,9 @@ class predictionModelHead:
             shap.plots.bar(shap_valuesGeneral, max_display = len(featureLabels), show = True)
             shap.plots.heatmap(shap_valuesGeneral, max_display = len(featureLabels), show = True, instance_order=shap_valuesGeneral.sum(1))
             shap.monitoring_plot(featurePoint, shap_values, features = testingDataPD, feature_names = featureLabels)
+            """
+
+
 
             # Summary Plot
             name = "Summary Plot"

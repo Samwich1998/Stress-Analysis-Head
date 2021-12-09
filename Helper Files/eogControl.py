@@ -31,6 +31,7 @@
 # Use '%matplotlib qt' to View Plot
 
 # Basic Modules
+import os
 import sys
 import threading
 import numpy as np
@@ -52,30 +53,33 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     #    User Parameters to Edit (More Complex Edits are Inside the Files)   #
     # ---------------------------------------------------------------------- #
-    
-    sys.exit()
+
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
-    samplingFreq = None           # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
+    samplingFreq = None            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 200000         # The Number of Points to Stream into the Arduino
     numTimePoints = 30000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 29000          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
-    numChannels = 2               # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
+    moveDataFinger = 29000         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numChannels = 2                # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
-
+    machineLearningClasses = np.char.lower(['Relaxed', 'Cold'])
+    labelMap = [-1, -1, 0, 0, 0, -1, 1]
+    
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = False      # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = True       # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
+    streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
+    trainModel = True             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
-    calibrateModel = False         # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = False         # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-    testModel = False          # Apply the Learning Algorithm to Decode the Signals
+    calibrateModel = False        # Calibrate the EOG Voltage to Predict the Eye's Angle
+    saveData = False              # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    testModel = False             # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
+    
     
     blinkFeatures = ['blinkHeight', 'peakTentY', 'tentDeviationX', 'tentDeviationY', 'blinkAmpRatio', 'tentRatio', 'tentDeviationRatio']
     blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
@@ -89,7 +93,6 @@ if __name__ == "__main__":
     blinkFeatures.extend(['durationByVel1', 'durationByVel2', 'durationByAccel1', 'durationByAccel2', 'durationByAccel3', 'midDurationRatio'])
     blinkFeatures.extend(['startToAccel', 'accelCloseingPeakDuration', 'accelToPeak', 'peakToAccel', 'accelOpeningPeakDuration', 'accelToEnd'])
     blinkFeatures.extend(['velPeakDuration', 'startToVel', 'velToPeak', 'peakToVel', 'velToEnd'])
-        
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
@@ -109,17 +112,22 @@ if __name__ == "__main__":
         testSheetNum = 5   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
-    if trainModel:
-        saveModel = False  # Save the Machine Learning Model for Later Use
-        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/"  # Path to the Training Data Folder; All .xlsx Data Used
+    if reAnalyzePeaks or trainModel:
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/"  # Path to the Training Data Folder; All .xlsx Data Used
     
     # Train or Test the Data with the Machine Learning Model
-    if trainModel or testModel:
+    if trainModel or testModel and not reAnalyzePeaks:
         # Pick the Machine Learning Module to Use
         modelType = "KNN"  # Machine Learning Options: NN, RF, LR, KNN, SVM
-        modelPath = "./Machine Learning Modules/Models/predictionModelKNNFull_SamArm1.pkl" # Path to Model (Creates New if it Doesn't Exist)
+        modelPath = "./Machine Learning/Models/predictionModelNN_12-1-2021.pkl" # Path to Model (Creates New if it Doesn't Exist)
+        # Choos the Folder to Save ML Results
+        if trainModel:
+            saveModel = True  # Save the Machine Learning Model for Later Use
+            saveDataFolder = trainDataExcelFolder + "Del/" + modelType + "/"
+        else:
+            saveDataFolder = None
         # Get the Machine Learning Module
-        performMachineLearning = machineLearningMain.predictionModelHead(modelType, modelPath, dataDim = numChannels, gestureClasses = gestureClasses)
+        performMachineLearning = machineLearningMain.predictionModelHead(modelType, modelPath, numFeatures = len(blinkFeatures), gestureClasses = machineLearningClasses, saveDataFolder = saveDataFolder)
         predictionModel = performMachineLearning.predictionModel
     else:
         predictionModel = None
@@ -139,11 +147,10 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
     
-    eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
-  #  readData = excelData.readExcel(eogProtocol)
-  #  readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
-  #  sys.exit()
     def executeProtocol():
+        global readData, eogProtocol, performMachineLearning, signalData, signalLabels, modelPath
+        
+        eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
         # Stream in Data from Arduino
         if streamArduinoData:
             arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, ppgSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
@@ -151,17 +158,20 @@ if __name__ == "__main__":
             readData.streamEOGData(numDataPoints, predictionModel = predictionModel, actionControl = gazeControl, calibrateModel = calibrateModel)
         # Take Data from Excel Sheet
         elif readDataFromExcel:
-            eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
             readData = excelData.readExcel(eogProtocol)
             readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
+        # Redo Peak Analysis
+        elif reAnalyzePeaks:
+            readData = excelData.readExcel(eogProtocol)
+            readData.getTrainingData(trainDataExcelFolder, gestureClasses, blinkFeatures, labelMap, mode='reAnalyze')
         # Take Preprocessed (Saved) Features from Excel Sheet
         elif trainModel:
             # Extract the Data
             readData = excelData.readExcel(eogProtocol)
-            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, gestureClasses, mode='Train')
+            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, gestureClasses, blinkFeatures, labelMap, mode='Train')
             print("\nCollected Signal Data")
             # Train the Data on the Gestures
-            performMachineLearning.trainModel(signalData, signalLabels)
+            performMachineLearning.trainModel(signalData, signalLabels, blinkFeatures)
             # Save Signals and Labels
             if saveData and performMachineLearning.map2D:
                 saveInputs = excelData.saveExcel(numChannels)
@@ -169,7 +179,9 @@ if __name__ == "__main__":
                 saveInputs.saveLabeledPoints(performMachineLearning.map2D, signalLabels,  performMachineLearning.predictionModel.predictData(signalData), saveDataFolder, saveExcelNameMap, sheetName = "Signal Data and Labels")
             # Save the Neural Network (The Weights of Each Edge)
             if saveModel:
-                 performMachineLearning.predictionModel.saveModel(modelPath)
+                modelPathFolder = os.path.dirname(modelPath)
+                os.makedirs(modelPathFolder, exist_ok=True)
+                performMachineLearning.predictionModel.saveModel(modelPath)
         
         return readData
             
@@ -191,7 +203,7 @@ if __name__ == "__main__":
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels)
-            saveInputs.saveData(readData.data, readData.featureList, saveDataFolder, saveExcelName, sheetName, eyeMovement)
+            saveInputs.saveData(readData.data, readData.analysisProtocol.featureList, blinkFeatures, saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
     
@@ -429,7 +441,7 @@ metric = ['accuracy']
 model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
 
 # For mini-batch gradient decent we want it small (not full batch) to better generalize data
-max_batch_size = 128  # Keep Batch sizes relatively small (no more than 64 or 128)
+max_batch_size = 32  # Keep Batch sizes relatively small (no more than 64 or 128)
 mini_batch_gd = min(len(Training_Data)//4, max_batch_size)
 mini_batch_gd = max(1, mini_batch_gd)  # For really small data samples at least take 1 data point
 # For every Epoch (loop), run the Neural Network by:
@@ -478,4 +490,45 @@ moveDataFinger = 1000
 eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
 readData = excelData.readExcel(eogProtocol)
 readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
+
+
+
+
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
+for featureInd in range(len(blinkFeatures)):
+    fig = plt.figure()
+    
+    allFeatures = signalData[:,featureInd]
+    for pointInd in range(len(allFeatures)):
+        feature = allFeatures[pointInd]
+        label = signalLabels[pointInd]
+    
+        if label == 0:
+            plt.plot(pointInd, feature, 'ko')
+        elif label == 1:
+            plt.scatter(pointInd, feature, c='w', edgecolors='r', zorder = 100)
+    
+    plt.xlabel("Blinks")
+    plt.ylabel(blinkFeatures[featureInd])
+    fig.savefig('../outputSingle/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+
+
+
+
+mms = MinMaxScaler()
+mms.fit(signalData)
+data_transformed = mms.transform(signalData)
+
+Sum_of_squared_distances = []
+K = range(1,68)
+for k in K:
+    km = KMeans(n_clusters=k)
+    km = km.fit(data_transformed)
+    Sum_of_squared_distances.append(km.inertia_)
+    
+plt.plot(K, Sum_of_squared_distances, 'bx-')
+plt.xlabel('k')
+plt.ylabel('Sum_of_squared_distances')
+plt.title('Elbow Method For Optimal k')
+plt.show()
 """

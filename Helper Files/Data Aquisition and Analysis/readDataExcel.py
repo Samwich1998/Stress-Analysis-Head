@@ -22,6 +22,29 @@ from openpyxl.styles import Font
 # --------------------------------------------------------------------------- #
 # --------------------- Extract Test Data from Excel ------------------------ #
 
+import matplotlib.pyplot as plt
+class featurePlots():
+    def __init__(self, featureList, featureLabels, blinkXLocs):
+        self.blinkXLocs = blinkXLocs
+        self.featureList = featureList
+        self.featureLabels = featureLabels
+    
+    def plotFeatureTime(self, featureName):
+        plt.figure()
+        
+        featureInd = self.featureLabels.index(featureName)
+        featureVals = self.featureList[:,featureInd]
+        featureTime = np.array(self.blinkXLocs)/60
+        
+        plt.plot(featureTime, featureVals, 'ko', markersize=7)
+        
+        plt.ylabel(featureName)
+        plt.xLabel("Time (min)")
+        plt.title("Feature Variation Over Time")
+        
+        plt.show()
+        
+
 class readExcel():
     def __init__(self, analysisProtocol):
         # Save Protocol
@@ -213,6 +236,7 @@ class saveExcel:
     def saveData(self, data, featureList, featureLabels, saveDataFolder, saveExcelName,
                      sheetName = "Trial 1 - No Gesture", currentGesture = "Data", WB=None):        
         # Create Output File Directory to Save Data: If None
+        print(saveDataFolder)
         os.makedirs(saveDataFolder, exist_ok=True)
         
         # Path to File to Save
@@ -258,53 +282,91 @@ class saveExcel:
         header = ["timePoints"]
         header.extend(channelHeader)
         header.extend(featureLabels)
-        # Label First Row
-        WB_worksheet.append(header)
         
-        numFeaturesAdded = 0
-        # Save Bioelectric Data to Worksheet (First 1 + numChannels Columns)
-        for dataNum in range(len(data['timePoints'])):
-            # Add TimePoints
-            row = [data['timePoints'][dataNum]]
-            # Add Channel Data
-            for channelNum in range(1, self.numChannels+1):
-                row.append(data['Channel'+str(channelNum)][dataNum])
-            # Add Features if Availible
-            if numFeaturesAdded != len(featureList) and dataNum%2 == 0:
-                row.extend(featureList[numFeaturesAdded])
-                numFeaturesAdded += 1
-            WB_worksheet.append(row)
+        maxAddToExcelSheet = 1048500
+        for dataStart in range(0, len(data['timePoints']), maxAddToExcelSheet):
+            # Label First Row
+            WB_worksheet.append(header)
             
-        """        
-        # Add Feature Locs (Next Columns) and Then Features (Next Next Columns)
-        startIndex = 2 # Start at Secon Row (1-Indexed) After the Header
-        for groupNum in range(len(featureList)):
-            rowIndex = startIndex
-            peakColor = (groupNum-1)%(len(self.openpyxlColors))
-            cellColor = self.openpyxlColors[peakColor]
-            for featureValList in featureList[groupNum]:
-                for featureVal in featureValList:
-                    # Add Feature Location
-                    WB_worksheet.cell(row=rowIndex, column=channelIndex + self.numChannels + 2).fill = PatternFill(fgColor=cellColor, fill_type = 'solid')
-        """
-        
-        alignCenter = Alignment(horizontal='center', vertical='center', wrap_text=True)  
-        # Center the Data in the Cells
-        for rowInd in range(2, WB_worksheet.max_row + 1):
+            currentData = {}
+            for dataKey in data.keys():
+                currentData[dataKey] = data[dataKey][dataStart:dataStart+maxAddToExcelSheet]
+            
+            numFeaturesAdded = 0
+            # Save Bioelectric Data to Worksheet (First 1 + numChannels Columns)
+            for dataNum in range(len(currentData['timePoints'])):
+                # Add TimePoints
+                row = [currentData['timePoints'][dataNum]]
+                # Add Channel Data
+                for channelNum in range(1, self.numChannels+1):
+                    row.append(currentData['Channel'+str(channelNum)][dataNum])
+                # Add Features if Availible
+                if numFeaturesAdded != len(featureList) and dataNum%2 == 0:
+                    row.extend(featureList[numFeaturesAdded])
+                    numFeaturesAdded += 1
+                WB_worksheet.append(row)
+            
+            alignCenter = Alignment(horizontal='center', vertical='center', wrap_text=True)  
+            # Center the Data in the Cells
+            for rowInd in range(2, WB_worksheet.max_row + 1):
+                for colInd in range(1, self.numChannels + numFeatures + 2):
+                    WB_worksheet.cell(row=rowInd, column=colInd).alignment = alignCenter
+            # Increase Cell Width to Encompass All Data and to be Even
+            for column_cells in WB_worksheet.columns:
+                length = max(len(str(cell.value) if cell.value else "") for cell in column_cells)
+                WB_worksheet.column_dimensions[xl.utils.get_column_letter(column_cells[0].column)].width = length
+            # Header Style
             for colInd in range(1, self.numChannels + numFeatures + 2):
-                WB_worksheet.cell(row=rowInd, column=colInd).alignment = alignCenter
-        # Increase Cell Width to Encompass All Data and to be Even
-        for column_cells in WB_worksheet.columns:
-            length = max(len(str(cell.value) if cell.value else "") for cell in column_cells)
-            WB_worksheet.column_dimensions[xl.utils.get_column_letter(column_cells[0].column)].width = length
-        # Header Style
-        for colInd in range(1, self.numChannels + numFeatures + 2):
-            WB_worksheet.cell(row=1, column=colInd).font = Font(color='00FF0000', italic=True, bold=True)
-            WB_worksheet.cell(row=1, column=colInd).alignment = alignCenter
+                WB_worksheet.cell(row=1, column=colInd).font = Font(color='00FF0000', italic=True, bold=True)
+                WB_worksheet.cell(row=1, column=colInd).alignment = alignCenter
+            
+            # Edit SheetName
+            sheetInfo = sheetName.split(" - ")
+            currentTrial = re.findall(r'\d+', sheetInfo[0])[0]
+            newTrial = sheetInfo[0].split(currentTrial)[0] + str(int(currentTrial)+1)
+            sheetName = newTrial + " - " + sheetInfo[1]
+            # Add Sheet
+            WB_worksheet = WB.create_sheet(sheetName)
         
+        WB.remove(WB_worksheet)
         # Save as New Excel File
         WB.save(excel_file)
         WB.close()
+    
+    def saveDataFAST(self, data, saveDataFolder, saveExcelName, sheetName = "Trial 1 - No Gesture", currentGesture = "Data", WB=None): 
+        # Create Output File Directory to Save Data: If None
+        os.makedirs(saveDataFolder, exist_ok=True)
+        
+        from pyexcelerate import Workbook
+        
+        # Path to File to Save
+        excel_file = saveDataFolder + saveExcelName
+        # If the File is Not Present: Create The Excel File
+        if not os.path.isfile(excel_file):
+            print("\tSaving the Data as New Excel Workbook")
+            # Make WorkBook
+            WB = Workbook()
+            WB_worksheet = WB.new_sheet(sheetName)
+        
+            channelHeader = ['Channel ' + str(channelNum) + " Data" for channelNum in range(1, 1+self.numChannels-1)]
+            # Creater Header
+            header = ["timePoints"]
+            header.extend(channelHeader)
+            
+            # Add the Data
+            alphabet = ['A', 'B', 'C', 'D', 'E']
+            for keyInd, key in enumerate(data.keys()):
+                inputData = [header[keyInd]]
+                inputData.extend(data[key])
+                WB_worksheet.range(alphabet[keyInd]+"1", alphabet[keyInd]+str(len(inputData))).value = np.array([inputData]).T
+                if keyInd == 1:
+                    break
+            
+            # Save File
+            WB.save(excel_file)
+        else:
+            print("Cannot Save Over File in Fast Version")
+        
     
     def saveLabeledPoints(self, signalData, signalLabelsTrue, signalLabelsPredicted, saveDataFolder, saveExcelName, sheetName = "Signal Data and Labels"): 
         # Create Output File Directory to Save Data: If None

@@ -57,26 +57,33 @@ if __name__ == "__main__":
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
     samplingFreq = None            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 200000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 30000          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 29000         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numDataPoints = 50*50000         # The Number of Points to Stream into the Arduino
+    numTimePoints = 5000 #2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 500 #1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2                # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
-    machineLearningClasses = np.char.lower(['Relaxed', 'Cold'])
-    labelMap = [-1, -1, 0, 0, 0, -1, 1]
+    
+    
+    gestureClasses = np.char.lower(['Blink', 'Double Blink', 'Relaxed', 'Stroop Test', 'Exercise Weight', 'VR Roller Coaster'])  # Define Labels as Array
+    machineLearningClasses = np.char.lower(['Relaxed', 'Stroop', 'Exercise', 'VR'])
+    labelMap = [-1, -1, 0, 1, 2, 3]
+    
+    #gestureClasses = np.char.lower(['Morning', 'Night', 'Music'])
+    #machineLearningClasses = np.char.lower(['Morning', 'Night', 'Music'])
+    #labelMap = [0, 1, 2]
     
     # Protocol Switches: Only the First True Variable Excecutes
     streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
-    trainModel = True             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
+    trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False        # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = False              # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = False               # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False             # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
     
@@ -84,7 +91,7 @@ if __name__ == "__main__":
     blinkFeatures = ['blinkHeight', 'peakTentY', 'tentDeviationX', 'tentDeviationY', 'blinkAmpRatio', 'tentRatio', 'tentDeviationRatio']
     blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
     blinkFeatures.extend(['closingSlope0', 'closingSlope1', 'closingSlope2', 'openingSlope1', 'openingSlope2', 'openingSlope3'])
-    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakEntropy', 'peakSkew', 'peakKurtosis', 'maxCurvature'])
+    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakEntropy', 'peakSkew', 'peakKurtosis', 'peakSTD', 'maxCurvature'])
     # Compile the Features
     blinkFeatures.extend(['peakClosingVel', 'peakOpeningVel', 'peakClosingAccel1', 'peakClosingAccel2', 'peakopeningAccel1', 'peakopeningAccel2'])
     blinkFeatures.extend(['velOpenRatio', 'velClosedRatio', 'accelClosedRatio1', 'accelClosedRatio2', 'accelOpenRatio1', 'accelOpenRatio2'])
@@ -93,37 +100,40 @@ if __name__ == "__main__":
     blinkFeatures.extend(['durationByVel1', 'durationByVel2', 'durationByAccel1', 'durationByAccel2', 'durationByAccel3', 'midDurationRatio'])
     blinkFeatures.extend(['startToAccel', 'accelCloseingPeakDuration', 'accelToPeak', 'peakToAccel', 'accelOpeningPeakDuration', 'accelToEnd'])
     blinkFeatures.extend(['velPeakDuration', 'startToVel', 'velToPeak', 'peakToVel', 'velToEnd'])
+    blinkFeatures.extend(['closingAmpRatio1', 'closingAmpRatio2', 'closingAmpRatio3', 'openingAmpRatio1', 'openingAmpRatio2', 'openingAmpRatio3'])
+    blinkFeatures.extend(['riseTimePercent', 'dropTimePercent', 'velDiffPercent'])
+    blinkFeatures.extend(['curvatureAccel0', 'curvatureAccel1', 'curvatureAccel2', 'curvatureAccel3', 'curvatureVel0', 'curvatureVel1'])
+    blinkFeatures.extend(['accel0ToVel0Ratio', 'accel1ToVel0Ratio', 'accel2ToVel1Ratio', 'accel3ToVel1Ratio']) 
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
-        saveExcelName = "Changhao 2021-12-1 Movements.xlsx"  # The Name of the Saved File
-        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/Movement Trial 2021-12-1/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        saveExcelName = "Sam 2021-12-11 Home Music.xlsx"  # The Name of the Saved File
+        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/Home Study/"   # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
-        eyeMovement = "Cold".lower() # Make Sure it is Lowercase
+        eyeMovement = "Music".lower() # Make Sure it is Lowercase
         if eyeMovement not in gestureClasses:
             print("The Gesture", "'" + eyeMovement + "'", "is Not in", gestureClasses)
             
     # Instead of Arduino Data, Use Test Data from Excel File
     if readDataFromExcel:
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Ben 2021-12-1 Movements.xlsx" # Path to the Test Data
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/You 2021-12-1 Movements.xlsx" # Path to the Test Data
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Changhao 2021-12-1 Movements.xlsx" # Path to the Test Data
-        testSheetNum = 5   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+        #testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
+        #testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-10 First VR Test/Jose 2021-12-10 Movements.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-11 Home Study/Sam 2021-12-11 Home Music.xlsx" # Path to the Test Data
+        testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
     if reAnalyzePeaks or trainModel:
-        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-10 First VR Test/"  # Path to the Training Data Folder; All .xlsx Data Used
     
     # Train or Test the Data with the Machine Learning Model
     if trainModel or testModel and not reAnalyzePeaks:
         # Pick the Machine Learning Module to Use
-        modelType = "KNN"  # Machine Learning Options: NN, RF, LR, KNN, SVM
-        modelPath = "./Machine Learning/Models/predictionModelNN_12-1-2021.pkl" # Path to Model (Creates New if it Doesn't Exist)
+        modelType = "RF"  # Machine Learning Options: NN, RF, LR, KNN, SVM
+        modelPath = "./Machine Learning/Models/predictionModelRF_12-13-2021.pkl" # Path to Model (Creates New if it Doesn't Exist)
         # Choos the Folder to Save ML Results
         if trainModel:
             saveModel = True  # Save the Machine Learning Model for Later Use
-            saveDataFolder = trainDataExcelFolder + "Del/" + modelType + "/"
+            saveDataFolder = trainDataExcelFolder + "Data Analysis/" + modelType + "/"
         else:
             saveDataFolder = None
         # Get the Machine Learning Module
@@ -131,6 +141,8 @@ if __name__ == "__main__":
         predictionModel = performMachineLearning.predictionModel
     else:
         predictionModel = None
+        
+        
     
     if controlVR:
         # Import the VR File (MUST BE RUNNING INSIDE VIZARD!)
@@ -170,6 +182,7 @@ if __name__ == "__main__":
             readData = excelData.readExcel(eogProtocol)
             signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, gestureClasses, blinkFeatures, labelMap, mode='Train')
             print("\nCollected Signal Data")
+            sys.exit()
             # Train the Data on the Gestures
             performMachineLearning.trainModel(signalData, signalLabels, blinkFeatures)
             # Save Signals and Labels
@@ -192,6 +205,7 @@ if __name__ == "__main__":
     else:
         readData = executeProtocol()
     
+    os.system('say "Program Complete."')
     # ---------------------------------------------------------------------- #
     # -------------------------- Save Data --------------------------- #
     # Save the Data in Excel: EOG Channels (Cols 1-4); X-Peaks (Cols 5-8); Peak Features (Cols 9-12)
@@ -203,7 +217,7 @@ if __name__ == "__main__":
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
             saveInputs = excelData.saveExcel(numChannels)
-            saveInputs.saveData(readData.data, readData.analysisProtocol.featureList, blinkFeatures, saveDataFolder, saveExcelName, sheetName, eyeMovement)
+            saveInputs.saveData(readData.data, [], [], saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
     
@@ -435,7 +449,7 @@ model.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
 
 epochs = 500; seeTrainingSteps = False
 opt = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
-loss = 'binary_crossentropy'
+loss = ['mean_squared_error', 'categorical_crossentropy']
 metric = ['accuracy']
 
 model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
@@ -513,6 +527,22 @@ for featureInd in range(len(blinkFeatures)):
     fig.savefig('../outputSingle/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
 
 
+for featureInd in range(len(blinkFeatures)):
+    fig = plt.figure()
+
+    allFeatures = signalData[:,featureInd]
+    time = signalData[:,0]
+    for pointInd in range(len(allFeatures)):
+        feature = allFeatures[pointInd]
+        label = signalLabels[pointInd]
+
+        plt.plot(time[pointInd], feature, 'ko')
+
+    plt.xlabel("Time (Seconds)")
+    plt.ylabel(blinkFeatures[featureInd])
+    #fig.savefig('../outputSingle/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+    plt.show()
+
 
 
 mms = MinMaxScaler()
@@ -531,4 +561,79 @@ plt.xlabel('k')
 plt.ylabel('Sum_of_squared_distances')
 plt.title('Elbow Method For Optimal k')
 plt.show()
+
+
+for featureInd in range(len(blinkFeatures)):
+    fig = plt.figure()
+
+    features = []
+    allFeatures = signalData[:,featureInd]
+    time = signalData[:,0]
+    for pointInd in range(len(allFeatures)):
+        feature = allFeatures[pointInd]
+        label = signalLabels[pointInd]
+        features.append(feature)
+    
+    fitLineParams = np.polyfit(time, features, 1)
+    fitLine = np.polyval(fitLineParams, time);
+
+    plt.plot(time, features, 'ko')
+    plt.plot(time, fitLine, 'r')
+    
+    plt.xlabel("Time (Seconds)")
+    plt.ylabel(blinkFeatures[featureInd])
+    plt.title("Slope/average: " + str(fitLineParams[0]/np.mean(features)))
+    #fig.savefig('../Time Graph/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+    plt.show()
+    
+    
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+featureDict = {}
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
+for featureInd in range(len(blinkFeatures)):
+    fig = plt.figure()
+
+
+    allFeatures = signalData[:,featureInd][signalLabels == 1]
+    time = signalData[:,0][signalLabels == 1]
+    colors = ['ko', 'ro', 'bo', 'go', 'mo']
+    for ind, averageTogether in enumerate([60*10]):
+        features = []
+        for pointInd in range(len(allFeatures)):
+            featureInterval = allFeatures[time > time[pointInd] - averageTogether]
+            timeMask = time[time > time[pointInd] - averageTogether]
+            featureInterval = featureInterval[timeMask < time[pointInd] + averageTogether]
+            
+            weight = [10E-20]
+            for i in range(int(-len(featureInterval)/2), int(len(featureInterval)/2)):
+                weight.append(sigmoid(i))
+            weight = np.array(weight[-len(featureInterval):])
+            
+            feature = np.average(featureInterval, axis=0, weights=weight)
+            
+            feature = np.average(featureInterval)
+            features.append(feature)
+            if ind == 2:
+                feature1Min = features
+
+        fitLineParams = np.polyfit(time, features, 1)
+        fitLine = np.polyval(fitLineParams, time);
+
+        plt.plot(time, features, colors[ind])
+        plt.plot(time, fitLine, 'r')
+        
+        if ind == 0:
+            featureDict[blinkFeatures[featureInd]] = features
+
+    plt.xlabel("Time (Seconds)")
+    plt.ylabel(blinkFeatures[featureInd])
+    #plt.vlines([300, 600, 900, 1200, 1500], min(features), max(features), 'g', zorder=100)
+    #plt.ylim(min(feature1Min)*0.8, max(feature1Min)*1.2)
+    #plt.legend(['3 Min', '5 Min', '10 Min'])
+    plt.title("Averaged Together: " + str(averageTogether/60) + " Min")
+    fig.savefig('../Time Graph Night/10 Min/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+    plt.show()
+    
+
 """

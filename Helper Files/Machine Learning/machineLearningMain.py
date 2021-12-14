@@ -320,14 +320,7 @@ class predictionModelHead:
             name = "Feature Importance"
             plt.savefig(self.saveDataFolder + name + " " + self.modelType + ".png", dpi=150, bbox_inches='tight')
             pyplot.show()
-            
-            explainer = shap.TreeExplainer(self.predictionModel.model)
-            shap_values = explainer.shap_values(signalData)
-            
-            shap.summary_plot(shap_values, signalData, plot_type="bar")
-            
-            shap.summary_plot(shap_values, signalData)
-        
+             
         
         if featureLabels:
             # Make Output Folder for SHAP Values
@@ -343,10 +336,14 @@ class predictionModelHead:
             if self.modelType == "RF":
                 explainer = shap.TreeExplainer(self.predictionModel.model)
                 shap_values = explainer.shap_values(testingDataPD)
+                
+                misclassified = Testing_Labels != self.predictionModel.model.predict(Testing_Data)
+                shap.decision_plot(explainer.expected_value, shap_valuesGeneral, features = testingDataPD, feature_names = featureLabels, feature_order = "importance", highlight = misclassified)
+
             else:
                 # Calculate Shap Values
                 explainer = shap.KernelExplainer(self.predictionModel.model.predict, testingDataPD)
-                shap_values = explainer.shap_values(testingDataPD, nsamples=len(signalData))
+                shap_values = explainer.shap_values(testingDataPD, nsamples=len(Testing_Data))
             
             # Specify Indivisual Sharp Parameters
             dataPoint = 10
@@ -383,6 +380,7 @@ class predictionModelHead:
             shap.plots.bar(shap_valuesGeneral, max_display = len(featureLabels), show = True)
             shap.plots.heatmap(shap_valuesGeneral, max_display = len(featureLabels), show = True, instance_order=shap_valuesGeneral.sum(1))
             shap.monitoring_plot(featurePoint, shap_values, features = testingDataPD, feature_names = featureLabels)
+            
             """
 
 
@@ -391,7 +389,7 @@ class predictionModelHead:
             name = "Summary Plot"
             summaryPlot = plt.figure()
             if self.modelType == "RF":
-                shap.summary_plot(shap_valuesGeneral, testingDataPD, plot_type="bar", class_names=self.gestureClasses, feature_names = featureLabels)
+                shap.summary_plot(shap_values, testingDataPD, plot_type="bar", class_names=self.gestureClasses, feature_names = featureLabels)
             else:
                 shap.summary_plot(shap_valuesGeneral, testingDataPD, class_names=self.gestureClasses, feature_names = featureLabels)
             summaryPlot.savefig(self.saveDataFolder + "SHAP Values/" + name + " " + self.modelType + ".png", bbox_inches='tight', dpi=300)

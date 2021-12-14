@@ -38,6 +38,7 @@ import sys
 import numpy as np
 
 # Import Data Aquisition and Analysis Files
+sys.path.append('./Data Aquisition and Analysis/Biolectric Protocols/')  # Folder with Data Aquisition Files
 sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
 import readDataExcel as excelData         # Functions to Save/Read in Data from Excel
 import readDataArduino as streamData      # Functions to Read in Data from Arduino

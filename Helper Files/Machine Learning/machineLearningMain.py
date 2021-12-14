@@ -35,8 +35,8 @@ import randomForest                     # Functions for the Random Forest Algori
 import KNN as KNN                       # Functions for K-Nearest Neighbors' Algorithm
 import SVM as SVM                       # Functions for Support Vector Machine algorithm
 
-sys.path.append('./Helper Files/Data Aquisition and Analysis/')  # Folder with Machine Learning Files
-sys.path.append('./Data Aquisition and Analysis/')  # Folder with Machine Learning Files
+sys.path.append('./Helper Files/Data Aquisition and Analysis/Plotting/')  # Folder with Machine Learning Files
+sys.path.append('./Data Aquisition and Analysis/Plotting/')  # Folder with Machine Learning Files
 import createHeatMap as createMap       # Functions for Neural Network
 
 class predictionModelHead:

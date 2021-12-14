@@ -37,12 +37,13 @@ import threading
 import numpy as np
 from pathlib import Path
 # Import Data Aquisition and Analysis Files
+sys.path.append('./Data Aquisition and Analysis/Biolectric Protocols/')  # Folder with Data Aquisition Files
 sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
 import readDataExcel as excelData         # Functions to Save/Read in Data from Excel
 import readDataArduino as streamData      # Functions to Read in Data from Arduino
 import eogAnalysis as eogAnalysis         # Functions to Analyze the EOG Data
 # Import Virtual Reality Control Files
-sys.path.append('./Execute Movements/')   # Folder with Virtual Reality Control Files
+sys.path.append('./Execute Movements/Virtual Reality Control/')   # Folder with Virtual Reality Control Files
 
 # Import Files for Machine Learning
 sys.path.append('./Machine Learning/')  # Folder with Machine Learning Files

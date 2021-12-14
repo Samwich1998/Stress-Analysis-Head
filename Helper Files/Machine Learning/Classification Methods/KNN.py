@@ -2,6 +2,8 @@
 https://scikit-learn.org/stable/auto_examples/neighbors/plot_nca_classification.html#sphx-glr-auto-examples-neighbors-plot-nca-classification-py
 """
 
+# --------------------------------------------------------------------------- #
+# ---------------------------- Imported Packages ---------------------------- #
 
 # Import Basic Modules
 import os
@@ -15,7 +17,8 @@ import matplotlib.animation as manimation
 # Import Machine Learning Modules
 from sklearn import neighbors
 
-
+# ----------------------------------------------------------------------------#
+# --------------------------- K Nearest Neighbors --------------------------- #
 
 class KNN:
     def __init__(self, modelPath, numClasses, weight = 'distance'):
@@ -125,5 +128,8 @@ class KNN:
                 # Clear Previous Frame
                 plt.cla()
                 cb.remove()
+
+# ----------------------------------------------------------------------------#
+
             
             

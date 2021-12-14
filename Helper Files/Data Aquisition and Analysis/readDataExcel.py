@@ -15,7 +15,6 @@ import numpy as np
 import shutil
 import openpyxl as xl
 # Style Excel Data
-from openpyxl.styles import PatternFill
 from openpyxl.styles import Alignment
 from openpyxl.styles import Font
 

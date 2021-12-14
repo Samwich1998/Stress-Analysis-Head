@@ -4,8 +4,8 @@ Code Written by Samuel Solomon
 SKLearn SVM Guide: https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
 """
 
-# -------------------------------------------------------------------------- #
-# -------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# ---------------------------- Imported Packages ---------------------------- #
 
 # Import Basic Modules
 import os
@@ -29,11 +29,11 @@ from sklearn.inspection import permutation_importance
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 # Import Python Files
-sys.path.append('./Data Aquisition and Analysis/')  # Folder with Machine Learning Files
+sys.path.append('./Data Aquisition and Analysis/Plotting')  # Folder with Machine Learning Files
 import createHeatMap as createMap       # Functions for Neural Network
-    
-# -------------------------------------------------------------------------- #
-# -------------------------------------------------------------------------- #
+
+# --------------------------------------------------------------------------- #
+# ---------------------------- Imported Packages ---------------------------- #
 
 class randomForest:
     def __init__(self, modelPath):        

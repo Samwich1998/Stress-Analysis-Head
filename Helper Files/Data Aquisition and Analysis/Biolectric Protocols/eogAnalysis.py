@@ -148,7 +148,7 @@ class eogProtocol:
             self.bioelectricPlotAxes[channelIndex].set_ylabel("Bioelectric Signal (Volts)")
             
         # Create the Data Plots
-        self.eyeBlinks = []
+        self.eyeBlinkLocPlots = []
         self.trailingAveragePlots = []
         self.filteredBioelectricDataPlots = []
         self.filteredBioelectricPlotAxes = [] 
@@ -158,7 +158,7 @@ class eogProtocol:
             # Plot Flitered Peaks
             self.filteredBioelectricDataPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
             self.trailingAveragePlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:blue", linewidth=1, alpha = 0.65)[0])
-            self.eyeBlinks.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], 'o', c="tab:blue", markersize=7, alpha = 0.65)[0])
+            self.eyeBlinkLocPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], 'o', c="tab:blue", markersize=7, alpha = 0.65)[0])
 
             # Set Figure Limits
             self.filteredBioelectricPlotAxes[channelIndex].set_ylim(yLimLow, yLimHigh)
@@ -225,7 +225,7 @@ class eogProtocol:
                 plt.plot(self.timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
                 plt.show()
                 
-                self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 10]))
+                self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 20]))
             # --------------------------------------------------------------- #
             
             # ------------------- Plot Biolectric Signals ------------------- #
@@ -255,7 +255,7 @@ class eogProtocol:
                         self.filteredBioelectricPlotAxes[channelIndex].legend(["Eye's Angle: " + "%.3g"%eyeAngle, "Current State: " + self.currentState], loc="upper left")
                 # Add Eye Blink Peaks
                 if channelIndex == 0:
-                    self.eyeBlinks[channelIndex].set_data(self.blinksXLocs, self.blinksYLocs)
+                    self.eyeBlinkLocPlots[channelIndex].set_data(self.blinksXLocs, self.blinksYLocs)
             # --------------------------------------------------------------- #   
             
         # -------------------- Update Virtual Reality  ---------------------- #
@@ -383,13 +383,13 @@ class eogProtocol:
             self.blinksXLocs.append(peakLocX)
             self.blinksYLocs.append(yData[peakInd])
             # Average the Last Few Blink Features
-            self.featureList.extend(np.mean(np.array(self.featureListExact)[self.blinksXLocs[-1] > peakLocX - self.averageBlinkWindow], axis=0))
+            self.featureList.append(newFeatures)
+            #self.featureList.extend(np.mean(np.array(self.featureListExact)[self.blinksXLocs[-1] > peakLocX - self.averageBlinkWindow], axis=0))
             # --------------------------------------------------------------- #
             
             # ----------------- Label the Stress Level/Type ----------------- #
-            if predictionModel:
+            if False and predictionModel:
                 # Predict the Blink Type
-                print(len(self.featureList[-1]))
                 self.predictMovement(self.featureList[-1], predictionModel)
             # --------------------------------------------------------------- #
             
@@ -436,7 +436,7 @@ class eogProtocol:
             return [], [], []
         
         # Get the Correct Third Deriv Inds
-        thirdDerivBeforePeak = thirdDerivIndsTotal[thirdDerivIndsTotal < peakInd - 2]
+        thirdDerivBeforePeak = thirdDerivIndsTotal[thirdDerivIndsTotal < peakInd]
         thirdDerivBeforePeak = thirdDerivBeforePeak[thirdDerivBeforePeak > newIndsAccel[1]]
         
         thirdDerivInds = []
@@ -541,21 +541,28 @@ class eogProtocol:
         tentRatio = peakTentY/blinkHeight
         tentDeviationRatio = tentDeviationY/tentDeviationX
         # Other Ampltiude Ratios
-        closingAmpRatio1 = (yData[accelInds[0]] - yData[peakInd])/peakTentY
-        closingAmpRatio2 = (yData[velInds[0]] - yData[peakInd])/peakTentY
-        closingAmpRatio3 = (yData[accelInds[1]] - yData[peakInd])/peakTentY
-        openingAmpRatio1 = (yData[accelInds[2]] - yData[peakInd])/peakTentY
-        openingAmpRatio2 = (yData[velInds[1]] - yData[peakInd])/peakTentY
-        openingAmpRatio3 = (yData[accelInds[3]] - yData[peakInd])/peakTentY
+        closingAmpDiffRatio1 = (yData[accelInds[0]] - yData[peakInd])/blinkHeight
+        closingAmpDiffRatio2 = (yData[velInds[0]] - yData[peakInd])/blinkHeight
+        closingAmpDiffRatio3 = (yData[accelInds[1]] - yData[peakInd])/blinkHeight
+        openingAmpDiffRatio1 = (yData[accelInds[2]] - yData[peakInd])/blinkHeight
+        openingAmpDiffRatio2 = (yData[velInds[1]] - yData[peakInd])/blinkHeight
+        openingAmpDiffRatio3 = (yData[accelInds[3]] - yData[peakInd])/blinkHeight
         # Other Deviation Ratios
-        accel0ToVel0Ratio = (yData[velInds[0]] - yData[accelInds[0]])/peakTentY
-        accel1ToVel0Ratio = (yData[accelInds[1]] - yData[velInds[0]])/peakTentY
-        accel2ToVel1Ratio = (yData[accelInds[2]] - yData[velInds[1]])/peakTentY
-        accel3ToVel1Ratio = (yData[velInds[1]] - yData[accelInds[3]])/peakTentY
-        # Other Amplitude Ratios
-        riseTimePercent = (yData[accelInds[1]] - yData[accelInds[0]])/peakTentY
-        dropTimePercent = (yData[accelInds[2]] - yData[accelInds[3]])/peakTentY
-        velDiffPercent = (yData[velInds[1]] - yData[velInds[0]])/peakTentY
+        accel0ToVel0Ratio = (yData[velInds[0]] - yData[accelInds[0]])/blinkHeight
+        accel1ToVel0Ratio = (yData[accelInds[1]] - yData[velInds[0]])/blinkHeight
+        accel2ToVel1Ratio = (yData[accelInds[2]] - yData[velInds[1]])/blinkHeight
+        accel3ToVel1Ratio = (yData[velInds[1]] - yData[accelInds[3]])/blinkHeight
+        # Percent Amplitude Ratios
+        riseTimePercent = (yData[accelInds[1]] - yData[accelInds[0]])/blinkHeight
+        dropTimePercent = (yData[accelInds[2]] - yData[accelInds[3]])/blinkHeight
+        velDiffPercent = (yData[velInds[1]] - yData[velInds[0]])/blinkHeight
+        # Pure Amplitude Ratios
+        closingAmpRatio1 = (yData[accelInds[0]])/blinkHeight
+        closingAmpRatio2 = (yData[velInds[0]])/blinkHeight
+        closingAmpRatio3 = (yData[accelInds[1]])/blinkHeight
+        openingAmpRatio1 = (yData[accelInds[2]])/blinkHeight
+        openingAmpRatio2 = (yData[velInds[1]])/blinkHeight
+        openingAmpRatio3 = (yData[accelInds[3]])/blinkHeight
         # ------------------------------------------------------------------- #
         
         # -------------------- Extract Duration Features -------------------- #
@@ -591,8 +598,10 @@ class eogProtocol:
         
         # ---------------------- Extract Shape Features --------------------- #
         # Calculate Peak Shape Parameters
-        peakAverage = np.mean(yData[startBlinkInd:endBlinkInd])
+        peakAverage = np.mean(yData)
         peakAverageRatio = peakAverage/blinkHeight
+        peakIntegral = np.sum(yData)
+        peakIntergralRatio = peakIntegral/blinkHeight
         peakEntropy = entropy(yData-min(yData)+10E-10)
         peakSkew = skew(yData, bias=False)
         peakKurtosis = kurtosis(yData, fisher=True, bias = False)
@@ -600,30 +609,46 @@ class eogProtocol:
         maxCurvature = max(curvature[max(0, peakInd - 25): peakInd + 25])
         
         # Curvature Around Main Points
-        curvatureAccel0 = curvature[accelInds[0]]
-        curvatureAccel1 = curvature[accelInds[1]]
-        curvatureAccel2 = curvature[accelInds[2]]
-        curvatureAccel3 = curvature[accelInds[3]]
-        curvatureVel0 = curvature[velInds[0]]
-        curvatureVel1 = curvature[velInds[1]]
+        curvatureYDataAccel0 = curvature[accelInds[0]]
+        curvatureYDataAccel1 = curvature[accelInds[1]]
+        curvatureYDataAccel2 = curvature[accelInds[2]]
+        curvatureYDataAccel3 = curvature[accelInds[3]]
+        curvatureYDataVel0 = curvature[velInds[0]]
+        curvatureYDataVel1 = curvature[velInds[1]]
+        
+        # Stanard Deviation
+        velFullSTD = np.std(dy_dt_ABS, ddof=1)
+        accelFullSTD = np.std(dy_dt2_ABS, ddof=1)
+        thirdDerivFullSTD = np.std(dy_dt3_ABS, ddof=1)
+        velSTD = np.std(dy_dt_ABS[velInds[1]:], ddof=1)
+        accelSTD = np.std(dy_dt2_ABS[velInds[1]:], ddof=1)
+        thirdDerivSTD = np.std(dy_dt3_ABS[velInds[1]:], ddof=1)
+        
+        # Entropy
+        velFullEntropy = entropy(dy_dt_ABS+10E-50)
+        accelFullEntropy = entropy(dy_dt2_ABS+10E-50)
+        thirdDerivFullEntropy = entropy(dy_dt3_ABS+10E-50)
+        velEntropy = entropy(dy_dt_ABS[velInds[1]:]+10E-50)
+        accelEntropy = entropy(dy_dt2_ABS[velInds[1]:]+10E-50)
+        thirdDerivEntropy = entropy(dy_dt3_ABS[velInds[1]:]+10E-50)
         # ------------------------------------------------------------------- #
         
         # -------------------- Extract Derivative Features ------------------ #
         # Extract Normalized Blink Velocities
-        peakClosingVel = dy_dt_ABS[velInds[0]]/peakTentY
-        peakOpeningVel = dy_dt_ABS[velInds[1]]/peakTentY
+        peakClosingVel = dy_dt_ABS[velInds[0]]/blinkHeight
+        peakOpeningVel = dy_dt_ABS[velInds[1]]/blinkHeight
         # Extract Normalized Blink Acceleration
-        peakClosingAccel1 = dy_dt2_ABS[accelInds[0]]/peakTentY
-        peakClosingAccel2 = dy_dt2_ABS[accelInds[1]]/peakTentY
-        peakopeningAccel1 = dy_dt2_ABS[accelInds[2]]/peakTentY
-        peakopeningAccel2 = dy_dt2_ABS[accelInds[3]]/peakTentY
+        peakClosingAccel1 = dy_dt2_ABS[accelInds[0]]/blinkHeight
+        peakClosingAccel2 = dy_dt2_ABS[accelInds[1]]/blinkHeight
+        peakopeningAccel1 = dy_dt2_ABS[accelInds[2]]/blinkHeight
+        peakopeningAccel2 = dy_dt2_ABS[accelInds[3]]/blinkHeight
         # Extract Amplitude Ratios
-        velClosedRatio = yData[velInds[0]]/peakTentY
-        velOpenRatio = yData[velInds[1]]/peakTentY
-        accelClosedRatio1 = yData[accelInds[0]]/peakTentY
-        accelClosedRatio2 = yData[accelInds[1]]/peakTentY
-        accelOpenRatio1 = yData[accelInds[2]]/peakTentY
-        accelOpenRatio2 = yData[accelInds[3]]/peakTentY
+        velClosedRatio = yData[velInds[0]]/blinkHeight
+        velOpenRatio = yData[velInds[1]]/blinkHeight
+        accelClosedRatio1 = yData[accelInds[0]]/blinkHeight
+        accelClosedRatio2 = yData[accelInds[1]]/blinkHeight
+        accelOpenRatio1 = yData[accelInds[2]]/blinkHeight
+        accelOpenRatio2 = yData[accelInds[3]]/blinkHeight
         # Extract Amplitudes
         velClosedVal = dy_dt_ABS[velInds[0]]
         velOpenVal = dy_dt_ABS[velInds[1]]
@@ -665,10 +690,16 @@ class eogProtocol:
 
         # ------------------ Consolidate the Blink Features ----------------- #
         # Finalize the Features
-        featureList = [blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentRatio, tentDeviationRatio]
+        featureList = [xData[peakInd], blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentRatio, tentDeviationRatio]
+        featureList.extend([closingAmpDiffRatio1, closingAmpDiffRatio2, closingAmpDiffRatio3, openingAmpDiffRatio1, openingAmpDiffRatio2, openingAmpDiffRatio3])
+        featureList.extend([accel0ToVel0Ratio, accel1ToVel0Ratio, accel2ToVel1Ratio, accel3ToVel1Ratio])
+        featureList.extend([riseTimePercent, dropTimePercent, velDiffPercent])
+        featureList.extend([closingAmpRatio1, closingAmpRatio2, closingAmpRatio3, openingAmpRatio1, openingAmpRatio2, openingAmpRatio3])
+
+
         featureList.extend([blinkDuration, closingTime, openingTime, closingFraction, openingFraction, halfClosedTime, eyesClosedTime, percentTimeClosed])
         featureList.extend([closingSlope0, closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
-        featureList.extend([peakAverage, peakAverageRatio, peakEntropy, peakSkew, peakKurtosis, peakSTD, maxCurvature])
+        featureList.extend([peakAverage, peakAverageRatio, peakIntegral, peakIntergralRatio, peakEntropy, peakSkew, peakKurtosis, peakSTD, maxCurvature])
         # Compile the Features
         featureList.extend([peakClosingVel, peakOpeningVel, peakClosingAccel1, peakClosingAccel2, peakopeningAccel1, peakopeningAccel2])
         featureList.extend([velOpenRatio, velClosedRatio, accelClosedRatio1, accelClosedRatio2, accelOpenRatio1, accelOpenRatio2])
@@ -677,10 +708,9 @@ class eogProtocol:
         featureList.extend([durationByVel1, durationByVel2, durationByAccel1, durationByAccel2, durationByAccel3, midDurationRatio])
         featureList.extend([startToAccel, accelCloseingPeakDuration, accelToPeak, peakToAccel, accelOpeningPeakDuration, accelToEnd])
         featureList.extend([velPeakDuration, startToVel, velToPeak, peakToVel, velToEnd])
-        featureList.extend([closingAmpRatio1, closingAmpRatio2, closingAmpRatio3, openingAmpRatio1, openingAmpRatio2, openingAmpRatio3])
-        featureList.extend([riseTimePercent, dropTimePercent, velDiffPercent])
-        featureList.extend([curvatureAccel0, curvatureAccel1, curvatureAccel2, curvatureAccel3, curvatureVel0, curvatureVel1])
-        featureList.extend([accel0ToVel0Ratio, accel1ToVel0Ratio, accel2ToVel1Ratio, accel3ToVel1Ratio])
+        featureList.extend([curvatureYDataAccel0, curvatureYDataAccel1, curvatureYDataAccel2, curvatureYDataAccel3, curvatureYDataVel0, curvatureYDataVel1])
+        featureList.extend([velFullSTD, accelFullSTD, thirdDerivFullSTD, velSTD, accelSTD, thirdDerivSTD])
+        featureList.extend([velFullEntropy, accelFullEntropy, thirdDerivFullEntropy, velEntropy, accelEntropy, thirdDerivEntropy])
         # ------------------------------------------------------------------- #
 
 
@@ -714,8 +744,8 @@ class eogProtocol:
         elif 5 < midDurationRatio:
             print("\tBad midDurationRatio:", midDurationRatio)
             return []    
-        elif 60 < curvatureAccel0:
-            print("\tBad curvatureAccel0:", curvatureAccel0)
+        elif 60 < curvatureYDataAccel0:
+            print("\tBad curvatureYDataAccel0:", curvatureYDataAccel0)
             return []  
         elif 300 < abs(tentDeviationRatio):
             print("\tBad tentDeviationRatio:", tentDeviationRatio)
@@ -740,6 +770,7 @@ class eogProtocol:
         # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
         # plt.plot(xData, dy_dt_ABS*0.8/max(dy_dt_ABS), 'r', linewidth=1)
         # plt.plot(xData, dy_dt2_ABS*0.8/max(dy_dt2_ABS), 'b', linewidth=1)
+        # plt.plot(xData, dy_dt3_ABS*0.8/max(dy_dt3_ABS), 'm', linewidth=1)
         # plt.legend(['Blink', 'Velocity ABS', 'Acceleration ABS'])
         # plt.show()
         

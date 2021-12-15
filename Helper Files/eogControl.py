@@ -56,10 +56,12 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
 
     # General Data Collection Information (You Will Likely Not Edit These)
-    eogSerialNum = '85035323234351D06052'#'85035323234351D06052'   # Arduino's Serial Number (port.serial_number)
+    eogSerialNum = '85035323234351D06052'#'85735313333351E040A0'   # Arduino's Serial Number (port.serial_number)
+    eogSerialNum = '85735313333351E040A0' 
+    
     samplingFreq = None            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
     numDataPoints = 50*50000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 5000 #2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    numTimePoints = 3000 #2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 500 #1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2                # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
@@ -67,32 +69,39 @@ if __name__ == "__main__":
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
     
     
-    gestureClasses = np.char.lower(['Blink', 'Double Blink', 'Relaxed', 'Stroop Test', 'Exercise Weight', 'VR Roller Coaster'])  # Define Labels as Array
-    machineLearningClasses = np.char.lower(['Relaxed', 'Stroop', 'Exercise', 'VR'])
-    labelMap = [-1, -1, 0, 1, 2, 3]
+   # gestureClasses = np.char.lower(['Blink', 'Double Blink', 'Relaxed', 'Stroop Test', 'Exercise Weight', 'VR Roller Coaster'])  # Define Labels as Array
+   # machineLearningClasses = np.char.lower(['Relaxed', 'Stroop', 'Exercise', 'VR'])
+   # labelMap = [-1, -1, 0, 1, 2, 3]
     
-    #gestureClasses = np.char.lower(['Morning', 'Night', 'Music'])
-    #machineLearningClasses = np.char.lower(['Morning', 'Night', 'Music'])
-    #labelMap = [0, 1, 2]
+    gestureClasses = np.char.lower(['Morning', 'Night', 'Music'])
+    machineLearningClasses = np.char.lower(['Morning', 'Night', 'Music'])
+    labelMap = [-1, -1, 2]
     
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = True     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False        # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveData = False               # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False             # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
     
     
-    blinkFeatures = ['blinkHeight', 'peakTentY', 'tentDeviationX', 'tentDeviationY', 'blinkAmpRatio', 'tentRatio', 'tentDeviationRatio']
+    # Finalize the Features
+    blinkFeatures = ['peakLocX', 'blinkHeight', 'peakTentY', 'tentDeviationX', 'tentDeviationY', 'blinkAmpRatio', 'tentRatio', 'tentDeviationRatio']
+    blinkFeatures.extend(['closingAmpDiffRatio1', 'closingAmpDiffRatio2', 'closingAmpDiffRatio3', 'openingAmpDiffRatio1', 'openingAmpDiffRatio2', 'openingAmpDiffRatio3'])
+    blinkFeatures.extend(['accel0ToVel0Ratio', 'accel1ToVel0Ratio', 'accel2ToVel1Ratio', 'accel3ToVel1Ratio'])
+    blinkFeatures.extend(['riseTimePercent', 'dropTimePercent', 'velDiffPercent'])
+    blinkFeatures.extend(['closingAmpRatio1', 'closingAmpRatio2', 'closingAmpRatio3', 'openingAmpRatio1', 'openingAmpRatio2', 'openingAmpRatio3'])
+
+
     blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
     blinkFeatures.extend(['closingSlope0', 'closingSlope1', 'closingSlope2', 'openingSlope1', 'openingSlope2', 'openingSlope3'])
-    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakEntropy', 'peakSkew', 'peakKurtosis', 'peakSTD', 'maxCurvature'])
+    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakIntegral', 'peakIntergralRatio', 'peakEntropy', 'peakSkew', 'peakKurtosis', 'peakSTD', 'maxCurvature'])
     # Compile the Features
     blinkFeatures.extend(['peakClosingVel', 'peakOpeningVel', 'peakClosingAccel1', 'peakClosingAccel2', 'peakopeningAccel1', 'peakopeningAccel2'])
     blinkFeatures.extend(['velOpenRatio', 'velClosedRatio', 'accelClosedRatio1', 'accelClosedRatio2', 'accelOpenRatio1', 'accelOpenRatio2'])
@@ -101,10 +110,9 @@ if __name__ == "__main__":
     blinkFeatures.extend(['durationByVel1', 'durationByVel2', 'durationByAccel1', 'durationByAccel2', 'durationByAccel3', 'midDurationRatio'])
     blinkFeatures.extend(['startToAccel', 'accelCloseingPeakDuration', 'accelToPeak', 'peakToAccel', 'accelOpeningPeakDuration', 'accelToEnd'])
     blinkFeatures.extend(['velPeakDuration', 'startToVel', 'velToPeak', 'peakToVel', 'velToEnd'])
-    blinkFeatures.extend(['closingAmpRatio1', 'closingAmpRatio2', 'closingAmpRatio3', 'openingAmpRatio1', 'openingAmpRatio2', 'openingAmpRatio3'])
-    blinkFeatures.extend(['riseTimePercent', 'dropTimePercent', 'velDiffPercent'])
-    blinkFeatures.extend(['curvatureAccel0', 'curvatureAccel1', 'curvatureAccel2', 'curvatureAccel3', 'curvatureVel0', 'curvatureVel1'])
-    blinkFeatures.extend(['accel0ToVel0Ratio', 'accel1ToVel0Ratio', 'accel2ToVel1Ratio', 'accel3ToVel1Ratio']) 
+    blinkFeatures.extend(['curvatureYDataAccel0', 'curvatureYDataAccel1', 'curvatureYDataAccel2', 'curvatureYDataAccel3', 'curvatureYDataVel0', 'curvatureYDataVel1'])
+    blinkFeatures.extend(['velFullSTD', 'accelFullSTD', 'thirdDerivFullSTD', 'velSTD', 'accelSTD', 'thirdDerivSTD'])
+    blinkFeatures.extend(['velFullEntropy', 'accelFullEntropy', 'thirdDerivFullEntropy', 'velEntropy', 'accelEntropy', 'thirdDerivEntropy'])
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
@@ -124,7 +132,7 @@ if __name__ == "__main__":
     
     # Input Training Paramaters 
     if reAnalyzePeaks or trainModel:
-        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-10 First VR Test/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-11 Home Study/"  # Path to the Training Data Folder; All .xlsx Data Used
     
     # Train or Test the Data with the Machine Learning Model
     if trainModel or testModel and not reAnalyzePeaks:
@@ -596,34 +604,32 @@ for featureInd in range(len(blinkFeatures)):
     fig = plt.figure()
 
 
-    allFeatures = signalData[:,featureInd][signalLabels == 1]
-    time = signalData[:,0][signalLabels == 1]
+    allFeatures = signalData[:,featureInd][signalLabels == 2]
+    time = signalData[:,0][signalLabels == 2]
     colors = ['ko', 'ro', 'bo', 'go', 'mo']
-    for ind, averageTogether in enumerate([60*10]):
+    for ind, averageTogether in enumerate([60]):
         features = []
         for pointInd in range(len(allFeatures)):
             featureInterval = allFeatures[time > time[pointInd] - averageTogether]
             timeMask = time[time > time[pointInd] - averageTogether]
-            featureInterval = featureInterval[timeMask < time[pointInd] + averageTogether]
-            
+            featureInterval = featureInterval[timeMask <= time[pointInd]]
+
             weight = [10E-20]
             for i in range(int(-len(featureInterval)/2), int(len(featureInterval)/2)):
-                weight.append(sigmoid(i))
+                weight.append(sigmoid(i/20))
             weight = np.array(weight[-len(featureInterval):])
-            
             feature = np.average(featureInterval, axis=0, weights=weight)
-            
-            feature = np.average(featureInterval)
             features.append(feature)
+
             if ind == 2:
                 feature1Min = features
 
-        fitLineParams = np.polyfit(time, features, 1)
-        fitLine = np.polyval(fitLineParams, time);
+        #fitLineParams = np.polyfit(time, features, 1)
+        #fitLine = np.polyval(fitLineParams, time);
 
         plt.plot(time, features, colors[ind])
-        plt.plot(time, fitLine, 'r')
-        
+        #plt.plot(time, fitLine, 'r')
+
         if ind == 0:
             featureDict[blinkFeatures[featureInd]] = features
 
@@ -633,8 +639,7 @@ for featureInd in range(len(blinkFeatures)):
     #plt.ylim(min(feature1Min)*0.8, max(feature1Min)*1.2)
     #plt.legend(['3 Min', '5 Min', '10 Min'])
     plt.title("Averaged Together: " + str(averageTogether/60) + " Min")
-    fig.savefig('../Time Graph Night/10 Min/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+    #fig.savefig('../Time Graph Night/10 Min/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
     plt.show()
-    
 
 """

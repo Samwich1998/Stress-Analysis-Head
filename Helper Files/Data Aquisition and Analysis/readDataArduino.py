@@ -40,6 +40,8 @@ class arduinoRead():
         self.emgArduino = self.initiateArduino(self.emgSerialNum)
         self.eegArduino = self.initiateArduino(self.eegSerialNum)
         self.handArduino = self.initiateArduino(self.handSerialNum)
+        
+        self.printPortNums()
 
     def printPortNums(self):
         ports = serial.tools.list_ports.comports()

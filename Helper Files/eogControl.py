@@ -60,7 +60,7 @@ if __name__ == "__main__":
     eogSerialNum = '85735313333351E040A0' 
     
     samplingFreq = None            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 50*50000         # The Number of Points to Stream into the Arduino
+    numDataPoints = 100*50000         # The Number of Points to Stream into the Arduino
     numTimePoints = 3000 #2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
     moveDataFinger = 500 #1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2                # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
@@ -78,13 +78,13 @@ if __name__ == "__main__":
     labelMap = [-1, -1, 2]
     
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = True     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False        # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveData = False               # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False             # Apply the Learning Algorithm to Decode the Signals
@@ -116,8 +116,8 @@ if __name__ == "__main__":
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
-        saveExcelName = "Sam 2021-12-11 Home Music.xlsx"  # The Name of the Saved File
-        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/Home Study/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        saveExcelName = "Emil 2021-12-11 Lab Music.xlsx"  # The Name of the Saved File
+        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-15 Music Study Lab/"   # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
         eyeMovement = "Music".lower() # Make Sure it is Lowercase
         if eyeMovement not in gestureClasses:
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     if readDataFromExcel:
         #testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
         #testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-10 First VR Test/Jose 2021-12-10 Movements.xlsx" # Path to the Test Data
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-11 Home Study/Sam 2021-12-11 Home Music.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-15 Music Study Lab/Emil 2021-12-11 Lab Music.xlsx" # Path to the Test Data
         testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 

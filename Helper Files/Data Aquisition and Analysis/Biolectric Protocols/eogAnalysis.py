@@ -209,9 +209,9 @@ class eogProtocol:
             
             # ------------------- Extract Blink Features  ------------------- #
             # Extarct EOG Peaks from Up Channel
-            if channelIndex == 0:
-                filteredDataX = self.data['timePoints'][-len(filteredData):]
-                self.findBlinks(filteredDataX, filteredData, channelIndex, predictionModel)
+         #   if channelIndex == 0:
+         #       filteredDataX = self.data['timePoints'][-len(filteredData):]
+         #       self.findBlinks(filteredDataX, filteredData, channelIndex, predictionModel)
             # --------------------------------------------------------------- #
             
             # --------------------- Calibrate Eye Angle --------------------- #

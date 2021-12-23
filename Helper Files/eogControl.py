@@ -57,13 +57,14 @@ if __name__ == "__main__":
 
     # General Data Collection Information (You Will Likely Not Edit These)
     eogSerialNum = '85035323234351D06052'  # Arduino's Serial Number (port.serial_number)
-    eogSerialNum = '85735313333351E040A0' 
+    
     eogSerialNum = '85035323234351D06052'
+    eogSerialNum = '044F979E50553133352E3120FF030F25'
     
     samplingFreq = None            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 5*50000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numDataPoints = 1*50000         # The Number of Points to Stream into the Arduino
+    numTimePoints = 15000 #2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 200 #1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
     numChannels = 2                # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
@@ -83,10 +84,10 @@ if __name__ == "__main__":
     #labelMap = [0, 1]
     
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    streamArduinoData = True     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
     readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
-    trainModel = True             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
+    trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
     plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis

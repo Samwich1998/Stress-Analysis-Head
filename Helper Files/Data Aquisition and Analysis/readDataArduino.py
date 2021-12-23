@@ -8,6 +8,7 @@ Created on Tue Mar  2 13:44:26 2021
 
 # General Modules
 import re
+import os
 import sys
 import time
 import threading
@@ -15,6 +16,7 @@ import matplotlib.pyplot as plt
 # Stream Data from Arduino
 import serial
 import serial.tools.list_ports
+import pyfirmata2
 # Import Bioelectric Analysis Files
 from eegAnalysis import eegProtocol
 from emgAnalysis import emgProtocol
@@ -42,6 +44,20 @@ class arduinoRead():
         self.handArduino = self.initiateArduino(self.handSerialNum)
         
         self.printPortNums()
+    
+    def initiateArduinoFirmata(self):
+        # Find and Connect to the Arduino Board
+        PORT =  pyfirmata2.Arduino.AUTODETECT
+        board = pyfirmata2.Arduino(PORT)
+        # Set Sampling Rate
+        board.samplingOn(1)
+        
+        # Initialize Analog Pins
+        A0 = board.get_pin('a:0:i')
+        A0.register_callback(myCallback = 1)  # Unsure for Callback
+        A0.enable_reporting()
+        # Save the Pins as a List  
+        A0.read()
 
     def printPortNums(self):
         ports = serial.tools.list_ports.comports()
@@ -212,10 +228,10 @@ class arduinoRead():
 
                 if len(arduinoValues) == numChannels + 1:
                     # Store the Time and Voltage Data
-                    arduinoData[1].append(int(arduinoValues[0])/1000)
+                    arduinoData[1].append(int(arduinoValues[0])/1E6)
                     for channelIndex in range(numChannels):
                         # Convert Arduino Data to Voltage Before Storing
-                        arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 5/1023)
+                        arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 3.3/4096)
                 else:
                     print("Bad Arduino Reading:", arduinoValues)
                     print("You May Want to Inrease 'moveDataFinger' to Not Fall Behind in Reading Points")

@@ -28,7 +28,6 @@
         
     --------------------------------------------------------------------------
 """
-# Use '%matplotlib qt' to View Plot
 
 # Basic Modules
 import os
@@ -59,13 +58,13 @@ if __name__ == "__main__":
     eogSerialNum = '85035323234351D06052'  # Arduino's Serial Number (port.serial_number)
     
     eogSerialNum = '85035323234351D06052'
-    eogSerialNum = '044F979E50553133352E3120FF030F25'
+    eogSerialNum = 'E37FEEBB50553441302E3120FF041F11'
     
-    samplingFreq = None            # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    numDataPoints = 1*50000         # The Number of Points to Stream into the Arduino
-    numTimePoints = 15000 #2048576           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 200 #1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
-    numChannels = 2                # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
+    samplingFreq = None              # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
+    stopTimeStreaming = 600           # The Last Time to Stream into the Arduino. If Float, it is the Seconds from 12:00am; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
+    numTimePoints = 5000 #2048576    # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 400 #1048100    # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numChannels = 2                  # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
@@ -84,13 +83,13 @@ if __name__ == "__main__":
     #labelMap = [0, 1]
     
     # Protocol Switches: Only the First True Variable Excecutes
-    streamArduinoData = True     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
+    readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
     trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False        # Calibrate the EOG Voltage to Predict the Eye's Angle
     saveData = False               # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False             # Apply the Learning Algorithm to Decode the Signals
@@ -182,12 +181,12 @@ if __name__ == "__main__":
     def executeProtocol():
         global readData, eogProtocol, performMachineLearning, signalData, signalLabels, modelPath
         
-        eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+        eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, plotStreamedData)
         # Stream in Data from Arduino
         if streamArduinoData:
             arduinoRead = streamData.arduinoRead(eogSerialNum = eogSerialNum, ppgSerialNum = None, emgSerialNum = None, eegSerialNum = None, handSerialNum = None)
-            readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None)
-            readData.streamEOGData(numDataPoints, predictionModel = predictionModel, actionControl = gazeControl, calibrateModel = calibrateModel)
+            readData = streamData.eogArduinoRead(arduinoRead, numTimePoints, moveDataFinger, numChannels, plotStreamedData, guiApp = None)
+            readData.streamEOGData(stopTimeStreaming, predictionModel = predictionModel, actionControl = gazeControl, calibrateModel = calibrateModel)
         # Take Data from Excel Sheet
         elif readDataFromExcel:
             readData = excelData.readExcel(eogProtocol)

@@ -7,8 +7,6 @@ Created on Tue Mar  2 13:44:26 2021
 """
 
 # General Modules
-import re
-import os
 import sys
 import time
 import threading
@@ -43,6 +41,9 @@ class arduinoRead():
         self.eegArduino = self.initiateArduino(self.eegSerialNum)
         self.handArduino = self.initiateArduino(self.handSerialNum)
         
+        # Initialize Arduino Buffer
+        self.arduinoBuffer = bytearray()
+        
         self.printPortNums()
     
     def initiateArduinoFirmata(self):
@@ -58,6 +59,23 @@ class arduinoRead():
         A0.enable_reporting()
         # Save the Pins as a List  
         A0.read()
+    
+    def convertToTime(self, timeStamp):
+        if type(timeStamp) == str:
+            timeStamp = timeStamp.split(":")
+        currentTime = int(timeStamp[0])*60*60 + int(timeStamp[1])*60 + int(timeStamp[2]) + int(timeStamp[3])/1E6
+        return currentTime
+    
+    def convertToTimeStamp(self, timeSeconds):
+        import math; import numpy as np
+        hours = timeSeconds//3600
+        remainingTime = timeSeconds%3600
+        minutes = remainingTime//60
+        remainingTime %=60
+        seconds = math.floor(remainingTime)
+        microSeconds = remainingTime - seconds
+        microSeconds = np.round(microSeconds, 6)
+        return hours, minutes, seconds, microSeconds
 
     def printPortNums(self):
         ports = serial.tools.list_ports.comports()
@@ -80,17 +98,6 @@ class arduinoRead():
         # Retun the Arduino actionControl
         return arduinoControl
 
-    def resetArduino(self, arduino, arduinoSerialNum, numTrashReads):
-        # Toss any data already received, see
-        arduino.flushInput()
-        
-        # Read and throw out first few reads
-        for i in range(numTrashReads):
-            self.readAll(arduino)
-            arduino.read_until()
-        arduino.read_until()
-        arduino.read_until()
-        return arduino
 
     def findArduino(self, serialNum):
         """Get the name of the port that is connected to the Arduino."""
@@ -102,6 +109,20 @@ class arduinoRead():
             if p.serial_number == serialNum:
                 port = p.device
         return port
+    
+    def resetArduino(self, arduino, numTrashReads):
+        # Toss any data already received, see
+        arduino.flushInput()
+        arduino.flush()
+        
+        # Read and throw out first few reads
+        for i in range(numTrashReads):
+            self.readAll(arduino)
+            arduino.read_until()
+        arduino.flushInput()
+        arduino.flush()
+        arduino.read_until(); arduino.read_until()
+        return arduino
 
     def handshakeArduino(self, arduino, sleep_time=1, print_handshake_message=False, handshake_code=0):
         """Make sure connection is established by sending
@@ -192,9 +213,26 @@ class arduinoRead():
         for _ in range(n_reads):
             raw += ser.read_until()
         return raw
+    
+    def readline(self, ser):
+        i = self.arduinoBuffer.find(b"\n")
+        if i >= 0:
+            r = self.arduinoBuffer[:i+1]
+            self.arduinoBuffer = self.arduinoBuffer[i+1:]
+            return r
+        while True:
+            i = max(1, min(2048, ser.in_waiting))
+            data = ser.read(i)
+            i = data.find(b"\n")
+            if i >= 0:
+                r = self.arduinoBuffer + data[:i+1]
+                self.arduinoBuffer[0:] = data[i+1:]
+                return r
+            else:
+                self.arduinoBuffer.extend(data)
 
 
-    def parseRead(self, read, numChannels):
+    def parseRead(self, byteArrayList, numChannels):
         """Parse a read with time, volage data
 
         Parameters
@@ -211,24 +249,27 @@ class arduinoRead():
         """
         # Initiate Variables to Hold [[Voltages (Y) -> ...], Time (X), Buffer]
         arduinoData = [ [[] for channel in range(numChannels)], [] ]
-        # Keep Track of Buffer
-        if len(read) == 0:
-            arduinoData.append(b"")
-        else:
-            arduinoData.append(b'')  # Last Element Should = raw_list[-1].encode()
 
-        # Separate Time and Voltage Measurements
-        pattern = re.compile(b"\d+|,|-")
-        raw_list = [b"".join(pattern.findall(raw)).decode() for raw in read.split(b"\r\n")]
-
-        for raw in raw_list[:-1]:
+        for byteArray in byteArrayList:
+            byteObject = bytes(byteArray)
+            rawRead = str(byteObject)[2:-5]
             try:
                 # Seperate the Arduino Data
-                arduinoValues = raw.split(",")
+                arduinoValues = rawRead.split(",")
 
-                if len(arduinoValues) == numChannels + 1:
-                    # Store the Time and Voltage Data
-                    arduinoData[1].append(int(arduinoValues[0])/1E6)
+                if len(arduinoValues) == numChannels + 3:
+                    
+                    # Store the Current Time
+                    segmentedTime = arduinoValues[0].split("-")
+                    # If There is Only One Time, its a General Counter in MicroSeconds
+                    if len(segmentedTime) == 1:
+                        arduinoData[1].append(int(segmentedTime[0])/1E6)
+                    # If Multiple Segments, We Have "Hour:Minute:Second:MicroSecond"
+                    else:
+                        currentTime = self.convertToTime(segmentedTime)
+                        arduinoData[1].append(currentTime)
+                    
+                    # Add the Voltage Data
                     for channelIndex in range(numChannels):
                         # Convert Arduino Data to Voltage Before Storing
                         arduinoData[0][channelIndex].append(int(arduinoValues[channelIndex+1]) * 3.3/4096)
@@ -236,16 +277,16 @@ class arduinoRead():
                     print("Bad Arduino Reading:", arduinoValues)
                     print("You May Want to Inrease 'moveDataFinger' to Not Fall Behind in Reading Points")
             except:
-                print("Cannot Read Arduino Value:", raw)
+                print("Cannot Read Arduino Value:", rawRead)
                 pass
         # Return the Values
         return arduinoData
 
 class emgArduinoRead(emgProtocol):
 
-    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData, guiApp = None):
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, gestureClasses, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
-        super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData)
+        super().__init__(numTimePoints, moveDataFinger, numChannels, gestureClasses, plotStreamedData)
 
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
@@ -268,30 +309,45 @@ class emgArduinoRead(emgProtocol):
             self.guiApp.handArduino = self.handArduino
             self.guiApp.initiateRoboticMovement()
 
-    def streamEMGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
-        """Obtain `numPointsRead` data points from an Arduino stream"""
+    def streamEMGData(self, stopTimeStreaming, predictionModel = None, actionControl=None, numTrashReads=1000, numPointsPerRead=100):
+        """Stop Streaming When we Obtain `stopTimeStreaming` from Arduino"""
         print("Streaming in EMG Data from the Arduino")
         
         # Read and throw out first few reads
-        self.emgArduino.read_until(b'')
+        self.eogArduino.read_until(b'')
         for i in range(numTrashReads):
-            self.emgArduino.read_until()
+            self.eogArduino.read_until()
+        
+        # Calculate the Stop Time
+        timeBuffer = 0
+        if type(stopTimeStreaming) in [float, int]:
+            from datetime import datetime
+            # Save Time Buffer
+            timeBuffer = stopTimeStreaming
+            # Get the Current Time as a TimeStamp
+            currentTime = datetime.now().time()
+            stopTimeStreaming = str(currentTime).replace(".",":")
+        # Get the Final Time in Seconds (From 12:00am of the Current Day) to Stop Streaming
+        stopTimeStreaming = self.arduinoRead.convertToTime(stopTimeStreaming) + timeBuffer
         
         # Set Up Hand Arduino if Needed
         if self.handArduino:
             self.handArduino.readAll() # Throw Out Initial Readings
             # Set Up Laser Reading
-            threading.Thread(target = self.distanceRead, args = (actionControl, numPointsRead), daemon=True).start()
+            threading.Thread(target = self.distanceRead, args = (actionControl, stopTimeStreaming), daemon=True).start()
 
         try:
-            readBuffer = b""; dataFinger = 0
+            dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
-            while len(self.data["timePoints"]) < numPointsRead:
+            while len(self.data["timePoints"]) == 0 or self.data["timePoints"][-1] < stopTimeStreaming:
+
 
                 # Read in chunk of data
-                raw = self.arduinoRead.readAllNewlines(ser=self.emgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+                rawReadsList = []
+                while (int(self.eogArduino.in_waiting) > 0):
+                    rawReadsList.append(self.arduinoRead.readline(ser=self.eogArduino))
                 # Parse it, passing if it is gibberish
-                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
+                Voltages, timePoints = self.arduinoRead.parseRead(rawReadsList, self.numChannels)
 
                 # Update data dictionary
                 self.data["timePoints"].extend(timePoints)
@@ -321,12 +377,12 @@ class emgArduinoRead(emgProtocol):
             self.guiApp.resetButton()
 
 
-    def distanceRead(self, RoboArm, numPointsRead):
+    def distanceRead(self, RoboArm, stopTimeStreaming):
         print("In Distance Read")
         for _ in range(5):
             self.handArduino.read_until()
         l_time = 0
-        while len(self.data["timePoints"]) < numPointsRead and not self.killDistanceRead:
+        while self.data["timePoints"][-1] < stopTimeStreaming and not self.killDistanceRead:
             if self.handArduino.in_waiting > 0:
                 d_laser = self.handArduino.read_until()
                 distance = d_laser.decode()
@@ -359,33 +415,47 @@ class emgArduinoRead(emgProtocol):
 
 class eegArduinoRead(eegProtocol):
 
-    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None):
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
-        super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+        super().__init__(numTimePoints, moveDataFinger, numChannels, plotStreamedData)
 
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.eegArduino = arduinoRead.eegArduino
 
 
-    def streamEMGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
-        """Obtain `numPointsRead` data points from an Arduino stream"""
+    def streamEEGData(self, stopTimeStreaming, predictionModel = None, actionControl=None, numTrashReads=1000, numPointsPerRead=100):
+        """Stop Streaming When we Obtain `stopTimeStreaming` from Arduino"""
         print("Streaming in EMG Data from the Arduino")
-        
+
         # Read and throw out first few reads
-        self.eegArduino.read_until(b'')
+        self.eogArduino.read_until(b'')
         for i in range(numTrashReads):
-            self.eegArduino.read_until()
+            self.eogArduino.read_until()
+        
+        # Calculate the Stop Time
+        timeBuffer = 0
+        if type(stopTimeStreaming) in [float, int]:
+            from datetime import datetime
+            # Save Time Buffer
+            timeBuffer = stopTimeStreaming
+            # Get the Current Time as a TimeStamp
+            currentTime = datetime.now().time()
+            stopTimeStreaming = str(currentTime).replace(".",":")
+        # Get the Final Time in Seconds (From 12:00am of the Current Day) to Stop Streaming
+        stopTimeStreaming = self.arduinoRead.convertToTime(stopTimeStreaming) + timeBuffer
         
         try:
-            readBuffer = b""; dataFinger = 0
+            dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
-            while len(self.data["timePoints"]) < numPointsRead:
+            while len(self.data["timePoints"]) == 0 or self.data["timePoints"][-1] < stopTimeStreaming:
 
                 # Read in chunk of data
-                raw = self.arduinoRead.readAllNewlines(ser=self.eegArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+                rawReadsList = []
+                while (int(self.eogArduino.in_waiting) > 0):
+                    rawReadsList.append(self.arduinoRead.readline(ser=self.eogArduino))
                 # Parse it, passing if it is gibberish
-                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
+                Voltages, timePoints = self.arduinoRead.parseRead(rawReadsList, self.numChannels)
 
                 # Update data dictionary
                 self.data["timePoints"].extend(timePoints)
@@ -393,13 +463,12 @@ class eegArduinoRead(eegProtocol):
                     self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
 
                 # When Ready, Send Data Off for Analysis
-                pointNum = len(self.data["timePoints"])
-                while pointNum - dataFinger >= self.numTimePoints:
+                while len(self.data["timePoints"]) - dataFinger >= self.numTimePoints:
                     self.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
                     dataFinger += self.moveDataFinger
             # At the End, Analyze Any Data Left
-            if dataFinger < len(self.analysisProtocol.data["timePoints"]):
-                self.analysisProtocol.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
+            if dataFinger < len(self.data["timePoints"]):
+                self.analyzeData(dataFinger, self.plotStreamedData, predictionModel, actionControl)
 
         finally:
             self.eegArduino.close()
@@ -411,23 +480,35 @@ class eegArduinoRead(eegProtocol):
 
 class eogArduinoRead(eogProtocol):
 
-    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData, guiApp = None):
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
-        super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+        super().__init__(numTimePoints, moveDataFinger, numChannels, plotStreamedData)
 
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.eogArduino = arduinoRead.eogArduino
         self.eogSerialNum = arduinoRead.eogSerialNum
 
-    def streamEOGData(self, numPointsRead, predictionModel = None, actionControl = None, calibrateModel = False, numTrashReads=500, numPointsPerRead=100):
-        """Obtain `numPointsRead` data points from an Arduino stream"""
+    def streamEOGData(self, stopTimeStreaming, predictionModel = None, actionControl = None, calibrateModel = False, numTrashReads=100, numPointsPerRead=300):
+        """Stop Streaming When we Obtain `stopTimeStreaming` from Arduino"""
         print("Streaming in EOG Data from the Arduino")
-
+        
         # Read and throw out first few reads
         self.eogArduino.read_until(b'')
         for i in range(numTrashReads):
-            self.eogArduino.read_until()
+            self.arduinoRead.readline(ser=self.eogArduino)
+        
+        # Calculate the Stop Time
+        timeBuffer = 0
+        if type(stopTimeStreaming) in [float, int]:
+            from datetime import datetime
+            # Save Time Buffer
+            timeBuffer = stopTimeStreaming
+            # Get the Current Time as a TimeStamp
+            currentTime = datetime.now().time()
+            stopTimeStreaming = str(currentTime).replace(".",":")
+        # Get the Final Time in Seconds (From 12:00am of the Current Day) to Stop Streaming
+        stopTimeStreaming = self.arduinoRead.convertToTime(stopTimeStreaming) + timeBuffer
 
         try:
             # If Needed Calibrate the Model
@@ -435,20 +516,22 @@ class eogArduinoRead(eogProtocol):
                 plt.close()
                 self.askForCalibration(numTrashReads)
 
-            readBuffer = b""; dataFinger = 0
+            dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
-            while len(self.data["timePoints"]) < numPointsRead:
+            while len(self.data["timePoints"]) == 0 or self.data["timePoints"][-1] < stopTimeStreaming:
 
                 # Read in chunk of data
-                raw = self.arduinoRead.readAllNewlines(ser=self.eogArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+                rawReadsList = []
+                while (int(self.eogArduino.in_waiting) > 0):
+                    rawReadsList.append(self.arduinoRead.readline(ser=self.eogArduino))
                 # Parse it, passing if it is gibberish
-                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
+                Voltages, timePoints = self.arduinoRead.parseRead(rawReadsList, self.numChannels)
 
                 # Update data dictionary
                 self.data["timePoints"].extend(timePoints)
                 for channelIndex in range(self.numChannels):
                     self.data['Channel' + str(channelIndex+1)].extend(Voltages[channelIndex])
-
+                
                 # When Ready, Send Data Off for Analysis
                 pointNum = len(self.data["timePoints"])
                 while pointNum - dataFinger >= self.numTimePoints:
@@ -489,7 +572,7 @@ class eogArduinoRead(eogProtocol):
         if self.calibrateChannelNum == self.numChannels:
             # Reset Arduino and Stop Calibration
             self.initPlotPeaks()
-            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
+            self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, numTrashReads)
             calibrateModel = False
         else:
             self.askForCalibration(numTrashReads)
@@ -502,37 +585,52 @@ class eogArduinoRead(eogProtocol):
         # Inform User of Next Angle; Then Flush Saved Outputs
         input("Orient Eye at " + str(self.calibrationAngles[self.calibrateChannelNum][self.channelCalibrationPointer]) + " Degrees For Channel " + str(self.calibrateChannelNum))
         # Reset Arduino
-        self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, self.eogSerialNum, numTrashReads)
+        self.eogArduino = self.arduinoRead.resetArduino(self.eogArduino, numTrashReads)
         print("Orient Now")
 
 class ppgArduinoRead(ppgProtocol):
 
-    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, samplingFreq, gestureClasses, plotStreamedData, guiApp = None):
+    def __init__(self, arduinoRead, numTimePoints, moveDataFinger, numChannels, gestureClasses, plotStreamedData, guiApp = None):
         # Get Variables from Peak Analysis File
-        super().__init__(numTimePoints, moveDataFinger, numChannels, samplingFreq, plotStreamedData)
+        super().__init__(numTimePoints, moveDataFinger, numChannels, plotStreamedData)
 
         # Store the arduinoRead Instance
         self.arduinoRead = arduinoRead
         self.ppgArduino = arduinoRead.ppgArduino
 
-    def streamPPGData(self, numPointsRead, predictionModel = None, actionControl=None, numTrashReads=500, numPointsPerRead=400):
-        """Obtain `numPointsRead` data points from an Arduino stream"""
+    def streamPPGData(self, stopTimeStreaming, predictionModel = None, actionControl=None, numTrashReads=1000, numPointsPerRead=400):
+        """Stop Streaming When we Obtain `stopTimeStreaming` from Arduino"""
         print("Streaming in EMG Data from the Arduino")
-        
+
         # Read and throw out first few reads
-        self.ppgArduino.read_until(b'')
+        self.eogArduino.read_until(b'')
         for i in range(numTrashReads):
-            self.ppgArduino.read_until()
+            self.eogArduino.read_until()
+        
+        # Calculate the Stop Time
+        timeBuffer = 0
+        if type(stopTimeStreaming) in [float, int]:
+            from datetime import datetime
+            # Save Time Buffer
+            timeBuffer = stopTimeStreaming
+            # Get the Current Time as a TimeStamp
+            currentTime = datetime.now().time()
+            stopTimeStreaming = str(currentTime).replace(".",":")
+        # Get the Final Time in Seconds (From 12:00am of the Current Day) to Stop Streaming
+        stopTimeStreaming = self.arduinoRead.convertToTime(stopTimeStreaming) + timeBuffer
             
         try:
-            readBuffer = b""; dataFinger = 0
+            dataFinger = 0
             # Loop Through and Read the Arduino Data in Real-Time
-            while len(self.data["timePoints"]) < numPointsRead:
+            while len(self.data["timePoints"]) == 0 or self.data["timePoints"][-1] < stopTimeStreaming:
+
 
                 # Read in chunk of data
-                raw = self.arduinoRead.readAllNewlines(ser=self.ppgArduino, readBuffer=readBuffer, n_reads=numPointsPerRead)
+                rawReadsList = []
+                while (int(self.eogArduino.in_waiting) > 0):
+                    rawReadsList.append(self.arduinoRead.readline(ser=self.eogArduino))
                 # Parse it, passing if it is gibberish
-                Voltages, timePoints, readBuffer = self.arduinoRead.parseRead(raw, self.numChannels)
+                Voltages, timePoints = self.arduinoRead.parseRead(rawReadsList, self.numChannels)
 
                 # Update data dictionary
                 self.data["timePoints"].extend(timePoints)

@@ -34,50 +34,43 @@ from scipy.signal import savgol_filter
 
 class eogProtocol:
     
-    def __init__(self, numTimePoints = 3000, moveDataFinger = 10, numChannels = 2, samplingFreq = 800, plotStreamedData = True):
+    def __init__(self, numTimePoints = 3000, moveDataFinger = 10, numChannels = 2, plotStreamedData = True):
         
         # Input Parameters
         self.numChannels = numChannels            # Number of Bioelectric Signals
         self.numTimePoints = numTimePoints        # The X-Wdith of the Plot (Number of Data-Points Shown)
         self.moveDataFinger = moveDataFinger      # The Amount of Data to Stream in Before Finding Peaks
         self.plotStreamedData = plotStreamedData  # Plot the Data
+        
+        # High Pass Filter Parameters
+        self.samplingFreq = None          # The Average Number of Points Steamed Into the Arduino Per Second; Depends on the User's Hardware; If NONE Given, Algorithm will Calculate Based on Initial Data
+        self.bandPassBuffer = 5000        # A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
+        self.cutOffFreq = 25              # Optimal LPF Cutoff in Literatrue is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best for My System
+        
+        # Eye Angle Determination Parameters
+        self.voltagePositionBuffer = 100  # A Prepended Buffer to Find the Current Average Voltage; Units: Points
+        self.minVoltageMovement = 0.06    # The Minimum Voltage Change Required to Register an Eye Movement; Units: Volts
+        self.predictEyeAngleGap = 5       # The Number of Points Between Each Eye Gaze Prediction; Will Backcaluclate if moveDataFinger > predictEyeAngleGap; Units: Points
+        self.steadyStateEye = 3.3/2       # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
+
         # Calibration Angles
         self.calibrationAngles = [[-45, 0, 45] for _ in range(self.numChannels)]
         self.calibrationVoltages = [[] for _ in range(self.numChannels)]
-        
-        # High Pass Filter Parameters
-        self.samplingFreq = samplingFreq          # Depends on the User's Hardware
-        self.cutOffFreq = 25                      # Optimal LPF 6-8 Hz (Max 35 or 50); literature Claimed 7 Hz is Best
-        
-        # Data Collection Parameters
-        self.voltagePositionBuffer = 50   # Buffer to Find the Average Voltage
-        self.minVoltageMovement = 0.05    # Min Voltage Change Threshold to Move the Gaze
-        self.bandPassBuffer = 5000        # Buffer in the Filtered Data that Represented BAD Filtering
-        
-        # Eye Gesture Prediction Parameters
-        self.predictEyeAngleGap = 5
-        self.minVoltageThreshold = 0.05
-        self.steadyStateEye = 3.3/2
-        
-        self.peakShapeBuffer = 15
-        
         # Pointers for Calibration
-        self.calibrateChannelNum = 0
-        self.channelCalibrationPointer = 0
+        self.calibrateChannelNum = 0           # The Current Channel We are Calibrating
+        self.channelCalibrationPointer = 0     # A Pointer to the Current Angle Being Calibrated (A Pointer for Angle in self.calibrationAngles)
         # Calibration Function for Eye Angle
         self.predictEyeAngle = [lambda x: (x - self.steadyStateEye)*30]*self.numChannels
         
-        # Check to See if Parameters Make Sense
-        self.checkParams
-                
-        # Start with Fresh Inputs
-        self.resetGlobalVariables()
+        # Prepare the Program to Begin Data Analysis
+        self.checkParams              # Check to See if the User's Input Parameters Make Sense
+        self.resetGlobalVariables()   # Start with Fresh Inputs (Clear All Arrays/Values)
         
-        # Define Class for Plotting Peaks
+        # If Plotting, Define Class for Plotting Peaks
         if plotStreamedData:
-            # Initialize Plots
+            # Initialize Plots; NOTE: PLOTTING SLOWS DOWN PROGRAM!
             matplotlib.use('Qt5Agg') # Set Plotting GUI Backend            
-            self.initPlotPeaks()    # Create the Plots
+            self.initPlotPeaks()     # Create the Plots
 
     def resetGlobalVariables(self):
         # Data to Read in
@@ -100,12 +93,12 @@ class eogProtocol:
         self.multipleBlinksX = []
         self.blinksXLocs = []
         self.blinksYLocs = []
-        self.lastBadXLoc = 0
-        
-        self.averageBlinkWindow = 60*1.5
-
-        
         self.importantArrays = []
+        
+        self.lastAnalyzedPeakInd = 0      # The Index of the Last Potential Blink Analyzed from the Start of Data
+        self.averageBlinkWindow = 60*1.5  # Time Window to Average Blink Features Together (Prepended to Blink's Peak Time)
+        
+        # Blink Classification
         self.blinkTypes = ['Relaxed', 'Stroop', 'Exercise', 'VR']
         self.currentState = self.blinkTypes[0]
         
@@ -119,7 +112,6 @@ class eogProtocol:
             sys.exit()
 
     def initPlotPeaks(self): 
-        
         # use ggplot style for more sophisticated visuals
         plt.style.use('seaborn-poster')
         
@@ -209,9 +201,12 @@ class eogProtocol:
             
             # ------------------- Extract Blink Features  ------------------- #
             # Extarct EOG Peaks from Up Channel
-         #   if channelIndex == 0:
-         #       filteredDataX = self.data['timePoints'][-len(filteredData):]
-         #       self.findBlinks(filteredDataX, filteredData, channelIndex, predictionModel)
+            if channelIndex == 0:
+                # Get the New Data Where No Blinks Have Been Found Yet
+                findBlinkDataY = filteredData[- (len(self.data['timePoints']) - self.lastAnalyzedPeakInd):] 
+                filteredDataX = self.data['timePoints'][-len(findBlinkDataY):] 
+                # Find the Blinks in the New Data
+                self.findBlinks(filteredDataX, findBlinkDataY, len(self.data['timePoints']) - len(findBlinkDataY), predictionModel)
             # --------------------------------------------------------------- #
             
             # --------------------- Calibrate Eye Angle --------------------- #
@@ -220,9 +215,9 @@ class eogProtocol:
                 argMin = np.argmin(filteredData)
                 earliestExtrema = argMax if argMax < argMin else argMin
                 
-                self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
-                plt.plot(self.timePoints, filteredData)
-                plt.plot(self.timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
+                timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+                plt.plot(timePoints, filteredData)
+                plt.plot(timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
                 plt.show()
                 
                 self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 20]))
@@ -231,22 +226,22 @@ class eogProtocol:
             # ------------------- Plot Biolectric Signals ------------------- #
             if plotStreamedData and not calibrateModel:
                 # Get X Data: Shared Axis for All Channels
-                self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+                timePoints = np.array(self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints])# - self.data['timePoints'][0]
 
                 # Get New Y Data
                 newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
                 # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
-                self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
-                self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
+                self.bioelectricDataPlots[channelIndex].set_data(timePoints, newYData)
+                self.bioelectricPlotAxes[channelIndex].set_xlim(timePoints[0], timePoints[-1])
                             
                 # Keep Track of Recently Digitized Data
                 for voltageInd in range(len(channelVoltages)):
                     self.trailingAverageData[channelIndex].extend([channelVoltages[voltageInd]]*self.predictEyeAngleGap)
                 self.trailingAverageData[channelIndex] = self.trailingAverageData[channelIndex][len(channelVoltages)*self.predictEyeAngleGap:]
                 # Plot the Filtered + Digitized Data
-                self.filteredBioelectricDataPlots[channelIndex].set_data(self.timePoints, filteredData[-len(self.timePoints):])
-                self.trailingAveragePlots[channelIndex].set_data(self.timePoints, self.trailingAverageData[channelIndex][-len(self.timePoints):])
-                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1]) 
+                self.filteredBioelectricDataPlots[channelIndex].set_data(timePoints, filteredData[-len(timePoints):])
+                self.trailingAveragePlots[channelIndex].set_data(timePoints, self.trailingAverageData[channelIndex][-len(timePoints):])
+                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(timePoints[0], timePoints[-1]) 
                 # Plot the Eye's Angle if Electrodes are Calibrated
                 if self.predictEyeAngle[channelIndex]:
                     if predictionModel or True:
@@ -318,21 +313,16 @@ class eogProtocol:
         sos = self.butterParams(cutoffFreq, samplingFreq, order, filterType)
         return scipy.signal.sosfiltfilt(sos, data)
     
-    def findBlinks(self, xData, yData, channelIndex, predictionModel):
-        minBaselinePoints = 10
-        minPeakHeight = 0.12   # No Less Than 0.11
-        multPeakSepMax = 0.5  # No Less Than 0.25
-        timeBeforeStressPrediction = 5
+    def findBlinks(self, xData, yData, lastAnalyzedBuffer, predictionModel):
+        minBaselinePoints = 20
+        minPeakHeight = 0.11   # No Less Than 0.11
+        multPeakSepMax = 0.5   # No Less Than 0.25
         
         # Find All Potential Blinks in the Data
-        peakIndices = scipy.signal.find_peaks(yData, prominence=.01, width=30)[0];
+        peakIndices = scipy.signal.find_peaks(yData, prominence=1E-8, width=50)[0];
         # Extract the True Blinks and Their Features
         for peakInd in peakIndices:
             peakLocX = xData[peakInd]
-            
-            # If the Peak Has Already Been Recorded, Don't ReAnalyze
-            if peakLocX < timeBeforeStressPrediction or (self.blinksXLocs and peakLocX <= self.blinksXLocs[-1]+0.1) or peakLocX <= self.lastBadXLoc:
-                continue
             
             # ------------------ Find the Blink's Baselines ----------------- #
             # Calculate the Left and Right Baseline of the Peak
@@ -350,18 +340,19 @@ class eogProtocol:
                 continue
             # If No Baseline is Found, Ignore the Blink (Too Noisy, Probably Not a Blink)
             elif leftBaselineIndex >= peakInd - minBaselinePoints or rightBaselineIndex <= peakInd + minBaselinePoints:
-                #print("Bad Baseline", peakLocX)
+                print("Bad Baseline", peakLocX)
                 continue
 
             # --------------------------------------------------------------- #
             
             # -------------------- Extract Blink Features ------------------- #
+            self.lastAnalyzedPeakInd = lastAnalyzedBuffer + peakInd
+            print("Last Analyzed: ", self.data['timePoints'][self.lastAnalyzedPeakInd])
             newFeatures = self.extractFeatures(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1].copy(), peakInd-leftBaselineIndex)
             
             # Remove Peaks with Bad Blink Features
             if len(newFeatures) == 0:
-                #print("\tNo Features", peakLocX)
-                self.lastBadXLoc = peakLocX
+                print("\tNo Features", peakLocX)
                 continue
             # Else, Add the New Features
             self.featureListExact.append(newFeatures)
@@ -413,7 +404,7 @@ class eogProtocol:
         yPoint = leftLineParams[0]*xPoint + leftLineParams[1]
         return xPoint, yPoint
 
-    def organizeDerivPeaks(self, dy_dt_ABS, peakInd, velIndsTotal, accelIndsTotal, thirdDerivIndsTotal):    
+    def organizeDerivPeaks(self, dy_dt_ABS, dy_dt3_ABS, peakInd, velIndsTotal, accelIndsTotal, thirdDerivIndsTotal):    
         # Take the Highest Indices
         try:
             velInds = [max(velIndsTotal[velIndsTotal < peakInd], key = lambda velInd: dy_dt_ABS[velInd])]
@@ -428,7 +419,12 @@ class eogProtocol:
         # Get the Correct Accel Inds
         newIndsAccel = [accelIndsTotal[accelIndsTotal < velInds[0]][-1]]
         newIndsAccel.append(accelIndsTotal[accelIndsTotal > velInds[0]][0])
-        newIndsAccel.append(accelIndsTotal[accelIndsTotal < velInds[1]][-1])
+        
+        accelIndsAfterPeak = accelIndsTotal[accelIndsTotal > peakInd]
+        if len(accelIndsAfterPeak[accelIndsAfterPeak < velInds[1]]) != 0:
+            newIndsAccel.append(accelIndsAfterPeak[accelIndsAfterPeak < velInds[1]][-1])
+        else:
+            newIndsAccel.append(peakInd + dy_dt3_ABS[peakInd:velInds[1]].argmin())
         if len(accelIndsTotal[accelIndsTotal > velInds[1]]) != 0:
             newIndsAccel.append(accelIndsTotal[accelIndsTotal > velInds[1]][0])
         else:
@@ -454,19 +450,15 @@ class eogProtocol:
         # Calculate Derivatives
         dx_dt = np.gradient(xData); dx_dt2 = np.gradient(dx_dt); 
         dy_dt = np.gradient(yData); dy_dt2 = np.gradient(dy_dt); dy_dt3 = np.gradient(dy_dt2); 
+        dy_dt_ABS = abs(dy_dt); dy_dt2_ABS = abs(dy_dt2); dy_dt3_ABS = abs(dy_dt3)
         
-        dy_dt2_ABS = abs(dy_dt2); dy_dt_ABS = abs(dy_dt); dy_dt3_ABS = abs(dy_dt3)
         # Calculate Peak Shape parameters
         speed = np.sqrt(dx_dt * dx_dt + dy_dt * dy_dt)
         acceleration = np.sqrt(dx_dt2 * dx_dt2 + dy_dt2 * dy_dt2)
         curvature = np.abs((dx_dt2 * dy_dt - dx_dt * dy_dt2)) / speed**3  # Units 1/Volts
-        peakShape = np.array(xData[peakInd - self.peakShapeBuffer:peakInd + self.peakShapeBuffer+1]); peakShape -= peakShape[0]
-
+        scaledCurvature = curvature/max(curvature)
         # Save Blink Shpaes
-        scaledCurvature = curvature * (xData[peakInd + self.peakShapeBuffer] - xData[peakInd - self.peakShapeBuffer])  
-        scaledCurvature = scaledCurvature/max(scaledCurvature)
-        scaledCurvature = (1/curvature[self.peakShapeBuffer])*curvature * (-xData[peakInd-self.peakShapeBuffer] + xData[peakInd+self.peakShapeBuffer])
-        self.importantArrays.append([speed, acceleration, curvature, scaledCurvature, peakShape])
+        self.importantArrays.append([speed, acceleration, curvature, scaledCurvature])
         
         # Return the Velocity, Acceleration, and Curvature
         return dy_dt_ABS, dy_dt2_ABS, dy_dt3_ABS, curvature
@@ -477,18 +469,22 @@ class eogProtocol:
         # ------------------- Subtract the Blink's Baseline ----------------- #
         # Check if the Baseline is Skewed. A Skewed Peak is Probably Eye Movement Alongside a Blink
         baseLinesSkewed = abs(yData[-1] - yData[0]) > 0.2*(yData[peakInd] - max(yData[-1], yData[0]))
+        badBaseline = abs(yData[-1] - yData[0]) > 0.6*(yData[peakInd] - max(yData[-1], yData[0]))
         if baseLinesSkewed:
             # If Skewed, Take the Minimum Point as the Baseline
             peakBaselineY = min(yData[-1], yData[0])
             #print("\tSkewed Baseline")
             #return []
+        elif badBaseline:
+            print("\tBaseline is WAY Too Skewed ... Unsure What to Do")
+            return []
         else:
             # If Proper Baseline, Take a Linear Fit of the Base Points
             delY = yData[-1] - yData[0]; delX = xData[-1] - xData[0]
             peakBaselineY = yData[0] + (delY/delX)*(xData[peakInd] - xData[0])
         # Subtract the Baseline
         yData -= peakBaselineY
-        # Smoothen the Data
+        # Smoothen the Data Just a Little
         yData = savgol_filter(yData, 51, 2)
         # ------------------------------------------------------------------- #
         
@@ -497,14 +493,14 @@ class eogProtocol:
         dy_dt_ABS, dy_dt2_ABS, dy_dt3_ABS, curvature = self.quantifyPeakShape(xData, yData, peakInd)
         
         # Find the Derivatives' Peaks
-        velIndsTotal = scipy.signal.find_peaks(dy_dt_ABS, prominence=10E-10, width=5, height=np.mean(dy_dt_ABS)/4)[0];
-        accelIndsTotal = scipy.signal.find_peaks(dy_dt2_ABS, prominence=10E-20, width=5, height=np.mean(dy_dt2_ABS)/4)[0];
-        thirdDerivIndsTotal = scipy.signal.find_peaks(dy_dt3_ABS, prominence=10E-20, width=5, height=np.mean(dy_dt3_ABS)/4)[0];
+        velIndsTotal = scipy.signal.find_peaks(dy_dt_ABS, prominence=10E-15, width=15, height=np.mean(dy_dt_ABS)/4)[0];
+        accelIndsTotal = scipy.signal.find_peaks(dy_dt2_ABS, prominence=10E-20, width=10)[0];
+        thirdDerivIndsTotal = scipy.signal.find_peaks(dy_dt3_ABS, prominence=10E-20, width=10)[0];
 
         # If Not Enough Velocty/Acceleration Peaks Found, Cull the Blink
         if len(velIndsTotal) >= 2 and len(accelIndsTotal) >= 4:
             # For Good Derivative, Pull Out the Important Peaks
-            velInds, accelInds, thirdDerivInds = self.organizeDerivPeaks(dy_dt_ABS, peakInd, velIndsTotal, accelIndsTotal, thirdDerivIndsTotal) 
+            velInds, accelInds, thirdDerivInds = self.organizeDerivPeaks(dy_dt_ABS, dy_dt3_ABS, peakInd, velIndsTotal, accelIndsTotal, thirdDerivIndsTotal) 
             
             # If Not Enough Good Peaks, Cull the Blink
             if len(accelInds) < 4:
@@ -744,44 +740,44 @@ class eogProtocol:
         # ------------------------- Cull Bad Blinks ------------------------- #
         # If the Blink is Shorter Than 50ms or Longer Than 500ms, Ignore the Blink (Probably Eye Movement)
         if 0.6 < blinkDuration or blinkDuration < 0.05:
-            #print("\tBad Blink Duration:", blinkDuration)
+            print("\tBad Blink Duration:", blinkDuration)
             return []
         # If the Closing Time is Longer Than 150ms, it is Probably Not an Involuntary Blink
         elif closingTime > 0.25:
-            #print("\tBad Closing Time:", closingTime)
+            print("\tBad Closing Time:", closingTime)
             return []
-        elif 0.5 < openingTime:
+        elif 0.35 < openingTime:
             print("\tBad Opening Time:", closingTime)
             return []
         elif 4 < accelRatio1:
-            #print("\tBad accelRatio1:", accelRatio1)
+            print("\tBad accelRatio1:", accelRatio1)
             return []
         elif 0.5 < accelToEnd:
-            #print("\tBad accelToEnd:", accelToEnd)
+            print("\tBad accelToEnd:", accelToEnd)
             return []
         elif peakSkew < -1:
-            #print("\tBad peakSkew:", peakSkew)
+            print("\tBad peakSkew:", peakSkew)
             return []   
         elif 6 < velRatio:
-            #print("\tBad velRatio:", velRatio)
+            print("\tBad velRatio:", velRatio)
             return []     
         elif 0.5 < velToEnd:
-            #print("\tBad velToEnd:", velToEnd)
+            print("\tBad velToEnd:", velToEnd)
             return []    
         elif 5 < midDurationRatio:
-            #print("\tBad midDurationRatio:", midDurationRatio)
+            print("\tBad midDurationRatio:", midDurationRatio)
             return []    
         elif 60 < curvatureYDataAccel0:
-            #print("\tBad curvatureYDataAccel0:", curvatureYDataAccel0)
+            print("\tBad curvatureYDataAccel0:", curvatureYDataAccel0)
             return []  
         elif 500 < abs(tentDeviationRatio):
-            #print("\tBad tentDeviationRatio:", tentDeviationRatio)
+            print("\tBad tentDeviationRatio:", tentDeviationRatio)
             return []    
         # ------------------------------------------------------------------- #
         
         # --------------------- Cull Voluntary Blinks  ---------------------- #
-        if tentDeviationX < -0.02 or tentDeviationX > 0:
-            print("\tWINK! tentDeviationX = ", tentDeviationX); return []  
+        if tentDeviationX < -0.02 or tentDeviationX > 0.1:
+            print("\tWINK! tentDeviationX = ", tentDeviationX, " xLoc = ", xData[peakInd]); return []  
         elif tentDeviationY > 0.2 or tentDeviationY < 0:
             print("\tWINK! tentDeviationY = ", tentDeviationY); return []  
         elif closingSlope0 > 11:
@@ -794,20 +790,24 @@ class eogProtocol:
             print("\tWINK! openingSlope2 = ", openingSlope2); return []  
         elif openingSlope3 < -7:
             print("\tWINK! openingSlope3 = ", openingSlope3); return []  
-        elif accelToPeak > 0.05:
+        elif accelToPeak > 0.06:
             print("\tWINK! accelToPeak = ", accelToPeak); return []  
         elif blinkAmpRatio < 0.75:
             print("\tWINK! blinkAmpRatio = ", blinkAmpRatio); return []
         elif maxCurvature > 750:
             print("\tWINK! maxCurvature = ", maxCurvature); return []
-        # ------------------------------------------------------------------- #
+        elif 200 < abs(tentDeviationRatio):
+            print("\WINK! tentDeviationRatio:", tentDeviationRatio)
+            return []           # ------------------------------------------------------------------- #
         
-        if 40 < (tentDeviationRatio):
-            #print("\tBad tentDeviationRatio:", tentDeviationRatio)
+        if 40 < tentDeviationRatio:
+            print("\tBad tentDeviationRatio:", tentDeviationRatio)
             return []   
         elif tentDeviationX > 0:
+            print("\tWINK! tentDeviationX > 0; tentDeviationX = ", tentDeviationX); return []
             return []
-        elif closingSlopeDiff12 < 1:
+        elif closingSlopeDiff12 > 5 or closingSlopeDiff12 < -1:
+            print("\tWINK! closingSlopeDiff12 > 5 or < -1; closingSlopeDiff12 = ", closingSlopeDiff12); return []
             return []
         
         
@@ -815,8 +815,6 @@ class eogProtocol:
         # self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
 
         # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
-        # plt.plot(xData, yData1/max(yData1), 'r', linewidth=1)
-
         # plt.plot(xData, dy_dt_ABS*0.8/max(dy_dt_ABS), 'r', linewidth=1)
         # plt.plot(xData, dy_dt2_ABS*0.8/max(dy_dt2_ABS), 'b', linewidth=1)
         # plt.plot(xData, dy_dt3_ABS*0.5/max(dy_dt3_ABS), 'm', linewidth=.3)

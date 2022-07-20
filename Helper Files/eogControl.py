@@ -19,15 +19,19 @@
         $ conda install matplotlib
         $ conda install openpyxl
         $ conda install pyserial
+        $ pip install paho-mqtt
         $ conda install joblib
         $ conda install numpy
         $ conda install keras
-    
+        
     Programs to Install:
         Vizard: https://www.worldviz.com/virtual-reality-software-downloads
         
     --------------------------------------------------------------------------
 """
+
+# -------------------------------------------------------------------------- #
+# ---------------------------- Imported Modules ---------------------------- #
 
 # Basic Modules
 import os
@@ -35,40 +39,44 @@ import sys
 import threading
 import numpy as np
 from pathlib import Path
-# Import Data Aquisition and Analysis Files
+
 sys.path.append('./Data Aquisition and Analysis/Biolectric Protocols/')  # Folder with Data Aquisition Files
-sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
-import readDataExcel as excelData         # Functions to Save/Read in Data from Excel
-import readDataArduino as streamData      # Functions to Read in Data from Arduino
 import eogAnalysis as eogAnalysis         # Functions to Analyze the EOG Data
+
+# Import Data Aquisition and Analysis Files
+sys.path.append('./Data Aquisition and Analysis/')  # Folder with Data Aquisition Files
+import excelProcessing as excelData         # Functions to Save/Read in Data from Excel
+import readDataArduino as streamData      # Functions to Read in Data from Arduino
+
 # Import Virtual Reality Control Files
 sys.path.append('./Execute Movements/Virtual Reality Control/')   # Folder with Virtual Reality Control Files
 
 # Import Files for Machine Learning
 sys.path.append('./Machine Learning/')  # Folder with Machine Learning Files
 import machineLearningMain  # Class Header for All Machine Learning
+import featureAnalysis      # Functions for Feature Analysis
 
 
 if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     #    User Parameters to Edit (More Complex Edits are Inside the Files)   #
     # ---------------------------------------------------------------------- #
+    #sys.exit()
 
     # General Data Collection Information (You Will Likely Not Edit These)
-    eogSerialNum = '85035323234351D06052'  # Arduino's Serial Number (port.serial_number)
+    eogSerialNum = '85035323234351D041B2'  # Arduino's Serial Number (port.serial_number)
     
-    eogSerialNum = '85035323234351D06052'
-    eogSerialNum = 'E37FEEBB50553441302E3120FF041F11'
+    stopTimeStreaming = 600*10       # The Last Time to Stream into the Arduino. If Float, it is the Seconds from 12:00am; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
+    numTimePoints = 2048576          # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    moveDataFinger = 1048100         # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    # numTimePoints = 5000           # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
+    # moveDataFinger = 2000          # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
+    numChannels = 2                  # The Number of Arduino Channels with EOG Signals Read in;
     
-    samplingFreq = None              # The Average Number of Points Steamed Into the Arduino Per Second; If NONE Given, Algorithm will Calculate Based on Initial Data
-    stopTimeStreaming = 600           # The Last Time to Stream into the Arduino. If Float, it is the Seconds from 12:00am; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
-    numTimePoints = 5000 #2048576    # The Number of Data Points to Display to the User at a Time; My beta-Test Used 2000 Points
-    moveDataFinger = 400 #1048100    # The Number of Data Points to Plot/Analyze at a Time; My Beta-Test Used 200 Points with Plotting; 10 Points Without
-    numChannels = 2                  # The Number of Arduino Channels with EOG Signals Read in; My Beta-Test Used 4 Channels
+    
     # Specify the Type of Movements to Learn
     gestureClasses = np.char.lower(['Spontaneous', 'Reflex', 'Voluntary', 'Double'])  # Define Labels as Array
     gestureClasses = np.char.lower(['Up', 'Down', 'Blink', 'Double Blink', 'Relaxed', 'Relaxed to Cold', 'Cold'])  # Define Labels as Array
-    
     
     gestureClasses = np.char.lower(['Blink', 'Double Blink', 'Relaxed', 'Stroop Test', 'Exercise Weight', 'VR Roller Coaster'])  # Define Labels as Array
     machineLearningClasses = np.char.lower(['Relaxed', 'Stroop', 'Exercise', 'VR'])
@@ -78,55 +86,27 @@ if __name__ == "__main__":
     machineLearningClasses = np.char.lower(['Morning', 'Night', 'Music'])
     labelMap = [-1, -1, 2]
     
-    #gestureClasses = np.char.lower(['blink', 'relaxed'])
-    #machineLearningClasses = np.char.lower(['blink', 'relaxed'])
-    #labelMap = [0, 1]
+    labelDict = dict(zip(labelMap, gestureClasses))
     
     # Protocol Switches: Only the First True Variable Excecutes
     streamArduinoData = False     # Stream in Data from the Arduino and Analyze; Input 'controlVR' = True to Move VR
-    readDataFromExcel = True     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    reAnalyzePeaks = False        # Read in ALL Data Under 'trainDataExcelFolder', and Reanalyze Blinks (THIS EDITS EXCEL DATA IN PLACE!; DONT STOP PROGRAM MIDWAY)
-    trainModel = False             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
+    readDataFromExcel = False     # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
+    trainModel = True             # Read in ALL Data Under 'neuralNetworkFolder', and Train the Data
     
     # User Options During the Run: Any Number Can be True
-    plotStreamedData = True      # Graph the Data to Show Incoming Signals + Analysis
+    plotStreamedData = False      # Graph the Data to Show Incoming Signals + Analysis
     calibrateModel = False        # Calibrate the EOG Voltage to Predict the Eye's Angle
-    saveData = False               # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
+    saveData = False              # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
     testModel = False             # Apply the Learning Algorithm to Decode the Signals
     controlVR = False             # Apply the Algorithm to Control the Virtual Reality View    
-    
-    
-    # Finalize the Features
-    blinkFeatures = ['peakLocX', 'blinkHeight', 'peakTentY', 'tentDeviationX', 'tentDeviationY', 'blinkAmpRatio', 'tentDeviationRatio']
-    blinkFeatures.extend(['closingAmpDiff1', 'closingAmpDiff2', 'closingAmpDiff3', 'openingAmpDiff1', 'openingAmpDiff2', 'openingAmpDiff3'])
-    blinkFeatures.extend(['closingAmpDiffRatio1', 'closingAmpDiffRatio2', 'closingAmpDiffRatio3', 'openingAmpDiffRatio1', 'openingAmpDiffRatio2', 'openingAmpDiffRatio3'])
-    blinkFeatures.extend(['accel0ToVel0Ratio', 'accel1ToVel0Ratio', 'accel2ToVel1Ratio', 'accel3ToVel1Ratio'])
-    blinkFeatures.extend(['riseTimePercent', 'dropTimePercent', 'velDiffPercent'])
-    blinkFeatures.extend(['closingAmpRatio1', 'closingAmpRatio2', 'closingAmpRatio3', 'openingAmpRatio1', 'openingAmpRatio2', 'openingAmpRatio3'])
 
-    blinkFeatures.extend(['blinkDuration', 'closingTime', 'openingTime', 'closingFraction', 'openingFraction', 'halfClosedTime', 'eyesClosedTime', 'percentTimeClosed'])
-    blinkFeatures.extend(['closingSlope0', 'closingSlope1', 'closingSlope2', 'openingSlope1', 'openingSlope2', 'openingSlope3'])
-    blinkFeatures.extend(['closingSlopeDiff10', 'closingSlopeDiff12', 'openingSlopeDiff21', 'openingSlopeDiff23'])
-    blinkFeatures.extend(['closingSlopeRatio0', 'closingSlopeRatio1', 'closingSlopeRatio2', 'openingSlopeRatio1', 'openingSlopeRatio2', 'openingSlopeRatio3'])
-    blinkFeatures.extend(['peakAverage', 'peakAverageRatio', 'peakIntegral', 'peakIntergralRatio', 'peakEntropy', 'peakSkew', 'peakKurtosis', 'peakSTD', 'maxCurvature'])
-    # Compile the Features
-    blinkFeatures.extend(['peakClosingVel', 'peakOpeningVel', 'peakClosingAccel1', 'peakClosingAccel2', 'peakopeningAccel1', 'peakopeningAccel2'])
-    blinkFeatures.extend(['velOpenRatio', 'velClosedRatio', 'accelClosedRatio1', 'accelClosedRatio2', 'accelOpenRatio1', 'accelOpenRatio2'])
-    blinkFeatures.extend(['velClosedVal', 'velOpenVal', 'accelClosedVal1', 'accelClosedVal2', 'accelOpenVal1', 'accelOpenVal2'])
-    blinkFeatures.extend(['velRatio', 'accelRatio1', 'accelRatio2', 'velRatioYData', 'accelRatioYData1', 'accelRatioYData2'])
-    blinkFeatures.extend(['durationByVel1', 'durationByVel2', 'durationByAccel1', 'durationByAccel2', 'durationByAccel3', 'midDurationRatio'])
-    blinkFeatures.extend(['startToAccel', 'accelCloseingPeakDuration', 'accelToPeak', 'peakToAccel', 'accelOpeningPeakDuration', 'accelToEnd'])
-    blinkFeatures.extend(['velPeakDuration', 'startToVel', 'velToPeak', 'peakToVel', 'velToEnd'])
-    blinkFeatures.extend(['curvatureYDataAccel0', 'curvatureYDataAccel1', 'curvatureYDataAccel2', 'curvatureYDataAccel3', 'curvatureYDataVel0', 'curvatureYDataVel1'])
-    blinkFeatures.extend(['velFullSTD', 'accelFullSTD', 'thirdDerivFullSTD', 'velSTD', 'accelSTD', 'thirdDerivSTD'])
-    blinkFeatures.extend(['velFullEntropy', 'accelFullEntropy', 'thirdDerivFullEntropy', 'velEntropy', 'accelEntropy', 'thirdDerivEntropy'])
     # ------------------------ Dependant Parameters ------------------------- #
     # Take Data from the Arduino and Save it as an Excel (For Later Use)
     if saveData:
-        saveExcelName = "Blink Types.xlsx"  # The Name of the Saved File
-        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-20 Combined Blinks/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        saveExcelName = "2022-03-02 Ruiain Mobb Box.xlsx"  # The Name of the Saved File
+        saveDataFolder = "../Data/EOG Data/All Data/Industry Electrodes/2022-03-02 Mobbs Lab Box/"   # Data Folder to Save the Excel Data; MUST END IN '/'
         # Speficy the eye Movement You Will Perform
-        eyeMovement = "Blink".lower() # Make Sure it is Lowercase
+        eyeMovement = "Full".lower() # Make Sure it is Lowercase
         if eyeMovement not in gestureClasses:
             print("The Gesture", "'" + eyeMovement + "'", "is Not in", gestureClasses)
             
@@ -134,34 +114,39 @@ if __name__ == "__main__":
     if readDataFromExcel:
         #testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-01 First Cold Water Test/Jiahong 2021-12-1 Movements.xlsx" # Path to the Test Data
         #testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-10 First VR Test/Jose 2021-12-10 Movements.xlsx" # Path to the Test Data
-        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-15 Music Study Lab/Emil 2021-12-11 Lab Music.xlsx" # Path to the Test Data
-        testSheetNum = 1   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
+       # testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2022-01-01 Sarah Music/2021-01-01 Sarah.xlsx" # Path to the Test Data
+        testDataExcelFile = "../Data/EOG Data/All Data/Industry Electrodes/2022-03-02 Mobbs Lab Box/2022-03-02 Ruiain Mobb Box.xlsx"   # Data Folder to Save the Excel Data; MUST END IN '/'
+        testSheetNum = 0   # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
     
     # Input Training Paramaters 
-    if reAnalyzePeaks or trainModel:
+    if trainModel:
         trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-10 First VR Test/"
-        #trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-11 Home Study/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-11 Home Study/"  # Path to the Training Data Folder; All .xlsx Data Used
         trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-15 Music Study Home/"  # Path to the Training Data Folder; All .xlsx Data Used
-        #trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-20 Combined Blinks/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2022-01-01 Sarah Music/"  # Path to the Training Data Folder; All .xlsx Data Used
+
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2021-12-20 Combined Blinks/"  # Path to the Training Data Folder; All .xlsx Data Used
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2022-02-23 Sam Blink vs Noise/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+      
+        trainDataExcelFolder = "../Data/EOG Data/All Data/Industry Electrodes/2022-03-02 Mobbs Lab Box/"   # Data Folder to Save the Excel Data; MUST END IN '/'
+
 
     # Train or Test the Data with the Machine Learning Model
-    if trainModel or testModel and not reAnalyzePeaks:
+    if trainModel or testModel:
         # Pick the Machine Learning Module to Use
         modelType = "RF"  # Machine Learning Options: NN, RF, LR, KNN, SVM
         modelPath = "./Machine Learning/Models/predictionModelRF_12-13-2021.pkl" # Path to Model (Creates New if it Doesn't Exist)
         # Choos the Folder to Save ML Results
         if trainModel:
             saveModel = True  # Save the Machine Learning Model for Later Use
-            saveDataFolder = trainDataExcelFolder + "Data Analysis/" + modelType + "/"
+            saveDataFolder = trainDataExcelFolder + "Data Analysis/" #+ modelType + "/"
         else:
             saveDataFolder = None
         # Get the Machine Learning Module
         performMachineLearning = machineLearningMain.predictionModelHead(modelType, modelPath, numFeatures = len(blinkFeatures), gestureClasses = machineLearningClasses, saveDataFolder = saveDataFolder)
         predictionModel = performMachineLearning.predictionModel
     else:
-        predictionModel = None
-        
-        
+        predictionModel = None        
     
     if controlVR:
         # Import the VR File (MUST BE RUNNING INSIDE VIZARD!)
@@ -179,7 +164,7 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     
     def executeProtocol():
-        global readData, eogProtocol, performMachineLearning, signalData, signalLabels, modelPath
+        global readData, eogProtocol, performMachineLearning, signalData, signalLabels, timePoints, modelPath, blinkFeatures, analyzeFeatures
         
         eogProtocol = eogAnalysis.eogProtocol(numTimePoints, moveDataFinger, numChannels, plotStreamedData)
         # Stream in Data from Arduino
@@ -191,16 +176,27 @@ if __name__ == "__main__":
         elif readDataFromExcel:
             readData = excelData.readExcel(eogProtocol)
             readData.streamExcelData(testDataExcelFile, plotStreamedData, testSheetNum, predictionModel = predictionModel, actionControl = None)
-        # Redo Peak Analysis
-        elif reAnalyzePeaks:
-            readData = excelData.readExcel(eogProtocol)
-            readData.getTrainingData(trainDataExcelFolder, gestureClasses, blinkFeatures, labelMap, mode='reAnalyze')
         # Take Preprocessed (Saved) Features from Excel Sheet
         elif trainModel:
             # Extract the Data
             readData = excelData.readExcel(eogProtocol)
-            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, gestureClasses, blinkFeatures, labelMap, mode='Train')
+            signalData, signalLabels = readData.getTrainingData(trainDataExcelFolder, gestureClasses, blinkFeatures, labelMap)
+            signalData = np.array(signalData); signalLabels = np.array(signalLabels)
             print("\nCollected Signal Data")
+           # sys.exit()
+            
+            analyzeFeatures = True
+            if analyzeFeatures:
+                timePoints = signalData[:,0]
+                signalData = signalData[:,1:]
+                blinkFeatures = np.array(blinkFeatures[1:])
+
+                analyzeFeatures = featureAnalysis.featureAnalysis(blinkFeatures, [], saveDataFolder)
+                #analyzeFeatures.correlationMatrix(signalData, folderName = "correlationMatrix/")
+                analyzeFeatures.singleFeatureAnalysis(timePoints[signalLabels == 3], signalData[signalLabels == 3], averageIntervalList = [60, 2*60, 3*60], folderName = "singleFeatureAnalysis - Full/")
+                analyzeFeatures.featureDistribution(signalData, signalLabels, labelDict, folderName = "Feature Distribution/")
+            
+            
             sys.exit()
             # Train the Data on the Gestures
             performMachineLearning.trainModel(signalData, signalLabels, blinkFeatures)
@@ -235,7 +231,7 @@ if __name__ == "__main__":
         sheetName = sheetName + eyeMovement
         if verifiedSave.upper() == "Y":
             # Initialize Class to Save the Data and Save
-            saveInputs = excelData.saveExcel(numChannels)
+            saveInputs = excelData.saveExcel()
             saveInputs.saveData(readData.data, [], [], saveDataFolder, saveExcelName, sheetName, eyeMovement)
         else:
             print("User Chose Not to Save the Data")
@@ -282,38 +278,9 @@ startInd = 0; stopInd = len(x)
 xData = np.array(x[startInd:stopInd])
 yData = np.array(filteredData[startInd:stopInd])
 
-
 plt.plot(xData, yData)
 plt.xlim(122.5,123)
 
-# Calculate Derivatives
-dx_dt = np.gradient(xData); dy_dt = np.gradient(yData)
-d2x_dt2 = np.gradient(dx_dt); d2y_dt2 = np.gradient(dy_dt,2)
-d2y_dt2_ABS = abs(d2y_dt2)
-# Calculate Peak Shape parameters
-speed = np.sqrt(dx_dt * dx_dt + dy_dt * dy_dt)
-acceleration = np.sqrt(d2x_dt2 * d2x_dt2 + d2y_dt2 * d2y_dt2)
-curvature = np.abs((d2x_dt2 * dy_dt - dx_dt * d2y_dt2)) / speed**3
-# Pull Out Peak Shape Features
-velInds = scipy.signal.find_peaks(speed, prominence=.000001, width=20, height=np.mean(speed))[0];
-accelInds = scipy.signal.find_peaks(d2y_dt2_ABS, prominence=.000001, width=10, height=np.mean(d2y_dt2_ABS))[0];
-
-plt.plot(xData[accelInds], (d2y_dt2_ABS*2/max(d2y_dt2_ABS))[accelInds], 'o')
-plt.plot(xData, d2y_dt2_ABS*2/max(d2y_dt2_ABS))
-plt.plot(xData, speed*2/max(speed))
-#plt.plot(xData[speedInds], (speed*2/max(speed))[speedInds], 'o')
-#plt.plot(xData, d2y_dt2*2/max(d2y_dt2))
-#plt.plot(xData[accelInds], (d2y_dt2*2/max(d2y_dt2))[accelInds])
-
-
-importantFeatures = np.array(readData.analysisProtocol.importantArrays)
-importantFeatures = np.array(readData.analysisProtocol.importantArrays)
-i = 0
-for curvature in importantFeatures[:,2]:
-    i += 1
-    plt.plot(curvature[int(len(curvature)/2)-30:int(len(curvature)/2)+31], 'o')
-    if i == 10:
-        break
 
 
 personListBlink = [youFeaturesBlink]
@@ -461,98 +428,11 @@ model.score(signalData, signalLabels)
 
 
 
-Training_Data, Testing_Data, Training_Labels, Testing_Labels = train_test_split(signalData, signalLabels, test_size=0.33, shuffle= True, stratify=signalLabels)
-model = tf.keras.Sequential()
-model.add(tf.keras.layers.Dense(units=len(Training_Data[0]), activation='sigmoid'))
-model.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
-
-epochs = 500; seeTrainingSteps = False
-opt = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
-loss = ['mean_squared_error', 'categorical_crossentropy']
-metric = ['accuracy']
-
-model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
-
-# For mini-batch gradient decent we want it small (not full batch) to better generalize data
-max_batch_size = 32  # Keep Batch sizes relatively small (no more than 64 or 128)
-mini_batch_gd = min(len(Training_Data)//4, max_batch_size)
-mini_batch_gd = max(1, mini_batch_gd)  # For really small data samples at least take 1 data point
-# For every Epoch (loop), run the Neural Network by:
-    # With uninitialized weights, bring data through network
-    # Calculate the loss based on the data
-    # Perform optimizer to update the weights
-history = model.fit(Training_Data, Training_Labels, validation_split=0.33, epochs=int(epochs), shuffle=True, batch_size = int(mini_batch_gd), verbose = seeTrainingSteps)
-# Score the Model
-results = model.evaluate(Testing_Data, Testing_Labels, batch_size=mini_batch_gd, verbose = seeTrainingSteps)
-score = results[0]; accuracy = results[1]; 
-print('Test score:', score)
-print('Test accuracy:', accuracy)
-
-pyplot.title('Loss')
-pyplot.plot(history.history['loss'], label='train')
-pyplot.plot(history.history['val_loss'], label='test')
-
-from keras.utils.vis_utils import plot_model
-plot_model(model, show_shapes=True, show_layer_names=True)
-
-from ann_visualizer.visualize import ann_viz
-ann_viz(model)
 
 
 
 
-from sklearn.feature_selection import RFE
-from sklearn.svm import SVR
 
-blinkFeatures=np.array(blinkFeatures)
-estimator = SVR(kernel="linear")
-selector = RFE(estimator, n_features_to_select=5, step=1)
-selector = selector.fit(Training_Data, Training_Labels)
-print(blinkFeatures[selector.support_])
-selector.ranking_
-
-
-
-mms = MinMaxScaler()
-mms.fit(signalData)
-data_transformed = mms.transform(signalData)
-
-Sum_of_squared_distances = []
-K = range(1,68)
-for k in K:
-    km = KMeans(n_clusters=k)
-    km = km.fit(data_transformed)
-    Sum_of_squared_distances.append(km.inertia_)
-    
-plt.plot(K, Sum_of_squared_distances, 'bx-')
-plt.xlabel('k')
-plt.ylabel('Sum_of_squared_distances')
-plt.title('Elbow Method For Optimal k')
-plt.show()
-
-
-# ----------- Histogram of Labels
-import collections
-classDistribution = collections.Counter(signalLabels)
-print("Class Distribution:", classDistribution)
-print("Number of Data Points = ", len(classDistribution))
-
-import matplotlib.pyplot as plt
-signalData = np.array(signalData); signalLabels = np.array(signalLabels)
-for featureInd in range(len(blinkFeatures)):
-    fig = plt.figure()
-
-    blinkFeatures1 = signalData[:,featureInd][signalLabels == 0]
-    relaxedFeatures = signalData[:,featureInd][signalLabels == 1]
-    
-
-    plt.hist(blinkFeatures1, bins=100, alpha=0.5, label="blinkFeatures")
-    plt.hist(relaxedFeatures, bins=100, alpha=0.5, label="relaxedFeatures")
-    plt.legend()
-    plt.ylabel(blinkFeatures[featureInd])
-    fig.savefig('../Blink Type Comparison/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
-    plt.show()
-# ----------------------
 
 
 
@@ -757,6 +637,12 @@ for featureInd in range(1,len(blinkFeatures)):
     #fig.savefig(saveFolder + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
     plt.show()
     
+    
+    
+    
+    
+# --------- Analyze Peak Distribution
+
 
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -765,34 +651,232 @@ time = signalData[:,0][signalLabels == 2]
 for featureInd in range(len(blinkFeatures)):
     fig = plt.figure()
 
-    allFeatures1 = signalData[:,featureInd][signalLabels == 2]
-    colors = ['ko', 'ro', 'bo', 'go', 'mo']
-    for ind, averageTogether in enumerate([60*0.00001, 60*3]):
-        entropy = allFeatures = signalData[:,54][signalLabels == 2]
-        allFeatures = allFeatures1.copy()
-        features = []
+    allFeatures = signalData[:,featureInd][signalLabels == 2]
+    colors = ['k-o', 'r-o', 'bo', 'go', 'mo']
+    for ind, averageTogether in enumerate([60*3]):
+        stopLines = np.array([0, 1, 2, 3, 4, 5, 6, 7])*60*6
+        stopLineIndex = 1
+        a = [[]]
         for pointInd in range(len(allFeatures)):
             featureInterval = allFeatures[time > time[pointInd] - averageTogether]
             timeMask = time[time > time[pointInd] - averageTogether]
             featureInterval = featureInterval[timeMask <= time[pointInd]]
 
-            featute = stats.trim_mean(featureInterval, 0.3)
-            features.append(featute)
+            if stopLines[stopLineIndex - 1] < time[pointInd] - 60:
+                a[-1].extend(featureInterval)
+                
+
+            if stopLines[stopLineIndex] < time[pointInd]:
+                a.append([])
+        for ai in enumerate(a):
+            plt.hist(ai, bins=25, alpha=0.5, label=str(i))
+        # plt.xlabel("Time (Seconds)")
+        plt.ylabel(blinkFeatures[featureInd])
+        #plt.ylim(min(feature1Min)*0.8, max(feature1Max)*1.2)
+        #plt.legend(['3 Min'])
+        plt.title("Interval: " + str(stopLineIndex-1))
+        #fig.savefig('../Del Josh/Blink Distribution/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+        plt.show()
+        stopLineIndex += 1
+
+# -----------
+
+
+# --------- Analyze Peaks
+
+from scipy import stats
+import matplotlib.pyplot as plt
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
+time = signalData[:,0][signalLabels == 2]
+for featureInd in range(len(blinkFeatures)):
+    fig = plt.figure()
+
+    allFeatures = signalData[:,featureInd][signalLabels == 2]
+    colors = ['k-o', 'r-o', 'bo', 'go', 'mo']
+    for ind, averageTogether in enumerate([60*3]):
+        features = []
+        for pointInd in range(len(allFeatures)):
+            featureInterval = allFeatures[time > time[pointInd] - averageTogether]
+            timeMask = time[time > time[pointInd] - averageTogether]
+            featureInterval = featureInterval[timeMask <= time[pointInd]]
+            
+            feature = stats.trim_mean(featureInterval, 0.3)
+            features.append(feature)
 
         features = np.array(features)
-        #features -= np.array(featureDict[blinkFeatures[1]])
         plt.plot(time, features, colors[ind], markersize=5)
 
 
     plt.xlabel("Time (Seconds)")
     plt.ylabel(blinkFeatures[featureInd])
-    plt.vlines(np.array([1, 2, 3, 4, 5])*60*6, min(features)*0.8, max(features)*1.2, 'g', zorder=100)
+    plt.vlines(np.array([1, 2, 3, 4, 5])*60*6, min(features)*0.9, max(features)*1.1, 'g', zorder=100)
     #plt.ylim(min(feature1Min)*0.8, max(feature1Max)*1.2)
-    plt.legend(['10 Min', '3 Min'])
+    plt.legend(['3 Min'])
     plt.title("Averaged Together: " + str(averageTogether/60) + " Min")
-    fig.savefig('../Del Josh/Culled Winks/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+    fig.savefig('../Del Josh/All Blinks/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
     plt.show()
+
+# -----------
+
+
+# ----------- PANAS
+
+positive1 = [12, 14, 13, 10, 10, 10]
+negative1 = [13, 10, 13, 10, 14, 10]
+timeIntervals = np.array([0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6])*60*5
+
+fig = plt.figure()
+positive = []; negative = []
+for i in range(len(positive1)):
+    for _ in range(2):
+        positive.append(positive1[i])
+        negative.append(negative1[i])
+
+plt.plot(timeIntervals, positive, 'b-')
+plt.plot(timeIntervals, negative, 'r-')
+
+plt.xlabel("Time (Seconds)")
+plt.ylabel('PANAS Score')
+plt.legend(['Positive', 'Negative'])
+plt.vlines(np.array([1, 2, 3, 4, 5])*60*5, min(min(positive1, negative1))*0.9, 1.1*max(max(positive1, negative1)), 'g', zorder=100)
+plt.title("PANAS Score")
+fig.savefig('../Del Sarah/PANAS.png', dpi=300, bbox_inches='tight')
+plt.show()
+# -----------
+
+# --------- Scale by All Features
+from scipy import stats
+import matplotlib.pyplot as plt
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
+
+signalDataJose = np.array(signalData); signalLabelsJose = np.array(signalLabels)
+signalDataJiahong = np.array(signalData); signalLabelsJiahong = np.array(signalLabels)
+signalDataSam = np.array(signalData); signalLabelsSam = np.array(signalLabels)
+
+signalDataJose[:,0] = signalDataJose[:,0] - signalDataJose[:,0][0]
+signalDataJiahong[:,0]  = signalDataJiahong[:,0] - signalDataJiahong[:,0][0]
+signalDataSam[:,0] = signalDataSam[:,0] - signalDataSam[:,0][0]
+
+time1 = np.array(signalDataJose[:,0] - signalDataJose[:,0][0])
+time2 = np.array(signalDataJiahong[:,0] - signalDataJiahong[:,0][0])
+time3 = np.array(signalDataSam[:,0] - signalDataSam[:,0][0])
+time = [time1, time2, time3]
+
+featureDict = [{}, {}, {}]
+
+for featureIndDict in range(1,len(blinkFeatures)):
+    saveDataFolder = '../Rest Data/featureScale/' + blinkFeatures[featureIndDict] + "/"
+    os.makedirs(saveDataFolder, exist_ok=True)
+    if np.mean(featureDict[i][blinkFeatures[featureIndDict]]) == 0:
+        continue
+
+    for featureInd in range(len(blinkFeatures)):
+        fig = plt.figure()
+
+        allFeatures1 = signalDataJose[:,featureInd]
+        allFeatures2 = signalDataJiahong[:,featureInd]
+        allFeatures3 = signalDataSam[:,featureInd]
+        allFeatures = [allFeatures1, allFeatures2, allFeatures3]
+
+
+        colors = ['ko', 'ro', 'bo', 'go', 'mo']
+        for ind, averageTogether in enumerate([60*3]):
+            features = [[] for _ in range(len(time))]
+            for i, allFeaturesI in enumerate(allFeatures):
+                for pointInd in range(len(allFeaturesI)):
+                    featureInterval = allFeaturesI[time[i] > time[i][pointInd] - averageTogether]
+                    timeMask = time[i][time[i] > time[i][pointInd] - averageTogether]
+                    featureInterval = featureInterval[timeMask <= time[i][pointInd]]
+
+                    feature = stats.trim_mean(featureInterval, 0.3)
+                    features[i].append(feature)
+
+            for i in range(len(time)):
+                #features[i] = np.array(features[i])
+                #featureDict[i][blinkFeatures[featureInd]] = features[i]
+
+                features[i] = np.array(features[i])/featureDict[i][blinkFeatures[featureIndDict]]
+
+                plt.plot(time[i], features[i], colors[i], markersize=5)
+
+
+        plt.xlabel("Time (Seconds)")
+        plt.ylabel(blinkFeatures[featureInd])
+        plt.legend(['JO','JH','SM'])
+        plt.title("Scaled by " + blinkFeatures[featureIndDict])
+        fig.savefig(saveDataFolder + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        fig.clear()
+        plt.close(fig)
+        plt.cla()
+        plt.clf()
+            
+# -----------
+
+# --------- Scale by All Feature Point
+
+from scipy import stats
+import matplotlib.pyplot as plt
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
+
+signalDataJose = np.array(signalData); signalLabelsJose = np.array(signalLabels)
+signalDataJiahong = np.array(signalData); signalLabelsJiahong = np.array(signalLabels)
+signalDataSam = np.array(signalData); signalLabelsSam = np.array(signalLabels)
+
+signalDataJose[:,0] = signalDataJose[:,0] - signalDataJose[:,0][0]
+signalDataJiahong[:,0]  = signalDataJiahong[:,0] - signalDataJiahong[:,0][0]
+signalDataSam[:,0] = signalDataSam[:,0] - signalDataSam[:,0][0]
+
+time1 = np.array(signalDataJose[:,0] - signalDataJose[:,0][0])
+time2 = np.array(signalDataJiahong[:,0] - signalDataJiahong[:,0][0])
+time3 = np.array(signalDataSam[:,0] - signalDataSam[:,0][0])
+time = [time1, time2, time3]
+
+
+for featureIndDict in range(1,len(blinkFeatures)):
+    saveDataFolder = '../Rest Data/featureScalePoint/' + blinkFeatures[featureIndDict] + "/"
+    os.makedirs(saveDataFolder, exist_ok=True)
+
+    for featureInd in range(len(blinkFeatures)):
+        fig = plt.figure()
+
+        allFeatures1 = signalDataJose[:,featureInd]/signalDataJose[:,featureIndDict]
+        allFeatures2 = signalDataJiahong[:,featureInd]/signalDataJiahong[:,featureIndDict]
+        allFeatures3 = signalDataSam[:,featureInd]/signalDataSam[:,featureIndDict]
+        allFeatures = [allFeatures1, allFeatures2, allFeatures3]
+
+
+        colors = ['ko', 'ro', 'bo', 'go', 'mo']
+        for ind, averageTogether in enumerate([60*3]):
+            features = [[] for _ in range(len(time))]
+            for i, allFeaturesI in enumerate(allFeatures):
+                for pointInd in range(len(allFeaturesI)):
+                    featureInterval = allFeaturesI[time[i] > time[i][pointInd] - averageTogether]
+                    timeMask = time[i][time[i] > time[i][pointInd] - averageTogether]
+                    featureInterval = featureInterval[timeMask <= time[i][pointInd]]
+
+                    feature = stats.trim_mean(featureInterval, 0.3)
+                    features[i].append(feature)
+
+            for i in range(len(time)):
+                features[i] = np.array(features[i])
+                plt.plot(time[i], features[i], colors[i], markersize=5)
+
+
+        plt.xlabel("Time (Seconds)")
+        plt.ylabel(blinkFeatures[featureInd])
+        plt.legend(['JO','JH','SM'])
+        plt.title("Scaled by " + blinkFeatures[featureIndDict])
+        fig.savefig(saveDataFolder + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+        
+        fig.clear()
+        plt.close(fig)
+        plt.cla()
+        plt.clf()
     
+# -----------
+
 
 # --------- Analyze the Effect of Culling (Need Two Runs)
 
@@ -800,40 +884,123 @@ from scipy import stats
 import matplotlib.pyplot as plt
 signalData = np.array(signalData); signalLabels = np.array(signalLabels)
 
-time1 = signalData[:,0][signalLabels == 2]
-time2 = signalDataCull[:,0][signalLabelsCull == 2]
+signalDataJose = np.array(signalData); signalLabelsJose = np.array(signalLabels)
+signalDataJiahong = np.array(signalData); signalLabelsJiahong = np.array(signalLabels)
+signalDataSam = np.array(signalData); signalLabelsSam = np.array(signalLabels)
+
+signalDataJose[:,0] = signalDataJose[:,0] - signalDataJose[:,0][0]
+signalDataJiahong[:,0]  = signalDataJiahong[:,0] - signalDataJiahong[:,0][0]
+signalDataSam[:,0] = signalDataSam[:,0] - signalDataSam[:,0][0]
+
+time1 = np.array(signalDataJose[:,0] - signalDataJose[:,0][0])
+time2 = np.array(signalDataJiahong[:,0] - signalDataJiahong[:,0][0])
+time3 = np.array(signalDataSam[:,0] - signalDataSam[:,0][0])
+time = [time1, time2, time3]
+
+
+a = []
+b = []
+c = []
 
 for featureInd in range(len(blinkFeatures)):
     fig = plt.figure()
 
-    allFeatures1 = signalData[:,featureInd][signalLabels == 2]
-    allFeatures2 = signalDataCull[:,featureInd][signalLabelsCull == 2]
-    allFeatures = [allFeatures1, allFeatures2]
-    
-    time = [time1, time2]
-    
+    allFeatures1 = signalDataJose[:,featureInd]
+    allFeatures2 = signalDataJiahong[:,featureInd]
+    allFeatures3 = signalDataSam[:,featureInd]
+    allFeatures = [allFeatures1, allFeatures2, allFeatures3]
+
+
     colors = ['ko', 'ro', 'bo', 'go', 'mo']
     for ind, averageTogether in enumerate([60*3]):
-        features = [[],[]]
+        features = [[] for _ in range(len(time))]
         for i, allFeaturesI in enumerate(allFeatures):
             for pointInd in range(len(allFeaturesI)):
                 featureInterval = allFeaturesI[time[i] > time[i][pointInd] - averageTogether]
                 timeMask = time[i][time[i] > time[i][pointInd] - averageTogether]
                 featureInterval = featureInterval[timeMask <= time[i][pointInd]]
+
+                feature = stats.trim_mean(featureInterval, 0.3)
+                features[i].append(feature)
+
+        for i in range(len(time)):
+            features[i] = np.array(features[i])
+            plt.plot(time[i], features[i], colors[i], markersize=5)
+            
+    avJO = np.round(np.mean(features[0][time[0] > 200]), 7)
+    avJH = np.round(np.mean(features[1][time[1] > 200]), 7)
+    avSM = np.round(np.mean(features[2][time[2] > 200]), 7)
     
-                featute = stats.trim_mean(featureInterval, 0.3)
-                features[i].append(featute)
-
-        plt.plot(time1, features[0], colors[0], markersize=5)
-        plt.plot(time2, features[1], colors[1], markersize=5)
-
-
+    a.append(avJO/avJH)
+    b.append(avJO/avSM)
+    c.append(avJH/avSM)
+    
     plt.xlabel("Time (Seconds)")
     plt.ylabel(blinkFeatures[featureInd])
-    plt.vlines(np.array([1, 2, 3, 4, 5])*60*6, min(min(features))*0.8, max(max(features))*1.2, 'g', zorder=100)
-    plt.legend(['All', 'Cull'])
-    plt.title("Averaged Together: " + str(averageTogether/60) + " Min")
-    fig.savefig('../Del Josh/Compare/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
+    plt.legend(['JO -> Av: ' + str(avJO),
+        'JH- > Av: ' + str(avJH),
+        'SM -> Av: ' + str(avSM) ])
+    plt.title("JO/JH: " + str(np.round(avJO/avJH,6)) + " | JO/SM: " + str(np.round(avJO/avSM,6)) + " | JH/SM: " + str(np.round(avJH/avSM,6)))
+    fig.savefig('../Rest Data/Compare/' + blinkFeatures[featureInd] + ".png", dpi=300, bbox_inches='tight')
     plt.show()
+
+
+a = [v for v in a if not (math.isinf(v) or math.isnan(v) or v == 0)]
+b = [v for v in b if not (math.isinf(v) or math.isnan(v) or v == 0)]
+c = [v for v in c if not (math.isinf(v) or math.isnan(v) or v == 0)]
+
+plt.hist(a, bins=100, alpha=0.5, label="avJO/avJH")
+plt.hist(b, bins=100, alpha=0.5, label="avJO/avSM")
+plt.hist(c, bins=100, alpha=0.5, label="avJH/avSM")
+
 # -----------
+
+# --------- Correlation Matrix
+import seaborn as sns;
+from copy import copy, deepcopy
+signalData = np.array(signalData); signalLabels = np.array(signalLabels)
+
+signalDataSam = signalData; signalLabelsSam = signalLabels
+signalDataJosh = signalData; signalLabelsJosh = signalLabels
+signalDataSarah = signalData; signalLabelsSarah = signalLabels
+
+signalData = deepcopy(signalDataSarah); signalLabels = deepcopy(signalLabelsSarah)
+signalData.extend(signalDataJosh); signalLabels.extend(signalLabelsJosh)
+signalData.extend(signalDataSam); signalLabels.extend(signalLabelsSam)
+
+
+signalData = deepcopy(signalData); signalLabels = deepcopy(signalLabels)
+# Standardize Feature
+signalDataStandard = deepcopy(signalData[signalData[:,0] > 60*6])
+blinkFeaturesX = np.array(blinkFeatures)
+blinkFeaturesY = np.array(blinkFeatures)
+# for i in range(len(signalDataStandard[0])):
+#      signalDataStandard[:,i] = (signalDataStandard[:,i] - np.mean(signalDataStandard[:,i]))/np.std(signalDataStandard[:,i],ddof=1)
+
+matrix = np.array(np.corrcoef(signalDataStandard.T)); 
+#sns.set_theme(); ax = sns.heatmap(matrix, cmap='icefire', xticklabels=blinkFeaturesX, yticklabels=blinkFeaturesY)
+
+# Cluster
+for i in range(1,len(matrix)):
+    blinkFeaturesX = blinkFeaturesX[matrix[:,i].argsort()]
+    matrix = matrix[matrix[:,i].argsort()]
+for i in range(1,len(matrix[0])):
+    blinkFeaturesY = blinkFeaturesY[matrix[i].argsort()]
+    matrix = matrix [ :, matrix[i].argsort()]
+
+sns.set_theme(); ax = sns.heatmap(matrix, cmap='icefire', xticklabels=blinkFeaturesX, yticklabels=blinkFeaturesY)
+
+sns.set(rc={'figure.figsize':(50,35)})
+fig = ax.get_figure(); fig.savefig("../output.png", dpi=300)
+
+
+for i in range(len(matrix)):
+    for j in range(len(matrix)):
+        if abs(matrix[i][j]) < 0.96:
+            matrix[i][j] = 0
+            
+# -----------
+
 """
+
+

@@ -5,20 +5,13 @@ https://scikit-learn.org/stable/auto_examples/neighbors/plot_nca_classification.
 """
 
 import os
-import sys
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from sklearn.linear_model import LogisticRegression
 import matplotlib.animation as manimation
 import joblib
 from sklearn.model_selection import train_test_split
-from sklearn.manifold import MDS
-from sklearn.preprocessing import MinMaxScaler
-
-sys.path.append('./Data Aquisition and Analysis/')  # Folder with Machine Learning Files
-import createHeatMap as createMap       # Functions for Neural Network
 
 class logisticRegression:
     
@@ -47,8 +40,8 @@ class logisticRegression:
             
     
     def createModel(self):
-        self.model = LogisticRegression()
-        print("LR Model Created")
+        self.model = LogisticRegression(solver='liblinear')
+        #print("LR Model Created")
         
     def trainModel(self, Training_Data, Training_Labels, Testing_Data, Testing_Labels):  
         # Train the Model

@@ -28,10 +28,6 @@ from sklearn.model_selection import cross_val_score
 from sklearn.inspection import permutation_importance
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-# Import Python Files
-sys.path.append('./Data Aquisition and Analysis/Plotting')  # Folder with Machine Learning Files
-import createHeatMap as createMap       # Functions for Neural Network
-
 # --------------------------------------------------------------------------- #
 # ---------------------------- Imported Packages ---------------------------- #
 
@@ -61,7 +57,7 @@ class randomForest:
                     min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features='auto',max_leaf_nodes=None,
                     min_impurity_decrease=0.0, bootstrap=True, oob_score=False, n_jobs=None, random_state=None,
                     verbose=0, warm_start=False, class_weight=None, ccp_alpha=0.0, max_samples=None)
-        print("Random Forest Model Created")
+        #print("Random Forest Model Created")
         
     def trainModel(self, Training_Data, Training_Labels, newData = [], newLabels = [], scoreType = "Score:"):
         # Train the Model

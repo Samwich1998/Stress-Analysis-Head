@@ -42,7 +42,7 @@ class KNN:
     def createModel(self, weight):
         self.model = neighbors.KNeighborsClassifier(n_neighbors = self.numNeighbors, weights = weight, algorithm = 'auto', 
                         leaf_size = 30, p = 1, metric = 'minkowski', metric_params = None, n_jobs = None)
-        print("KNN Model Created")
+        #print("KNN Model Created")
         
     def saveModel(self, modelPath = "./KNN.pkl"):
         with open(modelPath, 'wb') as handle:

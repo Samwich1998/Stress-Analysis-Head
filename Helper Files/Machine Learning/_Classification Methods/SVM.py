@@ -16,10 +16,6 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.manifold import MDS
 from sklearn.preprocessing import MinMaxScaler
-
-
-sys.path.append('./Data Aquisition and Analysis/')  # Folder with Machine Learning Files
-import createHeatMap as createMap       # Functions for Neural Network
     
 
 class SVM:

@@ -1,0 +1,26 @@
+"
+peakFeatures.extend = []
+peakFeatures.extend([velInterval, velIntervalLeft, velIntervalRight])
+peakFeatures.extend([accelIntervalLeft, accelIntervalRight, accelInterval, thirdDerivInterval])
+
+# Saving Features from Section: Amplitude Features
+peakFeatures.extend([maxUpSlopeConc, maxDownSlopeConc])
+peakFeatures.extend([maxUpSlopeVel, maxDownSlopeVel])
+peakFeatures.extend([maxAccelLeftIndConc, minAccelCenterIndConc, maxAccelRightIndConc])
+peakFeatures.extend([maxAccelLeftIndAccel, minAccelCenterIndAccel, maxAccelRightIndAccel])
+peakFeatures.extend([velDiffConc, accelDiffMaxConc, accelDiffRightConc, accelDiffLeftConc])
+peakFeatures.extend([velDiff, accelDiffMax, accelDiffRight, accelDiffLeft])
+peakFeatures.extend([leftDiffAmp, rightDiffAmp])
+
+# Saving Features from Section: Slope Features
+peakFeatures.extend([upSlope, downSlope])
+
+# Saving Features from Section: Under the Curve Features
+peakFeatures.extend([velToVelArea])
+
+# Saving Features from Section: Peak Shape Features
+peakFeatures.extend([peakTentX, peakTentY, tentDeviationX, tentDeviationY, tentDeviationRatio, peakDuration_Final])
+peakFeatures.extend([peakAverage, peakSTD, peakEntropy, peakSkew, peakKurtosis])
+peakFeatures.extend([peakHeightFFT, leftVelHeightFFT,rightVelHeightFFT, peakSTD_FFT, peakEntropyFFT])
+peakFeatures.extend([peakCurvature, leftVelCurvature, rightVelCurvature, peakHeight])
+"

@@ -38,9 +38,6 @@ from matplotlib import pyplot
 from tensorflow.python.keras.utils import losses_utils
 import itertools
 
-sys.path.append('./Data Aquisition and Analysis/Plotting/')  # Folder with Machine Learning Files
-import createHeatMap as createMap       # Functions for Neural Network
-
 # ----------------------------------------------------------------------------#
 # ----------------------------- Neural Network ------------------------------ #
 

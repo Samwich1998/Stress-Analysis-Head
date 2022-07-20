@@ -15,6 +15,7 @@ import scipy
 import scipy.signal
 # High/Low Pass Filters
 from scipy.signal import butter
+from scipy.signal import savgol_filter
 # Calibration Fitting
 from scipy.optimize import curve_fit
 # Plotting
@@ -25,9 +26,8 @@ from scipy.stats import skew
 from scipy.stats import entropy
 from scipy.stats import kurtosis
 
-
-from scipy.signal import savgol_filter
-
+# Import Files
+import _filteringProtocols as filteringMethods # Import Files with Filtering Methods
 
 # --------------------------------------------------------------------------- #
 # ------------------ User Can Edit (Global Variables) ----------------------- #
@@ -41,15 +41,20 @@ class eogProtocol:
         self.numTimePoints = numTimePoints        # The X-Wdith of the Plot (Number of Data-Points Shown)
         self.moveDataFinger = moveDataFinger      # The Amount of Data to Stream in Before Finding Peaks
         self.plotStreamedData = plotStreamedData  # Plot the Data
-        
+
+        # Define the Class with all the Filtering Methods
+        self.filteringMethods = filteringMethods.filteringMethods()
         # High Pass Filter Parameters
         self.samplingFreq = None          # The Average Number of Points Steamed Into the Arduino Per Second; Depends on the User's Hardware; If NONE Given, Algorithm will Calculate Based on Initial Data
         self.bandPassBuffer = 5000        # A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
-        self.cutOffFreq = 25              # Optimal LPF Cutoff in Literatrue is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best for My System
+        self.cutOffFreq = [.1, 15]        # Optimal LPF Cutoff in Literatrue is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
         
+        # Blink Parameters
+        self.minPeakHeight_Volts = 0.1    # The Minimum Peak Height in Volts; Removes Small Oscillations
+
         # Eye Angle Determination Parameters
         self.voltagePositionBuffer = 100  # A Prepended Buffer to Find the Current Average Voltage; Units: Points
-        self.minVoltageMovement = 0.06    # The Minimum Voltage Change Required to Register an Eye Movement; Units: Volts
+        self.minVoltageMovement = 0.05    # The Minimum Voltage Change Required to Register an Eye Movement; Units: Volts
         self.predictEyeAngleGap = 5       # The Number of Points Between Each Eye Gaze Prediction; Will Backcaluclate if moveDataFinger > predictEyeAngleGap; Units: Points
         self.steadyStateEye = 3.3/2       # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
 
@@ -67,17 +72,25 @@ class eogProtocol:
         self.resetGlobalVariables()   # Start with Fresh Inputs (Clear All Arrays/Values)
         
         # If Plotting, Define Class for Plotting Peaks
-        if plotStreamedData:
+        if plotStreamedData and numChannels != 0:
+            print("HERE")
             # Initialize Plots; NOTE: PLOTTING SLOWS DOWN PROGRAM!
             matplotlib.use('Qt5Agg') # Set Plotting GUI Backend            
             self.initPlotPeaks()     # Create the Plots
+    
+    def setSamplingFrequency(self, startBPFindex):
+        # Caluclate the Sampling Frequency
+        self.samplingFreq = len(self.data[0][startBPFindex:])/(self.data[0][-1] - self.data[0][startBPFindex])
+        print("\tSetting EOG Sampling Frequency to", self.samplingFreq)
+        print("\tFor Your Reference, If Data Analysis is Longer Than", self.moveDataFinger/self.samplingFreq, ", Then You Will NOT be Analyzing in Real Time")
+        
+        # Set Blink Parameters
+        self.minPoints_halfBaseline = max(1, int(self.samplingFreq*0.015))  # The Minimum Points in the Left/Right Baseline
 
     def resetGlobalVariables(self):
         # Data to Read in
-        self.data = {'timePoints':[]}
-        for channelIndex in range(self.numChannels):
-            self.data['Channel'+str(1+channelIndex)] = []
-        
+        self.data = [ [], [[] for channel in range(self.numChannels)] ]
+
         # Hold Past Information
         self.trailingAverageData = {}
         for channelIndex in range(self.numChannels):
@@ -93,6 +106,8 @@ class eogProtocol:
         self.multipleBlinksX = []
         self.blinksXLocs = []
         self.blinksYLocs = []
+        self.culledBlinkX = []
+        self.culledBlinkY = []
         self.importantArrays = []
         
         self.lastAnalyzedPeakInd = 0      # The Index of the Last Potential Blink Analyzed from the Start of Data
@@ -119,7 +134,7 @@ class eogProtocol:
         # --------- Plot Variables user Can Edit (Global Variables) --------- #
 
         # Specify Figure aesthetics
-        figWidth = 14; figHeight = 10;
+        figWidth = 20; figHeight = 15;
         self.fig, axes = plt.subplots(self.numChannels, 2, sharey=False, sharex = 'col', figsize=(figWidth, figHeight))
         
         # Plot the Raw Data
@@ -127,7 +142,10 @@ class eogProtocol:
         self.bioelectricDataPlots = []; self.bioelectricPlotAxes = []
         for channelIndex in range(self.numChannels):
             # Create Plots
-            self.bioelectricPlotAxes.append(axes[channelIndex, 0])
+            if self.numChannels == 1:
+                self.bioelectricPlotAxes.append(axes[0])
+            else:
+                self.bioelectricPlotAxes.append(axes[channelIndex, 0])
             
             # Generate Plot
             self.bioelectricDataPlots.append(self.bioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
@@ -141,16 +159,22 @@ class eogProtocol:
             
         # Create the Data Plots
         self.eyeBlinkLocPlots = []
+        self.eyeBlinkCulledLocPlots = []
         self.trailingAveragePlots = []
         self.filteredBioelectricDataPlots = []
         self.filteredBioelectricPlotAxes = [] 
         for channelIndex in range(self.numChannels):
             # Create Plot Axes
-            self.filteredBioelectricPlotAxes.append(axes[channelIndex, 1])
+            if self.numChannels == 1:
+                self.filteredBioelectricPlotAxes.append(axes[1])
+            else:
+                self.filteredBioelectricPlotAxes.append(axes[channelIndex, 1])
+            
             # Plot Flitered Peaks
             self.filteredBioelectricDataPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
             self.trailingAveragePlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:blue", linewidth=1, alpha = 0.65)[0])
             self.eyeBlinkLocPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], 'o', c="tab:blue", markersize=7, alpha = 0.65)[0])
+            self.eyeBlinkCulledLocPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], 'o', c="tab:red", markersize=7, alpha = 0.65)[0])
 
             # Set Figure Limits
             self.filteredBioelectricPlotAxes[channelIndex].set_ylim(yLimLow, yLimHigh)
@@ -169,21 +193,49 @@ class eogProtocol:
         # Add incoming Data to Each Respective Channel's Plot
         for channelIndex in range(self.numChannels):
             
-            # ---------------------- Band Pass Filter ----------------------- #    
+            # ---------------------- Filter the Data ----------------------- #    
             # Band Pass Filter to Remove Noise
             startBPFindex = max(dataFinger - self.bandPassBuffer, 0)
-            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startBPFindex:dataFinger + self.numTimePoints].copy()
+            yDataBuffer = self.data[1][channelIndex][startBPFindex:dataFinger + self.numTimePoints].copy()
             
             # Get the Sampling Frequency from the First Batch (If Not Given)
             if not self.samplingFreq:
-                self.samplingFreq = len(self.data['timePoints'][startBPFindex:])/(self.data['timePoints'][-1] - self.data['timePoints'][startBPFindex])
-                print("\tSetting Sampling Frequency to", self.samplingFreq)
+                self.setSamplingFrequency(startBPFindex)
+
+            # Filter the Data: Low pass Filter and Savgol Filter
+            #filteredData = self.butterFilter(yDataBuffer, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')[-self.numTimePoints:]
+            #filteredData = self.filteringMethods.fourierFilter.removeFrequencies(yDataBuffer, self.samplingFreq, self.cutOffFreq)
+            filteredData = self.filteringMethods.bandPassFilter.butterFilter(yDataBuffer, self.cutOffFreq[1], self.samplingFreq, order = 3, filterType = 'low')
+           # filteredData = self.filteringMethods.bandPassFilter.highPassFilter(filteredData, self.cutOffFreq[0], 1, 0.1, 30)
+            filteredData = savgol_filter(filteredData, 21, 2, mode='nearest', deriv=0)[-self.numTimePoints:]
+            # --------------------------------------------------------------- #
             
-            filteredData = self.butterFilter(yDataBuffer, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')[-self.numTimePoints:]
+            # ------------------- Extract Blink Features  ------------------- #
+            # Extarct EOG Peaks from Up Channel
+            if channelIndex == 0:
+                # Get the New Data Where No Blinks Have Been Found Yet
+                findBlinkDataY = filteredData[max(0,self.lastAnalyzedPeakInd - dataFinger):] 
+                findBlinkDataX = self.data[0][max(dataFinger, self.lastAnalyzedPeakInd):dataFinger+self.numTimePoints] 
+                # Find the Blinks in the New Data
+                self.findBlinks(findBlinkDataX, findBlinkDataY[-len(findBlinkDataX):], max(dataFinger, self.lastAnalyzedPeakInd), predictionModel)
+            # --------------------------------------------------------------- #
+            
+            # --------------------- Calibrate Eye Angle --------------------- #
+            if calibrateModel and self.calibrateChannelNum == channelIndex:
+                argMax = np.argmax(filteredData)
+                argMin = np.argmin(filteredData)
+                earliestExtrema = argMax if argMax < argMin else argMin
+                
+                timePoints = self.data[0][dataFinger:dataFinger + self.numTimePoints]
+                plt.plot(timePoints, filteredData)
+                plt.plot(timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
+                plt.show()
+                
+                self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 20]))
             # --------------------------------------------------------------- #
             
             # --------------------- Predict Eye Movement  ------------------- #
-            # Get the Current Voltage (Take Average)
+            # Discretize Voltages (Using an Average Around the Point)
             channelVoltages = []
             for segment in range(self.moveDataFinger-self.predictEyeAngleGap, -self.predictEyeAngleGap, -self.predictEyeAngleGap):
                 endPos = -segment if -segment != 0 else len(filteredData)
@@ -199,37 +251,13 @@ class eogProtocol:
                 eyeAngles.append(eyeAngle)
             # --------------------------------------------------------------- #
             
-            # ------------------- Extract Blink Features  ------------------- #
-            # Extarct EOG Peaks from Up Channel
-            if channelIndex == 0:
-                # Get the New Data Where No Blinks Have Been Found Yet
-                findBlinkDataY = filteredData[- (len(self.data['timePoints']) - self.lastAnalyzedPeakInd):] 
-                filteredDataX = self.data['timePoints'][-len(findBlinkDataY):] 
-                # Find the Blinks in the New Data
-                self.findBlinks(filteredDataX, findBlinkDataY, len(self.data['timePoints']) - len(findBlinkDataY), predictionModel)
-            # --------------------------------------------------------------- #
-            
-            # --------------------- Calibrate Eye Angle --------------------- #
-            if calibrateModel and self.calibrateChannelNum == channelIndex:
-                argMax = np.argmax(filteredData)
-                argMin = np.argmin(filteredData)
-                earliestExtrema = argMax if argMax < argMin else argMin
-                
-                timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
-                plt.plot(timePoints, filteredData)
-                plt.plot(timePoints[earliestExtrema], filteredData[earliestExtrema], 'o', linewidth=3)
-                plt.show()
-                
-                self.calibrationVoltages[self.calibrateChannelNum].append(np.average(filteredData[earliestExtrema:earliestExtrema + 20]))
-            # --------------------------------------------------------------- #
-            
             # ------------------- Plot Biolectric Signals ------------------- #
             if plotStreamedData and not calibrateModel:
                 # Get X Data: Shared Axis for All Channels
-                timePoints = np.array(self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints])# - self.data['timePoints'][0]
+                timePoints = np.array(self.data[0][dataFinger:dataFinger + self.numTimePoints])
 
                 # Get New Y Data
-                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
+                newYData = self.data[1][channelIndex][dataFinger:dataFinger + self.numTimePoints]
                 # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
                 self.bioelectricDataPlots[channelIndex].set_data(timePoints, newYData)
                 self.bioelectricPlotAxes[channelIndex].set_xlim(timePoints[0], timePoints[-1])
@@ -251,6 +279,7 @@ class eogProtocol:
                 # Add Eye Blink Peaks
                 if channelIndex == 0:
                     self.eyeBlinkLocPlots[channelIndex].set_data(self.blinksXLocs, self.blinksYLocs)
+                    self.eyeBlinkCulledLocPlots[channelIndex].set_data(self.culledBlinkX, self.culledBlinkY)
             # --------------------------------------------------------------- #   
             
         # -------------------- Update Virtual Reality  ---------------------- #
@@ -260,105 +289,75 @@ class eogProtocol:
 
         # -------------------------- Update Plots --------------------------- #
         # Update to Get New Data Next Round
-        if plotStreamedData and not calibrateModel:
+        if plotStreamedData and not calibrateModel and self.numChannels != 0:
             self.fig.show()
             self.fig.canvas.flush_events()
             self.fig.canvas.draw()
         # --------------------------------------------------------------------#  
-        
-
-    def analyzeFullBatch(self, channelIndex = 1):
-        print("Printing Seperate test plots")
-        # Get Data to Plot
-        xData = self.data['timePoints']
-        yData = self.data['Channel' + str(channelIndex)]
-        
-        # Get Data and Filter
-        plt.figure()
-        plt.plot(xData, yData, c='tab:red', alpha=0.7)
-        plt.title("Bioelectric Data")
-        
-        plt.figure()
-        filteredData = self.butterFilter(yData, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')
-        plt.plot(xData,filteredData, c='tab:blue', alpha=0.7)
-        plt.title("Filtered Data")
-        
-        # Get the Current Voltage (Take Average)
-        eyeVoltages = []
-        self.currentEyeVoltages[channelIndex] = self.steadyStateEye
-        for dataBatchInd in range(0, len(filteredData), self.moveDataFinger):
-            batchData = filteredData[dataBatchInd - self.voltagePositionBuffer:dataBatchInd + self.moveDataFinger]
-            currentEyeVoltage = self.findTraileringAverage(batchData, deviationThreshold = self.minVoltageMovement)
-            # Compare Voltage Difference to Remove Small Shakes
-            if abs(currentEyeVoltage - self.currentEyeVoltages[channelIndex]) > self.minVoltageMovement:
-                self.currentEyeVoltages[channelIndex] = currentEyeVoltage
-            # Keep Track of Data
-            eyeVoltages.extend([self.currentEyeVoltages[channelIndex]]*len(filteredData[dataBatchInd:dataBatchInd + self.moveDataFinger]))
-        plt.plot(xData, eyeVoltages, c='k', alpha=0.7)
-        
 
 # --------------------------------------------------------------------------- #
 # ------------------------- Signal Analysis --------------------------------- #
-
-    def butterParams(self, cutoffFreq = [0.1, 7], samplingFreq = 800, order=3, filterType = 'band'):
-        nyq = 0.5 * samplingFreq
-        if filterType == "band":
-            normal_cutoff = [freq/nyq for freq in cutoffFreq]
-        else:
-            normal_cutoff = cutoffFreq / nyq
-        sos = butter(order, normal_cutoff, btype = filterType, analog = False, output='sos')
-        return sos
     
-    def butterFilter(self, data, cutoffFreq, samplingFreq, order = 3, filterType = 'band'):
-        sos = self.butterParams(cutoffFreq, samplingFreq, order, filterType)
-        return scipy.signal.sosfiltfilt(sos, data)
-    
-    def findBlinks(self, xData, yData, lastAnalyzedBuffer, predictionModel):
-        minBaselinePoints = 20
-        minPeakHeight = 0.11   # No Less Than 0.11
-        multPeakSepMax = 0.5   # No Less Than 0.25
+    def findBlinks(self, xData, yData, lastAnalyzedBuffer, predictionModel, debugBlinkDetection = True):
         
+        # --------------------- Find and Analyze Blinks --------------------- #
         # Find All Potential Blinks in the Data
-        peakIndices = scipy.signal.find_peaks(yData, prominence=1E-8, width=50)[0];
-        # Extract the True Blinks and Their Features
+        peakIndices = scipy.signal.find_peaks(yData, prominence=0.1, width=max(1, int(self.samplingFreq*0.04)))[0];
         for peakInd in peakIndices:
             peakLocX = xData[peakInd]
             
-            # ------------------ Find the Blink's Baselines ----------------- #
-            # Calculate the Left and Right Baseline of the Peak
-            leftBaselineIndex = self.findBaselineIndex(xData, yData, peakInd, searchDirection = -1)
-            rightBaselineIndex = self.findBaselineIndex(xData, yData, peakInd, searchDirection = 1)
-            # Dont Analyze if Blink is Not Fully Formed
-            if rightBaselineIndex == xData[-1]:
-                print("Too Soon to Analyze ", peakLocX)
+            # Dont Reanalyze a Peak (Waste of Time)
+            if peakLocX <= self.data[0][self.lastAnalyzedPeakInd]:
                 continue
             
+            # ------------------ Find the Peak's Baselines ------------------ #
+            # Calculate the Left and Right Baseline of the Peak
+            leftBaselineIndex = self.findNearbyMinimum(yData, peakInd, binarySearchWindow = -max(1, int(self.samplingFreq*0.001)), maxPointsSearch = max(1, int(self.samplingFreq*0.75)))
+            rightBaselineIndex = self.findNearbyMinimum(yData, peakInd, binarySearchWindow = max(1, int(self.samplingFreq*0.001)), maxPointsSearch = max(1, int(self.samplingFreq*0.75)))
             
-            # If the Peak is Too Small, Remove the Peak
-            if yData[peakInd] - yData[leftBaselineIndex] < minPeakHeight or yData[peakInd] - yData[rightBaselineIndex] < minPeakHeight:
-                #print("Too Small", peakLocX)
+            # Wait to Analyze Peaks that are not Fully Formed
+            if rightBaselineIndex >= len(xData) - max(1, int(self.samplingFreq*0.03)):
+                break
+            # --------------------------------------------------------------- #
+            
+            # --------------------- Initial Peak Culling --------------------- #
+            # All Peaks After this Point Will been Evaluated
+            self.lastAnalyzedPeakInd = max(lastAnalyzedBuffer + peakInd, self.lastAnalyzedPeakInd)            
+            
+            # Cull Peaks that are Too Small to be a Blink
+            if yData[peakInd] - yData[leftBaselineIndex] < self.minPeakHeight_Volts or yData[peakInd] - yData[rightBaselineIndex] < self.minPeakHeight_Volts:
+                if debugBlinkDetection: print("The Peak Height is too Small; Time = ", peakLocX)
                 continue
             # If No Baseline is Found, Ignore the Blink (Too Noisy, Probably Not a Blink)
-            elif leftBaselineIndex >= peakInd - minBaselinePoints or rightBaselineIndex <= peakInd + minBaselinePoints:
-                print("Bad Baseline", peakLocX)
+            elif leftBaselineIndex >= peakInd - self.minPoints_halfBaseline or rightBaselineIndex <= peakInd + self.minPoints_halfBaseline:
+                if debugBlinkDetection: print("Peak Width too Small; Time = ", peakLocX)
                 continue
-
             # --------------------------------------------------------------- #
             
             # -------------------- Extract Blink Features ------------------- #
-            self.lastAnalyzedPeakInd = lastAnalyzedBuffer + peakInd
-            print("Last Analyzed: ", self.data['timePoints'][self.lastAnalyzedPeakInd])
-            newFeatures = self.extractFeatures(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1].copy(), peakInd-leftBaselineIndex)
-            
-            # Remove Peaks with Bad Blink Features
+            newFeatures = self.extractFeatures(xData[leftBaselineIndex:rightBaselineIndex+1], yData[leftBaselineIndex:rightBaselineIndex+1].copy(), peakInd-leftBaselineIndex, debugBlinkDetection)
+
+            # Remove Peaks that are not Blinks
             if len(newFeatures) == 0:
-                print("\tNo Features", peakLocX)
+                if debugBlinkDetection: print("\tNo Features; Time = ", peakLocX)
                 continue
-            # Else, Add the New Features
+            # Label/Remove Possible Winks
+            elif len(newFeatures) == 1:
+                if debugBlinkDetection: print("\tWink")
+                self.culledBlinkX.append(peakLocX)
+                self.culledBlinkY.append(yData[peakInd])
+                continue
+            
+            # Record the Blink's Location
+            self.blinksXLocs.append(peakLocX)
+            self.blinksYLocs.append(yData[peakInd])
+            # Keep Running List of Good Blink Features (Plus Average)
             self.featureListExact.append(newFeatures)
+            self.featureList.extend(np.mean(np.array(self.featureListExact)[self.blinksXLocs[-1] > peakLocX - self.averageBlinkWindow], axis=0))
             # --------------------------------------------------------------- #
             
             # ----------------- Singular or Multiple Blinks? ---------------- #
+            multPeakSepMax = 0.5   # No Less Than 0.25
             # Check if the Blink is a Part of a Multiple Blink Sequence
             if self.singleBlinksX and peakLocX - self.singleBlinksX[-1] < multPeakSepMax:
                 # If So, Remove the Last Single Blink as its a Multiple
@@ -370,12 +369,6 @@ class eogProtocol:
                     self.multipleBlinksX.append([lastBlinkX, peakLocX])
             else:
                 self.singleBlinksX.append(peakLocX)
-            # Record the Blink's Location
-            self.blinksXLocs.append(peakLocX)
-            self.blinksYLocs.append(yData[peakInd])
-            # Average the Last Few Blink Features
-            self.featureList.append(newFeatures)
-            #self.featureList.extend(np.mean(np.array(self.featureListExact)[self.blinksXLocs[-1] > peakLocX - self.averageBlinkWindow], axis=0))
             # --------------------------------------------------------------- #
             
             # ----------------- Label the Stress Level/Type ----------------- #
@@ -399,235 +392,317 @@ class eogProtocol:
                 plt.show()
             # --------------------------------------------------------------- #
     
-    def findIntersectionPoint(self, leftLineParams, rightLineParams):
-        xPoint = (rightLineParams[1] - leftLineParams[1])/(leftLineParams[0] - rightLineParams[0])
-        yPoint = leftLineParams[0]*xPoint + leftLineParams[1]
-        return xPoint, yPoint
+    def convertToOddInt(self, x):
+        return max(1, 2*math.floor((int(x)+1)/2) - 1)
+    
+    def getDerivPeaks(self, firstDeriv, secondDeriv, thirdDeriv, fourthDeriv, peakInd):
+        # Get velocity peaks
+        leftVelMax = np.argmax(firstDeriv[:peakInd])
+        rightVelMin = self.findNearbyMinimum(firstDeriv, peakInd, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(firstDeriv))
+        # Organize velocity peaks
+        velInds = [leftVelMax, rightVelMin]
+        
+        # Find Acceleration peaks
+        leftAccelMax = np.argmax(secondDeriv[:leftVelMax])
+        leftAccelMin = self.findNearbyMinimum(secondDeriv, leftVelMax, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(secondDeriv))
+        # Find midPoint Acceleration
+        peakAccelMin = self.findNearbyMinimum(secondDeriv, peakInd, binarySearchWindow = -max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(secondDeriv))
+        peakAccelMin = self.findNearbyMinimum(secondDeriv, peakAccelMin, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(secondDeriv))
+        peakAccelMin = max(peakInd, peakAccelMin)
+        # Find First Half of Eye Opening
+        rightAccelMax = self.findNearbyMaximum(secondDeriv, rightVelMin, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(secondDeriv))
+        # Find Second Half of Eye Opening
+        rightAccelMin = self.findNearbyMinimum(secondDeriv, rightAccelMax, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(secondDeriv))
+        rightAccelMax_End = self.findNearbyMaximum(secondDeriv, rightAccelMin, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(secondDeriv))
+        # Organize acceleration peaks
+        accelInds = [leftAccelMax, leftAccelMin, rightAccelMax, rightAccelMax_End]
+        
+        # Find third derivative peaks
+        thirdDeriv_leftMin = self.findNearbyMinimum(thirdDeriv, leftVelMax, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(thirdDeriv))
+        thirdDeriv_leftMin = self.findNearbyMinimum(thirdDeriv, thirdDeriv_leftMin, binarySearchWindow = -max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(thirdDeriv))
+        thirdDeriv_rightMax = self.findNearbyMaximum(thirdDeriv, peakAccelMin, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(thirdDeriv))
+        # Find Third Deriv Right Minimum
+        thirdDeriv_rightMin = self.findNearbyMaximum(thirdDeriv, rightVelMin, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(thirdDeriv))
+        thirdDeriv_rightMin = self.findNearbyMinimum(thirdDeriv, thirdDeriv_rightMin, binarySearchWindow = max(1, int(self.samplingFreq*0.005)), maxPointsSearch = len(thirdDeriv))
+        # Organize third derivative peaks
+        thirdDerivInds = [thirdDeriv_leftMin, thirdDeriv_rightMax, thirdDeriv_rightMin]
+        
+        # Add Correction to the Indices
+        # if thirdDeriv_rightMin < rightAccelMax:
+        #     accelInds[3] = rightAccelMax
+        #     accelInds[2] = thirdDeriv_rightMin
 
-    def organizeDerivPeaks(self, dy_dt_ABS, dy_dt3_ABS, peakInd, velIndsTotal, accelIndsTotal, thirdDerivIndsTotal):    
-        # Take the Highest Indices
-        try:
-            velInds = [max(velIndsTotal[velIndsTotal < peakInd], key = lambda velInd: dy_dt_ABS[velInd])]
-            velInds.append(max(velIndsTotal[velIndsTotal > peakInd], key = lambda velInd: dy_dt_ABS[velInd]))
-        except:
-            print("\tNo Velocity Inds on Both Sides of Peak")
-            return [],[],[]
-        # Verify That the Index is Correct, Else Remove the Peak (Improper Blink)
-        if len(accelIndsTotal[accelIndsTotal < velInds[0]]) == 0:
-            return [],[],[]
-        
-        # Get the Correct Accel Inds
-        newIndsAccel = [accelIndsTotal[accelIndsTotal < velInds[0]][-1]]
-        newIndsAccel.append(accelIndsTotal[accelIndsTotal > velInds[0]][0])
-        
-        accelIndsAfterPeak = accelIndsTotal[accelIndsTotal > peakInd]
-        if len(accelIndsAfterPeak[accelIndsAfterPeak < velInds[1]]) != 0:
-            newIndsAccel.append(accelIndsAfterPeak[accelIndsAfterPeak < velInds[1]][-1])
-        else:
-            newIndsAccel.append(peakInd + dy_dt3_ABS[peakInd:velInds[1]].argmin())
-        if len(accelIndsTotal[accelIndsTotal > velInds[1]]) != 0:
-            newIndsAccel.append(accelIndsTotal[accelIndsTotal > velInds[1]][0])
-        else:
-            return [], [], []
-        
-        # Get the Correct Third Deriv Inds
-        thirdDerivBeforePeak = thirdDerivIndsTotal[thirdDerivIndsTotal < peakInd]
-        thirdDerivBeforePeak = thirdDerivBeforePeak[thirdDerivBeforePeak > newIndsAccel[1]]
-        
-        thirdDerivInds = []
-        if len(thirdDerivBeforePeak) == 0:
-            thirdDerivInds.append(velInds[0])
-            thirdDerivInds.append(newIndsAccel[1])
-        elif len(thirdDerivBeforePeak) == 1:
-            thirdDerivInds.extend(np.sort([thirdDerivBeforePeak[0], newIndsAccel[1]]))
-        else:
-            thirdDerivInds.extend(thirdDerivBeforePeak[0:2])
-        
-        return velInds, newIndsAccel, thirdDerivInds
+        return velInds, accelInds, thirdDerivInds
     
     def quantifyPeakShape(self, xData, yData, peakInd):
         
-        # Calculate Derivatives
+        # Calculate 1-D Derivatives
         dx_dt = np.gradient(xData); dx_dt2 = np.gradient(dx_dt); 
-        dy_dt = np.gradient(yData); dy_dt2 = np.gradient(dy_dt); dy_dt3 = np.gradient(dy_dt2); 
-        dy_dt_ABS = abs(dy_dt); dy_dt2_ABS = abs(dy_dt2); dy_dt3_ABS = abs(dy_dt3)
-        
+        dy_dt = np.gradient(yData); dy_dt2 = np.gradient(dy_dt);
         # Calculate Peak Shape parameters
         speed = np.sqrt(dx_dt * dx_dt + dy_dt * dy_dt)
-        acceleration = np.sqrt(dx_dt2 * dx_dt2 + dy_dt2 * dy_dt2)
         curvature = np.abs((dx_dt2 * dy_dt - dx_dt * dy_dt2)) / speed**3  # Units 1/Volts
-        scaledCurvature = curvature/max(curvature)
-        # Save Blink Shpaes
-        self.importantArrays.append([speed, acceleration, curvature, scaledCurvature])
+
+        # Caluclate the Peak Derivatives
+        firstDeriv = savgol_filter(yData, self.convertToOddInt(self.samplingFreq*0.02), 2,delta=1/self.samplingFreq, mode='interp', deriv=1)
+        secondDeriv = savgol_filter(yData, self.convertToOddInt(self.samplingFreq*0.01), 2,delta=1/self.samplingFreq, mode='interp', deriv=2)
+        thirdDeriv = savgol_filter(secondDeriv, self.convertToOddInt(self.samplingFreq*0.01), 2,delta=1/self.samplingFreq, mode='interp', deriv=1)
+        fourthDeriv = savgol_filter(secondDeriv, self.convertToOddInt(self.samplingFreq*0.02), 2,delta=1/self.samplingFreq, mode='interp', deriv=2)
         
-        # Return the Velocity, Acceleration, and Curvature
-        return dy_dt_ABS, dy_dt2_ABS, dy_dt3_ABS, curvature
+        # Return the Peak Analyis Equations
+        return firstDeriv, secondDeriv, thirdDeriv, fourthDeriv, curvature
+    
+    def findLineIntersectionPoint(self, leftLineParams, rightLineParams):
+        xPoint = (rightLineParams[1] - leftLineParams[1])/(leftLineParams[0] - rightLineParams[0])
+        yPoint = leftLineParams[0]*xPoint + leftLineParams[1]
+        return xPoint, yPoint
+    
+    def extractFeatures(self, xData, yData, peakInd, debugBlinkDetection = True):
 
-
-    def extractFeatures(self, xData, yData, peakInd):
-
-        # ------------------- Subtract the Blink's Baseline ----------------- #
-        # Check if the Baseline is Skewed. A Skewed Peak is Probably Eye Movement Alongside a Blink
-        baseLinesSkewed = abs(yData[-1] - yData[0]) > 0.2*(yData[peakInd] - max(yData[-1], yData[0]))
-        badBaseline = abs(yData[-1] - yData[0]) > 0.6*(yData[peakInd] - max(yData[-1], yData[0]))
-        if baseLinesSkewed:
-            # If Skewed, Take the Minimum Point as the Baseline
-            peakBaselineY = min(yData[-1], yData[0])
-            #print("\tSkewed Baseline")
-            #return []
-        elif badBaseline:
-            print("\tBaseline is WAY Too Skewed ... Unsure What to Do")
+        # ----------------------- Normalize the Peak ------------------------ #
+        # Check if the Baseline is Skewed.
+        baseLinesSkewed_Large = abs(yData[-1] - yData[0]) > 0.4*(yData[peakInd] - max(yData[-1], yData[0]))
+        baseLinesSkewed_Medium = abs(yData[-1] - yData[0]) > 0.2*(yData[peakInd] - max(yData[-1], yData[0]))
+                    
+        # A Large Skew is Probably Eye Movement Alongside a Blink.
+        if baseLinesSkewed_Large:
+            if debugBlinkDetection: print("\tBaseline is WAY Too Skewed. Probably Eye Movement + Blink")
             return []
+        
+        # A Medium Skew is Okay. Could be Two Blinks Overlapping (etc).
+        elif baseLinesSkewed_Medium:
+            # If Skewed, Take the Minimum Point as the Baseline.
+            peakBaselineY = min(yData[-1], yData[0])
+        
+        # If a Good Baseline is Found
         else:
-            # If Proper Baseline, Take a Linear Fit of the Base Points
+            # Take a Linear Fit of the Base Points
             delY = yData[-1] - yData[0]; delX = xData[-1] - xData[0]
             peakBaselineY = yData[0] + (delY/delX)*(xData[peakInd] - xData[0])
+            
         # Subtract the Baseline
-        yData -= peakBaselineY
-        # Smoothen the Data Just a Little
-        yData = savgol_filter(yData, 51, 2)
+        yData = yData - peakBaselineY
+        
+        # Normalize the Peak: Required as Voltages Dont have Physical Meaning
+        peakHeight = yData[peakInd]
+        yData = yData/peakHeight
         # ------------------------------------------------------------------- #
         
         # ----------------- Calculate the Peak's Derivatives ---------------- #
-        # Calculate Speed, Acceleration, Curvature
-        dy_dt_ABS, dy_dt2_ABS, dy_dt3_ABS, curvature = self.quantifyPeakShape(xData, yData, peakInd)
-        
-        # Find the Derivatives' Peaks
-        velIndsTotal = scipy.signal.find_peaks(dy_dt_ABS, prominence=10E-15, width=15, height=np.mean(dy_dt_ABS)/4)[0];
-        accelIndsTotal = scipy.signal.find_peaks(dy_dt2_ABS, prominence=10E-20, width=10)[0];
-        thirdDerivIndsTotal = scipy.signal.find_peaks(dy_dt3_ABS, prominence=10E-20, width=10)[0];
-
-        # If Not Enough Velocty/Acceleration Peaks Found, Cull the Blink
-        if len(velIndsTotal) >= 2 and len(accelIndsTotal) >= 4:
-            # For Good Derivative, Pull Out the Important Peaks
-            velInds, accelInds, thirdDerivInds = self.organizeDerivPeaks(dy_dt_ABS, dy_dt3_ABS, peakInd, velIndsTotal, accelIndsTotal, thirdDerivIndsTotal) 
+        # Calculate the Derivatives and Curvature
+        firstDeriv, secondDeriv, thirdDeriv, fourthDeriv, curvature = self.quantifyPeakShape(xData, yData, peakInd)
+        # Calculate the Peak Derivatives
+        velInds, accelInds, thirdDerivInds = self.getDerivPeaks(firstDeriv, secondDeriv, thirdDeriv, fourthDeriv, peakInd)
             
-            # If Not Enough Good Peaks, Cull the Blink
-            if len(accelInds) < 4:
-                print("\tNo Accel Inds")
-                return []
-        else:
-            print("\tBad Deriv Inds", len(accelIndsTotal))
+        # Cull peaks with bad derivatives: malformed peaks
+        if velInds[1] < velInds[0]:
+            if debugBlinkDetection: print("Bad Velocity Inds")
             return []
+        elif not accelInds[0] < accelInds[1] < accelInds[2] < accelInds[3]:
+            if debugBlinkDetection: print("Bad Acceleration Inds")
+            return []
+        elif thirdDerivInds[1] < thirdDerivInds[0]:
+            if debugBlinkDetection: print("Bad Third Derivative Inds: ", thirdDerivInds)
+            return []
+        elif not accelInds[0] < velInds[0] < accelInds[1] < peakInd < velInds[1] < accelInds[2] < accelInds[3]:
+            if debugBlinkDetection: print("Bad Derivative Inds Order")
+            return []
+        # Cull Peaks if Baseline Not Fully Formed
+        # if len(yData) - 5 < accelInds[3]:
+        #     if debugBlinkDetection: print("Right Baseline Should be Extended")
+        #     return []
+        # Cull Noisy Peaks
+        #accelInds_Trial = scipy.signal.find_peaks(thirdDeriv[thirdDerivInds[0]:], prominence=10E-20)[0];
+        ####################elif
+        
+        # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
+        # plt.plot(xData, firstDeriv*0.8/max(firstDeriv), 'r', linewidth=1)
+        # plt.plot(xData, secondDeriv*0.8/max(secondDeriv), 'b', linewidth=1)
+        # plt.plot(xData, thirdDeriv*0.8/max(thirdDeriv), 'm', alpha = 0.5, linewidth=1)
+        
+        # secondDeriv = np.array(secondDeriv)
+        # thirdDeriv = np.array(thirdDeriv)
+        # xData = np.array(xData)
+        
+        # plt.plot(xData[accelInds], (secondDeriv*0.8/max(secondDeriv))[accelInds], 'ko', markersize=5)
+        # plt.plot(xData[thirdDerivInds], (thirdDeriv*0.8/max(thirdDeriv))[thirdDerivInds], 'mo', markersize=5)
+        # plt.legend(['Blink', 'firstDeriv', 'secondDeriv', 'thirdDeriv'])
+        # # plt.title("Accel Inds = " + str(len(accelInds_Trial)))
+        # plt.show()        
+        # sepInds = [0, accelInds[0], accelInds[1], peakInd, accelInds[2], accelInds[3]]
+        # self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
+
         # ------------------------------------------------------------------- #
         
         # --------------------- Find the Blink's Endpoints ------------------ #
-        # Linearly Fit the Peak's Base
-        startBlinkLineParams = np.polyfit(xData[accelInds[0]: velInds[0]], yData[accelInds[0]: velInds[0]], 1)
-        endBlinkLineparams1 = np.polyfit(xData[velInds[1]: accelInds[3]], yData[velInds[1]: accelInds[3]], 1)
+        # Linearly Fit the Peak's Slope
+        upSlopeTangentParams = [firstDeriv[velInds[0]], yData[velInds[0]] - firstDeriv[velInds[0]]*xData[velInds[0]]]
+        downSlopeTangentParams = [firstDeriv[velInds[1]], yData[velInds[1]] - firstDeriv[velInds[1]]*xData[velInds[1]]]
         
-        # Calculate the New Baseline of the Peak
-        startBlinkX, _ = self.findIntersectionPoint([0, 0], startBlinkLineParams)
-        endBlinkX, _ = self.findIntersectionPoint(endBlinkLineparams1, [0, 0])
-        # Calculate the New Baseline's Index
+        # Calculate the New Endpoints of the Peak
+        startBlinkX, _ = self.findLineIntersectionPoint([0, 0], upSlopeTangentParams)
+        endBlinkX, _ = self.findLineIntersectionPoint(downSlopeTangentParams, [0, 0])
+        # Calculate the New Endpoint Locations of the Peak
         startBlinkInd = np.argmin(abs(xData - startBlinkX))
         endBlinkInd = np.argmin(abs(xData - endBlinkX))
-        #
-        if accelInds[-1] >= endBlinkInd:
-            print("\tCannot Find Acccel Ind")
-            return []
         # ------------------------------------------------------------------- #
         
         # ------------------------------------------------------------------- #
         # -------------------- Extract Amplitude Features ------------------- #
-        # Find Peak's Tent Features
-        peakTentX, peakTentY = self.findIntersectionPoint(startBlinkLineParams, endBlinkLineparams1)
+        # Find Peak's Tent
+        peakTentX, peakTentY = self.findLineIntersectionPoint(upSlopeTangentParams, downSlopeTangentParams)
+        # Calculate Tent Deviation Features
         tentDeviationX = peakTentX - xData[peakInd]
         tentDeviationY = peakTentY - yData[peakInd]
-        # Find Blink Amplitude Features
-        blinkHeight = yData[peakInd]                 # Distance from the Peak to the Baseline
-        blinkAmpRatio = blinkHeight/peakTentY
-        # Calculate Tent Ratios
-        tentDeviationRatio = tentDeviationY/tentDeviationX
-        # Other Ampltiude Ratios
-        closingAmpDiff1 = yData[accelInds[0]] - blinkHeight
-        closingAmpDiff2 = yData[velInds[0]] - blinkHeight
-        closingAmpDiff3 = yData[accelInds[1]] - blinkHeight
-        openingAmpDiff1 = yData[accelInds[2]] - blinkHeight
-        openingAmpDiff2 = yData[velInds[1]] - blinkHeight
-        openingAmpDiff3 = yData[accelInds[3]] - blinkHeight
-        # Other Ampltiude Ratios
-        closingAmpDiffRatio1 = (yData[accelInds[0]] - blinkHeight)/blinkHeight
-        closingAmpDiffRatio2 = (yData[velInds[0]] - blinkHeight)/blinkHeight
-        closingAmpDiffRatio3 = (yData[accelInds[1]] - blinkHeight)/blinkHeight
-        openingAmpDiffRatio1 = (yData[accelInds[2]] - blinkHeight)/blinkHeight
-        openingAmpDiffRatio2 = (yData[velInds[1]] - blinkHeight)/blinkHeight
-        openingAmpDiffRatio3 = (yData[accelInds[3]] - blinkHeight)/blinkHeight
-        # Other Deviation Ratios
-        accel0ToVel0Ratio = (yData[velInds[0]] - yData[accelInds[0]])
-        accel1ToVel0Ratio = (yData[accelInds[1]] - yData[velInds[0]])
-        accel2ToVel1Ratio = (yData[accelInds[2]] - yData[velInds[1]])
-        accel3ToVel1Ratio = (yData[velInds[1]] - yData[accelInds[3]])
-        # Percent Amplitude Ratios
-        riseTimePercent = (yData[accelInds[1]] - yData[accelInds[0]])
-        dropTimePercent = (yData[accelInds[2]] - yData[accelInds[3]])
-        velDiffPercent = (yData[velInds[1]] - yData[velInds[0]])
-        # Pure Amplitude Ratios
-        closingAmpRatio1 = (yData[accelInds[0]])
-        closingAmpRatio2 = (yData[velInds[0]])
-        closingAmpRatio3 = (yData[accelInds[1]])
-        openingAmpRatio1 = (yData[accelInds[2]])
-        openingAmpRatio2 = (yData[velInds[1]])
-        openingAmpRatio3 = (yData[accelInds[3]])
+        tentDeviationRatio = tentDeviationX/tentDeviationY
+        
+        # Closing Amplitudes
+        maxClosingAccel_Loc = yData[accelInds[0]]
+        maxClosingVel_Loc = yData[velInds[0]]
+        minBlinkAccel_Loc = yData[accelInds[1]]
+        # Opening Amplitudes
+        openingAmpVel_Loc = yData[velInds[1]]
+        maxOpeningAccel_firstHalfLoc = yData[accelInds[2]]
+        maxOpeningAccel_secondHalfLoc = yData[accelInds[3]]
+        
+        # Closing Amplitude Intervals
+        closingAmpSegment1 = maxClosingVel_Loc - maxClosingAccel_Loc
+        closingAmpSegment2 = minBlinkAccel_Loc - maxClosingVel_Loc
+        closingAmpSegmentFull = minBlinkAccel_Loc - maxClosingAccel_Loc
+        # Opening Amplitude Intervals
+        openingAmpSegment1 = openingAmpVel_Loc - maxOpeningAccel_firstHalfLoc
+        openingAmpSegment2 = maxOpeningAccel_firstHalfLoc - openingAmpVel_Loc
+        openingAmplitudeFull = openingAmpVel_Loc - maxOpeningAccel_secondHalfLoc
+        
+        # Mixed Amplitude Intervals
+        velocityAmpInterval = openingAmpVel_Loc - maxClosingVel_Loc
+        accelAmpInterval1 = maxOpeningAccel_firstHalfLoc - maxClosingAccel_Loc
+        accelAmpInterval2 = maxOpeningAccel_secondHalfLoc - maxClosingAccel_Loc
         # ------------------------------------------------------------------- #
         
         # -------------------- Extract Duration Features -------------------- #
         # Find the Standard Blink Durations
         blinkDuration = endBlinkX - startBlinkX      # The Total Time of the Blink
-        closingTime = peakTentX - startBlinkX        # The Time for the Eye to Close
-        openingTime = endBlinkX - peakTentX          # The Time for the Eye to Open
+        closingTime_Tent = peakTentX - startBlinkX        # The Time for the Eye to Close
+        openingTime_Tent = endBlinkX - peakTentX          # The Time for the Eye to Open
+        closingTime_Peak = xData[peakInd] - startBlinkX
+        openingTime_Peak = endBlinkX - xData[peakInd]          # The Time for the Eye to Open
         # Calculate the Duration Ratios
-        closingFraction = closingTime/blinkDuration
-        openingFraction = openingTime/blinkDuration
-
+        closingFraction = closingTime_Peak/blinkDuration
+        openingFraction = openingTime_Peak/blinkDuration
+        
         # Calculate the Half Amplitude Duration
-        blinkAmp50Right = xData[peakInd + np.argmin(abs(yData[peakInd:] - blinkHeight*0.5))]
-        blinkAmp50Left = xData[np.argmin(abs(yData[0:peakInd] - blinkHeight*0.5))]
+        blinkAmp50Right = xData[peakInd + np.argmin(abs(yData[peakInd:] - yData[peakInd]/2))]
+        blinkAmp50Left = xData[np.argmin(abs(yData[0:peakInd] - yData[peakInd]/2))]
         halfClosedTime = blinkAmp50Right - blinkAmp50Left
         # Calculate Time the Eyes are Closed
-        blinkAmp90Right = xData[peakInd + np.argmin(abs(yData[peakInd:] - blinkHeight*0.9))]
-        blinkAmp90Left = xData[np.argmin(abs(yData[0:peakInd] - blinkHeight*0.9))]
+        blinkAmp90Right = xData[peakInd + np.argmin(abs(yData[peakInd:] - yData[peakInd]*0.9))]
+        blinkAmp90Left = xData[np.argmin(abs(yData[0:peakInd] - yData[peakInd]*0.9))]
         eyesClosedTime = blinkAmp90Right - blinkAmp90Left
         # Caluclate Percent Closed
-        percentTimeClosed = eyesClosedTime/halfClosedTime
+        percentTimeEyesClosed = eyesClosedTime/halfClosedTime
+        
+        # Divide the Peak by Acceleration
+        startToAccel = xData[accelInds[0]] - startBlinkX
+        accelClosingDuration = xData[accelInds[1]] - xData[accelInds[0]]
+        accelToPeak = xData[peakInd] - xData[accelInds[1]]
+        peakToAccel = xData[accelInds[2]] - xData[peakInd]
+        accelOpeningPeakDuration = xData[accelInds[3]] - xData[accelInds[2]]
+        accelToEnd = endBlinkX - xData[accelInds[3]]
+        # Divide the Peak by Velocity
+        velocityPeakInterval = xData[velInds[1]] - xData[velInds[0]]
+        startToVel = xData[velInds[0]] - startBlinkX
+        velToPeak = xData[peakInd] - xData[velInds[0]]
+        peakToVel = xData[velInds[1]] - xData[peakInd]
+        velToEnd = endBlinkX - xData[velInds[1]]
+        
+        # Mixed Durations: Accel and Vel
+        portion2Duration = xData[velInds[0]] - xData[accelInds[0]]
+        portion3Duration = xData[accelInds[1]] - xData[velInds[0]]
+        portion6Duration = xData[accelInds[2]] - xData[velInds[1]]
+        # Mixed Accel Durations
+        accel12Duration = xData[accelInds[1]] - xData[accelInds[2]]
+        condensedDuration1 = xData[accelInds[2]] - xData[accelInds[0]]
+        condensedDuration2 = xData[accelInds[3]] - xData[accelInds[0]]
         # ------------------------------------------------------------------- #
         
-        # ---------------------- Extract Slope Features --------------------- #
-        # Extract Slopes
-        closingSlope0 = np.polyfit(xData[startBlinkInd: velInds[0]], yData[startBlinkInd: velInds[0]], 1)[0]
-        closingSlope1 = startBlinkLineParams[0]
-        closingSlope2 = np.polyfit(xData[thirdDerivInds[0]:thirdDerivInds[1]], yData[thirdDerivInds[0]:thirdDerivInds[1]], 1)[0]
-        openingSlope1 = np.polyfit(xData[peakInd: velInds[1]], yData[peakInd: velInds[1]], 1)[0]
-        openingSlope2 = endBlinkLineparams1[0]
-        openingSlope3 = np.polyfit(xData[accelInds[3]: endBlinkInd], yData[accelInds[3]: endBlinkInd], 1)[0]
+        # ------------------- Extract Derivative Features ------------------- #
+        # Extract Closing Slopes
+        closingSlope_MaxAccel = firstDeriv[accelInds[0]]
+        closingSlope_MaxVel = firstDeriv[velInds[0]]
+        closingSlope_MinAccel = firstDeriv[accelInds[1]]
+        # Extract Opening Slopes
+        openingSlope_MinVel = firstDeriv[velInds[1]]
+        openingSlope_MaxAccel1 = firstDeriv[accelInds[2]]
+        openingSlope_MaxAccel2 = firstDeriv[accelInds[3]]
         
-        # Slope Differences
-        closingSlopeDiff10 = closingSlope1 - closingSlope0
-        closingSlopeDiff12 = closingSlope1 - closingSlope2
-        openingSlopeDiff21 = openingSlope2 - openingSlope1
-        openingSlopeDiff23 = openingSlope2 - openingSlope3
+        # Extract Closing Accels
+        closingAccel_MaxAccel = secondDeriv[accelInds[0]]
+        closingAccel_MaxVel = secondDeriv[velInds[0]]
+        closingAccel_MinAccel = secondDeriv[accelInds[1]]
+        # Extract Opening Accels
+        openingAccel_MinVel = secondDeriv[velInds[1]]
+        openingAccel_MaxAccel1 = secondDeriv[accelInds[2]]
+        openingAccel_MaxAccel2 = secondDeriv[accelInds[3]]
         
-        # Slope Ratios
-        closingSlopeRatio0 = closingSlope0/blinkHeight
-        closingSlopeRatio1 = closingSlope1/blinkHeight
-        closingSlopeRatio2 = closingSlope2/blinkHeight
-        openingSlopeRatio1 = openingSlope1/blinkHeight
-        openingSlopeRatio2 = openingSlope2/blinkHeight
-        openingSlopeRatio3 = openingSlope3/blinkHeight
+        # Derivaive Ratios
+        velRatio = firstDeriv[velInds[0]]/firstDeriv[velInds[1]]
+        accelRatio1 = secondDeriv[accelInds[0]]/secondDeriv[accelInds[1]]
+        accelRatio2 = secondDeriv[accelInds[2]]/secondDeriv[accelInds[3]]
+        
+        # New Half Duration
+        durationByVel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[velInds[0]]))] - xData[velInds[0]]
+        durationByVel2 = xData[velInds[1]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[velInds[1]]))]
+        durationByAccel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[0]]))] - xData[accelInds[0]]
+        durationByAccel2 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[1]]))] - xData[accelInds[1]]
+        durationByAccel3 = xData[accelInds[2]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[accelInds[2]]))]
+        durationByAccel4 = xData[accelInds[3]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[accelInds[3]]))]
+        midDurationRatio = durationByVel1/durationByVel2
         # ------------------------------------------------------------------- #
         
+        # ------------------- Extract Integral Features ------------------- #
+        # Peak Integral
+        blinkIntegral = scipy.integrate.simpson(yData[startBlinkInd:endBlinkInd], xData[startBlinkInd:endBlinkInd])
+        # Portion of Blink Integrals
+        portion1Integral = 0
+        if startBlinkInd < accelInds[0]:
+            portion1Integral = scipy.integrate.simpson(yData[startBlinkInd:accelInds[0]], xData[startBlinkInd:accelInds[0]])
+        portion2Integral = scipy.integrate.simpson(yData[accelInds[0]:velInds[0]], xData[accelInds[0]:velInds[0]])
+        portion3Integral = scipy.integrate.simpson(yData[velInds[0]:accelInds[1]], xData[velInds[0]:accelInds[1]])
+        portion4Integral = 0
+        if accelInds[1] < peakInd:
+            portion4Integral = scipy.integrate.simpson(yData[accelInds[1]:peakInd], xData[accelInds[1]:peakInd])
+        portion5Integral = scipy.integrate.simpson(yData[peakInd:accelInds[2]], xData[peakInd:accelInds[2]])
+        portion6Integral = scipy.integrate.simpson(yData[velInds[1]: accelInds[2]], xData[velInds[1]: accelInds[2]])
+        portion7Integral = scipy.integrate.simpson(yData[accelInds[2]:accelInds[3]], xData[accelInds[2]:accelInds[3]])
+        portion8Integral = 0
+        if accelInds[3] < endBlinkInd:
+            portion8Integral = scipy.integrate.simpson(yData[accelInds[3]:endBlinkInd], xData[accelInds[3]:endBlinkInd])
+        
+        # Other Integrals
+        velToVelIntegral = scipy.integrate.simpson(yData[velInds[0]:velInds[1]], xData[velInds[0]:velInds[1]])
+        closingIntegral = scipy.integrate.simpson(yData[startBlinkInd:peakInd], xData[startBlinkInd:peakInd])
+        openingIntegral = scipy.integrate.simpson(yData[peakInd:endBlinkInd], xData[peakInd:endBlinkInd])
+        closingSlopeIntegral = scipy.integrate.simpson(yData[accelInds[0]:accelInds[1]], xData[accelInds[0]:accelInds[1]])
+        accel12Integral = scipy.integrate.simpson(yData[accelInds[1]:accelInds[2]], xData[accelInds[1]:accelInds[2]])
+        openingAccelIntegral = scipy.integrate.simpson(yData[accelInds[2]:accelInds[3]], xData[accelInds[2]:accelInds[3]])
+        condensedIntegral = scipy.integrate.simpson(yData[accelInds[0]:accelInds[3]], xData[accelInds[0]:accelInds[3]])
+        peakToVel0Integral = scipy.integrate.simpson(yData[velInds[0]:peakInd], xData[velInds[0]:peakInd])
+        peakToVel1Integral = scipy.integrate.simpson(yData[peakInd:velInds[1]], xData[peakInd:velInds[1]])
+        # ------------------------------------------------------------------- #
+
         # ---------------------- Extract Shape Features --------------------- #
+        fullBlink = yData[startBlinkInd:endBlinkInd].copy()
+        fullBlink -= min(fullBlink)
+        fullBlink = fullBlink/max(fullBlink)
         # Calculate Peak Shape Parameters
-        peakAverage = np.mean(yData)
-        peakAverageRatio = peakAverage/blinkHeight
-        peakIntegral = np.sum(yData)
-        peakIntergralRatio = peakIntegral/blinkHeight
-        peakEntropy = entropy(yData-min(yData)+10E-10)
-        peakSkew = skew(yData, bias=False)
-        peakKurtosis = kurtosis(yData, fisher=True, bias = False)
-        peakSTD = np.std(yData, ddof=1)
-        maxCurvature = max(curvature[max(0, peakInd - 25): peakInd + 25])
+        peakAverage = np.mean(fullBlink)
+        peakEntropy = entropy(abs(fullBlink) + 0.01)
+        peakSkew = skew(fullBlink, bias=False)
+        peakKurtosis = kurtosis(fullBlink, fisher=True, bias = False)
+        peakSTD = np.std(fullBlink, ddof=1)
         
+        peakCurvature = curvature[peakInd]
         # Curvature Around Main Points
         curvatureYDataAccel0 = curvature[accelInds[0]]
         curvatureYDataAccel1 = curvature[accelInds[1]]
@@ -637,247 +712,249 @@ class eogProtocol:
         curvatureYDataVel1 = curvature[velInds[1]]
         
         # Stanard Deviation
-        velFullSTD = np.std(dy_dt_ABS, ddof=1)
-        accelFullSTD = np.std(dy_dt2_ABS, ddof=1)
-        thirdDerivFullSTD = np.std(dy_dt3_ABS, ddof=1)
-        velSTD = np.std(dy_dt_ABS[velInds[1]:], ddof=1)
-        accelSTD = np.std(dy_dt2_ABS[velInds[1]:], ddof=1)
-        thirdDerivSTD = np.std(dy_dt3_ABS[velInds[1]:], ddof=1)
+        velFullSTD = np.std(firstDeriv[startBlinkInd:endBlinkInd], ddof=1)
+        accelFullSTD = np.std(secondDeriv[startBlinkInd:endBlinkInd], ddof=1)
+        thirdDerivFullSTD = np.std(thirdDeriv[startBlinkInd:endBlinkInd], ddof=1)
         
         # Entropy
-        velFullEntropy = entropy(dy_dt_ABS+10E-50)
-        accelFullEntropy = entropy(dy_dt2_ABS+10E-50)
-        thirdDerivFullEntropy = entropy(dy_dt3_ABS+10E-50)
-        velEntropy = entropy(dy_dt_ABS[velInds[1]:]+10E-50)
-        accelEntropy = entropy(dy_dt2_ABS[velInds[1]:]+10E-50)
-        thirdDerivEntropy = entropy(dy_dt3_ABS[velInds[1]:]+10E-50)
+        velFullEntropy = entropy(abs(firstDeriv[startBlinkInd:endBlinkInd]) + 0.01)
+        accelFullEntropy = entropy(abs(secondDeriv[startBlinkInd:endBlinkInd]) + 0.01)
+        thirdDerivFullEntropy = entropy(abs(thirdDeriv[startBlinkInd:endBlinkInd]) + 0.01)
         # ------------------------------------------------------------------- #
-        
-        # -------------------- Extract Derivative Features ------------------ #
-        # Extract Normalized Blink Velocities
-        peakClosingVel = dy_dt_ABS[velInds[0]]/blinkHeight
-        peakOpeningVel = dy_dt_ABS[velInds[1]]/blinkHeight
-        # Extract Normalized Blink Acceleration
-        peakClosingAccel1 = dy_dt2_ABS[accelInds[0]]/blinkHeight
-        peakClosingAccel2 = dy_dt2_ABS[accelInds[1]]/blinkHeight
-        peakopeningAccel1 = dy_dt2_ABS[accelInds[2]]/blinkHeight
-        peakopeningAccel2 = dy_dt2_ABS[accelInds[3]]/blinkHeight
-        # Extract Amplitude Ratios
-        velClosedRatio = yData[velInds[0]]/blinkHeight
-        velOpenRatio = yData[velInds[1]]/blinkHeight
-        accelClosedRatio1 = yData[accelInds[0]]/blinkHeight
-        accelClosedRatio2 = yData[accelInds[1]]/blinkHeight
-        accelOpenRatio1 = yData[accelInds[2]]/blinkHeight
-        accelOpenRatio2 = yData[accelInds[3]]/blinkHeight
-        # Extract Amplitudes
-        velClosedVal = dy_dt_ABS[velInds[0]]
-        velOpenVal = dy_dt_ABS[velInds[1]]
-        accelClosedVal1 = dy_dt2_ABS[accelInds[0]]
-        accelClosedVal2 = dy_dt2_ABS[accelInds[1]]
-        accelOpenVal1 = dy_dt2_ABS[accelInds[2]]
-        accelOpenVal2 = dy_dt2_ABS[accelInds[3]]
-        # Ratio
-        velRatio = dy_dt_ABS[velInds[0]]/dy_dt_ABS[velInds[1]]
-        accelRatio1 = dy_dt2_ABS[accelInds[0]]/dy_dt2_ABS[accelInds[1]]
-        accelRatio2 = dy_dt2_ABS[accelInds[2]]/dy_dt2_ABS[accelInds[3]]
-        # Ratio with yData
-        velRatioYData = yData[velInds[0]]/yData[velInds[1]]
-        accelRatioYData1 = yData[accelInds[0]]/yData[accelInds[1]]
-        accelRatioYData2 = yData[accelInds[2]]/yData[accelInds[3]]
-        
-        # New Half Duration
-        durationByVel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[velInds[0]]))] - xData[velInds[0]]
-        durationByVel2 = xData[velInds[1]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[velInds[1]]))]
-        durationByAccel1 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[0]]))] - xData[accelInds[0]]
-        durationByAccel2 = xData[peakInd:][np.argmin(abs(yData[peakInd:] - yData[accelInds[1]]))] - xData[accelInds[1]]
-        durationByAccel3 = xData[accelInds[2]] - xData[0:peakInd][np.argmin(abs(yData[0:peakInd] - yData[accelInds[2]]))]
-        midDurationRatio = durationByVel1/durationByVel2
-
-        # Divide the Peak by Acceleration
-        startToAccel = xData[accelInds[0]] - startBlinkX
-        accelCloseingPeakDuration = xData[accelInds[1]] - xData[accelInds[0]]
-        accelToPeak = xData[peakInd] - xData[accelInds[1]]
-        peakToAccel = xData[accelInds[2]] - xData[peakInd]
-        accelOpeningPeakDuration = xData[accelInds[3]] - xData[accelInds[2]]
-        accelToEnd = endBlinkX - xData[accelInds[3]]
-        # Divide the Peak by Velocity
-        velPeakDuration = xData[velInds[1]] - xData[velInds[0]]
-        startToVel = xData[velInds[0]] - startBlinkX
-        velToPeak = xData[peakInd] - xData[velInds[0]]
-        peakToVel = xData[velInds[1]] - xData[peakInd]
-        velToEnd = endBlinkX - xData[velInds[1]]
-        # ------------------------------------------------------------------- #
-
-        # ------------------ Consolidate the Blink Features ----------------- #
-        # Finalize the Features
-        featureList = [xData[peakInd], blinkHeight, peakTentY, tentDeviationX, tentDeviationY, blinkAmpRatio, tentDeviationRatio]
-        featureList.extend([closingAmpDiff1, closingAmpDiff2, closingAmpDiff3, openingAmpDiff1, openingAmpDiff2, openingAmpDiff3])
-        featureList.extend([closingAmpDiffRatio1, closingAmpDiffRatio2, closingAmpDiffRatio3, openingAmpDiffRatio1, openingAmpDiffRatio2, openingAmpDiffRatio3])
-        featureList.extend([accel0ToVel0Ratio, accel1ToVel0Ratio, accel2ToVel1Ratio, accel3ToVel1Ratio])
-        featureList.extend([riseTimePercent, dropTimePercent, velDiffPercent])
-        featureList.extend([closingAmpRatio1, closingAmpRatio2, closingAmpRatio3, openingAmpRatio1, openingAmpRatio2, openingAmpRatio3])
-
-
-        featureList.extend([blinkDuration, closingTime, openingTime, closingFraction, openingFraction, halfClosedTime, eyesClosedTime, percentTimeClosed])
-        featureList.extend([closingSlope0, closingSlope1, closingSlope2, openingSlope1, openingSlope2, openingSlope3])
-        featureList.extend([closingSlopeDiff10, closingSlopeDiff12, openingSlopeDiff21, openingSlopeDiff23])
-        featureList.extend([closingSlopeRatio0, closingSlopeRatio1, closingSlopeRatio2, openingSlopeRatio1, openingSlopeRatio2, openingSlopeRatio3])
-        featureList.extend([peakAverage, peakAverageRatio, peakIntegral, peakIntergralRatio, peakEntropy, peakSkew, peakKurtosis, peakSTD, maxCurvature])
-        # Compile the Features
-        featureList.extend([peakClosingVel, peakOpeningVel, peakClosingAccel1, peakClosingAccel2, peakopeningAccel1, peakopeningAccel2])
-        featureList.extend([velOpenRatio, velClosedRatio, accelClosedRatio1, accelClosedRatio2, accelOpenRatio1, accelOpenRatio2])
-        featureList.extend([velClosedVal, velOpenVal, accelClosedVal1, accelClosedVal2, accelOpenVal1, accelOpenVal2])
-        featureList.extend([velRatio, accelRatio1, accelRatio2, velRatioYData, accelRatioYData1, accelRatioYData2])
-        featureList.extend([durationByVel1, durationByVel2, durationByAccel1, durationByAccel2, durationByAccel3, midDurationRatio])
-        featureList.extend([startToAccel, accelCloseingPeakDuration, accelToPeak, peakToAccel, accelOpeningPeakDuration, accelToEnd])
-        featureList.extend([velPeakDuration, startToVel, velToPeak, peakToVel, velToEnd])
-        featureList.extend([curvatureYDataAccel0, curvatureYDataAccel1, curvatureYDataAccel2, curvatureYDataAccel3, curvatureYDataVel0, curvatureYDataVel1])
-        featureList.extend([velFullSTD, accelFullSTD, thirdDerivFullSTD, velSTD, accelSTD, thirdDerivSTD])
-        featureList.extend([velFullEntropy, accelFullEntropy, thirdDerivFullEntropy, velEntropy, accelEntropy, thirdDerivEntropy])
-        # ------------------------------------------------------------------- #
-
 
         # ------------------------- Cull Bad Blinks ------------------------- #
-        # If the Blink is Shorter Than 50ms or Longer Than 500ms, Ignore the Blink (Probably Eye Movement)
-        if 0.6 < blinkDuration or blinkDuration < 0.05:
-            print("\tBad Blink Duration:", blinkDuration)
+        # Blinks are on average 100-400 ms. They can be on the range of 50-500 ms.
+        if not 0.008 < blinkDuration < 0.5:
+            if debugBlinkDetection: print("\tBad Blink Duration:", blinkDuration, xData[peakInd])
             return []
+        if tentDeviationX < -0.2:
+            if debugBlinkDetection: print("\tBad Blink tentDeviationX:", tentDeviationX, xData[peakInd])
+            return []    
+        if not -0.2 < tentDeviationY < 0.5:
+            if debugBlinkDetection: print("\tBad Blink tentDeviationY:", tentDeviationY, xData[peakInd])
+            return []                
         # If the Closing Time is Longer Than 150ms, it is Probably Not an Involuntary Blink
-        elif closingTime > 0.25:
-            print("\tBad Closing Time:", closingTime)
+        elif not 0.04 < closingTime_Peak < 0.3:
+            if debugBlinkDetection: print("\tBad Closing Time:", closingTime_Peak, xData[peakInd])
             return []
-        elif 0.35 < openingTime:
-            print("\tBad Opening Time:", closingTime)
+        elif not 0.04 < openingTime_Peak < 0.4:
+            if debugBlinkDetection: print("\tBad Opening Time:", openingTime_Peak, xData[peakInd])
             return []
-        elif 4 < accelRatio1:
-            print("\tBad accelRatio1:", accelRatio1)
-            return []
-        elif 0.5 < accelToEnd:
-            print("\tBad accelToEnd:", accelToEnd)
-            return []
-        elif peakSkew < -1:
-            print("\tBad peakSkew:", peakSkew)
-            return []   
-        elif 6 < velRatio:
-            print("\tBad velRatio:", velRatio)
-            return []     
-        elif 0.5 < velToEnd:
-            print("\tBad velToEnd:", velToEnd)
-            return []    
-        elif 5 < midDurationRatio:
-            print("\tBad midDurationRatio:", midDurationRatio)
-            return []    
-        elif 60 < curvatureYDataAccel0:
-            print("\tBad curvatureYDataAccel0:", curvatureYDataAccel0)
-            return []  
-        elif 500 < abs(tentDeviationRatio):
-            print("\tBad tentDeviationRatio:", tentDeviationRatio)
-            return []    
+        elif -1 < velRatio:
+            if debugBlinkDetection: print("\tBad velRatio:", velRatio)
+            return [] 
+        elif peakSkew < -0.75:
+            if debugBlinkDetection: print("\tBad peakSkew:", peakSkew)
+            return [] 
+        
+        # elif 15 < closingSlope_MinAccel or closingSlope_MinAccel < 0:
+        #     if debugBlinkDetection: print("\tBad closingSlope2:", closingSlope_MinAccel)
+        #     return []
+        # elif 8 < closingSlopeDiff10:
+        #     if debugBlinkDetection: print("\tBad closingSlopeDiff10:", closingSlopeDiff10)
+        #     return []   
+        # elif 15 < closingSlopeDiff12:
+        #     if debugBlinkDetection: print("\tBad closingSlopeDiff12:", closingSlopeDiff12)
+        #     return [] 
+        # elif openingSlope1 < -8:
+        #     if debugBlinkDetection: print("\tBad openingSlope1:", openingSlope1)
+        #     return []      
+        # elif openingSlope2 < -14:
+        #     if debugBlinkDetection: print("\tBad openingSlope2:", openingSlope2)
+        #     return []  
+        
+        # accelClosedVal1: Most data past 0.00015 is bad. No Min threshold
+        # elif 0.000175 < accelClosedVal1:
+        #     if debugBlinkDetection: print("\tBad accelClosedVal1:", accelClosedVal1)
+        #     return []
+        # accelClosedVal2: Most data past 0.000175 is bad. No Min threshold
+        # elif 0.000175 < accelClosedVal2:
+        #     if debugBlinkDetection: print("\tBad accelClosedVal2:", accelClosedVal2)
+        #     return []
+        # accelOpenVal1: Most data past 0.000175 is bad. No Min threshold
+        # elif 0.000175 < accelOpenVal1:
+        #     if debugBlinkDetection: print("\tBad accelOpenVal1:", accelOpenVal1)
+        #     return []
+        # # accelOpenVal2: Most data past 0.000175 is bad. No Min threshold
+        # elif 0.000175 < accelOpenVal2:
+        #     if debugBlinkDetection: print("\tBad accelOpenVal2:", accelOpenVal2)
+        #     return []
+        # elif accelToPeak < 0:
+        #     if debugBlinkDetection: print("\tBad accelToPeak:", accelToPeak)
+        #     return []     
+        # elif 0.7 < openingAmpAccel1:
+        #     if debugBlinkDetection: print("\tBad openingAmpAccel1:", openingAmpAccel1)
+        #     return []   
+        # elif 0.7 < openingAmpVel:
+        #     if debugBlinkDetection: print("\tBad openingAmpVel:", openingAmpVel)
+        #     return []  
+        # elif 0.6 < openingAmpAccel2:
+        #     if debugBlinkDetection: print("\tBad openingAmpAccel2:", openingAmpAccel2)
+        #     return []  
+
+        
+    
+        # elif 0.005 < velOpenVal:
+        #     if debugBlinkDetection: print("\tBad velOpenVal:", velOpenVal)
+        #     return [] 
+        # elif 0.0006 < peakClosingAccel1:
+        #     if debugBlinkDetection: print("\tBad peakClosingAccel1:", peakClosingAccel1)
+        #     return [] 
+        # elif 0.0006 < peakClosingAccel2:
+        #     if debugBlinkDetection: print("\tBad peakClosingAccel2:", peakClosingAccel2)
+        #     return []  
+        # elif 0.016 < peakOpeningVel:
+        #     if debugBlinkDetection: print("\tBad peakOpeningVel:", peakOpeningVel)
+        #     return []  
+
+        # elif 1500 < peakCurvature:
+        #     if debugBlinkDetection: print("\tBad maxCurvature:", peakCurvature)
+        #     return []          
+        
+
+        # ------------------------------------------------------------------- #
+
+        # --------------------- Cull Voluntary Blinks  ---------------------- #
+        # if tentDeviationX < -0.1 or tentDeviationX > 0.1:
+        #     if debugBlinkDetection: print("\tWINK! tentDeviationX = ", tentDeviationX, " xLoc = ", xData[peakInd]); return ["Wink"]  
+        # if not 0 < tentDeviationY < 0.6: # (max may be 0.25)
+        #     if debugBlinkDetection: print("\tWINK! tentDeviationY = ", tentDeviationY); return ["Wink"]  
+        # if blinkAmpRatio < 0.7:
+        #     if debugBlinkDetection: print("\tWINK! blinkAmpRatio = ", blinkAmpRatio); return ["Wink"]
+        # If the Closing Time is Longer Than 150ms, it is Probably Not an Involuntary Blink
+        # elif closingTime > 0.2 or closingTime < 0.04:
+        #      if debugBlinkDetection: print("\tWINK! closingTime:", closingTime); return ["Wink"]
+        #     return []
+        
+        # elif 6E-4 < accelOpenVal1:
+        #     if debugBlinkDetection: print("\tWINK! accelOpenVal1:", accelOpenVal1); return ["Wink"]
+        # elif 3E-4 < accelOpenVal2:
+        #     if debugBlinkDetection: print("\tWINK! accelOpenVal2:", accelOpenVal2); return ["Wink"]
+        # elif closingSlope0 > 15:
+        #     if debugBlinkDetection: print("\tWINK! closingSlope0 = ", closingSlope0); return ["Wink"]  
+        # elif closingSlope1 > 15:
+        #     if debugBlinkDetection: print("\tWINK! closingSlope1 = ", closingSlope1); return ["Wink"]  
+        # elif closingSlope2 > 13:
+        #     if debugBlinkDetection: print("\tWINK! closingSlope2 = ", closingSlope2); return ["Wink"] 
+        # elif openingSlope1 < -7:
+        #     if debugBlinkDetection: print("\tWINK! openingSlope1 = ", openingSlope1); return ["Wink"]  
+        # elif openingSlope2 < -10:
+        #     if debugBlinkDetection: print("\tWINK! openingSlope2 = ", openingSlope2); return ["Wink"]  
+        # elif openingSlope3 < -7:
+        #     if debugBlinkDetection: print("\tWINK! openingSlope3 = ", openingSlope3); return ["Wink"]  
+        # elif 4 < closingSlopeDiff10:
+        #     if debugBlinkDetection: print("\tWINK! closingSlopeDiff10 = ", closingSlopeDiff10); return ["Wink"]  
+        # elif 31 < closingSlopeRatio1:
+        #     if debugBlinkDetection: print("\tWINK! closingSlopeRatio1 = ", closingSlopeRatio1); return ["Wink"]  
+        # elif -4.5 > openingSlopeDiff23:
+        #     if debugBlinkDetection: print("\tWINK! openingSlopeDiff23:", openingSlopeDiff23); return ["Wink"]
+        # elif -19 > openingSlopeRatio2:
+        #     if debugBlinkDetection: print("\tWINK! openingSlopeRatio2:", openingSlopeRatio2); return ["Wink"]
+        # elif maxCurvature > 750:
+        #     if debugBlinkDetection: print("\tWINK! maxCurvature = ", maxCurvature); 
+        # elif 0.001 < peakOpeningAccel2:
+        #     if debugBlinkDetection: print("\tWINK! peakOpeningAccel2:", peakOpeningAccel2); return ["Wink"]
+        # elif closingSlopeDiff12 > 12 or closingSlopeDiff12 < -1:
+        #     if debugBlinkDetection: print("\tWINK! closingSlopeDiff12:", closingSlopeDiff12); return ["Wink"]
         # ------------------------------------------------------------------- #
         
-        # --------------------- Cull Voluntary Blinks  ---------------------- #
-        if tentDeviationX < -0.02 or tentDeviationX > 0.1:
-            print("\tWINK! tentDeviationX = ", tentDeviationX, " xLoc = ", xData[peakInd]); return []  
-        elif tentDeviationY > 0.2 or tentDeviationY < 0:
-            print("\tWINK! tentDeviationY = ", tentDeviationY); return []  
-        elif closingSlope0 > 11:
-            print("\tWINK! closingSlope0 = ", closingSlope0); return []  
-        elif closingSlope1 > 12:
-            print("\tWINK! closingSlope1 = ", closingSlope1); return []  
-        elif closingSlope2 > 12:
-            print("\tWINK! closingSlope2 = ", closingSlope2); return []  
-        elif openingSlope2 < -7:
-            print("\tWINK! openingSlope2 = ", openingSlope2); return []  
-        elif openingSlope3 < -7:
-            print("\tWINK! openingSlope3 = ", openingSlope3); return []  
-        elif accelToPeak > 0.06:
-            print("\tWINK! accelToPeak = ", accelToPeak); return []  
-        elif blinkAmpRatio < 0.75:
-            print("\tWINK! blinkAmpRatio = ", blinkAmpRatio); return []
-        elif maxCurvature > 750:
-            print("\tWINK! maxCurvature = ", maxCurvature); return []
-        elif 200 < abs(tentDeviationRatio):
-            print("\WINK! tentDeviationRatio:", tentDeviationRatio)
-            return []           # ------------------------------------------------------------------- #
+        # ------------------ Consolidate the Blink Features ----------------- #
+        peakFeatures = []
+        # Organize Amplitude Features        
+        peakFeatures.extend([xData[peakInd], peakHeight, tentDeviationX, tentDeviationY, tentDeviationRatio])
+        peakFeatures.extend([maxClosingAccel_Loc, maxClosingVel_Loc, minBlinkAccel_Loc, openingAmpVel_Loc, maxOpeningAccel_firstHalfLoc, maxOpeningAccel_secondHalfLoc])
+        peakFeatures.extend([closingAmpSegment1, closingAmpSegment2, closingAmpSegmentFull, openingAmpSegment1, openingAmpSegment2, openingAmplitudeFull])
+        peakFeatures.extend([velocityAmpInterval, accelAmpInterval1, accelAmpInterval2])        
         
-        if 40 < tentDeviationRatio:
-            print("\tBad tentDeviationRatio:", tentDeviationRatio)
-            return []   
-        elif tentDeviationX > 0:
-            print("\tWINK! tentDeviationX > 0; tentDeviationX = ", tentDeviationX); return []
-            return []
-        elif closingSlopeDiff12 > 5 or closingSlopeDiff12 < -1:
-            print("\tWINK! closingSlopeDiff12 > 5 or < -1; closingSlopeDiff12 = ", closingSlopeDiff12); return []
-            return []
+        # Organize Duration Features
+        peakFeatures.extend([blinkDuration, closingTime_Tent, openingTime_Tent, closingTime_Peak, openingTime_Peak, closingFraction, openingFraction])
+        peakFeatures.extend([halfClosedTime, eyesClosedTime, percentTimeEyesClosed])
+        peakFeatures.extend([startToAccel, accelClosingDuration, accelToPeak, peakToAccel, accelOpeningPeakDuration, accelToEnd])
+        peakFeatures.extend([velocityPeakInterval, startToVel, velToPeak, peakToVel, velToEnd])
+        peakFeatures.extend([portion2Duration, portion3Duration, portion6Duration])
+        peakFeatures.extend([accel12Duration, condensedDuration1, condensedDuration2])
         
+        # Organize Derivative Features
+        peakFeatures.extend([closingSlope_MaxAccel, closingSlope_MaxVel, closingSlope_MinAccel, openingSlope_MinVel, openingSlope_MaxAccel1, openingSlope_MaxAccel2])
+        peakFeatures.extend([closingAccel_MaxAccel, closingAccel_MaxVel, closingAccel_MinAccel, openingAccel_MinVel, openingAccel_MaxAccel1, openingAccel_MaxAccel2])
+        peakFeatures.extend([velRatio, accelRatio1, accelRatio2])
+        peakFeatures.extend([durationByVel1, durationByVel1, durationByAccel1, durationByAccel2, durationByAccel3, durationByAccel4, midDurationRatio])
         
-        # sepInds = [startBlinkInd, accelInds[0], accelInds[1], peakInd, accelInds[3], endBlinkInd]
-        # self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
+        # Organize Integral Features
+        peakFeatures.extend([blinkIntegral, portion1Integral, portion2Integral, portion3Integral, portion4Integral, portion5Integral, portion6Integral, portion7Integral, portion8Integral])
+        peakFeatures.extend([velToVelIntegral, closingIntegral, openingIntegral, closingSlopeIntegral, accel12Integral, openingAccelIntegral, condensedIntegral, peakToVel0Integral, peakToVel1Integral])
+        
+        # Organize Shape Features
+        peakFeatures.extend([peakAverage, peakEntropy, peakSkew, peakKurtosis, peakSTD])
+        peakFeatures.extend([peakCurvature, curvatureYDataAccel0, curvatureYDataAccel1, curvatureYDataAccel2, curvatureYDataAccel3, curvatureYDataVel0, curvatureYDataVel1])
+        peakFeatures.extend([velFullSTD, accelFullSTD, thirdDerivFullSTD, velFullEntropy, accelFullEntropy, thirdDerivFullEntropy])
+        # ------------------------------------------------------------------- #
+        
 
-        # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
-        # plt.plot(xData, dy_dt_ABS*0.8/max(dy_dt_ABS), 'r', linewidth=1)
-        # plt.plot(xData, dy_dt2_ABS*0.8/max(dy_dt2_ABS), 'b', linewidth=1)
-        # plt.plot(xData, dy_dt3_ABS*0.5/max(dy_dt3_ABS), 'm', linewidth=.3)
-        # plt.legend(['Blink', 'Velocity ABS', 'Acceleration ABS'])
-        # plt.show()
+
+        if False:
+            sepInds = [startBlinkInd, accelInds[0], accelInds[1], peakInd, accelInds[2], endBlinkInd]
+            self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
+
+            # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
+            # plt.plot(xData, firstDeriv*0.8/max(firstDeriv), 'r', linewidth=1)
+            # plt.plot(xData, secondDeriv*0.8/max(secondDeriv), 'b', linewidth=1)
+            # plt.plot(xData, thirdDeriv*0.8/max(thirdDeriv), 'm', alpha = 0.5, linewidth=1)
+            # plt.legend(['Blink', 'firstDeriv', 'secondDeriv', 'thirdDeriv'])
+            # plt.show()
         
       
-        return featureList
+        return peakFeatures
         # ------------------------------------------------------------------- #
 
-
-    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 50, maxPointsSearch = 1000):
+    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 5, maxPointsSearch = 500):
         """
         Search Right: binarySearchWindow > 0
         Search Left: binarySearchWindow < 0
         """
         # Base Case
-        if abs(binarySearchWindow) <= 1:
-            return xPointer
+        if abs(binarySearchWindow) < 1 or maxPointsSearch == 0:
+            return xPointer - min(2, xPointer) + np.argmin(data[max(0,xPointer-2):min(xPointer+3, len(data))]) 
         
-        maxHeight = data[xPointer]; searchDirection = int(binarySearchWindow/abs(binarySearchWindow))
-        # Binary Search Data to the Left to Find Minimum (Skip Over Small Bumps)
+        maxHeightPointer = xPointer
+        maxHeight = data[xPointer]; searchDirection = binarySearchWindow//abs(binarySearchWindow)
+        # Binary Search Data to Find the Minimum (Skip Over Minor Fluctuations)
         for dataPointer in range(max(xPointer, 0), max(0, min(xPointer + searchDirection*maxPointsSearch, len(data))), binarySearchWindow):
-            # If the Point is Greater Than
+            # If the Next Point is Greater Than the Previous, Take a Step Back
             if data[dataPointer] > maxHeight:
-                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, math.floor(binarySearchWindow/8), maxPointsSearch - (xPointer - dataPointer - binarySearchWindow))
+                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, round(binarySearchWindow/8), maxPointsSearch - searchDirection*(abs(dataPointer - binarySearchWindow)) - xPointer)
+            # Else, Continue Searching
             else:
-                xPointer = dataPointer
+                maxHeightPointer = dataPointer
                 maxHeight = data[dataPointer]
+
+        # If Your Binary Search is Too Large, Reduce it
+        return self.findNearbyMinimum(data, maxHeightPointer, round(binarySearchWindow/2), maxPointsSearch-1)
     
-        # If Your Binary Search is Too Small, Reduce it
-        return self.findNearbyMinimum(data, xPointer, math.floor(binarySearchWindow/2), maxPointsSearch)
-    
-    def findBaselineIndex(self, xData, yData, xPointer, searchDirection = 1):
+    def findNearbyMaximum(self, data, xPointer, binarySearchWindow = 5, maxPointsSearch = 500):
+        """
+        Search Right: binarySearchWindow > 0
+        Search Left: binarySearchWindow < 0
+        """
+        # Base Case
+        xPointer = min(max(xPointer, 0), len(data)-1)
+        if abs(binarySearchWindow) < 1 or maxPointsSearch == 0:
+            return xPointer - min(2, xPointer) + np.argmax(data[max(0,xPointer-2):min(xPointer+3, len(data))]) 
         
-        if searchDirection == 1:
-            endSearch = len(yData)
-        elif searchDirection == -1:
-            endSearch = max(-1, xPointer - 1000)
-        else:
-            print("Wrong Search Direction")
-            sys.exit()
-        
-        addOn = 5; minimumPeakPoints = 10;
-        foundDrop = False; maxSlope = 0
-        # Caluclate the Running Slope of the Data
-        for peakInd in range(xPointer + searchDirection*(addOn+minimumPeakPoints), endSearch, searchDirection):
-            # Calculate the First Derivative
-            try:
-                deltaY = np.mean(yData[max(0,peakInd - addOn):peakInd+1]) - np.mean(yData[max(0,peakInd - 2*addOn - 1):peakInd-addOn+1])
-            except:
-                continue
-            deltaX = max(xData[peakInd] - xData[max(0,peakInd-addOn - 1)], 10E-10)
-            firstDeriv = deltaY/deltaX
-            
-            # Verify Major Slope Drop
-            if abs(firstDeriv) > 0.5:
-                foundDrop = True
-                maxSlope = max(maxSlope, abs(firstDeriv))
-            
-            if foundDrop and abs(firstDeriv) < maxSlope/10:
-                return self.findNearbyMinimum(yData, peakInd, binarySearchWindow = searchDirection*20, maxPointsSearch = 50) #peakInd
-        return xPointer
+        minHeightPointer = xPointer; minHeight = data[xPointer];
+        searchDirection = binarySearchWindow//abs(binarySearchWindow)
+        # Binary Search Data to Find the Minimum (Skip Over Minor Fluctuations)
+        for dataPointer in range(xPointer, max(0, min(xPointer + searchDirection*maxPointsSearch, len(data))), binarySearchWindow):
+            # If the Next Point is Greater Than the Previous, Take a Step Back
+            if data[dataPointer] < minHeight:
+                return self.findNearbyMaximum(data, dataPointer - binarySearchWindow, round(binarySearchWindow/2), maxPointsSearch - searchDirection*(abs(dataPointer - binarySearchWindow)) - xPointer)
+            # Else, Continue Searching
+            else:
+                minHeightPointer = dataPointer
+                minHeight = data[dataPointer]
+
+        # If Your Binary Search is Too Large, Reduce it
+        return self.findNearbyMaximum(data, minHeightPointer, round(binarySearchWindow/2), maxPointsSearch-1)
     
     
     def findPeakLines_TWO(self, xData, yData, baselineIndex, peakInd, minChi2, searchDirection = 1):
@@ -969,7 +1046,7 @@ class eogProtocol:
             plt.show()
         
         
-    def plotData(self, xData, yData, peakInd, velInds = [], accelInds = [], sepInds = [], title = "", peakSize = 3, lineWidth = 2, lineColor = "black", ax = None, axisLimits = []):
+    def plotData(self, xData, yData, peakInd, velInds = [], accelInds = [], sepInds = [], title = "", peakSize = 5, lineWidth = 2, lineColor = "black", ax = None, axisLimits = []):
         xData = np.array(xData); yData = np.array(yData)
         # Create Figure
         showFig = False
@@ -979,9 +1056,9 @@ class eogProtocol:
             showFig = True
         # Plot the Data
         ax.plot(xData, yData, linewidth = lineWidth, color = lineColor)
-        ax.plot(xData[peakInd], yData[peakInd], 'om', markersize=peakSize*2)
-        ax.plot(xData[velInds], yData[velInds], 'or', markersize=peakSize)
-        ax.plot(xData[accelInds], yData[accelInds], 'ob', markersize=peakSize)
+        ax.plot(xData[peakInd], yData[peakInd], 'o', c='tab:purple', markersize=int(peakSize*1.5))
+        ax.plot(xData[velInds], yData[velInds], 'o', c='tab:red', markersize=peakSize)
+        ax.plot(xData[accelInds], yData[accelInds], 'o', c='tab:blue', markersize=peakSize)
         if len(sepInds) > 0:
             sectionColors = ['red','orange', 'blue','green', 'black']
             for groupInd in range(len(sectionColors)):

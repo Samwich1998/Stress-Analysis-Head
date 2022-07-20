@@ -7,106 +7,129 @@ Created on Mon Jan 25 13:17:05 2021
 """
 
 # Basic Modules
+import sys
 import math
 import numpy as np
 # Peak Detection
 import scipy
 import scipy.signal
-# High/Low Pass Filters
-from scipy.signal import lfilter
+# Filtering Modules
+from scipy.signal import savgol_filter
+# Calibration Fitting
+from scipy.optimize import curve_fit
+# Baseline Subtraction
+from BaselineRemoval import BaselineRemoval
 # Plotting
 import matplotlib
 import matplotlib.pyplot as plt
+# Feature Extraction
+from scipy.stats import skew
+from scipy.stats import entropy
+from scipy.stats import kurtosis
 
+# Import Files
+import _filteringProtocols as filteringMethods # Import Files with Filtering Methods
 
-# --------------------------------------------------------------------------- #
-# ------------------ User Can Edit (Global Variables) ----------------------- #
+# -------------------------------------------------------------------------- #
+# -------------------- User Can Edit (Global Variables) -------------------- #
 
 class ppgProtocol:
     
-    def __init__(self, numTimePoints = 2000, moveDataFinger = 200, numChannels = 4, samplingFreq = 800, gestureClasses = [], plotStreamedData = False):
+    def __init__(self, numTimePoints = 3000, moveDataFinger = 10, numChannels = 2, plotStreamedData = True, plotIndivisualPulses = True):
         
         # Input Parameters
-        self.numChannels = numChannels        # Number of EMG Signals
-        self.numTimePoints = numTimePoints                  # The X-Wdith of the Plot (Number of Data-Points Shown)
-        self.moveDataFinger = moveDataFinger  # The Amount of Data to Stream in Before Finding Peaks
-        self.gestureClasses = gestureClasses
-        self.plotStreamedData = plotStreamedData
+        self.numChannels = numChannels            # Number of Bioelectric Signals
+        self.numTimePoints = numTimePoints        # The X-Wdith of the Plot (Number of Data-Points Shown)
+        self.moveDataFinger = moveDataFinger      # The Amount of Data to Stream in Before Finding Peaks
+        self.plotStreamedData = plotStreamedData  # Plot the Data
+        self.plotIndivisualPulses = plotIndivisualPulses  # Plot the Seperated Pulses
         
-        # High Pass Filter Parameters
-        f1 = 100; f3 = 50;
-        self.samplingFreq = samplingFreq
-        self.Rp = 0.1; self.Rs = 30;
-        self.Wp = 2*math.pi*f1/self.samplingFreq
-        self.Ws = 2*math.pi*f3/self.samplingFreq
-        # Root Mean Squared (RMS) Parameters
-        self.rmsWindow = 250; self.stepSize = 8;
+        # Define the Class with all the Filtering Methods
+        self.filteringMethods = filteringMethods.filteringMethods()
+        # Filtering Parameters
+        self.samplingFreq = None                 # The Average Number of Points Steamed Into the Arduino Per Second; Depends on the User's Hardware; If NONE Given, Algorithm will Calculate Based on Initial Data
+        self.bandPassBuffer = 2000               # I Found that [0.3-0.5, 5-10] as an optimal range. A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
+        self.cutOffFreq_MultiPulse = [0.5, 10]   # I Found that 15-25 as an optimal range.
+        self.cutOffFreq = 15                     # I Found that 15-25 as an optimal range.
+
+        # Parameters that Define a Pulse
+        self.maxBPM = 180                   # The Maximum Beats Per Minute for a Human; max = 480
+        self.minBPM = 40                    # The Minimum Beats Per Minute for a Human; min = 27
+        # Pulse Seperation Parameters
+        self.bufferTime = 60/self.minBPM    # The Initial Wait Time Before we Start Labeling Peaks
+        self.previousSystolicAmp = None
         
-        # Data Collection Parameters
-        self.highPassBuffer = max(self.rmsWindow + self.stepSize, 5000)  # Must be > rmsWindow + stepSize
-        self.peakDetectionBuffer = 500  # Buffer in Case Peaks are Only Half Formed at Edges
-        self.numPointsRMS = 5000       # Number of Root Mean Squared Data (After HPF) to Plot
-        self.minGroupSep = 0.5          # Seperation that Defines a New Group
+        # Feature Extarction Parameters
+        self.averageFeatureWindow = 60*1.5  # Time Window to Average Features Together (Averaged with Past Features)
+
+        # Prepare the Program to Begin Data Analysis
+        self.checkParams                    # Check to See if the User's Input Parameters Make Sense
+        self.resetGlobalVariables()         # Start with Fresh Inputs (Clear All Arrays/Values)
         
-        # Start with Fresh Inputs
-        self.resetGlobalVariables()
-        
-        # Define Class for Plotting Peaks
-        if plotStreamedData:
-            # Initialize Plots
-            matplotlib.use('Qt5Agg') # Set Plotting GUI Backend            
-            self.initPlotPeaks()    # Create the Plots
+        # If Plotting, Define Class for Plotting Peaks
+        if plotStreamedData and numChannels != 0:
+            # Initialize Plots; NOTE: PLOTTING SLOWS DOWN PROGRAM!
+            matplotlib.use('Qt5Agg')        # Set Plotting GUI Backend            
+            self.initPlotPeaks()            # Create the Plots
 
     def resetGlobalVariables(self):
         # Data to Read in
-        self.data = {'timePoints':[]}
-        for channelIndex in range(self.numChannels):
-            self.data['Channel'+str(1+channelIndex)] = []
-            # Hold Analysis Values
-            self.previousDataRMS[channelIndex] = []
+        self.data = [ [], [[] for channel in range(self.numChannels)] ]
         
-        # Reset Mutable Variables
-        self.highestAnalyzedGroupStartX = 0
-        self.featureList = [[] for _ in range(self.numChannels)]
-        self.xPeaksList = [[] for _ in range(self.numChannels)]
-        self.yPeaksList = [[] for _ in range(self.numChannels)]
+        # Pulse Seperation Parameters
+        self.peakStandard = []
+        for channelIndex in range(self.numChannels):
+            self.peakStandard.append(0)     # The Max (negative) Second Deriviative of the Previous Pulse's Systolic Peak
+        
+        # Reset Feature Extraction
+        self.featureList = []               # A List of Features Extracted
+        self.featureListExact = []          # A List of Features Extracted Averaged Backwards
+        
+        # Peak Labeling Parameters
+        self.lastAnalyzedPulseInd = [0 for channel in range(self.numChannels)]      # The Index of the Last Potential Pulse Analyzed from the Start of Data
+        
+        # Systolic and Diastolic References
+        self.systolicPressure0 = None   # The Calibrated Systolic Pressure
+        self.diastolicPressure0 = None  # The Calibrated Diastolic Pressure
+        self.diastolicPressure = None   # The Current Diastolic Pressure
+        
+        # Blink Classification
+        self.featureLabels = ['Relaxed', 'Stroop', 'Exercise', 'VR']
+        self.currentState = self.featureLabels[0]
+        
+        # Save the Filtered Data
+        self.filteredData = [[] for channel in range(self.numChannels)]
         
         # Close Any Opened Plots
         if self.plotStreamedData:
             plt.close()
-
+    
+    def checkParams(self):
+        if self.moveDataFinger > self.numTimePoints:
+            print("You are Analyzing Too Much Data in a Batch. 'moveDataFinger' MUST be Less than 'numTimePoints'")
+            sys.exit()
 
     def initPlotPeaks(self): 
-
-        # Specify Figure Asthetics
-        self.peakCurrentRightColorOrder = {
-            0: "tab:red",
-            1: "tab:purple",
-            2: "tab:orange",
-            3: "tab:pink",
-            4: "tab:brown",
-            5: "tab:green",
-            6: "tab:gray",
-            7: "tab:cyan",
-            }
-        
         # use ggplot style for more sophisticated visuals
-        plt.style.use('seaborn-poster') #sets the size of the charts
-        #plt.style.use('ggplot')
-
-        # ------------------------------------------------------------------- #
-        # --------- Plot Variables user Can Edit (Global Variables) --------- #
+        plt.style.use('seaborn-poster')
+        
+        # ------------------------------------------------------------------ #
+        # --------- Plot Variables user Can Edit (Global Variables) -------- #
 
         # Specify Figure aesthetics
-        figWidth = 14; figHeight = 10;
+        figWidth = 20; figHeight = 15;
         self.fig, axes = plt.subplots(self.numChannels, 2, sharey=False, sharex = 'col', figsize=(figWidth, figHeight))
         
         # Plot the Raw Data
-        yLimLow = 0; yLimHigh = 5; 
-        self.bioelectricDataPlots = []; self.bioelectricPlotAxes = []
+        yLimLow = 0; yLimHigh = 1; 
+        self.bioelectricPlotAxes = []
+        self.bioelectricDataPlots = []
         for channelIndex in range(self.numChannels):
             # Create Plots
-            self.bioelectricPlotAxes.append(axes[channelIndex, 0])
+            if self.numChannels == 1:
+                self.bioelectricPlotAxes.append(axes[channelIndex])
+            else:
+                self.bioelectricPlotAxes.append(axes[channelIndex, 0])
             
             # Generate Plot
             self.bioelectricDataPlots.append(self.bioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
@@ -118,358 +141,415 @@ class ppgProtocol:
             self.bioelectricPlotAxes[channelIndex].set_xlabel("Time (Seconds)")
             self.bioelectricPlotAxes[channelIndex].set_ylabel("Bioelectric Signal (Volts)")
             
-        yLimitHighFiltered = 0.8;
         # Create the Data Plots
         self.filteredBioelectricPlotAxes = [] 
         self.filteredBioelectricDataPlots = []
         for channelIndex in range(self.numChannels):
             # Create Plot Axes
-            self.filteredBioelectricPlotAxes.append(axes[channelIndex, 1])
+            if self.numChannels == 1:
+                self.filteredBioelectricPlotAxes.append(axes[channelIndex])
+            else:
+                self.filteredBioelectricPlotAxes.append(axes[channelIndex, 1])
             # Plot Flitered Peaks
             self.filteredBioelectricDataPlots.append(self.filteredBioelectricPlotAxes[channelIndex].plot([], [], '-', c="tab:red", linewidth=1, alpha = 0.65)[0])
 
-
             # Set Figure Limits
-            self.filteredBioelectricPlotAxes[channelIndex].set_ylim(yLimLow, yLimitHighFiltered)
+            self.filteredBioelectricPlotAxes[channelIndex].set_ylim(yLimLow, yLimHigh)
             # Label Axis + Add Title
             self.filteredBioelectricPlotAxes[channelIndex].set_title("Filtered Bioelectric Signal in Channel " + str(channelIndex + 1))
-            self.filteredBioelectricPlotAxes[channelIndex].set_xlabel("Root Mean Squared Data Point")
+            self.filteredBioelectricPlotAxes[channelIndex].set_xlabel("Time (Seconds)")
             self.filteredBioelectricPlotAxes[channelIndex].set_ylabel("Filtered Signal (Volts)")
-        
-        self.filteredBioelectricPeakPlots = [[] for _ in range(self.numChannels)]
-
+            
         # Tighten Figure White Space (Must be After wW Add Fig Info)
         self.fig.tight_layout(pad=2.0);
-        
     
-    def analyzeData(self, dataFinger, plotStreamedData = False, predictionModel = None, actionControl=None):  
+    def analyzeData(self, dataFinger, plotStreamedData = False, predictionModel = None, actionControl = None, calibrateModel = False):     
         
-        xPeaksHolder = []; yPeaksHolder = []; featureHolder = [];
-        # Get X Data: Shared Axis for All Channels
-        self.timePoints = self.data['timePoints'][dataFinger:dataFinger + self.numTimePoints]
+        import time     
         # Add incoming Data to Each Respective Channel's Plot
         for channelIndex in range(self.numChannels):
+            t1 = time.time()
             
-            # ---------------------- High pass Filter ----------------------- #
-            # Find New Points That Need Filtering
-            totalPreviousPointsRMS = max(1 + math.floor((dataFinger + self.numTimePoints - self.moveDataFinger - self.rmsWindow) / self.stepSize), 0) if dataFinger else 0
-            dataPointerRMS = self.stepSize*totalPreviousPointsRMS
-            # Add Buffer to New Points as HPF is Bad at Edge
-            startHPF = max(dataPointerRMS - self.highPassBuffer, 0)
+            # ---------------------- Filter the Data ----------------------- #    
+            # Get the Data with a Buffer for the Filters
+            startBPFindex = max(dataFinger - self.bandPassBuffer, 0)
+            yDataBuffer = self.data[1][channelIndex][startBPFindex:dataFinger + self.numTimePoints].copy()
+            # Invert the Y-Data for Reflection Spectroscopy
+            filteredData = max(yDataBuffer) - np.array(yDataBuffer)
             
-            # High Pass Filter to Remove Noise
-            numNewDataForRMS = dataFinger + self.numTimePoints - dataPointerRMS
-            yDataBuffer = self.data['Channel' + str(channelIndex+1)][startHPF:dataFinger + self.numTimePoints]
-            filteredData = self.highPassFilter(yDataBuffer)[-(numNewDataForRMS):]   
-            # --------------------------------------------------------------- #
-    
-            # --------------------- Root Mean Squared ----------------------- #
-            # Calculated the RMS and Add the Data to the Stored Buffer from the Last Round
-            totalCurrentPointsRMS = max(1 + math.floor((dataFinger + self.numTimePoints - self.rmsWindow) / self.stepSize), 0)
-            dataRMS = self.RMSFilter(filteredData, self.previousDataRMS[channelIndex], self.rmsWindow, self.stepSize)            
-            xDataRMS = np.arange(max(totalCurrentPointsRMS - self.numPointsRMS, 0), totalCurrentPointsRMS, 1)
-
-            # Make Sure You are Saving Enough Points for the Next Round
-            savePointsRMS = max(self.peakDetectionBuffer + self.stepSize, self.numPointsRMS if self.plotStreamedData else 0)
-            self.previousDataRMS[channelIndex] = dataRMS[-savePointsRMS:] # Store RMS Data Needed for Next Round
-            # --------------------------------------------------------------- #
-            
-            # ------------------- Plot Biolectric Signal -------------------- #
-            if plotStreamedData:
-                # Get New Y Data
-                newYData = self.data['Channel' + str(channelIndex+1)][dataFinger:dataFinger + self.numTimePoints]
-                # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
-                self.bioelectricDataPlots[channelIndex].set_data(self.timePoints, newYData)
-                self.bioelectricPlotAxes[channelIndex].set_xlim(self.timePoints[0], self.timePoints[-1])
+            # Get the Sampling Frequency from the First Batch (If Not Given)
+            if not self.samplingFreq:
+                self.samplingFreq = len(self.data[0][startBPFindex:])/(self.data[0][-1] - self.data[0][startBPFindex])
+                print("\tSetting PPG Sampling Frequency to", self.samplingFreq)
+                print("\tFor Your Reference, If Data Analysis is Longer Than", self.moveDataFinger/self.samplingFreq, ", Then You Will NOT be Analyzing in Real Time")
                 
-                # Plot the Filtered (RMS) Data
-                self.filteredBioelectricDataPlots[channelIndex].set_data(xDataRMS, dataRMS[-self.numPointsRMS:])
-                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(xDataRMS[0], xDataRMS[0] + self.numPointsRMS)
-            # --------------------------------------------------------------- #
+                # Estimate that Defines the Number of Points in a Pulse
+                self.minPointsPerPulse = math.floor(self.samplingFreq*60/self.maxBPM)
+                self.maxPointsPerPulse = math.ceil(self.samplingFreq*60/self.minBPM)
 
-            # ----------------------- Peak Detection ------------------------ #
-            # Get Most Current RMS Data (Add Buffer in Case the peak is Cut Off)
-            numNewPointsRMS = totalCurrentPointsRMS - totalPreviousPointsRMS
-            bufferRMSData = dataRMS[-(numNewPointsRMS + self.peakDetectionBuffer):]
-            bufferRMSDataX = xDataRMS[-(numNewPointsRMS + self.peakDetectionBuffer):]
-            # Find Peaks from the New Data
-            xPeaksNew, yPeaksNew, peakInds = self.findPeaks(bufferRMSDataX, bufferRMSData, channelIndex)
-                        
-            # Keep Track of Peaks
-            xPeaksHolder.append(xPeaksNew); yPeaksHolder.append(yPeaksNew)
-            # --------------------------------------------------------------- #
+            # Filter the Data: Low pass Filter and Savgol Filter
+            filteredData = self.filteringMethods.fourierFilter.removeFrequencies(filteredData, self.samplingFreq, self.cutOffFreq_MultiPulse)
+            filteredData = savgol_filter(filteredData, 11, 2, mode='nearest', deriv=0)
             
-            # ---------------------- Feature Analysis  ---------------------- #
-            # Extract Features from the Good Peaks 
-            newFeatures = self.extractFeatures(bufferRMSData, peakInds)
+            # Account for the Pointer Moving
+            self.lastAnalyzedPulseInd[channelIndex] = max(self.lastAnalyzedPulseInd[channelIndex], startBPFindex)
+            # Cut the Data to Only Analyze New Pulses
+            filteredData = np.array(filteredData[self.lastAnalyzedPulseInd[channelIndex]-startBPFindex:])
+            timePoints = np.array(self.data[0][self.lastAnalyzedPulseInd[channelIndex]:dataFinger + self.numTimePoints])
             
-            # Keep Track of the Features
-            featureHolder.append(newFeatures)
-            # --------------------------------------------------------------- #
-
-
-        # ---------------------- Group Peaks Together ----------------------- #
-        # Initialize Variables to Group Peaks
-        lastAnalyzedGroup = len(self.xPeaksList[0]) - 1
-        peakPointers = [0 for _ in range(self.numChannels)]
+            # Add a Buffer of Zeros to the Filtered Data
+            self.filteredData[channelIndex].extend([0]*(len(self.data[0]) - len(self.filteredData[channelIndex])))
+            # -------------------------------------------------------------- #
             
-        # Identify New Movements by Peak Seperation
-        while True:
-            nextPeak = None # Start by Assuming there are NO More Peaks to Analyze
-            # Find the Next Peak to be Grouped
-            for channelInd in range(self.numChannels):
-                peakPointer = peakPointers[channelInd]
-                # Check to See if any Peaks are Left in the Channel
-                if peakPointer < len(xPeaksHolder[channelInd]):
-                    # If the Peak is Smaller, Update the nextPeak
-                    if not nextPeak or xPeaksHolder[channelInd][peakPointer] < nextPeak:
-                        nextPeak = xPeaksHolder[channelInd][peakPointer]
-                        peakChannel = channelInd
-            # Update Channel Pointer if Next Peak Exists
-            if nextPeak:
-                peakPointers[peakChannel] += 1
-            # Break out of the Loop if No Next Peak
-            else:
-                break
-                
-            # If the Peak is Far from the Last Group, Make a New Group
-            if nextPeak - self.highestAnalyzedGroupStartX > self.minGroupSep:
-                # Check to See if you Need More Data to Establish a Group
-                if nextPeak > self.timePoints[-1] - self.minGroupSep:
-                    break
-                # Update Group Holders
-                for channelInd in range(self.numChannels):
-                    self.xPeaksList[channelInd].append([])
-                    self.yPeaksList[channelInd].append([])
-                    self.featureList[channelInd].append([])
-                # Reset Your New Highest Peak
-                self.highestAnalyzedGroupStartX = nextPeak
-                currentGroupInd = len(self.xPeaksList[0]) - 1
-                
-            # Update Group Holders
-            self.xPeaksList[peakChannel][currentGroupInd].append(nextPeak)
-            self.yPeaksList[peakChannel][currentGroupInd].append(yPeaksHolder[peakChannel][peakPointers[peakChannel]-1])
-            self.featureList[peakChannel][currentGroupInd].append(featureHolder[peakChannel][peakPointers[peakChannel]-1])
-        
-        # ------------------------ Predict Movement ------------------------- #
-        # If New Peak Group was Found, Predict the movement
-        if predictionModel and lastAnalyzedGroup != len(self.xPeaksList[0]) - 1:
+            # --------------------- Seperate the Pulses -------------------- # 
+            # Calculate Derivatives
+            firstDeriv = savgol_filter(filteredData, 7, 2, mode='nearest', deriv=1)
+            # Take First Derivative of Smoothened Data
+            systolicPeaks = self.seperatePulses(timePoints, firstDeriv, channelIndex)
             
-            for currentGroupInd in range(lastAnalyzedGroup+1, len(self.xPeaksList[0])):
-                featureArray = []; numFeaturesFound = 0
-                # Take the First Feature in Each Channel's Group
-                for channelInd in range(self.numChannels):
-                    # Check to See if Feature was Present in the Channel
-                    if self.featureList[channelInd][currentGroupInd]:
-                        channelFeature = 0
-                    else:
-                        numFeaturesFound += 1;
-                        channelFeature = self.featureList[channelInd][currentGroupInd[0]]
-                    # Store the Feature
-                    featureArray.append(channelFeature)
-                
-                # Check if Features are Good
-                if numFeaturesFound <= 1 and np.sum(featureArray) <= 0.1:
-                    print("Only One Small Signal Found; Not Moving Robot"); continue
-                # If the Features are Good, Move the Robot
-                self.predictMovement(featureArray, predictionModel, actionControl)
-        # ------------------------------------------------------------------- #
+            # plt.plot(timePoints, max(yDataBuffer) - np.array(yDataBuffer)[-len(filteredData):], 'k', linewidth=2)
+            # plt.plot(timePoints, filteredData, 'tab:red', linewidth=1)
+            # plt.plot(timePoints[systolicPeaks], filteredData[systolicPeaks], 'o')
+            # plt.show()
+            # -------------------------------------------------------------- #
 
-
-        # --------------------------- Plot Peaks ---------------------------- #
-        if plotStreamedData:
-            # Plot the Peaks; Colored by Grouping
-            for channelIndex in range(self.numChannels): 
-                for groupNum in range(len(self.xPeaksList[channelIndex])):
-
-                    # Check to See if the Group Has a Plot You Can Use
-                    if groupNum < len(self.filteredBioelectricPeakPlots[channelIndex]):
-                        groupPeakPlot = self.filteredBioelectricPeakPlots[channelIndex][groupNum]
-                    # If None Availible, Create a New Plot to Add the Data
-                    else:
-                        channelFiltered = self.filteredBioelectricPlotAxes[channelIndex]
-                        # Color Code the Group Peaks. Wrap Around to First Index When Done
-                        groupColor = (groupNum-1)%(len(self.peakCurrentRightColorOrder))
-                        # Create a Plot for the Peaks Using its Respective Group's Color
-                        groupPeakPlot = channelFiltered.plot([], [], 'o', c=self.peakCurrentRightColorOrder[groupColor], linewidth=1, alpha = 0.65)[0]
-                        # Save the Plot for Later Use in the Group
-                        self.filteredBioelectricPeakPlots[channelIndex].append(groupPeakPlot)
-                    # Get Peak Points
-                    if len(self.xPeaksList[channelIndex][groupNum]) != 0:
-                        xPeaksNew = self.xPeaksList[channelIndex][groupNum][0]
-                        if xDataRMS[0] <= xPeaksNew:
-                            yPeaksNew = self.yPeaksList[channelIndex][groupNum][0]
-                            # Plot the Peaks in the Group'
-                            groupPeakPlot.set_data(xPeaksNew, yPeaksNew)
+            # ----------------------- Pulse Analysis ----------------------- #
+            # Seperate Peaks Based on the Minimim Before the R-Peak Rise
+            if len(systolicPeaks) != 0:
+                if self.lastAnalyzedPulseInd[channelIndex] == 0:
+                    pulseStartInd = systolicPeaks[0]
+                else:
+                    pulseStartInd = 0
+                startDataIndex = self.lastAnalyzedPulseInd[channelIndex]
+                for pulseNum in range(len(systolicPeaks)):                    
+                    pulseEndInd = self.findNearbyMinimum(filteredData, systolicPeaks[pulseNum], binarySearchWindow = -2, maxPointsSearch=self.maxPointsPerPulse)
+                    # Keep track of which data was already analyzed
+                    self.lastAnalyzedPulseInd[channelIndex] = startDataIndex + pulseEndInd
                     
+                    # ------------------- Cull Bad Pulses ------------------ #
+                    # Check if the Peak was Double Counted
+                    if pulseEndInd == pulseStartInd:
+                        # print("Found the Same Peak", pulseEndInd, pulseStartInd, self.maxPointsPerPulse, timePoints[pulseStartInd])
+                        pulseStartInd = pulseEndInd; continue                    # Check if the Pulse is Too Big: Likely Double Pulse
+                    elif pulseEndInd - pulseStartInd > self.maxPointsPerPulse:
+                        # print("Pulse Too Big", pulseEndInd, pulseStartInd, self.maxPointsPerPulse, timePoints[pulseStartInd])
+                        pulseStartInd = pulseEndInd; continue
+                    # Check if the Pulse is Too Small; Likely Not an R-Peak
+                    elif pulseEndInd - pulseStartInd < self.minPointsPerPulse:
+                        # print("Pulse Too Small", pulseEndInd, pulseStartInd, self.minPointsPerPulse, timePoints[pulseStartInd])
+                        pulseStartInd = pulseEndInd; continue
+                    # ------------------------------------------------------ #
+                                        
+                    # ----------------- Pulse Preprocessing ---------------- #
+                    # Extract Indivisual Pulse Data
+                    pulseTime = timePoints[pulseStartInd:pulseEndInd+1]
+                    pulseData = filteredData[pulseStartInd:pulseEndInd+1]
+                    # Filter the Pulse
+                    # pulseData = self.filteringMethods.bandPassFilter.butterFilter(pulseData, self.cutOffFreq, self.samplingFreq, order = 3, filterType = 'low')
+                    pulseData = savgol_filter(pulseData, max(3, self.convertToOddInt(len(pulseData)/8)), 2, mode='nearest')
+                    # Normalize the Pulse's Baseline to Zero
+                    normalizedPulse = self.normalizePulseBaseline(pulseTime, pulseData, polynomialDegree = 1, fastBaselineRemoval = True)
+                    
+                    numWrongSideOfTangent = len(normalizedPulse[normalizedPulse < 0])
+                    # Cull Pulses with Bad Normalization
+                    if len(normalizedPulse)/5 < numWrongSideOfTangent:
+                        pulseStartInd = pulseEndInd; continue
+                    # Cull Pulses whose Amplitude Changes Abnormally. Likely Motion Artifact
+                    elif self.previousSystolicAmp != None and 2*self.previousSystolicAmp < max(normalizedPulse) < 0.5*self.previousSystolicAmp:
+                        pulseStartInd = pulseEndInd; continue
+                    self.previousSystolicAmp = max(normalizedPulse)
+
+                    # Calculate the Pulse Derivatives
+                    pulseVelocity = savgol_filter(normalizedPulse, 3, 2, mode='nearest', deriv=1)
+                    pulseAcceleration = savgol_filter(normalizedPulse, 3, 2, mode='nearest', deriv=2)
+                    thirdDeriv = savgol_filter(pulseAcceleration, 3, 1, mode='nearest', deriv=1)
+                    # ------------------------------------------------------ #
+                    
+                    # --------------- Extract Pulse Features --------------- #
+                    # Save the Filtered Data
+                    self.filteredData[channelIndex][startDataIndex+pulseStartInd:startDataIndex+pulseEndInd+1] = normalizedPulse
+                    
+                    # Extract Features from the Pulse Data
+                    # self.extractPulsePeaks(pulseTime, normalizedPulse, pulseVelocity, pulseAcceleration, thirdDeriv)
+                    # ------------------------------------------------------ #
+                    # Reset the Pulse Data Finger
+                    pulseStartInd = pulseEndInd
+            elif 5 < timePoints[-1] - self.data[0][self.lastAnalyzedPulseInd[channelIndex]]:
+                self.peakStandard[channelIndex] = self.peakStandard[channelIndex]/1.5
+
+            # -------------------------------------------------------------- #
+
+            t2 = time.time()
+            # print("TIME", channelIndex, t2-t1)
+            # ------------------- Plot Biolectric Signals ------------------ #
+            if plotStreamedData and not calibrateModel:
+                # Compile the Data to Show on the Plot
+                timePoints = self.data[0][dataFinger:dataFinger + self.numTimePoints]
+                newYData = np.array(self.data[1][channelIndex][dataFinger:dataFinger + self.numTimePoints])
+                newFilteredData = np.array(self.filteredData[channelIndex][-len(timePoints):])
+
+                # Plot Raw Bioelectric Data (Slide Window as Points Stream in)
+                self.bioelectricDataPlots[channelIndex].set_data(timePoints, (newYData - min(newYData))/((max(newYData) - min(newYData))))
+                self.bioelectricPlotAxes[channelIndex].set_xlim(timePoints[0], timePoints[-1])
+                            
+                # Plot the Good Filtered Pulses
+                self.filteredBioelectricDataPlots[channelIndex].set_data(timePoints, newFilteredData/max(newFilteredData))
+                self.filteredBioelectricPlotAxes[channelIndex].set_xlim(timePoints[0], timePoints[-1]) 
+            # -------------------------------------------------------------- #   
+
+        # -------------------------- Update Plots -------------------------- #
         # Update to Get New Data Next Round
-        if plotStreamedData:
+        if plotStreamedData and not calibrateModel and self.numChannels != 0:
             self.fig.show()
             self.fig.canvas.flush_events()
             self.fig.canvas.draw()
         # -------------------------------------------------------------------#
-        
 
-    def analyzeFullBatch(self, channelNum = 1):
-        print("Printing Seperate test plots")
-        # Get Data to Plot
-        xData = self.data['timePoints']
-        yData = self.data['Channel' + str(channelNum)]
-        
-        # Get Data and Filter
-        plt.figure()
-        plt.plot(xData,yData, c='tab:blue', alpha=0.7)
-        plt.title("EMG Data")
-        
-        plt.figure()
-        filteredData = self.highPassFilter(yData)
-        plt.plot(xData,filteredData, c='tab:blue', alpha=0.7)
-        plt.title("Filtered Data")
-        
-        plt.figure()
-        RMSData = self.RMSFilter(filteredData, [], self.window, self.step)
-        plt.plot(xData[0:len(RMSData)],RMSData, c='tab:blue', alpha=0.7)
-        plt.title("RMS Data")
-        
-        # Find Peaks
-        batchTopPeaks = self.find_peaks(xData, RMSData)
-        xPeaksNew, yPeaksNew, yBase = zip(*batchTopPeaks.items())
-        xPeaksList, featureSet = self.extractFeatures(RMSData, xPeaksNew, yBase, 0)
+# -------------------------------------------------------------------------- #
+# ----------------------------- Signal Analysis ---------------------------- #
 
-# --------------------------------------------------------------------------- #
-# ------------------------- Signal Analysis --------------------------------- #
+    def convertToOddInt(self, x):
+        return 2*math.floor((x+1)/2) - 1
 
+    def seperatePulses(self, time, firstDeriv, channelIndex):
+        self.peakStandardInd = 0
+        # Take First Derivative of Smoothened Data
+        peaks = [];
+        for pointInd in range(self.minPointsPerPulse, len(firstDeriv)):
+            # Calcuate the Derivative at pointInd
+            firstDerivVal = firstDeriv[pointInd]
+            
+            # If the Derivative Stands Out, Its the Systolic Peak
+            if self.peakStandard[channelIndex]*0.5 < firstDerivVal:
+                # Use the First Few Peaks as a Standard
+                if (self.bufferTime + self.data[0][0] < time[pointInd]) and self.minPointsPerPulse < pointInd:
 
-    def highPassFilter(self, inputData):
-        """
-        data: Data to Filter
-        f1: cutOffFreqPassThrough
-        f3: cutOffFreqBand
-        Rp: attDB (0.1)
-        Rs: cutOffDB (30)
-        samplingFreq: Frequecy You Take Data
-        """
-        [n, wn] = scipy.signal.cheb1ord(self.Wp/math.pi, self.Ws/math.pi, self.Rp, self.Rs)
-        [bz1, az1] = scipy.signal.cheby1(n, self.Rp, self.Wp/math.pi, 'High')
-        filteredData = lfilter(bz1, az1, inputData)
-        return filteredData
+                    # If the Point is Sufficiently Far Away, its a New R-Peak
+                    if self.peakStandardInd + self.minPointsPerPulse < pointInd:
+                        peaks.append(pointInd)
+                    # Else, Find the Max of the Peak
+                    elif len(peaks) != 0 and firstDeriv[peaks[-1]] < firstDeriv[pointInd]:
+                        peaks[-1] = pointInd
+                    # Else, Dont Update Pointer
+                    else:
+                        continue
+                    self.peakStandardInd = pointInd
+                    if firstDerivVal*0.5 < self.peakStandard[channelIndex]:
+                        self.peakStandard[channelIndex] = firstDerivVal
+                elif self.peakStandard[channelIndex] == 0 or firstDerivVal*0.5 < self.peakStandard[channelIndex]:
+                    self.peakStandard[channelIndex] = max(self.peakStandard[channelIndex], firstDerivVal)
+
+        return peaks
     
-    def RMSFilter(self, inputData, RMSData = [], rmsWindow=250, stepSize=8):
-        """
-        The Function loops through the given EMG Data, looking at batches of data
-            of size rmsWindow at every interval seperated by stepSize.
-        In Each Window, we take the magnitude of the data vector (sqrt[a^2+b^2]
-            for [a,b] data point)
-        A list of each root mean squared value is returned (in order)
-        
-        The Final List has a length of 1 + math.floor((len(inputData) - rmsWindow) / stepSize)
-        --------------------------------------------------------------------------
-        Input Variable Definitions:
-            inputData: A List containing the  EMG Data
-            rmsWindow: The Amount of Data in the Groups we Analyze via RMS
-            stepSize: The Distance Between Data Groups
-        --------------------------------------------------------------------------
-        """
-        # Initialize Starting Parameters
-        normalization = math.sqrt(rmsWindow)
-        numSteps = max(1 + math.floor((len(inputData) - rmsWindow) / stepSize), 0)
-        # Take Root Mean Squared of Batch Data (numBatch = rmsWindow)
-        for i in range(numSteps):
-            # Get Data in the Window to take RMS
-            inputWindow = inputData[i*stepSize:i*stepSize + rmsWindow]
-            # Take RMS
-            RMSData.append(np.linalg.norm(inputWindow, ord=2)/normalization)
-        
-        return RMSData     
-
-
-    def findPeaks(self, xData, yData, channelIndex):
-        # Find New Peak Indices and Last Recorded Peak's xLocation
-        peakIndices = scipy.signal.find_peaks(yData, prominence=.03, height=0.01, width=15, rel_height=0.5, distance = 100)[0]
-        
-        # Find Where the New Peaks Begin
-        xPeaksNew = []; yPeaksNew = []; peakInds = []
-        for peakInd in peakIndices:
-            xPeakLoc = xData[peakInd]
-            # A New Peak is AFTER the Last Recorded Peak + Buffer
-            if xPeakLoc > self.highestAnalyzedGroupStartX + self.minGroupSep:
-                xPeaksNew.append(xPeakLoc)
-                yPeaksNew.append(yData[peakInd])
-                peakInds.append(peakInd)
-
-        # Return New Peaks and Their Baselines
-        return xPeaksNew, yPeaksNew, peakInds
-    
-    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 50, maxPointsSearch = 2000):
+    def findNearbyMinimum(self, data, xPointer, binarySearchWindow = 5, maxPointsSearch = 500):
         """
         Search Right: binarySearchWindow > 0
         Search Left: binarySearchWindow < 0
         """
         # Base Case
-        if abs(binarySearchWindow) < 1:
-            return xPointer
+        if abs(binarySearchWindow) < 1 or maxPointsSearch == 0:
+            return xPointer - min(2, xPointer) + np.argmin(data[max(0,xPointer-2):min(xPointer+3, len(data))]) 
         
-        maxHeight = data[xPointer]; searchDirection = int(binarySearchWindow/abs(binarySearchWindow))
-        # Binary Search Data to the Left to Find Minimum (Skip Over Small Bumps)
-        for dataPointer in range(max(xPointer + searchDirection, 0), min(xPointer + searchDirection*maxPointsSearch, len(data)), -binarySearchWindow):
-            # If the Point is Greater Than 9
+        maxHeightPointer = xPointer
+        maxHeight = data[xPointer]; searchDirection = binarySearchWindow//abs(binarySearchWindow)
+        # Binary Search Data to Find the Minimum (Skip Over Minor Fluctuations)
+        for dataPointer in range(max(xPointer, 0), max(0, min(xPointer + searchDirection*maxPointsSearch, len(data))), binarySearchWindow):
+            # If the Next Point is Greater Than the Previous, Take a Step Back
             if data[dataPointer] > maxHeight:
-                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, math.floor(binarySearchWindow/2), maxPointsSearch - (xPointer - dataPointer - binarySearchWindow))
+                return self.findNearbyMinimum(data, dataPointer - binarySearchWindow, round(binarySearchWindow/8), maxPointsSearch - searchDirection*(abs(dataPointer - binarySearchWindow)) - xPointer)
+            # Else, Continue Searching
             else:
+                maxHeightPointer = dataPointer
                 maxHeight = data[dataPointer]
+
+        # If Your Binary Search is Too Large, Reduce it
+        return self.findNearbyMinimum(data, maxHeightPointer, round(binarySearchWindow/2), maxPointsSearch-1)
+    
+    def findNearbyMaximum(self, data, xPointer, binarySearchWindow = 5, maxPointsSearch = 500):
+        """
+        Search Right: binarySearchWindow > 0
+        Search Left: binarySearchWindow < 0
+        """
+        # Base Case
+        xPointer = min(max(xPointer, 0), len(data)-1)
+        if abs(binarySearchWindow) < 1 or maxPointsSearch == 0:
+            return xPointer - min(2, xPointer) + np.argmax(data[max(0,xPointer-2):min(xPointer+3, len(data))]) 
         
-        # If Your Binary Search is Too Big, Reduce it
-        return xPointer#self.findNearbyMinimum(data, xPointer, math.floor(binarySearchWindow/2), maxPointsSearch)
+        minHeightPointer = xPointer; minHeight = data[xPointer];
+        searchDirection = binarySearchWindow//abs(binarySearchWindow)
+        # Binary Search Data to Find the Minimum (Skip Over Minor Fluctuations)
+        for dataPointer in range(xPointer, max(0, min(xPointer + searchDirection*maxPointsSearch, len(data))), binarySearchWindow):
+            # If the Next Point is Greater Than the Previous, Take a Step Back
+            if data[dataPointer] < minHeight:
+                return self.findNearbyMaximum(data, dataPointer - binarySearchWindow, round(binarySearchWindow/2), maxPointsSearch - searchDirection*(abs(dataPointer - binarySearchWindow)) - xPointer)
+            # Else, Continue Searching
+            else:
+                minHeightPointer = dataPointer
+                minHeight = data[dataPointer]
+
+        # If Your Binary Search is Too Large, Reduce it
+        return self.findNearbyMaximum(data, minHeightPointer, round(binarySearchWindow/2), maxPointsSearch-1)
+    
+    def normalizePulseBaseline(self, xData, yData, polynomialDegree, fastBaselineRemoval = False):
+        """
+        ----------------------------------------------------------------------
+        Input Parameters:
+            pulseData:  yData-Axis Data for a Single Pulse (Start-End)
+            polynomialDegree: Polynomials Used in Baseline Subtraction
+        Output Parameters:
+            pulseData: yData-Axis Data for a Baseline-Normalized Pulse (Start, End = 0)
+        Use Case: Shift the Pulse to the xData-Axis (Removing non-Horizontal Base)
+        Assumption in Function: pulseData is Positive
+        ----------------------------------------------------------------------
+        Further API Information Can be Found in the Following Link:
+        https://pypi.org/project/BaselineRemoval/
+        ----------------------------------------------------------------------
+        """
+        if fastBaselineRemoval:
+            # Draw a Linear Line Between the Points
+            lineSlope = (yData[0] - yData[-1])/(xData[0] - xData[-1])
+            slopeIntercept = yData[0] - lineSlope*xData[0]
+            linearFit = lineSlope*xData + slopeIntercept
+            # Remove the Baseline
+            yData = yData - linearFit
+        else:
+            # Perform Baseline Removal Twice to Ensure Baseline is Gone
+            for _ in range(2):
+                # Baseline Removal Procedure
+                baseObj = BaselineRemoval(yData)  # Create Baseline Object
+                yData = baseObj.ModPoly(polynomialDegree) # Perform Modified multi-polynomial Fit Removal
+            
+        # Return the Data With Removed Baseline
+        return yData
+    
+
+# -------------------------------------------------------------------------- #
+# --------------------------- Feature Extraction --------------------------- #
+    
+    def extractPulsePeaks(self, pulseTime, normalizedPulse, pulseVelocity, pulseAcceleration, thirdDeriv):
+        
+        # ----------------------- Detect Systolic Peak ---------------------- #        
+        # Find Systolic Peak
+        systolicPeakInd = self.findNearbyMaximum(normalizedPulse, 0, binarySearchWindow = 4, maxPointsSearch = len(pulseTime))
+        # Find UpStroke Peaks
+        systolicUpstrokeVelInd = self.findNearbyMaximum(pulseVelocity, 0, binarySearchWindow = 1, maxPointsSearch = systolicPeakInd)
+        systolicUpstrokeAccelMaxInd = self.findNearbyMaximum(pulseAcceleration, systolicUpstrokeVelInd, binarySearchWindow = -1, maxPointsSearch = systolicPeakInd)
+        systolicUpstrokeAccelMinInd = self.findNearbyMinimum(pulseAcceleration, systolicUpstrokeVelInd, binarySearchWindow = 1, maxPointsSearch = systolicPeakInd)
+        # ------------------------------------------------------------------- #
                 
-    def extractFeatures(self, peakAnalysisData, peakInds):
-        peakFeatures = []
-        for xPointer in peakInds:
-            peakFeatures.append([])
-            # Take Average of the Signal (Only Left Side As I Want to Decipher Motor Intention as Fast as I Can; Plus the Signal is generally Symmetric)
-            leftBaselineIndex = self.findNearbyMinimum(peakAnalysisData, xPointer, binarySearchWindow = -50, maxPointsSearch = 2000)
-            peakAverage = np.sum(peakAnalysisData[leftBaselineIndex:xPointer+1])/(xPointer + 1 - leftBaselineIndex)
-            peakFeatures[-1].append(peakAverage)
-        # Return Features
-        return peakFeatures
-    
-    
-    def predictMovement(self, inputData, predictionModel, actionControl = None): 
-        # Predict Data
-        predictedIndex = predictionModel.predictData(inputData)[0]
-        predictedLabel = self.gestureClasses[predictedIndex]
-        print("The Predicted Label is", predictedLabel)
-        if actionControl:
-            if predictedLabel == "left":
-                actionControl.moveLeft()
-            elif predictedLabel == "right":
-                actionControl.moveRight()
-            elif predictedLabel == "down":
-                actionControl.moveDown()
-            elif predictedLabel == "up":
-                actionControl.moveUp()
-            elif predictedLabel == "grab":
-                actionControl.grabHand()
-            elif predictedLabel == "release":
-                actionControl.releaseHand()
+        # ---------------------- Detect Tidal Wave Peak --------------------- #     
+        bufferToTidal = self.findNearbyMinimum(thirdDeriv, systolicPeakInd+1, binarySearchWindow = 1, maxPointsSearch = int(len(pulseTime)/2))
+        # Find Tidal Peak Beginning
+        tidalStartInd = self.findNearbyMaximum(thirdDeriv, bufferToTidal+2, binarySearchWindow = 1, maxPointsSearch = int(len(pulseTime)/2))
+        tidalStartInd_OPTION2 = self.findNearbyMaximum(pulseAcceleration, systolicPeakInd, binarySearchWindow = 2, maxPointsSearch = int(len(pulseTime)/2))
+        # Find Tidal Peak
+        tidalPeakInd = self.findNearbyMinimum(thirdDeriv, min(tidalStartInd_OPTION2, tidalStartInd+1), binarySearchWindow = 4, maxPointsSearch = int(len(pulseTime)/2))
+        # Find Tidal Peak Ending
+        tidalEndInd = self.findNearbyMaximum(thirdDeriv, tidalPeakInd+1, binarySearchWindow = 2, maxPointsSearch = int(len(pulseTime)/2))
+        # ------------------------------------------------------------------- #
+        
+        # ----------------------  Detect Dicrotic Peak ---------------------- #
+        dicroticNotchInd = self.findNearbyMinimum(normalizedPulse, tidalEndInd, binarySearchWindow = 1, maxPointsSearch = int(len(pulseTime)/2))
+        dicroticPeakInd = self.findNearbyMaximum(normalizedPulse, dicroticNotchInd, binarySearchWindow = 1, maxPointsSearch = int(len(pulseTime)/2))
+        
+        # Other Extremas Nearby
+        dicroticInflectionInd = self.findNearbyMaximum(pulseVelocity, dicroticNotchInd, binarySearchWindow = 2, maxPointsSearch = int(len(pulseTime)/2))
+        dicroticFallVelMinInd = self.findNearbyMinimum(pulseVelocity, dicroticInflectionInd, binarySearchWindow = 2, maxPointsSearch = int(len(pulseTime)/2))
+        # ------------------------------------------------------------------- #
+        
+        def plotIt(badReason = ""):
+            normalizedPulse1 = normalizedPulse/max(normalizedPulse)
+            pulseVelocity1 = pulseVelocity/ max(pulseVelocity)
+            pulseAcceleration1 = pulseAcceleration/max(pulseAcceleration)
+            thirdDeriv1 = thirdDeriv/max(thirdDeriv)
+            
+            plt.plot(pulseTime, normalizedPulse1, linewidth = 2, color = "black")
+            plt.plot(pulseTime, pulseVelocity1, alpha=0.5)
+            plt.plot(pulseTime, pulseAcceleration1, alpha=0.5)
+            plt.plot(pulseTime, thirdDeriv1, alpha=0.5)
+            #plt.plot(pulseTime, fourthDeriv1, alpha=0.5)
 
+            plt.plot(pulseTime[systolicPeakInd], normalizedPulse1[systolicPeakInd],  'ko')
+            plt.plot(pulseTime[systolicUpstrokeVelInd], normalizedPulse1[systolicUpstrokeVelInd],  'ko')
+            plt.plot(pulseTime[systolicUpstrokeAccelMaxInd], normalizedPulse1[systolicUpstrokeAccelMaxInd],  'ko')
+            plt.plot(pulseTime[systolicUpstrokeAccelMinInd], normalizedPulse1[systolicUpstrokeAccelMinInd],  'ko')
 
-"""
-# ---------------- Group Channel Peaks Together ----------------- #
-jumpDifference = 0
-self.xPeaksList = [xPeaksNew[0]]; self.yPeaksList = [yPeaksNew[0]]
-# Group the Peaks and Take the FIRST Peak if Two are Nearby
-peakSeperation = np.diff(xPeaksNew); 
-# Identify New Movements by Peak Seperation
-for peakSepInd in range(len(peakSeperation)):
-    peakSep = peakSeperation[peakSepInd]
-    # Only Taking the First Peak, If the Peak Seperation is Big Enough
-    if peakSep > self.minGroupSep - jumpDifference:
-        # Make a New Group
-        jumpDifference = 0
-        self.xPeaksList.append(xPeaksNew[peakSepInd + 1])
-        self.yPeaksList.append(yPeaksNew[peakSepInd + 1])
-    else:
-        # Store Peak Seperation as We Look for the True Next Peak
-        jumpDifference += peakSep
-"""
- 
+            plt.plot(pulseTime[tidalStartInd], normalizedPulse1[tidalStartInd],  'ro')
+            plt.plot(pulseTime[tidalPeakInd], normalizedPulse1[tidalPeakInd],  'go')
+            plt.plot(pulseTime[tidalEndInd], normalizedPulse1[tidalEndInd],  'ro')
+            
+            plt.plot(pulseTime[dicroticNotchInd], normalizedPulse1[dicroticNotchInd],  'bo')
+            plt.plot(pulseTime[dicroticPeakInd], normalizedPulse1[dicroticPeakInd],  'bo')
+            
+            plt.plot(pulseTime[[dicroticInflectionInd, dicroticFallVelMinInd]], normalizedPulse1[[dicroticInflectionInd, dicroticFallVelMinInd]],  'bo')
+            
+            plt.title("Time: " + str(pulseTime[-1]) + "; " + badReason)
+            plt.show()
+
+        # ------------------------- Cull Bad Pulses ------------------------- #
+        # Check The Order of the Systolic Peaks
+        if not systolicUpstrokeAccelMaxInd < systolicUpstrokeVelInd < systolicUpstrokeAccelMinInd < systolicPeakInd:
+            print("\t\tBad Systolic Sequence. Time = ", pulseTime[-1]); 
+            plotIt("SYSTOLIC")
+            return None
+        # Check The Order of the Tidal Peaks
+        elif not tidalPeakInd < tidalEndInd:
+            print("\t\tBad Tidal Sequence. Time = ", pulseTime[-1]); 
+            plotIt("TIDAL")
+            return None
+        # Check The Order of the Dicrotic Peaks
+        elif not dicroticNotchInd < dicroticInflectionInd < dicroticPeakInd < dicroticFallVelMinInd:
+            print("\t\tBad Dicrotic Sequence. Time = ", pulseTime[-1]); 
+            plotIt("DICROTIC")
+            return None
+        # Check The Order of the Peaks
+        elif not systolicPeakInd < tidalEndInd < dicroticNotchInd - 2:
+            print("\t\tBad Peak Sequence. Time = ", pulseTime[-1]); 
+            plotIt("GENERAL")
+            return None
+        
+        # Check If the Dicrotic Peak was Skipped
+        if pulseTime[-1]*0.75 < pulseTime[dicroticPeakInd] - pulseTime[systolicUpstrokeAccelMaxInd]:
+            print("\t\tDicrotic Peak Likely Skipped Over. Time = ", pulseTime[-1]);
+            return None
+        # ------------------------------------------------------------------- #
+        
+        # ----------------------- Feature Extraction ------------------------ #
+        allSystolicPeaks = [systolicUpstrokeAccelMaxInd, systolicUpstrokeVelInd, systolicUpstrokeAccelMinInd, systolicPeakInd]
+        allTidalPeaks = [tidalPeakInd, tidalEndInd]
+        allDicroticPeaks = [dicroticNotchInd, dicroticInflectionInd, dicroticPeakInd, dicroticFallVelMinInd]
+        
+        # Extract the Pulse Features
+        # self.extractFeatures(normalizedPulse, pulseTime, pulseVelocity, pulseAcceleration, allSystolicPeaks, allTidalPeaks, allDicroticPeaks)
+        # ------------------------------------------------------------------- #
+
+        if self.plotIndivisualPulses:
+            normalizedPulse1 = normalizedPulse/max(normalizedPulse)
+            pulseVelocity1 = pulseVelocity/ max(pulseVelocity)
+            pulseAcceleration1 = pulseAcceleration/max(pulseAcceleration)
+            thirdDeriv1 = thirdDeriv/max(thirdDeriv)
+            
+            plt.plot(pulseTime, normalizedPulse1, linewidth = 2, color = "black")
+            plt.plot(pulseTime, pulseVelocity1, alpha=0.5)
+            plt.plot(pulseTime, pulseAcceleration1, alpha=0.5)
+            plt.plot(pulseTime, thirdDeriv1, alpha=0.5)
+            
+            plt.plot(pulseTime[systolicPeakInd], normalizedPulse1[systolicPeakInd],  'ko')
+            plt.plot(pulseTime[systolicUpstrokeVelInd], normalizedPulse1[systolicUpstrokeVelInd],  'ko')
+            plt.plot(pulseTime[systolicUpstrokeAccelMaxInd], normalizedPulse1[systolicUpstrokeAccelMaxInd],  'ko')
+            plt.plot(pulseTime[systolicUpstrokeAccelMinInd], normalizedPulse1[systolicUpstrokeAccelMinInd],  'ko')
+
+            plt.plot(pulseTime[tidalStartInd], normalizedPulse1[tidalStartInd],  'ro')
+            plt.plot(pulseTime[tidalPeakInd], normalizedPulse1[tidalPeakInd],  'ro')
+            plt.plot(pulseTime[tidalEndInd], normalizedPulse1[tidalEndInd],  'ro')
+
+            plt.plot(pulseTime[dicroticNotchInd], normalizedPulse1[dicroticNotchInd],  'bo')
+            plt.plot(pulseTime[dicroticPeakInd], normalizedPulse1[dicroticPeakInd],  'bo')
+            
+            plt.plot(pulseTime[[dicroticInflectionInd, dicroticFallVelMinInd]], normalizedPulse1[[dicroticInflectionInd, dicroticFallVelMinInd]],  'bo')
+            
+            plt.title("Time: " + str(pulseTime[-1]))
+            plt.show()
+            
+            
+            

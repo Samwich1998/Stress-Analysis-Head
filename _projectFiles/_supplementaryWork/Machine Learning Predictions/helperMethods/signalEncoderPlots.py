@@ -53,11 +53,9 @@ class signalEncoderPlots(trainingPlots):
         """ Expected format: (numTimeWindows, numEpochs) """
         # Initialize an array to store the minimum loss for each time window.
         finalLosses = np.zeros(len(losses))
-        print(np.array(losses).shape)
 
         # Iterate over each time window.
         for i in range(finalLosses.shape[0]):
-            #print(losses[i])
             smoothedLosses = self.getSmoothedLosses(losses[i], window_length=window_length)
 
             # Find the minimum loss in the smoothed losses for the current time window.
@@ -315,7 +313,6 @@ class signalEncoderPlots(trainingPlots):
                         # For each loss value we want:
                         for lossInd, lossString in enumerate(lossStrings):
                             lossValues = getattr(currentModel, lossString)
-                            print(lossString, loadSubmodelDate)
                             lossHolders[lossInd][:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(lossValues)
 
         return lossHolders

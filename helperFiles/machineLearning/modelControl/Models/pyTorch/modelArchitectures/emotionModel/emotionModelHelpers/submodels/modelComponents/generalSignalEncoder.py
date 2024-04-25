@@ -51,7 +51,7 @@ class signalEncoderBase(signalEncoderHelpers):
         layerLoss = self.calculateEncodingLoss(originalData, encodedData, trainingFlag)
 
         # If the loss is significant, add it to the total loss.
-        signalEncodingLayerLoss = 10*signalEncodingLayerLoss + layerLoss
+        signalEncodingLayerLoss = 1.1*signalEncodingLayerLoss + 10*layerLoss
 
         return signalEncodingLayerLoss
 

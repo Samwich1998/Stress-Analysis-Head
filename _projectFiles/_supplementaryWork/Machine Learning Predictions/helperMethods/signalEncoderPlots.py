@@ -38,7 +38,7 @@ class signalEncoderPlots(trainingPlots):
         optimalLossHolders, trainingLossHolders, testingLossHolders = lossHolders
 
         # Prepare the data for plotting.
-        numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested = trainingLossHolders[0][0].size()
+        numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested = trainingLossHolders[0][0].shape
 
         # Plot the heatmaps for each combination of losses
         for time_index, time_window in enumerate(self.timeWindows):
@@ -120,8 +120,7 @@ class signalEncoderPlots(trainingPlots):
 
                     # Load in the previous model attributes.
                     loadSubmodelDate = finalTrainingDataString.replace("XX", str(numLiftedChannels)).replace("YY", str(numExpandedSignals)).replace("ZZ", str(numEncodingLayers))
-                    allDummyModelPipelines = self.modelCompiler.onlyPreloadModelAttributes(self.modelName, self.datasetNames, loadSubmodel="signalEncoder", loadSubmodelDate=loadSubmodelDate, loadSubmodelEpochs=-1,
-                                                                                           allDummyModelPipelines=allDummyModelPipelines)
+                    allDummyModelPipelines = self.modelCompiler.onlyPreloadModelAttributes(self.modelName, self.datasetNames, loadSubmodel="signalEncoder", loadSubmodelDate=loadSubmodelDate, loadSubmodelEpochs=-1, allDummyModelPipelines=allDummyModelPipelines)
 
                     # For each model, get the losses.
                     for modelInd in range(len(allDummyModelPipelines)):

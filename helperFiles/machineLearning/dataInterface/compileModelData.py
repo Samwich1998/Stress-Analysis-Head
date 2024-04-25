@@ -521,6 +521,7 @@ class compileModelData:
         self.modelMigration.replaceFinalModelFolder("_finalModels/storedModels/")
 
         if len(allDummyModelPipelines) == 0:
+            print(f"\nInitializing the models for {modelName}:", flush=True)
             # For each model we want.
             for metadataInd in range(len(datasetNames)):
                 datasetName = datasetNames[metadataInd]

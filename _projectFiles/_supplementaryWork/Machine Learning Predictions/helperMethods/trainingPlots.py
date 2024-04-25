@@ -114,7 +114,7 @@ class trainingPlots(globalPlottingProtocols):
         norm = LogNorm(vmin=cmapBounds[0], vmax=cmapBounds[1]) if useLogNorm else Normalize(vmin=cmapBounds[0], vmax=cmapBounds[1])
 
         # Plot the heatmap
-        heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='bicubic', norm=norm, vmin=cmapBounds[0], vmax=cmapBounds[1])
+        heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='bicubic', norm=norm)
 
         # Set the title if provided
         if title: ax.set_title(title)

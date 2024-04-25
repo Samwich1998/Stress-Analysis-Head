@@ -220,7 +220,7 @@ class emotionPipeline:
                     # Train the signal encoder
                     if submodel == "signalEncoder":
                         # Augment the signals to train an arbitrary sequence length and order.
-                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=512, alteredDim=1)
+                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=300, alteredDim=1)
                         initialSignalData, augmentedSignalData = self.dataInterface.changeSignalLength(model.timeWindows[0], signalDatas=(initialSignalData, augmentedSignalData))
                         print("Input size:", augmentedSignalData.size())
 

@@ -38,6 +38,9 @@ class signalEncoderPlots(trainingPlots):
         optimalLossHolders, trainingLossHolders, testingLossHolders = lossHolders
 
         # Prepare the data for plotting.
+        numLiftedChannelsLabels = [f"{numLiftedChannels}" for numLiftedChannels in range(numLiftedChannelBounds[0], numLiftedChannelBounds[1] + 1, numLiftedChannelBounds[2])], "Lifted Channels"
+        numExpandedSignalsLabels = [f"{numExpandedSignals}" for numExpandedSignals in range(numExpandedSignalBounds[0], numExpandedSignalBounds[1] + 1)], "Lifted Channels"
+        numEncodingLayersLabels = [f"{numEncodingLayers}" for numEncodingLayers in range(numEncodingLayerBounds[0], numEncodingLayerBounds[1] + 1)], "Encoding Layers"
         numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested = trainingLossHolders[0][0].shape
 
         # Plot the heatmaps for each combination of losses
@@ -52,14 +55,12 @@ class signalEncoderPlots(trainingPlots):
 
                     # Prepare the heatmap parameters.
                     saveFigurePath = os.path.join(self.heatmapFolder, f"TimeWindow_{time_window}_{dataset_name}_numLiftedChannels{numLiftedChannels}.pdf")
-                    column_labels = [f"{numExpandedSignals}" for numExpandedSignals in range(numExpandedSignalsTested)]
-                    row_labels = [f"{numEncodingLayers}" for numEncodingLayers in range(numEncodingLayersTested)]
                     title = f"{dataset_name} - Time Window: {time_window} - Lifted Channels: {numLiftedChannels}"
-                    columnLabel = "Expanded Signals"
-                    rowLabel = "Encoding Layers"
+                    column_labels, columnLabel = numExpandedSignalsLabels
+                    row_labels, rowLabel = numEncodingLayersLabels
 
                     # Plot the heatmap
-                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='icefire', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True)
+                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
 
                 # For each combination of losses, plot the heatmap
                 for numExpandedSignalsInd in range(numExpandedSignalsTested):
@@ -68,14 +69,12 @@ class signalEncoderPlots(trainingPlots):
 
                     # Prepare the heatmap parameters.
                     saveFigurePath = os.path.join(self.heatmapFolder, f"TimeWindow_{time_window}_{dataset_name}_numExpandedSignals{numExpandedSignals}.pdf")
-                    column_labels = [f"{numLiftedChannels}" for numLiftedChannels in range(numLiftedChannelsTested)]
-                    row_labels = [f"{numEncodingLayers}" for numEncodingLayers in range(numEncodingLayersTested)]
                     title = f"{dataset_name} - Time Window: {time_window} - numExpandedSignals: {numExpandedSignals}"
-                    columnLabel = "Lifted Channels"
-                    rowLabel = "Encoding Layers"
+                    column_labels, columnLabel = numLiftedChannelsLabels
+                    row_labels, rowLabel = numEncodingLayersLabels
 
                     # Plot the heatmap
-                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='icefire', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True)
+                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
 
                 # For each combination of losses, plot the heatmap
                 for numEncodingLayersInd in range(numEncodingLayersTested):
@@ -84,14 +83,12 @@ class signalEncoderPlots(trainingPlots):
 
                     # Prepare the heatmap parameters.
                     saveFigurePath = os.path.join(self.heatmapFolder, f"TimeWindow_{time_window}_{dataset_name}_numEncodingLayers{numEncodingLayers}.pdf")
-                    column_labels = [f"{numLiftedChannels}" for numLiftedChannels in range(numLiftedChannelsTested)]
-                    row_labels = [f"{numExpandedSignals}" for numExpandedSignals in range(numExpandedSignalsTested)]
                     title = f"{dataset_name} - Time Window: {time_window} - numEncodingLayers: {numEncodingLayers}"
-                    columnLabel = "Lifted Channels"
-                    rowLabel = "Expanded Signals"
+                    column_labels, columnLabel = numLiftedChannelsLabels
+                    row_labels, rowLabel = numExpandedSignalsLabels
 
                     # Plot the heatmap
-                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='icefire', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True)
+                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
 
     def getSignalEncoderLosses(self, finalTrainingDataString, numLiftedChannelBounds=(16, 64, 16), numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), lossStrings=[]):
         # Define the bounds for the number of expanded signals and encoding layers.

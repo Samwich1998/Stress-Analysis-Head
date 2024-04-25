@@ -93,7 +93,7 @@ class trainingPlots(globalPlottingProtocols):
 
         return finalLosses
 
-    def plot_heatmap(self, data, column_labels, row_labels, columnLabel, rowLabel, title=None, color_map='viridis', cbar_label="Value", useLogNorm=False, saveFigurePath=None):
+    def plot_heatmap(self, data, column_labels, row_labels, columnLabel, rowLabel, title=None, color_map='viridis', cbar_label="Value", useLogNorm=False, saveFigurePath=None, cmapBounds=[None, None]):
         """
         Plot a heatmap with given labels and title.
 
@@ -111,9 +111,9 @@ class trainingPlots(globalPlottingProtocols):
         fig, ax = plt.subplots(figsize=(10, 8))
 
         if useLogNorm:
-            heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='spline16', norm=LogNorm())
+            heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='spline16', norm=LogNorm(), vmin=cmapBounds[0], vmax=cmapBounds[1])
         else:
-            heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='spline16', norm=None)
+            heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='spline16', norm=None, vmin=cmapBounds[0], vmax=cmapBounds[1])
 
         # Set the title if provided
         if title: ax.set_title(title)

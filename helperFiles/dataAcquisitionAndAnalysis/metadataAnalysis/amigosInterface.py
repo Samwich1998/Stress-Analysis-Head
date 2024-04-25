@@ -52,12 +52,12 @@ class amigosInterface(globalMetaAnalysis):
         self.streamingOrder.extend(['ECG Right', 'ECG Left', 'GSR'])
 
         # Specify which ones we are keeping
-        self.streamingOrder_keeping = ["AF3", 'F7', 'F3', 'FC5', 'FC6', 'F4', 'F8', 'AF4', 'ECG Right', 'ECG Left', 'GSR']
+        self.streamingOrder_keeping = ["AF3", 'F7', 'F3', 'F4', 'F8', 'AF4', 'ECG Right', 'ECG Left', 'GSR']
 
         # Initialize the global meta protocol.
-        super().__init__(self.subjectFolders, self.surveyQuestions)  # Intiailize meta analysis.
+        super().__init__(self.subjectFolders, self.surveyQuestions)  # Initialize meta analysis.
 
-    def getData(self, showPlots):
+    def getData(self):
         # Initialize data holders.
         allExperimentalTimesAmigos = []
         allExperimentalNamesAmigos = []
@@ -70,7 +70,6 @@ class amigosInterface(globalMetaAnalysis):
         # Specify the metadata file locations.
         demographicFile = self.subjectFolders + "Metadata_xlsx/Participant_Questionnaires.xlsx"
         videoInfoFile = self.subjectFolders + "Metadata_xlsx/Experiment_Data.xlsx"
-        videoNamesFile = self.subjectFolders + "Metadata_xlsx/Video_List.xlsx"
 
         # Extract all the metadata information.
         subjectDemographicInfo = pd.read_excel(demographicFile)
@@ -217,13 +216,13 @@ class amigosInterface(globalMetaAnalysis):
 
         return videoNames, (np.asarray(allExperimentalNamesAmigos, dtype=float) - 1).astype(int)
 
-    @staticmethod
-    def getStreamingInfo():
+    def getStreamingInfo(self):
         # Specify EEG sensors.
-        streamingOrderAmigos = ['eeg'] * 8
-        biomarkerOrderAmigos = ['eeg'] * 8
-        filteringOrdersAmigos = [[None, None]] * 8  # Sampling Freq: 128 (Hz); Need 1/2 frequency at max.
-        featureAverageWindowsAmigos = [30] * 8  # ["EEG"]
+        numEEGSensors = len(self.streamingOrder_keeping) - 3  # Remove ECG and GSR
+        streamingOrderAmigos = ['eeg'] * numEEGSensors
+        biomarkerOrderAmigos = ['eeg'] * numEEGSensors
+        filteringOrdersAmigos = [[None, None]] * numEEGSensors  # Sampling Freq: 128 (Hz); Need 1/2 frequency at max.
+        featureAverageWindowsAmigos = [30] * numEEGSensors  # ["EEG"]
 
         # Specify other sensors.
         streamingOrderAmigos.extend(['ecg', 'ecg', 'eda'])
@@ -251,7 +250,7 @@ if __name__ == "__main__":
     if analyzingData:
         # Extract the metadata
         allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, \
-            allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo = amigosAnalysisClass.getData(showPlots=False)
+            allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo = amigosAnalysisClass.getData()
         # Compile the data: specific to the device worn.
         streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = amigosAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features

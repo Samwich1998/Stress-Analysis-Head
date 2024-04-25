@@ -1,14 +1,10 @@
 # General
-from itertools import combinations
-
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 import numpy as np
 import os
 
 # Import files for machine learning
 from .trainingPlots import trainingPlots
-from scipy.ndimage import uniform_filter1d
 
 
 class signalEncoderPlots(trainingPlots):
@@ -39,7 +35,7 @@ class signalEncoderPlots(trainingPlots):
 
         # Prepare the data for plotting.
         numLiftedChannelsLabels = [numLiftedChannels for numLiftedChannels in range(numLiftedChannelBounds[0], numLiftedChannelBounds[1] + 1, numLiftedChannelBounds[2])], "Lifted Channels"
-        numExpandedSignalsLabels = [numExpandedSignals for numExpandedSignals in range(numExpandedSignalBounds[0], numExpandedSignalBounds[1] + 1)], "Lifted Channels"
+        numExpandedSignalsLabels = [numExpandedSignals for numExpandedSignals in range(numExpandedSignalBounds[0], numExpandedSignalBounds[1] + 1)], "Expanded Signals"
         numEncodingLayersLabels = [numEncodingLayers for numEncodingLayers in range(numEncodingLayerBounds[0], numEncodingLayerBounds[1] + 1)], "Encoding Layers"
         numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested = trainingLossHolders[0][0].shape
 
@@ -60,7 +56,7 @@ class signalEncoderPlots(trainingPlots):
                     row_labels, rowLabel = numEncodingLayersLabels
 
                     # Plot the heatmap
-                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
+                    self.plot_heatmap(accuracy.T, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
 
                 # For each combination of losses, plot the heatmap
                 for numExpandedSignalsInd in range(numExpandedSignalsTested):
@@ -74,7 +70,7 @@ class signalEncoderPlots(trainingPlots):
                     row_labels, rowLabel = numEncodingLayersLabels
 
                     # Plot the heatmap
-                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
+                    self.plot_heatmap(accuracy.T, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
 
                 # For each combination of losses, plot the heatmap
                 for numEncodingLayersInd in range(numEncodingLayersTested):
@@ -88,7 +84,7 @@ class signalEncoderPlots(trainingPlots):
                     row_labels, rowLabel = numExpandedSignalsLabels
 
                     # Plot the heatmap
-                    self.plot_heatmap(accuracy, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
+                    self.plot_heatmap(accuracy.T, column_labels, row_labels, columnLabel, rowLabel, title=title, color_map='coolwarm', cbar_label='Accuracy', saveFigurePath=saveFigurePath, useLogNorm=True, cmapBounds=[1E-2, 1])
 
     def getSignalEncoderLosses(self, finalTrainingDataString, numLiftedChannelBounds=(16, 64, 16), numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), lossStrings=[]):
         # Define the bounds for the number of expanded signals and encoding layers.

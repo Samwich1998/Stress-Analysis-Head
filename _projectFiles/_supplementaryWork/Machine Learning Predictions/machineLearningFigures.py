@@ -39,6 +39,9 @@ if __name__ == "__main__":
 
     # Heatmap num Expanded Signals by numEncoding Layers
     signalEncoderPlots.signalEncoderParamHeatmap(numExpandedSignalBounds, numEncodingLayerBounds, numLiftedChannelBounds, finalSignalEncoderTrainingDataString)
+
+
+
     # signalEncoderPlots.signalEncoderLossComparison(numExpandedSignalBounds, numEncodingLayerBounds, numLiftedChannelBounds, finalSignalEncoderTrainingDataString, plotTitle="Signal Encoder Loss Comparison")
 
     # Plot the loss comparisons over time.

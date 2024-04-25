@@ -123,7 +123,7 @@ class compileModelData:
     def getBatchSize(self, submodel, metaDatasetName):
         # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals.
         # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 292 signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 232 signals.
         # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals.
         # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals.
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
@@ -163,7 +163,7 @@ class compileModelData:
     def getMaxBatchSize(self, submodel, numSignals):
         # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals. 2.28125 times smaller than the largest signals.
         # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals. 2.949 times smaller than the largest signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 292 signals. 1.0 times smaller than the largest signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 232 signals. 1.0 times smaller than the largest signals.
         # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals. 7.1219 times smaller than the largest signals.
         # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals. 3.356 times smaller than the largest signals.
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.5956 times smaller than the largest signals.
@@ -177,7 +177,7 @@ class compileModelData:
         else:
             raise Exception()
 
-        maxNumSignals = 292
+        maxNumSignals = 232
         # Adjust the batch size based on the number of signals used.
         return int(minimumBatchSize * maxNumSignals / numSignals)
 

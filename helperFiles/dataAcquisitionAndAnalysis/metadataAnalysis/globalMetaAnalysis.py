@@ -1,9 +1,8 @@
-
 # General Modules
 import os
-import sys
 import itertools
 import numpy as np
+import concurrent.futures
 
 # Import interface for extracting feature names
 from ...machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames  # Import Files for extracting feature names
@@ -40,52 +39,83 @@ class globalMetaAnalysis(handlingExcelFormat):
 
     def extractFeatures(self, allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
                         streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType="emognition", reanalyzeData=False, showPlots=True):
-        # For each EMOGNITION subject.
-        for subjectInd in range(len(subjectOrder)):
-            # Extract the data from the subject.
-            subjectName = subjectOrder[subjectInd]
-            contextualInfo = allContextualInfo[subjectInd]
-            experimentTimes = allExperimentalTimes[subjectInd]
-            experimentNames = allExperimentalNames[subjectInd]
-            compiledData_eachFreq = allCompiledDatas[subjectInd]
-            currentSurveyAnswerTimes = allSurveyAnswerTimes[subjectInd]
-            currentSurveyAnswersList = allSurveyAnswersList[subjectInd]
-            print(f"\nPreparing to stream {interfaceType} subject:", subjectName)
+        # Prepare the data for each subject for parallel processing
+        subjects_data = [
+            (
+                subjectOrder[i],
+                allCompiledDatas[i],
+                allExperimentalTimes[i],
+                allExperimentalNames[i],
+                allSurveyAnswerTimes[i],
+                allSurveyAnswersList[i],
+                allContextualInfo[i],
+                streamingOrder,
+                biomarkerOrder,
+                featureAverageWindows,
+                filteringOrders,
+                interfaceType,
+                reanalyzeData,
+                showPlots
+            ) for i in range(len(subjectOrder))
+        ]
 
-            # if subjectInd < int(len(subjectOrder) * 0.9): continue
+        # Use ProcessPoolExecutor to process each subject in parallel
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            executor.map(self.processFeatures, subjects_data)
 
-            allFeatureAverageWindows = [];
-            signalPointer = 0
-            allStreamingOrders = [];
-            allBiomarkerOrders = []
-            allFilteringOrders = [];
-            biomarkerFeatureNames = []
-            # Recompile considering the segmentation of the features.
-            for segmentationInd in range(len(compiledData_eachFreq)):
-                numSignals = len(compiledData_eachFreq[segmentationInd][1])
+    def processFeatures(self, subject_data):
+        # Unpack data
+        (
+            subjectName,
+            compiledData_eachFreq,
+            experimentTimes,
+            experimentNames,
+            currentSurveyAnswerTimes,
+            currentSurveyAnswersList,
+            contextualInfo,
+            streamingOrder,
+            biomarkerOrder,
+            featureAverageWindows,
+            filteringOrders,
+            interfaceType,
+            reanalyzeData,
+            showPlots
+        ) = subject_data
 
-                # Seperate out the relevant signals
-                currentStreamingOrder = streamingOrder[signalPointer:signalPointer + numSignals]
-                currentBiomarkerOrder = biomarkerOrder[signalPointer:signalPointer + numSignals]
-                currentFilteringOrders = filteringOrders[signalPointer:signalPointer + numSignals]
-                currentFeatureAverageWindows = featureAverageWindows[signalPointer:signalPointer + numSignals]
+        # Organize the data for streaming.
+        allFeatureAverageWindows = []
+        biomarkerFeatureNames = []
+        allStreamingOrders = []
+        allBiomarkerOrders = []
+        allFilteringOrders = []
+        signalPointer = 0
 
-                # Organize the biomarker order
-                currentFeatureNames, currentBiomarkerFeatureNames, currentBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(currentBiomarkerOrder)
+        # Recompile considering the segmentation of the features.
+        for segmentationInd in range(len(compiledData_eachFreq)):
+            numSignals = len(compiledData_eachFreq[segmentationInd][1])
 
-                # Organize the segmentation block
-                allStreamingOrders.append(currentStreamingOrder)
-                allBiomarkerOrders.append(currentBiomarkerOrder)
-                allFilteringOrders.append(currentFilteringOrders)
-                biomarkerFeatureNames.extend(currentBiomarkerFeatureNames)
-                allFeatureAverageWindows.append(currentFeatureAverageWindows)
+            # Separate out the relevant signals
+            currentStreamingOrder = streamingOrder[signalPointer:signalPointer + numSignals]
+            currentBiomarkerOrder = biomarkerOrder[signalPointer:signalPointer + numSignals]
+            currentFilteringOrders = filteringOrders[signalPointer:signalPointer + numSignals]
+            currentFeatureAverageWindows = featureAverageWindows[signalPointer:signalPointer + numSignals]
 
-                # Reset for the next round
-                signalPointer += numSignals
+            # Organize the biomarker order
+            currentFeatureNames, currentBiomarkerFeatureNames, currentBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(currentBiomarkerOrder)
 
-            # Stream the data.
-            self.streamData(subjectName, allStreamingOrders, allBiomarkerOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
-                            experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, biomarkerFeatureNames, reanalyzeData, showPlots=showPlots)
+            # Organize the segmentation block
+            allStreamingOrders.append(currentStreamingOrder)
+            allBiomarkerOrders.append(currentBiomarkerOrder)
+            allFilteringOrders.append(currentFilteringOrders)
+            biomarkerFeatureNames.extend(currentBiomarkerFeatureNames)
+            allFeatureAverageWindows.append(currentFeatureAverageWindows)
+
+            # Reset for the next round
+            signalPointer += numSignals
+
+        # Stream the data.
+        self.streamData(subjectName, allStreamingOrders, allBiomarkerOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
+                        experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, biomarkerFeatureNames, reanalyzeData, showPlots=showPlots)
 
     def streamData(self, subjectName, allStreamingOrders, allBiomarkerOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
                    experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, biomarkerFeatureNames, reanalyzeData=False, showPlots=False):
@@ -154,7 +184,8 @@ class globalMetaAnalysis(handlingExcelFormat):
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
  \
-    # ---------------------------------------------------------------------- #
+            # ---------------------------------------------------------------------- #
+
     # --------------------------- General Methods -------------------------- #
 
     def resampleSignal(self, timePoints, signalData, newSamplingFreq):

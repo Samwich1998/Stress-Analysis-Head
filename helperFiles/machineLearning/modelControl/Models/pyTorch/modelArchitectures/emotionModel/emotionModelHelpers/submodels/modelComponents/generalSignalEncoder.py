@@ -27,7 +27,7 @@ class signalEncoderBase(signalEncoderHelpers):
         numEncodedSignals = encodedData.size(1)
 
         # If we are training, add noise to the final state to ensure continuity of the latent space.
-        noisyEncodedData = self.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.001)
+        noisyEncodedData = self.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.01)
 
         # Calculate the number of active signals in each path.
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
@@ -51,7 +51,7 @@ class signalEncoderBase(signalEncoderHelpers):
         layerLoss = self.calculateEncodingLoss(originalData, encodedData, trainingFlag)
 
         # If the loss is significant, add it to the total loss.
-        signalEncodingLayerLoss = 1.1*signalEncodingLayerLoss + 10*layerLoss
+        signalEncodingLayerLoss = 1.1*signalEncodingLayerLoss + layerLoss
 
         return signalEncodingLayerLoss
 

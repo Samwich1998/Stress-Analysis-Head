@@ -219,8 +219,11 @@ class emotionPipeline:
 
                     # Train the signal encoder
                     if submodel == "signalEncoder":
+                        # Randomly choose if we are going to use an inflated number of signals.
+                        maxNumSignals = random.choices(population=[model.maxNumSignals, 300], weights=[0.6, 0.4], k=1)[0]
+
                         # Augment the signals to train an arbitrary sequence length and order.
-                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=300, alteredDim=1)
+                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=maxNumSignals, alteredDim=1)
                         initialSignalData, augmentedSignalData = self.dataInterface.changeSignalLength(model.timeWindows[0], signalDatas=(initialSignalData, augmentedSignalData))
                         print("Input size:", augmentedSignalData.size())
 
@@ -252,7 +255,7 @@ class emotionPipeline:
                         if 0.25 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.01 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.5*signalEncodingTrainingLayerLoss
+                            finalLoss = finalLoss + 0.75*signalEncodingTrainingLayerLoss
                         if 0.25 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         finalLoss = compressionFactor * noisePercentage * finalLoss

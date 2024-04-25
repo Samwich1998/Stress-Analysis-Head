@@ -43,22 +43,29 @@ class emotionDataInterface:
 
         return augmentedSignalDatas
 
-    def changeNumSignals(self, signalDatas, finalValue, alteredDim=-1):
+    def changeNumSignals(self, signalDatas, minNumSignals, maxNumSignals, alteredDim=1):
         # Assuming signalData is your tensor with dimensions [batchSize, numSignals, sequenceLength]
         assert all(signalDatas[0].shape == signalDatas[i].shape for i in range(len(signalDatas)))
-        maxValue = signalDatas[0].size(alteredDim)
-        minValue = max(finalValue+1, int(maxValue/3))
+        numSignals = signalDatas[0].size(alteredDim)
+        minValue = max(minNumSignals+1, int(numSignals/3))
+
+        # Expand the number of signals.
+        repeat_times = (maxNumSignals + numSignals - 1) // numSignals  # Calculate the number of times we need to repeat the tensor
+        signalDatas = [signalData.repeat_interleave(repeat_times, dim=alteredDim)[:, 0:maxNumSignals, :] for signalData in signalDatas]  # Repeat the tensor along the second dimension
+        print(signalDatas[0].shape)
 
         # Shuffle the signals to ensure that we are not always removing the same signals.
         signalDatas = self.shuffleDimension(signalDatas)
 
         # Find a random place to cut the data.
-        randomEnd = torch.tensor(generalMethods.biased_high_sample(minValue, maxValue, randomValue=random.uniform(0, 1)), dtype=torch.int32).item()
+        randomEnd = torch.tensor(generalMethods.biased_high_sample(minValue, maxNumSignals, randomValue=random.uniform(0, 1)), dtype=torch.int32).item()
 
-        # Slice all the data at the same index
-        augmentedSignalDatas = (self.getRecentSignals(signalData, randomEnd) for signalData in signalDatas)
+        finalDatas = []
+        for signalData in signalDatas:
+            # Slice all the data at the same index
+            finalDatas.append(self.getRecentSignals(signalData, randomEnd))
 
-        return augmentedSignalDatas
+        return finalDatas
 
     @staticmethod
     def getRecentSignalPoints(signalData, finalLength):

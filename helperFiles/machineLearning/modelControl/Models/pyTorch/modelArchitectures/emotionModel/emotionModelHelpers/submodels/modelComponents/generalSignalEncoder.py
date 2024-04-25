@@ -50,9 +50,8 @@ class signalEncoderBase(signalEncoderHelpers):
         # Keep tracking of the loss through each loop.
         layerLoss = self.calculateEncodingLoss(originalData, encodedData, trainingFlag)
 
-        if 0.001 < layerLoss.mean():
-            # If the loss is significant, add it to the total loss.
-            signalEncodingLayerLoss = signalEncodingLayerLoss + layerLoss
+        # If the loss is significant, add it to the total loss.
+        signalEncodingLayerLoss = signalEncodingLayerLoss + layerLoss
 
         return signalEncodingLayerLoss
 

@@ -19,14 +19,15 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
         self.numOutputSignals = numOutputSignals  # Number of output signals.
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
+        self.numLayers = numLayers  # The number of layers to learn the encoding. I think this should be 1.
         self.wavelet = wavelet  # The wavelet to use for the decomposition.
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
-
-        self.numLayers = numLayers  # The number of layers to learn the encoding.
 
         # Verify that the number of decomposition layers is appropriate.
         maximumNumDecompositions = math.floor(math.log(self.sequenceBounds[0]) / math.log(2))  # The sequence length can be up to 2**numDecompositions.
         assert self.numDecompositions < maximumNumDecompositions, f'The number of decompositions must be less than {maximumNumDecompositions}.'
+        # Assert that the number of layers is appropriate.
+        assert self.numLayers == 1, 'The number of layers should be 1. If you think otherwise, you should add an activation in the wavelet domain ... which could be fine.'
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)

@@ -24,11 +24,10 @@ if __name__ == "__main__":
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
 
     # Testing parameters.
-    numExpandedSignalBounds = (2, 5)   # Boundary inclusive
-    numEncodingLayerBounds = (0, 6)   # Boundary inclusive
-    numLiftedChannels = [16, 32, 48, 64]
+    numLiftedChannelBounds = (16, 64, 16)  # Boundary inclusive
+    numExpandedSignalBounds = (2, 5)    # Boundary inclusive
+    numEncodingLayerBounds = (0, 6)     # Boundary inclusive
 
-    # ---------------------------------------------------------------------- #
     # --------------------------- Figure Plotting -------------------------- #
 
     # Initialize plotting classes.
@@ -36,10 +35,11 @@ if __name__ == "__main__":
     signalEncoderPlots = signalEncoderPlots(modelName, datasetNames, sharedModelWeights, savingBaseFolder=saveFolder, accelerator=accelerate.Accelerator(cpu=True))
 
     # Define extra parameters for the plotting protocols.
-    finalSignalEncoderTrainingDataString = "2024-04-24 final signalEncoder on HPC-GPU at numLiftedChannels ZZ at numExpandedSignals XX at numEncodingLayers YY"
+    finalSignalEncoderTrainingDataString = "2024-04-24 final signalEncoder on HPC-GPU at numLiftedChannels XX at numExpandedSignals YY at numEncodingLayers ZZ"
+
     # Heatmap num Expanded Signals by numEncoding Layers
-    #signalEncoderPlots.signalEncoderParamHeatmap(numExpandedSignalBounds, numEncodingLayerBounds, numLiftedChannels, finalSignalEncoderTrainingDataString, plotTitle="Signal Encoder Heatmap")
-    signalEncoderPlots.signalEncoderLossComparison(numExpandedSignalBounds, numEncodingLayerBounds, numLiftedChannels, finalSignalEncoderTrainingDataString, plotTitle="Signal Encoder Loss Comparison")
+    signalEncoderPlots.signalEncoderParamHeatmap(numExpandedSignalBounds, numEncodingLayerBounds, numLiftedChannelBounds, finalSignalEncoderTrainingDataString)
+    # signalEncoderPlots.signalEncoderLossComparison(numExpandedSignalBounds, numEncodingLayerBounds, numLiftedChannelBounds, finalSignalEncoderTrainingDataString, plotTitle="Signal Encoder Loss Comparison")
 
     # Plot the loss comparisons over time.
     # plottingProtocols.timeLossComparison(allModelPipelines, metaLearnedInfo, userInputParams, plotTitle="Auto Encoder Loss Plots")
@@ -49,5 +49,3 @@ if __name__ == "__main__":
 
     # Plot the loss comparisons
     # plottingProtocols.autoencoderLossComparison(allMetaModelPipelines, metaLearnedInfo, modelComparisonInfo, comparingModelInd=0, plotTitle="Autoencoder Loss Plots")
-
-# -------------------------------------------------------------------------- #

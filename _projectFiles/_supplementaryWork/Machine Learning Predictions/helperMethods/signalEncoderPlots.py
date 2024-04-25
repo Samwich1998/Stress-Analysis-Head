@@ -1,4 +1,6 @@
 # General
+from itertools import combinations
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
@@ -11,11 +13,15 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 
+
 class signalEncoderPlots(trainingPlots):
     def __init__(self, modelName, datasetNames, sharedModelWeights, savingBaseFolder, accelerator=None):
         super(signalEncoderPlots, self).__init__(modelName, datasetNames, sharedModelWeights, savingBaseFolder, accelerator)
         # General parameters
-        self.savingFolder = savingBaseFolder + "signalEncoderPlots/"    # The folder to save the figures
+        self.savingFolder = savingBaseFolder + "signalEncoderPlots/"  # The folder to save the figures
+
+        # Define saving folder locations.
+        self.heatmapFolder = self.savingFolder + "heatmapParamsPlots/"
 
         self.lossColors = [
             '#3498db',  # Blue shades
@@ -33,14 +39,10 @@ class signalEncoderPlots(trainingPlots):
 
     @staticmethod
     def getSmoothedLosses(current_losses, window_length=5):
-
         # Check if the current time window has enough epochs to apply the filter.
         if len(current_losses) >= window_length:
             # Apply a moving average filter to the losses.
-            smoothed_losses = uniform_filter1d(current_losses, size=window_length)
-        elif len(current_losses) == 0:
-            # If no epochs, use -1 as the smoothed loss.
-            smoothed_losses = 1
+            smoothed_losses = uniform_filter1d(current_losses, size=window_length, output=np.float64)
         else:
             # If not enough epochs, use the original losses as smoothed losses.
             smoothed_losses = current_losses
@@ -48,20 +50,18 @@ class signalEncoderPlots(trainingPlots):
         return smoothed_losses
 
     def getSmoothedFinalLosses(self, losses, window_length=5):
-        # Convert the input list to a numpy array if not already.
-        losses = np.asarray(losses)  # Expected dimension: (numTimeWindows, numEpochs)
-
+        """ Expected format: (numTimeWindows, numEpochs) """
         # Initialize an array to store the minimum loss for each time window.
-        min_losses = np.zeros(losses.shape[0])
+        finalLosses = np.zeros(len(losses))
 
         # Iterate over each time window.
-        for i in range(losses.shape[0]):
-            smoothedLosses = self.getSmoothedLosses(losses[i, :], window_length=window_length)
+        for i in range(finalLosses.shape[0]):
+            smoothedLosses = self.getSmoothedLosses(losses[i], window_length=window_length)
 
             # Find the minimum loss in the smoothed losses for the current time window.
-            min_losses[i] = np.min(smoothedLosses)
+            finalLosses[i] = np.min(smoothedLosses)
 
-        return min_losses
+        return finalLosses
 
     def signalCompressionAnalysis(self, finalTrainingDataString, plotTitle="Signal Compression Analysis"):
         print(f"\nPlotting the {plotTitle} Information")
@@ -73,16 +73,15 @@ class signalEncoderPlots(trainingPlots):
                                                                                loadSubmodelDate=finalTrainingDataString,
                                                                                loadSubmodelEpochs=-1,
                                                                                allDummyModelPipelines=[])
-        models = self.modelMigration.loadModels(allDummyModelPipelines, loadSubmodel="signalEncoder",loadSubmodelDate=finalTrainingDataString, loadSubmodelEpochs=-1,
-                                       metaTraining=True, loadModelAttributes=True, loadModelWeights=True)
-
-
+        models = self.modelMigration.loadModels(allDummyModelPipelines, loadSubmodel="signalEncoder", loadSubmodelDate=finalTrainingDataString, loadSubmodelEpochs=-1,
+                                                metaTraining=True, loadModelAttributes=True, loadModelWeights=True)
 
         # Initialize saving folder
         saveAutoencoderLossPlots = self.savingFolder + "/SignalCompression Plots/"
         os.makedirs(saveAutoencoderLossPlots, exist_ok=True)
 
-    def signalEncoderLossComparison(self, numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), numLiftedChannels=[], finalTrainingDataString="2024-04-08 Final signalEncoder on HPC-GPU at numExpandedSignals XX at numEncodingLayers YY", plotTitle="Signal Encoder Loss Plots"):
+    def signalEncoderLossComparison(self, numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), numLiftedChannels=[],
+                                    finalTrainingDataString="2024-04-08 Final signalEncoder on HPC-GPU at numExpandedSignals XX at numEncodingLayers YY", plotTitle="Signal Encoder Loss Plots"):
         saveEncoderLossPlots = self.savingFolder + "signalEncoderLossPlots/"
         os.makedirs(saveEncoderLossPlots, exist_ok=True)
         print(f"\nPlotting the {saveEncoderLossPlots}")
@@ -142,15 +141,9 @@ class signalEncoderPlots(trainingPlots):
                             smoothedLossCurves[timeWindowInd, modelInd] = [smoothedTrainLoss, smoothedTestLoss]
 
                         # Get the losses.
-                        optimalLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd,
-                        numEncodingLayerInd] = self.getSmoothedFinalLosses(
-                            currentModel.trainingLosses_timeReconstructionSVDAnalysis)
-                        trainingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd,
-                        numEncodingLayerInd] = self.getSmoothedFinalLosses(
-                            currentModel.trainingLosses_timeReconstructionAnalysis)
-                        testingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd,
-                        numEncodingLayerInd] = self.getSmoothedFinalLosses(
-                            currentModel.testingLosses_timeReconstructionAnalysis)
+                        optimalLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionSVDAnalysis)
+                        trainingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionAnalysis)
+                        testingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.testingLosses_timeReconstructionAnalysis)
 
                         # Plot the loss curves for each model
                         print(lossCurves[:, modelInd][0].shape)
@@ -240,89 +233,86 @@ class signalEncoderPlots(trainingPlots):
             plt.savefig(f"{saveEncoderLossPlots}Best Reconstruction Loss Comparison.pdf", format="pdf")
         plt.show()
 
+    def signalEncoderParamHeatmap(self, numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), numLiftedChannelBounds=(16, 64, 16),
+                                  finalTrainingDataString="2024-04-21 numLiftedChannels ZZ at numExpandedSignals XX at numEncodingLayers YY"):
+        print("\nPlotting the signal encoder heatmaps")
+        os.makedirs(self.heatmapFolder, exist_ok=True)
 
+        # Get the losses for the signal encoder
+        lossStrings = ["trainingLosses_timeReconstructionSVDAnalysis", "trainingLosses_timeReconstructionAnalysis", "testingLosses_timeReconstructionAnalysis"]
+        lossHolders = self.getSignalEncoderLosses(finalTrainingDataString, numLiftedChannelBounds=numLiftedChannelBounds, numExpandedSignalBounds=numExpandedSignalBounds, numEncodingLayerBounds=numEncodingLayerBounds, lossStrings=lossStrings)
+        # Dimension: (len(lossStrings), numTimeWindows, numDatasets, numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested)
+        optimalLossHolders, trainingLossHolders, testingLossHolders = lossHolders
 
-    def signalEncoderParamHeatmap(self, numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), numLiftedChannels=[], finalTrainingDataString="2024-04-21 final signalEncoder on HPC-GPU at numLiftedChannels ZZ at numExpandedSignals XX at numEncodingLayers YY", plotTitle="Signal Encoder Heatmap"):
-        saveEncoderLossPlots = self.savingFolder + "heatmapParamsPlots/"
-        os.makedirs(saveEncoderLossPlots, exist_ok=True)
-        print(f"\nPlotting the {saveEncoderLossPlots}")
-        allDummyModelPipelines = []
-        
+        # Get a combination of each loss type
+        combinationLosses = list(combinations(range(2, 5), 2))
+        # SVD: 2; Training: 3; Testing: 4
+
+        # Plot the heatmaps for each combination of losses
+        for time_index, time_window in enumerate(self.timeWindows):
+            for param_pair in combinationLosses:
+                fig, axs = plt.subplots(nrows=1, ncols=len(self.datasetNames), figsize=(15, 5))
+                fig.suptitle(f"Accuracy Heatmaps for Time Window: {time_window}")
+
+                heatmap = None
+                for dataset_index, dataset_name in enumerate(self.datasetNames):
+                    ax = axs[dataset_index]
+                    data = trainingLossHolders[time_index, dataset_index, :, :, :]
+
+                    heatmap = ax.imshow(data[param_pair[0], param_pair[1]].T, cmap='viridis', aspect='auto')
+
+                    ax.set_title(f'{dataset_name}')
+                    ax.set_xlabel(["Lifted Channels", "Expanded Signals", "Encoding Layers"][param_pair[0]])
+                    ax.set_ylabel(["Lifted Channels", "Expanded Signals", "Encoding Layers"][param_pair[1]])
+                    ax.set_xticks(np.arange(data.shape[param_pair[0]]))
+                    ax.set_yticks(np.arange(data.shape[param_pair[1]]))
+
+                plt.colorbar(heatmap, ax=axs[:], orientation='vertical', fraction=0.015)
+                plt.subplots_adjust(hspace=0.5, wspace=0.5)
+
+                if self.savingFolder:
+                    save_path = os.path.join(self.savingFolder, f"TimeWindow_{time_window}_{param_pair[0]}_{param_pair[1]}.pdf")
+                    plt.savefig(save_path, format='pdf', dpi=300)
+                plt.show()
+
+    def getSignalEncoderLosses(self, finalTrainingDataString, numLiftedChannelBounds=(16, 64, 16), numExpandedSignalBounds=(2, 10), numEncodingLayerBounds=(0, 12), lossStrings=[]):
         # Define the bounds for the number of expanded signals and encoding layers.
+        numLiftedChannelsTested = (numLiftedChannelBounds[1] - numLiftedChannelBounds[0]) // numLiftedChannelBounds[2] + 1  # Boundary inclusive
         numExpandedSignalsTested = numExpandedSignalBounds[1] - numExpandedSignalBounds[0] + 1  # Boundary inclusive
-        numEncodingLayersTested = numEncodingLayerBounds[1] - numEncodingLayerBounds[0] + 1     # Boundary inclusive
-        numLiftedChannelsTestbed = numLiftedChannels
+        numEncodingLayersTested = numEncodingLayerBounds[1] - numEncodingLayerBounds[0] + 1  # Boundary inclusive
 
-        # Initialize the holders.
-        trainingLossHolders = np.zeros((len(self.timeWindows), len(self.datasetNames), len(numLiftedChannelsTestbed), numExpandedSignalsTested, numEncodingLayersTested))
-        testingLossHolders = np.zeros((len(self.timeWindows), len(self.datasetNames), len(numLiftedChannelsTestbed), numExpandedSignalsTested, numEncodingLayersTested))
-        optimalLossHolders = np.zeros((len(self.timeWindows), len(self.datasetNames), len(numLiftedChannelsTestbed), numExpandedSignalsTested, numEncodingLayersTested))
-        # Dimension: (numTimeWindows, numDatasets, numExpandedSignalsTested, numEncodingLayersTested)
+        lossHolders = []
+        for _ in lossStrings:
+            # Initialize the holders.
+            lossHolders.append(np.zeros((len(self.timeWindows), len(self.datasetNames), numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested)))
+            # Dimension: (len(lossStrings), numTimeWindows, numDatasets, numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested)
 
-        # For each parameter value.
-        for numLiftedChannelInd in range(len(numLiftedChannelsTestbed)):
-            numLiftedChannels = numLiftedChannelsTestbed[numLiftedChannelInd]
+        allDummyModelPipelines = []
+        # For each lifted channel value.
+        for numLiftedChannelInd in range(numLiftedChannelsTested):
+            numLiftedChannels = numLiftedChannelBounds[0] + numLiftedChannelInd * numLiftedChannelBounds[2]
+
+            # For each expanded signal value.
             for numExpandedSignalInd in range(numExpandedSignalsTested):
                 numExpandedSignals = numExpandedSignalBounds[0] + numExpandedSignalInd
 
-                # For each parameter value.
+                # For each encoding layer value.
                 for numEncodingLayerInd in range(numEncodingLayersTested):
                     numEncodingLayers = numEncodingLayerBounds[0] + numEncodingLayerInd
 
                     # Load in the previous model attributes.
-                    loadSubmodelDate = finalTrainingDataString.replace("XX", str(numExpandedSignals)).replace("YY", str(numEncodingLayers)).replace("ZZ", str(numLiftedChannels))
-                    allDummyModelPipelines = self.modelCompiler.onlyPreloadModelAttributes(self.modelName, self.datasetNames, loadSubmodel="signalEncoder", loadSubmodelDate=loadSubmodelDate, loadSubmodelEpochs=-1, allDummyModelPipelines=allDummyModelPipelines)
-                    print(numLiftedChannels, numExpandedSignals, numEncodingLayers)
+                    loadSubmodelDate = finalTrainingDataString.replace("XX", str(numLiftedChannels)).replace("YY", str(numExpandedSignals)).replace("ZZ", str(numEncodingLayers))
+                    allDummyModelPipelines = self.modelCompiler.onlyPreloadModelAttributes(self.modelName, self.datasetNames, loadSubmodel="signalEncoder", loadSubmodelDate=loadSubmodelDate, loadSubmodelEpochs=-1,
+                                                                                           allDummyModelPipelines=allDummyModelPipelines)
 
                     # For each model, get the losses.
                     for modelInd in range(len(allDummyModelPipelines)):
                         currentModel = self.getSubmodel(allDummyModelPipelines[modelInd], submodel="signalEncoder")
+                        assert self.timeWindows == currentModel.timeWindows, f"Time windows do not match: {self.timeWindows} != {currentModel.timeWindows}"
 
-                        # Get the losses.
-                        optimalLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionSVDAnalysis)
-                        trainingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionAnalysis)
-                        testingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.testingLosses_timeReconstructionAnalysis)
+                        # For each loss value we want:
+                        for lossInd, lossString in enumerate(lossStrings):
+                            lossValues = getattr(currentModel, lossString)
+                            lossHolders[lossInd][:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(lossValues)
 
-        # Parameters for the plots
-        x_labels = range(numExpandedSignalBounds[0], numExpandedSignalBounds[1] + 1)
-        y_labels = range(numEncodingLayerBounds[0], numEncodingLayerBounds[1] + 1)
-
-        # Loop through each time window
-        for time_index, time_window in enumerate(self.timeWindows):
-            # Create subplots with shared x and y axes and a more appropriate size
-            fig = plt.figure(figsize=(15, len(self.datasetNames) * 4))
-            fig.suptitle(f"Loss Curves for Time Window: {time_window}")
-            cmap = plt.get_cmap('viridis')
-            # Assuming all data holders share the same min and max, for a shared colorbar
-            vmax = max(np.amax(trainingLossHolders), np.amax(testingLossHolders))
-
-            # Plot 3D heatmaps
-            for datasetInd, datasetName in enumerate(self.datasetNames):
-                print(datasetName)
-                for i, data_holder in enumerate([trainingLossHolders, testingLossHolders]):
-                    ax = fig.add_subplot(len(self.datasetNames), 2, datasetInd * 2 + i + 1, projection='3d')
-                    # ax = axs[datasetInd, i]
-                    curr_data = data_holder[time_index, datasetInd, :, :, :]
-                    print(curr_data)
-                    X, Y, Z = np.meshgrid(x_labels, y_labels, numLiftedChannelsTestbed)
-
-                    # Flatten the arrays for scatter plotting
-                    sc = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=curr_data.flatten(), cmap=cmap,
-                                    norm=LogNorm(vmin=1E-3, vmax=vmax))
-                    ax.set_title(f'{datasetName} {["Training Loss", "Testing Loss"][i]}')
-                    ax.set_xlabel("No. of Expanded Signals")
-                    ax.set_ylabel("No. of Encoding Layers")
-                    ax.set_zlabel("No. of Lifted Channels")
-
-            # Add a shared colorbar
-            cbar_ax = fig.add_axes([0.93, 0.15, 0.02, 0.7])  # x, y, width, height
-            mappable = ScalarMappable(norm=LogNorm(vmin=1E-3, vmax=vmax), cmap=cmap)
-            fig.colorbar(mappable, cax=cbar_ax, orientation='vertical')
-
-            plt.subplots_adjust(hspace=0.5, wspace=0.5)
-
-            if self.savingFolder:
-                print('saving to', saveEncoderLossPlots)
-                # Save with a high DPI for better resolution
-                plt.savefig(f"{saveEncoderLossPlots}TimeWindow_{time_window}.pdf", format="pdf")
-            plt.show()
+        return lossHolders

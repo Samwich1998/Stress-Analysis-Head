@@ -221,6 +221,7 @@ class emotionPipeline:
                     if submodel == "signalEncoder":
                         # Randomly choose if we are going to use an inflated number of signals.
                         maxNumSignals = random.choices(population=[model.maxNumSignals, 256], weights=[0.8, 0.2], k=1)[0]
+                        if self.datasetName == "case": maxNumSignals = 128
 
                         # Augment the signals to train an arbitrary sequence length and order.
                         initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=maxNumSignals, alteredDim=1)

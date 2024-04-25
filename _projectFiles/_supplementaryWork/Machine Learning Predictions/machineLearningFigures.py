@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     # Testing parameters.
     numLiftedChannelBounds = (16, 64, 16)  # Boundary inclusive
-    numExpandedSignalBounds = (2, 2)    # Boundary inclusive
+    numExpandedSignalBounds = (2, 5)    # Boundary inclusive
     numEncodingLayerBounds = (0, 6)     # Boundary inclusive
 
     # --------------------------- Figure Plotting -------------------------- #

@@ -20,7 +20,7 @@ for trainingFolder in os.listdir(root_dir):
         if modelFolder.startswith("."):  # Skip hidden folders
             continue
 
-        if "2024-04-21" not in pathToModelFolder: continue
+        if "2024-04-24" not in pathToModelFolder: continue
 
         # Initialize variables to find the last epoch
         max_epoch = -1

@@ -123,8 +123,8 @@ class trainingPlots(globalPlottingProtocols):
         ax.set_ylabel(rowLabel)
 
         # Assign the row and column labels
-        ax.set_xticks(np.arange(len(column_labels)))
-        ax.set_yticks(np.arange(len(row_labels)))
+        ax.set_xticks(column_labels)
+        ax.set_yticks(row_labels)
         ax.set_xticklabels(column_labels)
         ax.set_yticklabels(row_labels)
 

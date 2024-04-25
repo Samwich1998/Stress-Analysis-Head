@@ -38,9 +38,9 @@ class signalEncoderPlots(trainingPlots):
         optimalLossHolders, trainingLossHolders, testingLossHolders = lossHolders
 
         # Prepare the data for plotting.
-        numLiftedChannelsLabels = [f"{numLiftedChannels}" for numLiftedChannels in range(numLiftedChannelBounds[0], numLiftedChannelBounds[1] + 1, numLiftedChannelBounds[2])], "Lifted Channels"
-        numExpandedSignalsLabels = [f"{numExpandedSignals}" for numExpandedSignals in range(numExpandedSignalBounds[0], numExpandedSignalBounds[1] + 1)], "Lifted Channels"
-        numEncodingLayersLabels = [f"{numEncodingLayers}" for numEncodingLayers in range(numEncodingLayerBounds[0], numEncodingLayerBounds[1] + 1)], "Encoding Layers"
+        numLiftedChannelsLabels = [numLiftedChannels for numLiftedChannels in range(numLiftedChannelBounds[0], numLiftedChannelBounds[1] + 1, numLiftedChannelBounds[2])], "Lifted Channels"
+        numExpandedSignalsLabels = [numExpandedSignals for numExpandedSignals in range(numExpandedSignalBounds[0], numExpandedSignalBounds[1] + 1)], "Lifted Channels"
+        numEncodingLayersLabels = [numEncodingLayers for numEncodingLayers in range(numEncodingLayerBounds[0], numEncodingLayerBounds[1] + 1)], "Encoding Layers"
         numLiftedChannelsTested, numExpandedSignalsTested, numEncodingLayersTested = trainingLossHolders[0][0].shape
 
         # Plot the heatmaps for each combination of losses

@@ -163,7 +163,7 @@ if __name__ == "__main__":
                                                                                             specificInfo=None, random_state=42)
     # Compile the final modules.
     allModels, allDataLoaders, allLossDataHolders = modelCompiler.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
-                                                                                [featureNames], ["collected"], modelName, submodel, trainTestSplit, useFinalLearningParams, metaTraining=False, specificInfo=None, random_state=42)
+                                                                                [featureNames], datasetNames, modelName, submodel, trainTestSplit, useFinalLearningParams, metaTraining=False, specificInfo=None, random_state=42)
     # Create the meta-loss models and data loaders.
     allMetaLossDataHolders.extend(allLossDataHolders)
 
@@ -240,7 +240,7 @@ if __name__ == "__main__":
                 with torch.no_grad():
                     numEpochs = modelPipeline.getTrainingEpoch(submodel) or epoch
                     modelPipeline.modelVisualization.plotAllTrainingEvents(submodel, modelPipeline, lossDataLoader, trainingDate, numEpochs, fastPass)
-            allMetaModels[0].modelVisualization.plotDatasetComparison(submodel, allMetaModels, trainingDate, fastPass)
+            allMetaModels[0].modelVisualization.plotDatasetComparison(submodel, allMetaModels + allModels, trainingDate, fastPass)
             t2 = time.time()
             accelerator.print("Total plotting time:", t2 - t1)
 

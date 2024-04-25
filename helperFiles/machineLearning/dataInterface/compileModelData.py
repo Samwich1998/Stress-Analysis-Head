@@ -148,15 +148,15 @@ class compileModelData:
         if metaDatasetName in ['wesad']: return minimumBatchSize  # 1 times larger than the smallest dataset.
 
         # Specify the small-medium batch size datasets.
-        if metaDatasetName in ['collected']: return 2 * minimumBatchSize  # 2.5466 times larger than the smallest dataset.
+        if metaDatasetName in ['empatch']: return 2 * minimumBatchSize  # 2.5466 times larger than the smallest dataset.
         if metaDatasetName in ['amigos']: return 2 * minimumBatchSize  # 2.3733 times larger than the smallest dataset.
 
         # Specify the medium batch size datasets.
-        if metaDatasetName in ["emognition"]: return 4 * minimumBatchSize  # 5.4266 times larger than the smallest dataset.
+        if metaDatasetName in ['emognition']: return 4 * minimumBatchSize  # 5.4266 times larger than the smallest dataset.
         if metaDatasetName in ['dapper']: return 4 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
 
         # Specify the large batch size datasets.
-        if metaDatasetName in ["case"]: return 16 * minimumBatchSize  # 22 times larger than the smallest dataset.
+        if metaDatasetName in ['case']: return 16 * minimumBatchSize  # 22 times larger than the smallest dataset.
 
         assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
 

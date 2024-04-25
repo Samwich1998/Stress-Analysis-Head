@@ -27,7 +27,7 @@ class signalEncoderBase(signalEncoderHelpers):
         numEncodedSignals = encodedData.size(1)
 
         # If we are training, add noise to the final state to ensure continuity of the latent space.
-        noisyEncodedData = self.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.01)
+        noisyEncodedData = self.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.001)
 
         # Calculate the number of active signals in each path.
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
@@ -119,7 +119,7 @@ class generalSignalEncoding(signalEncoderBase):
             originalData = signalData.clone()  # Keep track of the initial stateF
 
             # Add noise to the signal if we are training.
-            signalData = self.dataInterface.addNoise(signalData, trainingFlag, noiseSTD=0.001)
+            signalData = self.dataInterface.addNoise(signalData, trainingFlag, noiseSTD=0.01)
 
             # Compress the signals down to the targetNumSignals.
             if compressedDataFlag: signalData = self.compressionModel(signalData, targetNumSignals)

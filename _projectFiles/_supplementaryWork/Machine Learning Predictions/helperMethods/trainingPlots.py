@@ -4,7 +4,7 @@ import os
 # Plotting
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, Normalize
 from scipy.ndimage import uniform_filter1d
 
 from helperFiles.machineLearning.dataInterface.compileModelData import compileModelData
@@ -110,10 +110,11 @@ class trainingPlots(globalPlottingProtocols):
         # Create the figure and the heatmap.
         fig, ax = plt.subplots(figsize=(10, 8))
 
-        if useLogNorm:
-            heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='spline16', norm=LogNorm(), vmin=cmapBounds[0], vmax=cmapBounds[1])
-        else:
-            heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='spline16', norm=None, vmin=cmapBounds[0], vmax=cmapBounds[1])
+        # Set normalization
+        norm = LogNorm(vmin=cmapBounds[0], vmax=cmapBounds[1]) if useLogNorm else Normalize(vmin=cmapBounds[0], vmax=cmapBounds[1])
+
+        # Plot the heatmap
+        heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='bicubic', norm=norm, vmin=cmapBounds[0], vmax=cmapBounds[1])
 
         # Set the title if provided
         if title: ax.set_title(title)

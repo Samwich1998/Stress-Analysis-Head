@@ -811,7 +811,7 @@ class compileModelData:
             # Calculate time-series statistics for each signal.
             signalStandardDeviations = np.std(signalData, axis=1)
 
-            # Remove any feature that doesnt varies enough.
+            # Remove any feature that doesn't vary enough.
             badIndices = np.where(signalStandardDeviations == 0)[0]
             goodFeatureInds.difference_update(badIndices)
         # Convert the set into a sorted list ofn indices.

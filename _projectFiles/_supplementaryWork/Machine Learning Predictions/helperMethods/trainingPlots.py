@@ -93,6 +93,10 @@ class trainingPlots(globalPlottingProtocols):
 
         return finalLosses
 
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.colors import LogNorm, Normalize
+
     def plot_heatmap(self, data, column_labels, row_labels, columnLabel, rowLabel, title=None, color_map='viridis', cbar_label="Value", useLogNorm=False, saveFigurePath=None, cmapBounds=[None, None]):
         """
         Plot a heatmap with given labels and title.
@@ -106,25 +110,33 @@ class trainingPlots(globalPlottingProtocols):
         - title: Title of the heatmap. Optional.
         - color_map: Colormap for the heatmap. Default is 'viridis'.
         - cbar_label: Label for the colorbar. Default is "Value".
+        - useLogNorm: Boolean to use logarithmic normalization.
+        - saveFigurePath: Path to save the figure.
+        - cmapBounds: List with two elements [min_value, max_value] for colormap scaling.
         """
         # Create the figure and the heatmap.
         fig, ax = plt.subplots(figsize=(10, 8))
 
         # Set normalization
-        norm = LogNorm(vmin=cmapBounds[0], vmax=cmapBounds[1]) if useLogNorm else Normalize(vmin=cmapBounds[0], vmax=cmapBounds[1])
+        if useLogNorm:
+            norm = LogNorm(vmin=cmapBounds[0], vmax=cmapBounds[1])
+        else:
+            norm = Normalize(vmin=cmapBounds[0], vmax=cmapBounds[1])
 
         # Plot the heatmap
-        heatmap = ax.imshow(data, cmap=color_map, aspect='auto', interpolation='bicubic', norm=norm)
+        heatmap = ax.imshow(data, cmap=color_map, aspect='auto', norm=norm)
 
         # Set the title if provided
-        if title: ax.set_title(title)
+        if title:
+            ax.set_title(title)
+
         # Label the axes
         ax.set_xlabel(columnLabel)
         ax.set_ylabel(rowLabel)
 
-        # Assign the row and column labels
-        ax.set_xticks(column_labels)
-        ax.set_yticks(row_labels)
+        # Assign the row and column labels correctly
+        ax.set_xticks(np.arange(len(column_labels)))
+        ax.set_yticks(np.arange(len(row_labels)))
         ax.set_xticklabels(column_labels)
         ax.set_yticklabels(row_labels)
 

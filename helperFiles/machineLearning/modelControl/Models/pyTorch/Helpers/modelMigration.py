@@ -35,7 +35,6 @@ class modelMigration:
 
     def replaceFinalModelFolder(self, folderPath):
         self.saveModelFolder = "".join([self.saveModelFolder.split("_finalModels")[0], folderPath])
-        print(self.saveModelFolder)
 
     # ---------------------------------------------------------------------- #
     # ------------------------- Specify the Device ------------------------- #

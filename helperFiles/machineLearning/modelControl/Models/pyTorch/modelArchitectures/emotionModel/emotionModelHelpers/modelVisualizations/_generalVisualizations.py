@@ -112,7 +112,7 @@ class generalVisualizations(globalPlottingProtocols):
 
         # Save the figure is desired.
         if self.saveDataFolder:
-            self.saveFigure(self.saveDataFolder + f"{emotionName} epochs = {epoch}.pdf")
+            self.displayFigure(self.saveDataFolder + f"{emotionName} epochs = {epoch}.pdf")
         plt.show()
 
     def plotTrainingPath_timeAnalysis(self, pathParameters, timeLabels, plotTitle="Model Convergence Loss"):
@@ -128,7 +128,7 @@ class generalVisualizations(globalPlottingProtocols):
 
         # Save the figure if desired.
         if self.saveDataFolder:
-            self.saveFigure(self.saveDataFolder + f"{plotTitle} at epoch {len(pathParameters[0])}.pdf")
+            self.displayFigure(self.saveDataFolder + f"{plotTitle} at epoch {len(pathParameters[0])}.pdf")
         plt.show()
 
     def plotTrainingLosses(self, trainingLosses, testingLosses, lossLabels, plotTitle="Model Convergence Loss", logY=True):
@@ -150,7 +150,7 @@ class generalVisualizations(globalPlottingProtocols):
         
         # Save the figure if desired.
         if self.saveDataFolder:
-            self.saveFigure(self.saveDataFolder + f"{plotTitle} at epoch {len(trainingLosses[0])}.pdf")
+            self.displayFigure(self.saveDataFolder + f"{plotTitle} at epoch {len(trainingLosses[0])}.pdf")
         plt.show()
 
     def generalDataPlotting(self, plottingData, plottingLabels, plotTitle="Model Convergence Loss"):
@@ -166,5 +166,5 @@ class generalVisualizations(globalPlottingProtocols):
 
         # Save the figure if desired.
         if self.saveDataFolder:
-            self.saveFigure(self.saveDataFolder + f"{plotTitle} at epoch {len(plottingData[0])}.pdf")
+            self.displayFigure(self.saveDataFolder + f"{plotTitle} at epoch {len(plottingData[0])}.pdf")
         plt.show()

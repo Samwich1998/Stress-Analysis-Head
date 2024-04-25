@@ -41,7 +41,7 @@ class signalEncoderVisualizations(globalPlottingProtocols):
         plt.ylabel("Signal (AU)")
         plt.title(f"{plotTitle}")
         if self.saveDataFolder:
-            self.saveFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch}.pdf")
+            self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch}.pdf")
         plt.show()
 
     def plotOneSignalEncoding(self, allEncodedData, epoch, plotTitle="Signal Encoding", numBatchPlots=1):
@@ -59,7 +59,7 @@ class signalEncoderVisualizations(globalPlottingProtocols):
             plt.ylabel("Signal (AU)")
             plt.title(f"{plotTitle}")
             if self.saveDataFolder:
-                self.saveFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch} batchInd{batchInd}.pdf")
+                self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch} batchInd{batchInd}.pdf")
             plt.show()
 
             # There are too many signals to plot.

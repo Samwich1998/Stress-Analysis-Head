@@ -208,7 +208,7 @@ class signalEncoderModel(globalModel):
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
         # If we are training, add noise to the final state to ensure continuity of the latent space.
-        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.1)
+        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.05)
 
         # Undo what was done in the initial adjustment.
         initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyEncodedData)

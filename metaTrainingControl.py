@@ -46,7 +46,7 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-04-25 final bior37 db3 2"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-04-25 final dmey db3 2"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     trainTestSplit = 0.2  # The percentage of testing points.
 

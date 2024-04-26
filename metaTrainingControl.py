@@ -101,7 +101,7 @@ if __name__ == "__main__":
     print("System Arguments:", userInputParams, flush=True)
     submodel = args.submodel
 
-    # Self check the hpc parameters.
+    # Self-check the hpc parameters.
     if userInputParams['deviceListed'].startswith("HPC"):
         accelerator.gradient_accumulation_steps = 16
         fastPass = False  # Turn off fast pass for HPC.

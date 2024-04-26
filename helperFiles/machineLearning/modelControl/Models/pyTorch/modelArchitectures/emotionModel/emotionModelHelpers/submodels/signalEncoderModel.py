@@ -140,11 +140,11 @@ class signalEncoderModel(globalModel):
 
         if calculateLoss and decodeSignals:
             # Prepare for loss calculations.
-            noisyPositionEncodedData = self.encodeSignals.dataInterface.addNoise(positionEncodedData, trainingFlag, noiseSTD=0.001)
+            noisyPositionEncodedData = self.encodeSignals.dataInterface.addNoise(positionEncodedData, trainingFlag, noiseSTD=0.05)
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(noisyPositionEncodedData)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            noisyPotentialEncodedData = self.encodeSignals.dataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.001)
+            noisyPotentialEncodedData = self.encodeSignals.dataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.01)
             potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyPotentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.
@@ -226,8 +226,7 @@ class signalEncoderModel(globalModel):
         assert reversePath[1:] == numSignalForwardPath[1:][::-1], f"Signal encoding path mismatch: {reversePath[1:]} != {numSignalForwardPath[1:][::-1]} reversed"
 
         # Learn how to remove positional encoding to each signal's position.
-        noisyDecodedData = self.encodeSignals.dataInterface.addNoise(decodedData, trainingFlag, noiseSTD=0.001)
-        reconstructedData = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(noisyDecodedData)
+        reconstructedData = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(decodedData)
 
         # Denoise the final signals.
         denoisedReconstructedData = self.encodeSignals.denoiseSignals.applyDenoiser(reconstructedData)

@@ -27,7 +27,7 @@ class signalEncoderBase(signalEncoderHelpers):
         numEncodedSignals = encodedData.size(1)
 
         # If we are training, add noise to the final state to ensure continuity of the latent space.
-        noisyEncodedData = self.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.001)
+        noisyEncodedData = self.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.01)
 
         # Calculate the number of active signals in each path.
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]

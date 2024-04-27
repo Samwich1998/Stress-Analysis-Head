@@ -37,8 +37,8 @@ class channelEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numEncoderLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='dmey', mode='zero', numLayers=1,  encodeLowFrequency=True, encodeHighFrequencies=True))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='dmey', mode='zero', numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=True))
+            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='bior3.7', mode='zero', numLayers=1,  encodeLowFrequency=True, encodeHighFrequencies=True))
+            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='bior3.7', mode='zero', numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=True))
             # Notes: I found that dmey and db3 work well. coif3 is not that good. db6 is bad.
 
             # Create the processing layers.

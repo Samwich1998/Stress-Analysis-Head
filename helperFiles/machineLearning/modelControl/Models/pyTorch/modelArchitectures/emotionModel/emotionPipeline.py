@@ -414,9 +414,9 @@ class emotionPipeline:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0.001, 0.1)
+            addingNoiseRange = (0.001, 0.05)
         elif submodel == "autoencoder":
-            addingNoiseRange = (0.001, 0.1)
+            addingNoiseRange = (0.001, 0.05)
         elif submodel == "emotionPrediction":
             addingNoiseRange = (0.001, 0.01)
         else:

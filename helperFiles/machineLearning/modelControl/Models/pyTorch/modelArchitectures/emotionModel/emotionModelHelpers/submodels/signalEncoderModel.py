@@ -140,11 +140,11 @@ class signalEncoderModel(globalModel):
 
         if calculateLoss and decodeSignals:
             # Prepare for loss calculations.
-            noisyPositionEncodedData = self.encodeSignals.dataInterface.addNoise(positionEncodedData, trainingFlag, noiseSTD=0.05)
+            noisyPositionEncodedData = self.encodeSignals.dataInterface.addNoise(positionEncodedData, trainingFlag, noiseSTD=0.001)
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(noisyPositionEncodedData)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            noisyPotentialEncodedData = self.encodeSignals.dataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.01)
+            noisyPotentialEncodedData = self.encodeSignals.dataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.001)
             potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyPotentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.
@@ -208,7 +208,7 @@ class signalEncoderModel(globalModel):
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
         # If we are training, add noise to the final state to ensure continuity of the latent space.
-        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.05)
+        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.001)
 
         # Undo what was done in the initial adjustment.
         initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyEncodedData)

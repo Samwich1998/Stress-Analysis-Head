@@ -46,7 +46,7 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-04-25 final dmey dmey 2"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-04-26 final dmey dmey 2"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     trainTestSplit = 0.2  # The percentage of testing points.
 
@@ -102,11 +102,11 @@ if __name__ == "__main__":
     submodel = args.submodel
 
     # Self-check the hpc parameters.
-    if userInputParams['deviceListed'].startswith("HPC"):
-        accelerator.gradient_accumulation_steps = 16
-        fastPass = False  # Turn off fast pass for HPC.
-
-        print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
+    # if userInputParams['deviceListed'].startswith("HPC"):
+    #     accelerator.gradient_accumulation_steps = 16
+    #     fastPass = False  # Turn off fast pass for HPC.
+    #
+    #     print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
 
     # ---------------------------------------------------------------------- #
     # --------------------------- Setup Training --------------------------- #

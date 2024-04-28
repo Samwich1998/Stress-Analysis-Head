@@ -54,7 +54,7 @@ if __name__ == "__main__":
     useFinalLearningParams = True  # If you want to use FINAL training parameters. The ONLY effect on training is LR.
     plotTrainingSteps = True  # If you want to plot any results from training.
     storeLoss = True  # If you want to record any loss values.
-    fastPass = True  # If you want to only plot/train 240 points. No effect on training.
+    fastPass = False  # If you want to only plot/train 240 points. No effect on training.
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Parse Model Parameters ----------------------- #

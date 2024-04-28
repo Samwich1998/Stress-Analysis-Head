@@ -17,7 +17,7 @@ class signalEncoderBase(signalEncoderHelpers):
 
     # ---------------------------- Loss Methods ---------------------------- #
 
-    def calculateEncodingLoss(self, originalData, encodedData, trainingFlag):
+    def calculateEncodingLoss(self, originalData, encodedData):
         # originalData  encodedDecodedOriginalData
         #          \         /
         #          encodedData
@@ -31,9 +31,9 @@ class signalEncoderBase(signalEncoderHelpers):
 
         # Reverse operation
         if numEncodedSignals < originalNumSignals:
-            encodedDecodedOriginalData = self.expansionModel(noisyEncodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.expansionModel(encodedData, originalNumSignals)
         else:
-            encodedDecodedOriginalData = self.compressionModel(noisyEncodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.compressionModel(encodedData, originalNumSignals)
         # Assert the integrity of the expansions/compressions.
         assert encodedDecodedOriginalData.size(1) == originalData.size(1)
 
@@ -43,9 +43,9 @@ class signalEncoderBase(signalEncoderHelpers):
 
         return squaredErrorLoss_forward
 
-    def updateLossValues(self, originalData, encodedData, signalEncodingLayerLoss, trainingFlag):
+    def updateLossValues(self, originalData, encodedData, signalEncodingLayerLoss):
         # Keep tracking of the loss through each loop.
-        layerLoss = self.calculateEncodingLoss(originalData, encodedData, trainingFlag)
+        layerLoss = self.calculateEncodingLoss(originalData, encodedData)
 
         # If the loss is significant, add it to the total loss.
         signalEncodingLayerLoss = 1.1*signalEncodingLayerLoss + layerLoss
@@ -123,7 +123,7 @@ class generalSignalEncoding(signalEncoderBase):
 
             if calculateLoss:
                 # Keep track of the error during each compression/expansion.
-                signalEncodingLayerLoss = self.updateLossValues(originalData, signalData, signalEncodingLayerLoss, trainingFlag)
+                signalEncodingLayerLoss = self.updateLossValues(originalData, signalData, signalEncodingLayerLoss)
 
             # Keep track of the signal's at each iteration.
             numSignalPath.append(signalData.size(1))

@@ -3,7 +3,7 @@
 numLiftedChannelsStart=96   # Absolute minimum is 16 or 32.
 numLiftedChannelsStep=-16
 numLiftedChannelsEnd=16     # Memory limited from 48-96.
-# Total: 4
+# Total: 6
 
 numExpandedSignalsStart=5   # Absolute minimum is 2.
 numExpandedSignalsStep=-1

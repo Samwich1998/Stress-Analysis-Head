@@ -17,14 +17,14 @@ import matplotlib.pyplot as plt
 sys.path.append(os.path.dirname(__file__) + "/../")
 import trainingProtocols_Supp       # Functions to Save/Read in Data from Excel
 
-sys.path.append(os.path.dirname(__file__) + "/../../Helper Files/Data Aquisition and Analysis/") 
+sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/dataAcquisitionAndAnalysis/") 
 import streamingProtocols      # Functions to Handle Data from Arduino
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../../Helper Files/Machine Learning/Feature Analysis/_compiledFeatureNames/")
-import _compileFeatureNames as compileFeatureNames  # Functions to extract feature names
+sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/machineLearning/featureAnalysis/compiledFeatureNames/")
+import compileFeatureNames  # Functions to extract feature names
 
-sys.path.append(os.path.dirname(__file__) + "/../../Helper Files/Machine Learning/") 
+sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/machineLearning/") 
 import machineLearningInterface
 
 import featureSelection
@@ -43,10 +43,10 @@ if __name__ == "__main__":
 
     # Compile Feature Names
     featureNamesFolder = "../../Helper Files/Machine Learning/_Compiled Feature Names/All Features/"
-    featureNames, indivisualFeatureNames, biomarkerOrder, allFeatureNames = compileFeatureNames.compileFeatureNames(prependPath = "../../").extractFeatureNames(extractFeaturesFrom)
-    eogFeatureNames, eegFeatureNames, gsrFeatureNames, tempFeatureNames = allFeatureNames
+    featureNames, indivisualFeatureNames, biomarkerOrder, = compileFeatureNames.compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+    eogFeatureNames = indivisualFeatureNames[0]
     
-    dataExcelFolder = "./Data/"
+    dataExcelFolder = os.path.dirname(__file__) + "/Data/"
         
     # Train or Test the Data with the Machine Learning Model
     # plotFeatures = True   # Plot all training feature information

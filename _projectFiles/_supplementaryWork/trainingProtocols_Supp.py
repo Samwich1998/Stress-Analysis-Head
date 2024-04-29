@@ -12,15 +12,15 @@ import natsort
 import openpyxl as xl
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../Helper Files/Machine Learning/Model Specifications/")
-import _compileModelInfo    # Functions with model information
+sys.path.append(os.path.dirname(__file__) + "/../../helperFiles/machineLearning/modelControl/modelSpecifications/")
+import compileModelInfo    # Functions with model information
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../Helper Files/Machine Learning/Feature Analysis/")
-import _featurePlotting      # Functions for feature analysis
+sys.path.append(os.path.dirname(__file__) + "/../../helperFiles/machineLearning/featureAnalysis/")
+import featurePlotting      # Functions for feature analysis
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../Helper Files/Data Aquisition and Analysis/Excel Processing/")
+sys.path.append(os.path.dirname(__file__) + "/../../helperFiles/dataAcquisitionAndAnalysis/excelProcessing/")
 # Import excel data interface
 from extractDataProtocols import extractData
 import saveDataProtocols
@@ -49,8 +49,8 @@ class trainingProtocols(extractData):
         
         # Initialize important classes
         self.saveInputs = saveDataProtocols.saveExcelData()
-        self.modelInfoClass = _compileModelInfo.compileModelInfo("_.pkl", [0,1,2])
-        self.analyzeFeatures = _featurePlotting.featurePlotting(self.trainingDataExcelFolder + "dataAnalysis/", overwrite = False)
+        self.modelInfoClass = compileModelInfo.compileModelInfo("_.pkl", [0,1,2])
+        self.analyzeFeatures = featurePlotting.featurePlotting(self.trainingDataExcelFolder + "dataAnalysis/", overwrite = False)
     
     def extractData_Old(self, ExcelSheet, startDataCol = 1, endDataCol = 2, data = None):
         # If Header Exists, Skip Until You Find the Data
@@ -114,7 +114,8 @@ class trainingProtocols(extractData):
                         currentSurveyAnswerTimes, currentSurveyAnswersList, surveyQuestions, currentSubjectInformationAnswers, \
                             subjectInformationQuestions = self.getFeatures(biomarkerOrder, savedFeaturesFile, self.biomarkerFeatureNames, [], [])
                 else:
-                    # Read in the training file with the raw data,
+                    # Read in the training file with the raw data
+                    print(excelFile)
                     WB = xl.load_workbook(excelFile, data_only=True, read_only=True)
                     worksheets = WB.worksheets
                     

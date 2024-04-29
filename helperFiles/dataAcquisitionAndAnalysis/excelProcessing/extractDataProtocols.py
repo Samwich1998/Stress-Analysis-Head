@@ -9,7 +9,7 @@ from openpyxl import load_workbook
 import csv
 
 # Import file for handling excel format
-from .excelFormatting import handlingExcelFormat
+from excelFormatting import handlingExcelFormat
 
 
 class extractData(handlingExcelFormat):

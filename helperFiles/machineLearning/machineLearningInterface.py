@@ -16,16 +16,18 @@ import bisect
 import itertools
 import numpy as np
 from scipy import stats
+import sys
 # Modules for Plotting
 import matplotlib.pyplot as plt
 # Neural Network Modules
 from sklearn.model_selection import train_test_split
 
 # Import interfaces for reading/writing data
-from ..dataAcquisitionAndAnalysis.excelProcessing import saveDataProtocols
+sys.path.append(os.path.dirname(__file__) + "/../dataAcquisitionAndAnalysis/excelProcessing/")
+import saveDataProtocols
 
 # Import Files for extracting models
-from .modelControl._modelControl import modelControl
+from modelControl._modelControl import modelControl
 
 # -------------------------------------------------------------------------- #
 # ------------------ Interface with Machine Learning Files ----------------- #

@@ -7,10 +7,12 @@ import os
 import joblib
 import numpy as np
 import tensorflow as tf
+import sys
 
 # Import files
 from .._globalModel import globalModel
-from ....feedbackControl.virtualRealityControl.imageSimilarities import imageSimilarities
+sys.path.append(os.path.dirname(__file__) + "/../../../feedbackControl/virtualRealityControl/")
+import imageSimilarities
 from ..tensorFlow.neuralNetwork import neuralNetwork
 
 # -------------------------------------------------------------------------- #

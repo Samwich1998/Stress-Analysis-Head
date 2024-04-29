@@ -15,13 +15,15 @@ import collections
 import numpy as np
 from scipy import stats
 from copy import deepcopy
+import sys
 
 # Modules for Plotting
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Import Files for Machine Learning
-from ..modelControl.modelSpecifications.compileModelInfo import compileModelInfo
+sys.path.append(os.path.dirname(__file__) + "/../modelControl/modelSpecifications/")
+from compileModelInfo import compileModelInfo
 
 # -------------------------------------------------------------------------- #
 # ---------------------------- Feature Analysis ---------------------------- #

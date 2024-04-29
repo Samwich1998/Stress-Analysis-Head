@@ -5,9 +5,11 @@
 # General
 import os
 import numpy as np
+import sys
 
 # Import interfaces for reading/writing data
-from helperFiles.dataAcquisitionAndAnalysis.excelProcessing import extractDataProtocols
+sys.path.append(os.path.dirname(__file__) + "/../../../dataAcquisitionAndAnalysis/excelProcessing/")
+import extractDataProtocols
 
 # -------------------------------------------------------------------------- #
 # -------------------------- Compile Feature Names ------------------------- #

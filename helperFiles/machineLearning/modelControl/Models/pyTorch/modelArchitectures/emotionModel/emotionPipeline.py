@@ -104,11 +104,11 @@ class emotionPipeline:
         # Common LR values: 10E-6 to 1
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4 if self.fullTest else 2E-4}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
-                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4})
+                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4 if self.fullTest else 2E-4})
         if submodel == "emotionPrediction":
             modelParams.extend([
                 # Specify the model parameters for the signal mapping.
@@ -219,9 +219,9 @@ class emotionPipeline:
 
                     # Train the signal encoder
                     if submodel == "signalEncoder":
-                        # Randomly choose if we are going to use an inflated number of signals.
-                        maxNumSignals = random.choices(population=[model.maxNumSignals, 256], weights=[0.8, 0.2], k=1)[0]
-                        if self.datasetName == "case": maxNumSignals = 128
+                        # Randomly choose to use an inflated number of signals.
+                        maxNumSignals = 96 if self.datasetName in ["case"] else 196
+                        maxNumSignals = random.choices(population=[model.maxNumSignals, maxNumSignals], weights=[0.8, 0.2], k=1)[0]
 
                         # Augment the signals to train an arbitrary sequence length and order.
                         initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=maxNumSignals, alteredDim=1)

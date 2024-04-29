@@ -46,7 +46,7 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-04-28 final bior37 db3 2"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-04-28 final"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     trainTestSplit = 0.2  # The percentage of testing points.
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     useFinalLearningParams = True  # If you want to use FINAL training parameters. The ONLY effect on training is LR.
     plotTrainingSteps = True  # If you want to plot any results from training.
     storeLoss = True  # If you want to record any loss values.
-    fastPass = True  # If you want to only plot/train 240 points. No effect on training.
+    fastPass = False  # If you want to only plot/train 240 points. No effect on training.
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Parse Model Parameters ----------------------- #
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     parser.add_argument('--submodel', type=str, default="signalEncoder", help='The component of the model we are training. Options: signalEncoder, autoencoder, emotionPrediction')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=48, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument('--numLiftedChannels', type=int, default=64, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
     parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
@@ -102,11 +102,11 @@ if __name__ == "__main__":
     submodel = args.submodel
 
     # Self-check the hpc parameters.
-    # if userInputParams['deviceListed'].startswith("HPC"):
-    #     accelerator.gradient_accumulation_steps = 16
-    #     fastPass = False  # Turn off fast pass for HPC.
-    #
-    #     print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
+    if userInputParams['deviceListed'].startswith("HPC"):
+        accelerator.gradient_accumulation_steps = 16
+        fastPass = False  # Turn off fast pass for HPC.
+
+        print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
 
     # ---------------------------------------------------------------------- #
     # --------------------------- Setup Training --------------------------- #

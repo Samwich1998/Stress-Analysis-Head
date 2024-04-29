@@ -20,11 +20,11 @@ from .biolectricProtocols.generalAnalysis_lowFreq import generalProtocol_lowFreq
 from .biolectricProtocols.generalAnalysis_highFreq import generalProtocol_highFreq
 
 # Import Modules to Read in Data
-from humanMachineInterface.arduinoInterface import arduinoRead  # Functions to Read in Data from Arduino
-from humanMachineInterface.featureOrganization import featureOrganization
+from .humanMachineInterface.arduinoInterface import arduinoRead  # Functions to Read in Data from Arduino
+from .humanMachineInterface.featureOrganization import featureOrganization
 
 # Import plotting protocols
-from dataVisualization.biolectricPlottingProtocols import plottingProtocols
+from .dataVisualization.biolectricPlottingProtocols import plottingProtocols
 
 
 # -------------------------------------------------------------------------- #

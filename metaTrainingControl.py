@@ -102,11 +102,19 @@ if __name__ == "__main__":
     submodel = args.submodel
 
     # Self-check the hpc parameters.
+<<<<<<< HEAD
     # if userInputParams['deviceListed'].startswith("HPC"):
     #     accelerator.gradient_accumulation_steps = 16
     #     fastPass = False  # Turn off fast pass for HPC.
     #
     #     print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
+=======
+    #if userInputParams['deviceListed'].startswith("HPC"):
+    #    accelerator.gradient_accumulation_steps = 16
+    #    fastPass = False  # Turn off fast pass for HPC.
+
+    #   print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
+>>>>>>> 45da759ab (U)
 
     # ---------------------------------------------------------------------- #
     # --------------------------- Setup Training --------------------------- #

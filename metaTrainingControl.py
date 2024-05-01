@@ -38,7 +38,6 @@ warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is no
 
 # Use the same initialization every time.
 torch.set_default_dtype(torch.float32)
-torch.manual_seed(0)  # For PyTorch
 
 if __name__ == "__main__":
     # Define the accelerator parameters.

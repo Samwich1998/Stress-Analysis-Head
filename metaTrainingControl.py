@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import random
 import warnings
 import argparse
 import numpy as np
@@ -38,11 +37,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU.")
 
 # Use the same initialization every time.
-# torch.use_deterministic_algorithms(True)
 torch.set_default_dtype(torch.float32)
-# torch.manual_seed(0)  # For PyTorch
-# np.random.seed(0)
-# random.seed(0)
+torch.manual_seed(0)  # For PyTorch
 
 if __name__ == "__main__":
     # Define the accelerator parameters.

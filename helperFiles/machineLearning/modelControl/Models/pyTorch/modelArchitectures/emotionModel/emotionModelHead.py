@@ -219,22 +219,22 @@ class emotionModelHead(globalModel):
 
     # ------------------------- Full Forward Calls ------------------------- #  
 
-    def forward(self, signalData, subjectIdentifiers, initialSignalData, compileVariables=False, submodel=None, trainingFlag=False):
+    def forward(self, signalData, subjectIdentifiers, initialSignalData, reconstructSignals=True, compileVariables=False, submodel=None, trainingFlag=False):
         # Add the data, labels, and training/testing indices to the device (GPU/CPU)
         signalData, subjectIdentifiers, initialSignalData = signalData.to(self.device), subjectIdentifiers.to(self.device), initialSignalData.to(self.device)
 
         encodedData, reconstructedData, signalEncodingLayerLoss, compressedData, reconstructedEncodedData, denoisedDoubleReconstructedData, autoencoderLayerLoss, mappedSignalData, reconstructedCompressedData, \
-            featureData, activityDistribution, eachBasicEmotionDistribution, finalEmotionDistributions = (torch.tensor(0, device=self.device) for _ in range(13))
+            featureData, activityDistribution, eachBasicEmotionDistribution, finalEmotionDistributions = (torch.tensor(data=0, device=self.device) for _ in range(13))
 
         if submodel == "signalEncoder":
             with self.accelerator.autocast():
                 # Only look at the signal encoder.
-                encodedData, reconstructedData, signalEncodingLayerLoss = self.signalEncoding(signalData, initialSignalData, decodeSignals=compileVariables, calculateLoss=compileVariables, trainingFlag=trainingFlag)
+                encodedData, reconstructedData, signalEncodingLayerLoss = self.signalEncoding(signalData, initialSignalData, decodeSignals=reconstructSignals, calculateLoss=compileVariables, trainingFlag=trainingFlag)
 
         elif submodel == "autoencoder":
             # Only look at the autoencoder.
             encodedData, reconstructedData, signalEncodingLayerLoss, compressedData, reconstructedEncodedData, denoisedDoubleReconstructedData, autoencoderLayerLoss \
-                = self.compressData(signalData, initialSignalData, reconstructSignals=compileVariables, calculateLoss=compileVariables, compileVariables=compileVariables, compileLosses=compileVariables, fullReconstruction=True, trainingFlag=trainingFlag)
+                = self.compressData(signalData, initialSignalData, reconstructSignals=reconstructSignals, calculateLoss=compileVariables, compileVariables=compileVariables, compileLosses=compileVariables, fullReconstruction=True, trainingFlag=trainingFlag)
 
         else:
             # Analyze the full model.
@@ -245,7 +245,7 @@ class emotionModelHead(globalModel):
         return encodedData.to('cpu'), reconstructedData.to('cpu'), signalEncodingLayerLoss.to('cpu'), compressedData.to('cpu'), reconstructedEncodedData.to('cpu'), denoisedDoubleReconstructedData.to('cpu'), autoencoderLayerLoss.to('cpu'), \
             mappedSignalData.to('cpu'), reconstructedCompressedData.to('cpu'), featureData.to('cpu'), activityDistribution.to('cpu'), eachBasicEmotionDistribution.to('cpu'), finalEmotionDistributions.to('cpu')
 
-    def fullDataPass(self, submodel, dataLoader, timeWindow, compileVariables=False, trainingFlag=False):
+    def fullDataPass(self, submodel, dataLoader, timeWindow, reconstructSignals=True, compileVariables=False, trainingFlag=False):
         # Initialize variables
         batch_size, numSignals, _ = dataLoader.dataset.features.size()
 
@@ -283,7 +283,7 @@ class emotionModelHead(globalModel):
             # Forward pass for the current batch
             encodedBatchData, reconstructedBatchData, batchSignalEncodingLayerLoss, compressedBatchData, reconstructedEncodedBatchData, batchDenoisedDoubleReconstructedData, batchAutoencoderLayerLoss, \
                 mappedBatchData, reconstructedCompressedBatchData, featureBatchData, batchActivityDistribution, batchBasicEmotionDistribution, batchEmotionDistributions \
-                = self.forward(segmentedSignalData, allSubjectIdentifiers, segmentedSignalData, compileVariables, submodel, trainingFlag=trainingFlag)
+                = self.forward(segmentedSignalData, allSubjectIdentifiers, segmentedSignalData, reconstructSignals, compileVariables, submodel, trainingFlag=trainingFlag)
 
             # Signal encoding: assign the results to the preallocated tensors
             encodedData[startIdx:endIdx] = encodedBatchData

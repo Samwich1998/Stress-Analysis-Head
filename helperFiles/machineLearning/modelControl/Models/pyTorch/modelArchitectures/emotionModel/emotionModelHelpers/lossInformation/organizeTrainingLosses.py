@@ -41,7 +41,7 @@ class organizeTrainingLosses(lossCalculations):
                 # Pass all the data through the model and store the emotions, activity, and intermediate variables.
                 allEncodedData, allReconstructedData, allSignalEncodingLayerLoss, allCompressedData, allReconstructedEncodedData, allDenoisedDoubleReconstructedData, allAutoencoderLayerLoss, allMappedSignalData, \
                     allReconstructedCompressedData, allFeatureData, allActivityDistributions, allBasicEmotionDistributions, allFinalEmotionDistributions \
-                    = model.fullDataPass(submodel, lossDataLoader, timeWindow=self.generalTimeWindow, compileVariables=True, trainingFlag=False)
+                    = model.fullDataPass(submodel, lossDataLoader, timeWindow=self.generalTimeWindow, reconstructSignals=False, compileVariables=False, trainingFlag=False)
                 t2 = time.time()
                 self.accelerator.print("Full Pass", t2 - t1),
 
@@ -87,7 +87,7 @@ class organizeTrainingLosses(lossCalculations):
                 # Pass all the data through the model and store the emotions, activity, and intermediate variables.
                 segmentedEncodedData, segmentedReconstructedData, segmentedSignalEncodingLayerLoss, segmentedCompressedData, segmentedReconstructedEncodedData, segmentedDenoisedDoubleReconstructedData, segmentedAutoencoderLayerLoss, \
                     segmentedMappedSignalData, segmentedReconstructedCompressedData, segmentedFeatureData, segmentedActivityDistributions, segmentedBasicEmotionDistributions, segmentedFinalEmotionDistributions \
-                    = model.fullDataPass(submodel, lossDataLoader, timeWindow=timeWindow, compileVariables=True, trainingFlag=False)
+                    = model.fullDataPass(submodel, lossDataLoader, timeWindow=timeWindow, reconstructSignals=True, compileVariables=False, trainingFlag=False)
                 t2 = time.time()
                 self.accelerator.print(f"{timeWindow} Second Pass", t2 - t1)
 

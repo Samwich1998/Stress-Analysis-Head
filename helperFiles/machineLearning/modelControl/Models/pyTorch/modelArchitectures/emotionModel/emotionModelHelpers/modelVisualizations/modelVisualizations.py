@@ -212,12 +212,12 @@ class modelVisualizations(globalPlottingProtocols):
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
             trainingEncodedData, trainingReconstructedData, trainingSignalEncodingLayerLoss, trainingCompressedData, trainingReconstructedEncodedData, trainingDenoisedDoubleReconstructedData, trainingAutoencoderLayerLoss, trainingMappedSignalData, \
                 trainingReconstructedCompressedData, trainingFeatureData, trainingActivityDistributions, trainingBasicEmotionDistributions, trainingFinalEmotionDistributions \
-                = model.forward(trainingSignalData, trainingSubjectIdentifiers, trainingSignalData, compileVariables=True, submodel=submodel, trainingFlag=False)
+                = model(trainingSignalData, trainingSubjectIdentifiers, trainingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
 
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
             testingEncodedData, testingReconstructedData, testingSignalEncodingLayerLoss, testingCompressedData, testingReconstructedEncodedData, testingDenoisedDoubleReconstructedData, testingAutoencoderLayerLoss, testingMappedSignalData, \
                 testingReconstructedCompressedData, testingFeatureData, testingActivityDistributions, testingBasicEmotionDistributions, testingFinalEmotionDistributions \
-                = model.forward(testingSignalData, testingSubjectIdentifiers, testingSignalData, compileVariables=True, submodel=submodel, trainingFlag=False)
+                = model.forward(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
 
         # ------------------- Plot the Data on One Device ------------------ # 
 

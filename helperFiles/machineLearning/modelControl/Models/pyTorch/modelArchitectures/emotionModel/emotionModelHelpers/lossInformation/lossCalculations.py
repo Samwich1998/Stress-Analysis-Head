@@ -7,6 +7,7 @@ import sys
 
 # PyTorch
 import torch
+from pytorch_wavelets import DWT1DForward
 
 # Helper classes
 sys.path.append(os.path.dirname(__file__) + "/../")
@@ -98,6 +99,10 @@ class lossCalculations:
 
         # If there is a layer loss, average the loss.
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
+
+        # Calculate the wavelet loss.
+        waveletLoss = self.waveletLoss(encodedData, numDecompositions=2, wavelet='db3', mode='zero')
+        signalEncodingLayerLoss = signalEncodingLayerLoss + waveletLoss
 
         # Assert that nothing is wrong with the loss calculations. 
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, "encoded signal mean loss", assertGradient=False)
@@ -275,9 +280,25 @@ class lossCalculations:
         return subjectDeviationNormLoss
 
     # ---------------------------------------------------------------------- #
-    # ----------------------- Standardization Losses ----------------------- #  
+    # ----------------------- Standardization Losses ----------------------- #
 
-    def calculateStandardizationLoss(self, inputData, expectedMean=0, expectedStandardDeviation=1, dim=-1):
+    @staticmethod
+    def waveletLoss(inputData, numDecompositions=2, wavelet='db3', mode='zero'):
+        # Perform wavelet decomposition.
+        dwt = DWT1DForward(J=numDecompositions, wave=wavelet, mode=mode)
+        lowFrequency, highFrequencies = dwt(inputData)  # Note: each channel is treated independently here.
+        # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
+        # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
+
+        highFrequencyLoss = 0
+        # Minimize the high-frequency coefficients.
+        for decompositionLayer in range(len(highFrequencies)):
+            highFrequencyLoss = highFrequencyLoss + highFrequencies[decompositionLayer].pow(2).mean()
+
+        return highFrequencyLoss
+
+    @staticmethod
+    def calculateStandardizationLoss(inputData, expectedMean=0, expectedStandardDeviation=1, dim=-1):
         # Calculate the data statistics on the last dimension.
         standardDeviationData = inputData.std(dim=dim)
         meanData = inputData.mean(dim=dim)

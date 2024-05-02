@@ -36,10 +36,11 @@ from ..signalEncoderModules import signalEncoderModules
 class waveletNeuralOperatorLayer(signalEncoderModules):
 
     def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1,
-                 encodeLowFrequency=True, encodeHighFrequencies=True, encoderHigh2LowFrequency=False):
+                 encodeLowFrequency=True, encodeHighFrequencies=True, encodeHigh2LowFrequency=False, encodeLow2HighFrequency=False):
         super(waveletNeuralOperatorLayer, self).__init__()
         # Fourier neural operator parameters.
-        self.encoderHigh2LowFrequency = encoderHigh2LowFrequency  # Whether to encode the high frequencies into the low-frequency signal.
+        self.encodeHigh2LowFrequency = encodeHigh2LowFrequency  # Whether to encode the high frequencies into the low-frequency signal.
+        self.encodeLow2HighFrequency = encodeLow2HighFrequency  # Whether to encode the low-frequency signal into the high-frequency signal.
         self.encodeHighFrequencies = encodeHighFrequencies  # Whether to encode the high frequencies.
         self.encodeLowFrequency = encodeLowFrequency  # Whether to encode the low-frequency signal.
         self.numDecompositions = numDecompositions  # Maximum number of decompositions to apply.
@@ -93,17 +94,30 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
                     # Learn a new set of wavelet coefficients to transform the data.
                     self.highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=numOutputSignals, outChannel=numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
 
-        if self.encoderHigh2LowFrequency:
+        if self.encodeHigh2LowFrequency:
             # Initialize the high-frequency weights to learn how to change the channels.
-            self.encoderHigh2LowFrequencyWeights = nn.ParameterList()
+            self.high2LowFrequencyWeights = nn.ParameterList()
 
-            # Initialize the high frequency weights to learn how to change the channels.
-            self.encoderHigh2LowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.lowFrequencyShape + sum(self.highFrequenciesShapes), outChannel=self.lowFrequencyShape, secondDimension=numOutputSignals))
+            # Initialize the frequency weights to learn how to change the channels.
+            self.high2LowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.lowFrequencyShape + sum(self.highFrequenciesShapes), outChannel=self.lowFrequencyShape, secondDimension=numOutputSignals))
 
             # For each subsequent layer.
             for layerInd in range(self.numLayers-1):
                 # Learn a new set of wavelet coefficients to transform the data.
-                self.encoderHigh2LowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.lowFrequencyShape, outChannel=self.lowFrequencyShape, secondDimension=numOutputSignals))
+                self.high2LowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.lowFrequencyShape, outChannel=self.lowFrequencyShape, secondDimension=numOutputSignals))
+
+        if self.encodeLow2HighFrequency:
+            self.low2HighFrequencyWeights = nn.ParameterList()
+            for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
+                self.low2HighFrequencyWeights.append(nn.ParameterList())
+
+                # Initialize the frequency weights to learn how to change the channels.
+                self.low2HighFrequencyWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd], outChannel=self.highFrequenciesShapes[highFrequenciesInd], secondDimension=numOutputSignals))
+
+                # For each subsequent layer.
+                for layerInd in range(self.numLayers-1):
+                    # Learn a new set of wavelet coefficients to transform the data.
+                    self.low2HighFrequencyWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.highFrequenciesShapes[highFrequenciesInd], outChannel=self.highFrequenciesShapes[highFrequenciesInd], secondDimension=numOutputSignals))
 
         # Initialize activation method.
         self.activationFunction = nn.SELU()  # Activation function for the Fourier neural operator.
@@ -133,25 +147,11 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
         # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
         # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
 
-        if self.encodeHighFrequencies:
-            # Learn a new set of wavelet coefficients to transform the data.
-            for highFrequencyInd in range(len(highFrequencies)):
-                highFrequencies[highFrequencyInd] = self.applyEncoding(highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
-                # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
+        # Mix each frequency decomposition, separating high and low frequencies.
+        lowFrequency, highFrequencies = self.mixDecomposedFrequencyComponents(lowFrequency, highFrequencies, lowFrequencyTerms, highFrequencyTerms)
 
-        if self.encodeLowFrequency:
-            # Learn a new set of wavelet coefficients to transform the data.
-            lowFrequency = self.applyEncoding(lowFrequency, self.lowFrequencyWeights, lowFrequencyTerms)
-            # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
-
-        if self.encoderHigh2LowFrequency:
-            # Mix all the frequency terms into one set of frequencies.
-            lowFrequency = torch.cat((lowFrequency, *highFrequencies), dim=2)
-            # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape + sum(highFrequenciesShapes)
-
-            # Learn a new set of wavelet coefficients to transform the data.
-            lowFrequency = self.applyEncodingSecondDim(lowFrequency, self.encoderHigh2LowFrequencyWeights, frequencyTerms=None)
-            # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
+        # Mix all the frequency terms into one set of frequencies.
+        lowFrequency, highFrequencies = self.mixFrequencyComponents(lowFrequency, highFrequencies)
 
         # Perform wavelet reconstruction.
         reconstructedData = self.idwt((lowFrequency, highFrequencies))
@@ -166,6 +166,47 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
         # outputData dimension: batchSize, numOutputSignals, sequenceLength
 
         return reconstructedData
+
+    def mixDecomposedFrequencyComponents(self, lowFrequency, highFrequencies, lowFrequencyTerms=None, highFrequencyTerms=None):
+        if self.encodeHighFrequencies:
+            # For each set of high-frequency coefficients.
+            for highFrequencyInd in range(len(highFrequencies)):
+                # Learn a new set of wavelet coefficients to transform the data.
+                highFrequencies[highFrequencyInd] = self.applyEncoding(highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
+                # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
+
+        if self.encodeLowFrequency:
+            # Learn a new set of wavelet coefficients to transform the data.
+            lowFrequency = self.applyEncoding(lowFrequency, self.lowFrequencyWeights, lowFrequencyTerms)
+            # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
+
+        return lowFrequency, highFrequencies
+
+    def mixFrequencyComponents(self, lowFrequency, highFrequencies):
+        if self.encodeHigh2LowFrequency:
+            # Mix all the frequency terms into one set of frequencies.
+            lowFrequencyHolder = torch.cat((lowFrequency, *highFrequencies), dim=2)
+            # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape + sum(highFrequenciesShapes)
+
+            # Learn a new set of wavelet coefficients to transform the data.
+            lowFrequencyHolder = self.applyEncodingSecondDim(lowFrequencyHolder, self.high2LowFrequencyWeights, frequencyTerms=None)
+            # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
+
+        if self.encodeLow2HighFrequency:
+            # For each set of high-frequency coefficients.
+            for highFrequencyInd in range(len(highFrequencies)):
+                # Mix all the frequency terms into one set of frequencies.
+                highFrequenciesComponent = torch.cat((lowFrequency, highFrequencies[highFrequencyInd]), dim=2)
+                # highFrequenciesComponent dimension: batchSize, numOutputSignals, lowFrequencyShape + highFrequenciesShapes[highFrequencyInd]
+
+                # Learn a new set of wavelet coefficients to transform the data.
+                highFrequencies[highFrequencyInd] = self.applyEncodingSecondDim(highFrequenciesComponent, self.low2HighFrequencyWeights[highFrequencyInd], frequencyTerms=None)
+                # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
+
+        if self.encodeHigh2LowFrequency:
+            lowFrequency = lowFrequencyHolder
+
+        return lowFrequency, highFrequencies
 
     def applyEncoding(self, frequencies, weights, frequencyTerms=None):
         if frequencyTerms is not None:

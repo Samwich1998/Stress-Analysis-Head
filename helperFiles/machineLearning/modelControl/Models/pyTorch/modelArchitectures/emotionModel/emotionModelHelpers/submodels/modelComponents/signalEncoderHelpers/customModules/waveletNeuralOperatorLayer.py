@@ -73,7 +73,7 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
         if self.encodeLowFrequency:
             self.lowFrequencyWeights = nn.ParameterList()
 
-            # Initialize the low frequency weights to learn how to change the channels.
+            # Initialize the low-frequency weights to learn how to change the channels.
             self.lowFrequencyWeights.append(self.neuralWeightParameters(inChannel=numInputSignals, outChannel=numOutputSignals, secondDimension=self.lowFrequencyShape))
 
             # For each subsequent layer.
@@ -86,7 +86,7 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
             for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
                 self.highFrequenciesWeights.append(nn.ParameterList())
 
-                # Initialize the high frequency weights to learn how to change the channels.
+                # Initialize the high-frequency weights to learn how to change the channels.
                 self.highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=numInputSignals, outChannel=numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
 
                 # For each subsequent layer.

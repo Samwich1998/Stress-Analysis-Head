@@ -44,12 +44,12 @@ if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=16,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=4,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
     # General model parameters.
-    trainingDate = "2024-05-01 final"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-04-30 testing final db3 db3 2"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     trainTestSplit = 0.2  # The percentage of testing points.
 
@@ -69,8 +69,8 @@ if __name__ == "__main__":
     parser.add_argument('--submodel', type=str, default="signalEncoder", help='The component of the model we are training. Options: signalEncoder, autoencoder, emotionPrediction')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=48, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
-    parser.add_argument('--numEncodingLayers', type=int, default=6, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
+    parser.add_argument('--numLiftedChannels', type=int, default=32, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')

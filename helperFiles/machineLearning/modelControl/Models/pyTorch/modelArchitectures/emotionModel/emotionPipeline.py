@@ -105,7 +105,7 @@ class emotionPipeline:
         # Common LR values: 10E-6 to 1
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 1E-3 if self.fullTest else 1E-3}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-8, 'lr': 1E-3 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.

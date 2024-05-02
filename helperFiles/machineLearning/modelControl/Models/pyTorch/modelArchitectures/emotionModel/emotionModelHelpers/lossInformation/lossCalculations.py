@@ -106,7 +106,7 @@ class lossCalculations:
         mode = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.mode
         # Calculate the wavelet loss.
         waveletLoss = self.waveletLoss(encodedData, numDecompositions=numDecompositions, wavelet=wavelet, mode=mode, finalLength=self.model.sequenceBounds[1])
-        signalEncodingLayerLoss = signalEncodingLayerLoss + waveletLoss
+        signalEncodingLayerLoss = signalEncodingLayerLoss + 0.1*waveletLoss
 
         # Assert that nothing is wrong with the loss calculations. 
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, "encoded signal mean loss", assertGradient=False)

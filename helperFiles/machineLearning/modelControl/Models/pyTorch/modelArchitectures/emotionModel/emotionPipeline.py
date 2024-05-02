@@ -78,6 +78,7 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
+        self.modelHelpers.addSpectralNormalization(self.model)  # Add spectral normalization to the model.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
         self.resetModel()  # Reset the model's variable parameters
 
@@ -351,9 +352,7 @@ class emotionPipeline:
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
-
             # Finalize all the parameters.
-            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=5, fastPath=True)  # Spectral normalization.
             self.scheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+from torch.nn.utils import spectral_norm
 
 
 class modelHelpers:
@@ -105,11 +106,22 @@ class modelHelpers:
     # -------------------------- Model Updates -------------------------- #
 
     @staticmethod
+    def addSpectralNormalization(model):
+        for name, module in model.named_children():
+            # Apply recursively to submodules
+            modelHelpers.addSpectralNormalization(module)
+
+            # Apply spectral normalization to convolutional and linear layers
+            if isinstance(module, (nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.Linear)):
+                # Replace the original module with its spectrally normalized version
+                setattr(model, name, spectral_norm(module))
+
+        return model
+
+    @staticmethod
     def spectralNormalization(model, maxSpectralNorm=2, fastPath=False):
         # For each trainable parameter in the model.
         for layerParams in model.parameters():
-            # currentParams = layerParams.detach()
-
             # If the parameters are 2D
             if layerParams.ndim > 1:
 

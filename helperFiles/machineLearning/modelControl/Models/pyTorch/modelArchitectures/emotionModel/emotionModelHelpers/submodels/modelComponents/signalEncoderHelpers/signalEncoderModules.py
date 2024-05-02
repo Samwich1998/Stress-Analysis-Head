@@ -51,11 +51,11 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     @staticmethod
-    def neuralWeightParameters(inChannel=1, outChannel=2, finalDimension=46):
+    def neuralWeightParameters(inChannel=1, outChannel=2, secondDimension=46):
         # Calculate standard deviation based on LeCun Normal initialization suited for SELU
         init_std = (2 / inChannel) ** 0.5
 
-        return nn.Parameter(torch.randn((outChannel, inChannel, finalDimension)) * init_std)
+        return nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)) * init_std)
 
     @staticmethod
     def neuralBiasParameters(numChannels=2):

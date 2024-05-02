@@ -101,9 +101,9 @@ class lossCalculations:
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
         # Gather the wavelet parameters.
-        numDecompositions = self.model.signalEncoderModel.encodeSignals.channelEncoding.numDecompositions
-        wavelet = self.model.signalEncoderModel.encodeSignals.channelEncoding.wavelet
-        mode = self.model.signalEncoderModel.encodeSignals.channelEncoding.mode
+        numDecompositions = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.numDecompositions
+        wavelet = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.wavelet
+        mode = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.mode
         # Calculate the wavelet loss.
         waveletLoss = self.waveletLoss(encodedData, numDecompositions=numDecompositions, wavelet=wavelet, mode=mode, finalLength=self.model.sequenceBounds[1])
         signalEncodingLayerLoss = signalEncodingLayerLoss + waveletLoss

@@ -78,7 +78,7 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
-        self.modelHelpers.addSpectralNormalization(self.model)  # Add spectral normalization to the model.
+        # self.modelHelpers.addSpectralNormalization(self.model)  # Add spectral normalization to the model.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
         self.resetModel()  # Reset the model's variable parameters
 

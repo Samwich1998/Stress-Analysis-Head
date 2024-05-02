@@ -120,7 +120,7 @@ class generalSignalEncoding(signalEncoderBase):
             originalData = signalData.clone()  # Keep track of the initial stateF
 
             # Add noise to the data to ensure that the latent space is continuous.
-            signalData = emotionDataInterface.addNoise(signalData, trainingFlag, noiseSTD=0.001)
+            signalData = emotionDataInterface.addNoise(signalData, trainingFlag, noiseSTD=0.01)
 
             # Compress the signals down to the targetNumSignals.
             if compressedDataFlag: signalData = self.compressionModel(signalData, targetNumSignals)

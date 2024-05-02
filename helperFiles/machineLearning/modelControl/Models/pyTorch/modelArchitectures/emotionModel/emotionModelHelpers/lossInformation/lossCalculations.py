@@ -286,7 +286,8 @@ class lossCalculations:
     # ---------------------------------------------------------------------- #
     # ----------------------- Standardization Losses ----------------------- #
 
-    def waveletLoss(self, inputData, numDecompositions=2, wavelet='db3', mode='zero', finalLength=240):
+    @staticmethod
+    def waveletLoss(inputData, numDecompositions=2, wavelet='db3', mode='zero', finalLength=240):
         # Extract the input data dimensions.
         batchSize, numInputSignals, sequenceLength = inputData.size()
 

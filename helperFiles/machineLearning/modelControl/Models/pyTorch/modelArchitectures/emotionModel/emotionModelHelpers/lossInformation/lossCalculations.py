@@ -106,7 +106,7 @@ class lossCalculations:
         mode = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.mode
         # Calculate the wavelet loss.
         waveletLoss = self.waveletLoss(encodedData, numDecompositions=numDecompositions, wavelet=wavelet, mode=mode, finalLength=self.model.sequenceBounds[1])
-        signalEncodingLayerLoss = signalEncodingLayerLoss + 0.1*waveletLoss
+        signalEncodingLayerLoss = signalEncodingLayerLoss + 0.2*waveletLoss
 
         # Assert that nothing is wrong with the loss calculations. 
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, "encoded signal mean loss", assertGradient=False)
@@ -264,7 +264,8 @@ class lossCalculations:
 
         return basicEmotion_orthoganalityLoss + emotionInterpretation_orthoganalityLoss
 
-    def scoreModelWeights(self, allSubjectWeights):
+    @staticmethod
+    def scoreModelWeights(allSubjectWeights):
         """
         allSubjectWeights : numSubjects, self.numInterpreterHeads, numBasicEmotions, 1
         """
@@ -306,7 +307,13 @@ class lossCalculations:
         for decompositionLayer in range(len(highFrequencies)):
             highFrequencyLoss = highFrequencyLoss + highFrequencies[decompositionLayer].pow(2).mean()
 
-        return highFrequencyLoss
+        # Minimize the low-frequency coefficients.
+        lowFrequencyLoss = lowFrequency.pow(2).mean()
+
+        # Combine the losses.
+        finalLoss = 0.25*lowFrequencyLoss + highFrequencyLoss
+
+        return finalLoss
 
     @staticmethod
     def calculateStandardizationLoss(inputData, expectedMean=0, expectedStandardDeviation=1, dim=-1):

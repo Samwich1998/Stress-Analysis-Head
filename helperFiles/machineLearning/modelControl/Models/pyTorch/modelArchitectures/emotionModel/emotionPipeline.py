@@ -2,6 +2,7 @@
 import time
 import random
 
+import torch
 # PyTorch
 import torch.optim as optim
 

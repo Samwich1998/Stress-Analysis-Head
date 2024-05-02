@@ -20,6 +20,11 @@ class channelEncoding(signalEncoderModules):
         self.sequenceBounds = sequenceBounds                # The minimum and maximum sequence length.
 
         # Neural operator parameters.
+        self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
+        self.wavelet = 'db3'           # Wavelet type for the wavelet transform.
+        self.mode = 'zero'             # Mode for the wavelet transform.
+
+        # Neural operator parameters.
         self.numLiftedChannels = numLiftedChannels  # Number of channels to lift the signal to.
 
         # Initialize initial lifting models.
@@ -37,8 +42,8 @@ class channelEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numEncoderLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=True, encodeHigh2LowFrequency=True, encodeLow2HighFrequency=True))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=True, encodeHigh2LowFrequency=True, encodeLow2HighFrequency=True))
+            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=True, encodeHigh2LowFrequency=True, encodeLow2HighFrequency=True))
+            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=True, encodeHigh2LowFrequency=True, encodeLow2HighFrequency=True))
             # Notes: I found that dmey and db3 work well. coif3 is not that good. db6 is bad.
 
             # Create the processing layers.

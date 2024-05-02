@@ -100,8 +100,12 @@ class lossCalculations:
         # If there is a layer loss, average the loss.
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
+        # Gather the wavelet parameters.
+        numDecompositions = self.model.signalEncoderModel.encodeSignals.channelEncoding.numDecompositions
+        wavelet = self.model.signalEncoderModel.encodeSignals.channelEncoding.wavelet
+        mode = self.model.signalEncoderModel.encodeSignals.channelEncoding.mode
         # Calculate the wavelet loss.
-        waveletLoss = self.waveletLoss(encodedData, numDecompositions=2, wavelet='db3', mode='zero')
+        waveletLoss = self.waveletLoss(encodedData, numDecompositions=numDecompositions, wavelet=wavelet, mode=mode, finalLength=self.model.sequenceBounds[1])
         signalEncodingLayerLoss = signalEncodingLayerLoss + waveletLoss
 
         # Assert that nothing is wrong with the loss calculations. 
@@ -282,8 +286,14 @@ class lossCalculations:
     # ---------------------------------------------------------------------- #
     # ----------------------- Standardization Losses ----------------------- #
 
-    @staticmethod
-    def waveletLoss(inputData, numDecompositions=2, wavelet='db3', mode='zero'):
+    def waveletLoss(self, inputData, numDecompositions=2, wavelet='db3', mode='zero', finalLength=240):
+        # Extract the input data dimensions.
+        batchSize, numInputSignals, sequenceLength = inputData.size()
+
+        # Pad the data to the maximum sequence length.
+        inputData = torch.nn.functional.pad(inputData, (finalLength - sequenceLength, 0), mode='constant', value=0)
+        # inputData dimension: batchSize, numInputSignals, maxSequenceLength
+
         # Perform wavelet decomposition.
         dwt = DWT1DForward(J=numDecompositions, wave=wavelet, mode=mode).to(inputData.device)
         lowFrequency, highFrequencies = dwt(inputData)  # Note: each channel is treated independently here.

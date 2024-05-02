@@ -1,8 +1,8 @@
 #!/bin/bash
 
-numLiftedChannelsStart=48   # Absolute minimum is 16 or 32.
+numLiftedChannelsStart=80   # Absolute minimum is 16 or 32.
 numLiftedChannelsStep=-16
-numLiftedChannelsEnd=48     # Memory limited from 48-96.
+numLiftedChannelsEnd=16     # Memory limited from 48-96.
 # Total: 5
 
 numExpandedSignalsStart=2   # Absolute minimum is 2.

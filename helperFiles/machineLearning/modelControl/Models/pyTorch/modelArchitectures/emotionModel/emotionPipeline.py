@@ -105,7 +105,7 @@ class emotionPipeline:
         # Common LR values: 10E-6 to 1
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4 if self.fullTest else 2E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-5, 'lr': 1E-3 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -372,10 +372,11 @@ class emotionPipeline:
         # Cosine waveform: optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=20, eta_min=1e-8, last_epoch=-1, verbose=False)
         # Reduce on plateau (need further editing of loop): optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
         # Defined lambda function: optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lambda_function); lambda_function = lambda epoch: (epoch/50) if epoch < -1 else 1
+        # torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=0.3333333333333333, end_factor=1.0, total_iters=5, last_epoch=-1)
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
+            return torch.optim.lr_scheduler.LinearLR(optimizer=self.optimizer, start_factor=1, end_factor=0.1, total_iters=10, last_epoch=-1)
         elif submodel == "autoencoder":
             return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
         elif submodel == "emotionPrediction":

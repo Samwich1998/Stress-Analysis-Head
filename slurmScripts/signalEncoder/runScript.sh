@@ -1,18 +1,18 @@
 #!/bin/bash
 
-numLiftedChannelsStart=80   # Absolute minimum is 16 or 32.
+numLiftedChannelsStart=48   # Absolute minimum is 16 or 32.
 numLiftedChannelsStep=-16
-numLiftedChannelsEnd=16     # Memory limited from 48-96.
+numLiftedChannelsEnd=48     # Memory limited from 48-96.
 # Total: 5
 
 numExpandedSignalsStart=2   # Absolute minimum is 2.
 numExpandedSignalsStep=-1
-numExpandedSignalsEnd=5     # 8; Do not go over 16 or change model architecture
+numExpandedSignalsEnd=2     # 8; Do not go over 16 or change model architecture
 # Total: 4
 
 numEncodingLayersStart=6    # Absolute minimum is 0.
 numEncodingLayersStep=-1
-numEncodingLayersEnd=0      # Memory limited from 10-12.
+numEncodingLayersEnd=6      # Memory limited from 10-12.
 # Total: 7
 
 for numLiftedChannels in $(seq $numLiftedChannelsStart $numLiftedChannelsStep $numLiftedChannelsEnd)

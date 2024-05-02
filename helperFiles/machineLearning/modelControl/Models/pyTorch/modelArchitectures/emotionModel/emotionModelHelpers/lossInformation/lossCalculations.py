@@ -285,7 +285,7 @@ class lossCalculations:
     @staticmethod
     def waveletLoss(inputData, numDecompositions=2, wavelet='db3', mode='zero'):
         # Perform wavelet decomposition.
-        dwt = DWT1DForward(J=numDecompositions, wave=wavelet, mode=mode)
+        dwt = DWT1DForward(J=numDecompositions, wave=wavelet, mode=mode).to(inputData.device)
         lowFrequency, highFrequencies = dwt(inputData)  # Note: each channel is treated independently here.
         # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
         # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape

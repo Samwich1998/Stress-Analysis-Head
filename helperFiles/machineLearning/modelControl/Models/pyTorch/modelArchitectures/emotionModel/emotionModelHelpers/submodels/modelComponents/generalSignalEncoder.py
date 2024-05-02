@@ -28,7 +28,7 @@ class signalEncoderBase(signalEncoderHelpers):
         numEncodedSignals = encodedData.size(1)
 
         # Add noise to the data to ensure that the latent space is continuous.
-        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.001)
+        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
 
         # Calculate the number of active signals in each path.
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
@@ -118,9 +118,6 @@ class generalSignalEncoding(signalEncoderBase):
         while targetNumSignals != signalData.size(1):
             compressedDataFlag = targetNumSignals < signalData.size(1)
             originalData = signalData.clone()  # Keep track of the initial stateF
-
-            # Add noise to the data to ensure that the latent space is continuous.
-            signalData = emotionDataInterface.addNoise(signalData, trainingFlag, noiseSTD=0.01)
 
             # Compress the signals down to the targetNumSignals.
             if compressedDataFlag: signalData = self.compressionModel(signalData, targetNumSignals)

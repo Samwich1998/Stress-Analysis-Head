@@ -79,7 +79,6 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
-        # self.modelHelpers.addSpectralNormalization(self.model)  # Add spectral normalization to the model.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
         self.resetModel()  # Reset the model's variable parameters
 
@@ -106,7 +105,7 @@ class emotionPipeline:
         # Common LR values: 10E-6 to 1
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-5, 'lr': 1E-3 if self.fullTest else 1E-3}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-4, 'lr': 1E-3 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -348,7 +347,7 @@ class emotionPipeline:
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
                     t2 = time.time()
                     self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
-                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
+                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 3)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
@@ -377,7 +376,7 @@ class emotionPipeline:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return torch.optim.lr_scheduler.LinearLR(optimizer=self.optimizer, start_factor=1, end_factor=0.1, total_iters=10, last_epoch=-1)
+            return torch.optim.lr_scheduler.LinearLR(optimizer=self.optimizer, start_factor=1, end_factor=0.1, total_iters=11, last_epoch=-1)
         elif submodel == "autoencoder":
             return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
         elif submodel == "emotionPrediction":

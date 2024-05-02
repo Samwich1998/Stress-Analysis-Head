@@ -346,9 +346,7 @@ class emotionPipeline:
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
                     t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
-                    if self.accelerator.sync_gradients:
-                        print("HERE")
-                        self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
+                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.

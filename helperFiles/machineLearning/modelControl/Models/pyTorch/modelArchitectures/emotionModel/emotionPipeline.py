@@ -353,7 +353,7 @@ class emotionPipeline:
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
 
             # Finalize all the parameters.
-            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=True)  # Spectral normalization.
+            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=5, fastPath=True)  # Spectral normalization.
             self.scheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 

@@ -376,7 +376,7 @@ class emotionPipeline:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return torch.optim.lr_scheduler.LinearLR(optimizer=self.optimizer, start_factor=1, end_factor=0.1, total_iters=11, last_epoch=-1)
+            return torch.optim.lr_scheduler.LinearLR(optimizer=self.optimizer, start_factor=1, end_factor=0.1, total_iters=9, last_epoch=-1)
         elif submodel == "autoencoder":
             return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
         elif submodel == "emotionPrediction":

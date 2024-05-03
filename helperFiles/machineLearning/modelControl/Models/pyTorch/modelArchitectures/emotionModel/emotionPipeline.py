@@ -106,7 +106,11 @@ class emotionPipeline:
         # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
+<<<<<<< HEAD
             {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-2, 'lr': 5E-4 if self.fullTest else 5E-4}]
+=======
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4}]
+>>>>>>> f3a6ed07 (U)
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.

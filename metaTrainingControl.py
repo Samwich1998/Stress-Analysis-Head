@@ -49,11 +49,7 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-<<<<<<< HEAD
-    trainingDate = "2024-05-03 WD2 GC1"  # The current date we are training the model. Unique identifier of this training set.
-=======
     trainingDate = "2024-05-03 WD10 GC1"  # The current date we are training the model. Unique identifier of this training set.
->>>>>>> f3a6ed07 (U)
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     trainTestSplit = 0.2  # The percentage of testing points.
 

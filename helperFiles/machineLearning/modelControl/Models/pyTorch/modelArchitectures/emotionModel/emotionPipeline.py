@@ -106,11 +106,7 @@ class emotionPipeline:
         # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
-<<<<<<< HEAD
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-2, 'lr': 5E-4 if self.fullTest else 5E-4}]
-=======
             {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4}]
->>>>>>> f3a6ed07 (U)
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -357,6 +353,7 @@ class emotionPipeline:
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
             # Finalize all the parameters.
+            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)  # Spectral normalization
             self.scheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 

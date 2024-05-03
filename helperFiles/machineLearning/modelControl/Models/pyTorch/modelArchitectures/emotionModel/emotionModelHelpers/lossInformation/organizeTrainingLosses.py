@@ -66,7 +66,7 @@ class organizeTrainingLosses(lossCalculations):
                 # # For each emotion we are predicting.
                 # for emotionInd in range(self.numEmotions):
                 #     if allEmotionClassWeights[emotionInd] is torch.nan: continue
-                #     # Calculate and add the loss due to misclassifying the emotion.
+                #     # Calculate and add the loss due to misclassifying an emotion.
                 #     emotionTestingLoss = self.calculateEmotionLoss(emotionInd, allFinalEmotionDistributions, allLabels, allTestingMasks, allEmotionClassWeights) # Calculate the error in the emotion predictions
                 #     emotionTrainingLoss = self.calculateEmotionLoss(emotionInd, allFinalEmotionDistributions, allLabels, allTrainingMasks, allEmotionClassWeights) # Calculate the error in the emotion predictions
                 #     # Store the loss information.

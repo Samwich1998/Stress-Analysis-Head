@@ -19,6 +19,11 @@ class channelPositionalEncoding(signalEncoderModules):
         self.numEncodingStamps = 10  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings).
         self.numOperatorLayers = 1  # The number of layers to learn the encoding.
 
+        # Neural operator parameters.
+        self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
+        self.wavelet = 'db3'           # Wavelet type for the wavelet transform.
+        self.mode = 'zero'             # Mode for the wavelet transform.
+
         # Initialize the neural operator layer.
         self.learnNeuralOperatorLayers = nn.ModuleList([])
         self.unlearnNeuralOperatorLayers = nn.ModuleList([])
@@ -26,8 +31,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numOperatorLayers):
             # Create the spectral convolution layers.
-            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=False, encodeHigh2LowFrequency=False, encodeLow2HighFrequency=False))
-            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1, encodeLowFrequency=True, encodeHighFrequencies=False, encodeHigh2LowFrequency=False, encodeLow2HighFrequency=False))
+            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq'))
+            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq'))
         self.lowFrequencyShape = self.learnNeuralOperatorLayers[0].lowFrequencyShape
 
         # A list of parameters to encode each signal.

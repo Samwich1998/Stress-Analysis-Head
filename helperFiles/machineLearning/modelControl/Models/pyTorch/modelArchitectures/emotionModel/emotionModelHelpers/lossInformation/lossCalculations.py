@@ -100,14 +100,6 @@ class lossCalculations:
         # If there is a layer loss, average the loss.
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
-        # Gather the wavelet parameters.
-        numDecompositions = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.numDecompositions
-        wavelet = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.wavelet
-        mode = self.model.signalEncoderModel.encodeSignals.channelEncodingInterface.mode
-        # Calculate the wavelet loss.
-        waveletLoss = self.waveletLoss(encodedData, numDecompositions=numDecompositions, wavelet=wavelet, mode=mode, finalLength=self.model.sequenceBounds[1])
-        signalEncodingLayerLoss = signalEncodingLayerLoss + 0.2*waveletLoss
-
         # Assert that nothing is wrong with the loss calculations. 
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, "encoded signal mean loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, "encoded signal reconstructed loss", assertGradient=False)
@@ -286,34 +278,6 @@ class lossCalculations:
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Standardization Losses ----------------------- #
-
-    @staticmethod
-    def waveletLoss(inputData, numDecompositions=2, wavelet='db3', mode='zero', finalLength=240):
-        # Extract the input data dimensions.
-        batchSize, numInputSignals, sequenceLength = inputData.size()
-
-        # Pad the data to the maximum sequence length.
-        inputData = torch.nn.functional.pad(inputData, (finalLength - sequenceLength, 0), mode='constant', value=0)
-        # inputData dimension: batchSize, numInputSignals, maxSequenceLength
-
-        # Perform wavelet decomposition.
-        dwt = DWT1DForward(J=numDecompositions, wave=wavelet, mode=mode).to(inputData.device)
-        lowFrequency, highFrequencies = dwt(inputData)  # Note: each channel is treated independently here.
-        # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
-        # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
-
-        highFrequencyLoss = 0
-        # Minimize the high-frequency coefficients.
-        for decompositionLayer in range(len(highFrequencies)):
-            highFrequencyLoss = highFrequencyLoss + highFrequencies[decompositionLayer].pow(2).mean()
-
-        # Minimize the low-frequency coefficients.
-        lowFrequencyLoss = lowFrequency.pow(2).mean()
-
-        # Combine the losses.
-        finalLoss = 0.25*lowFrequencyLoss + highFrequencyLoss
-
-        return finalLoss
 
     @staticmethod
     def calculateStandardizationLoss(inputData, expectedMean=0, expectedStandardDeviation=1, dim=-1):

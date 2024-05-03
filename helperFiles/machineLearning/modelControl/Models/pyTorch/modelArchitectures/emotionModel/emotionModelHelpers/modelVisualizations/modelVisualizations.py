@@ -217,7 +217,7 @@ class modelVisualizations(globalPlottingProtocols):
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
             testingEncodedData, testingReconstructedData, testingSignalEncodingLayerLoss, testingCompressedData, testingReconstructedEncodedData, testingDenoisedDoubleReconstructedData, testingAutoencoderLayerLoss, testingMappedSignalData, \
                 testingReconstructedCompressedData, testingFeatureData, testingActivityDistributions, testingBasicEmotionDistributions, testingFinalEmotionDistributions \
-                = model.forward(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
+                = model(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
 
         # ------------------- Plot the Data on One Device ------------------ # 
 

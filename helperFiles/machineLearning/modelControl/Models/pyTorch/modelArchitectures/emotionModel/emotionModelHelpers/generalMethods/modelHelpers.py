@@ -106,27 +106,52 @@ class modelHelpers:
     # -------------------------- Model Updates -------------------------- #
 
     @staticmethod
-    def addSpectralNormalization(model):
+    def power_iteration(W, num_iterations: int = 50, eps: float = 1e-10):
+        """
+        Approximates the largest singular value (spectral norm) of weight matrix W using power iteration.
+        """
+        assert num_iterations > 0, "Power iteration should be a positive integer"
+        sigma = None
+
+        v = torch.randn(W.size(1)).to(W.device)
+        v = v / torch.norm(v, p=2) + eps
+        for i in range(num_iterations):
+            u = torch.mv(W, v)
+            u_norm = torch.norm(u, p=2)
+            u = u / u_norm
+            v = torch.mv(W.t(), u)
+            v_norm = torch.norm(v, p=2)
+            v = v / v_norm
+            # Monitor the change for debugging
+            sigma = torch.dot(u, torch.mv(W, v))
+
+        return sigma.item()
+
+    @staticmethod
+    def addSpectralNormalization(model, n_power_iterations=5):
         for name, module in model.named_children():
             # Apply recursively to submodules
-            modelHelpers.addSpectralNormalization(module)
+            modelHelpers.addSpectralNormalization(module, n_power_iterations=n_power_iterations)
 
-            # Apply spectral normalization to convolutional and linear layers
+            # Check if it's an instance of the modules we want to normalize
             if isinstance(module, (nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.Linear)):
-                # Replace the original module with its spectrally normalized version
-                setattr(model, name, spectral_norm(module))
+                # Apply spectral normalization
+                spectrally_normalized_module = spectral_norm(module, n_power_iterations=n_power_iterations)
+                setattr(model, name, spectrally_normalized_module)
 
         return model
 
     @staticmethod
-    def spectralNormalization(model, maxSpectralNorm=2, fastPath=False):
+    def spectralNormalization(model, maxSpectralNorm=2, fastPath=False, l2Norm=False):
         # For each trainable parameter in the model.
         for layerParams in model.parameters():
             # If the parameters are 2D
             if layerParams.ndim > 1:
 
                 if fastPath:
-                    # Calculate the spectral norm.
+                    spectralNorm = modelHelpers.power_iteration(layerParams, num_iterations=5)
+                elif l2Norm:
+                    # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
                     spectralNorm = torch.norm(layerParams, p=2).item()
                 else:
                     # Calculate the spectral norm.

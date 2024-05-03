@@ -10,8 +10,8 @@ import torch.optim as optim
 import transformers
 
 # Import files for machine learning
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from .emotionModelHelpers.lossInformation.organizeTrainingLosses import organizeTrainingLosses
 from .emotionModelHelpers.modelVisualizations.modelVisualizations import modelVisualizations
 
@@ -25,7 +25,7 @@ class emotionPipeline:
 
     def __init__(self, accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals,
                  numSubjectIdentifiers, demographicLength, numSubjects, userInputParams, emotionNames,
-                 activityNames, featureNames, submodel, fullTest=True, metaTraining=True, debuggingResults=False):
+                 activityNames, featureNames, submodel, fullTest=True, debuggingResults=False):
         # General parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers # The number of subject identifiers to consider. Dim: [numSubjectIdentifiers]
         self.demographicLength = demographicLength  # The amount of demographic information provided to the model (age, weight, etc.). Dim: [numDemographics]
@@ -56,7 +56,7 @@ class emotionPipeline:
         # Initialize the emotion model.
         if modelName == "emotionModel":
             self.model = emotionModelHead(submodel, self.accelerator, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                                          emotionNames, activityNames, featureNames, numSubjects, datasetName, metaTraining)
+                                          emotionNames, activityNames, featureNames, numSubjects, datasetName)
         # Assert that the model has been initialized.
         assert hasattr(self, 'model'), f"Unknown Model Type Requested: {modelName}"
 
@@ -105,7 +105,7 @@ class emotionPipeline:
         # Common LR values: 10E-6 to 1
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-3, 'lr': 1E-3 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -153,7 +153,7 @@ class emotionPipeline:
 
         return allData, allLabels, allTrainingMasks, allTestingMasks, allSignalData, allDemographicData, allSubjectIdentifiers, reconstructionIndex
 
-    def trainModel(self, dataLoader, submodel, numEpochs=500, metaTraining=True):
+    def trainModel(self, dataLoader, submodel, numEpochs=500, trainingFlag=True):
         """
         Stored items in the dataLoader.dataset:
             allData: The standardized testing and training data. numExperiments, numSignals, signalInfoLength
@@ -175,7 +175,7 @@ class emotionPipeline:
         assert allLabels.shape[1] == self.numEmotions + 1, f"Found {allLabels.shape[1]} labels, but expected {self.numEmotions} emotions + 1 activity label."
         assert allLabels.shape == allTrainingMasks.shape, "We should specify the training indices for each label"
         assert allLabels.shape == allTestingMasks.shape, "We should specify the testing indices for each label"
-        if metaTraining: assert numEpochs == 1, f"numEpochs: {numEpochs}"
+        if trainingFlag: assert numEpochs == 1, f"numEpochs: {numEpochs}"
 
         # For each training epoch.
         for epoch in range(numEpochs):
@@ -184,6 +184,9 @@ class emotionPipeline:
 
             # For each minibatch.
             for data in dataLoader:
+                # Apply spectral normalization to the model.
+                # if trainingFlag: self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)   # THIS IS NEEDED FOR TRAINING STABILITY (I used 10 initially).
+
                 # Accumulate gradients.
                 with self.accelerator.accumulate(model):
                     # Extract the data, labels, and testing/training indices.
@@ -352,6 +355,7 @@ class emotionPipeline:
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
             # Finalize all the parameters.
+            # if trainingFlag: self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)  # THIS IS NEEDED FOR TRAINING STABILITY (I used 10 initially).
             self.scheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 
@@ -413,7 +417,7 @@ class emotionPipeline:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.001)
+            addingNoiseRange = (0, 0.01)
         elif submodel == "autoencoder":
             addingNoiseRange = (0, 0.01)
         elif submodel == "emotionPrediction":

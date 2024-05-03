@@ -16,13 +16,13 @@ class signalEncoderModel(globalModel):
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.numEncodingLayers = numEncodingLayers  # The number of transformer layers during signal encoding.
+        self.numLiftedChannels = numLiftedChannels  # The number of channels to lift the signal to.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence lengths to consider.
         self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider.
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
-        self.numLiftedChannels = numLiftedChannels
-        self.numAccumulations = 0
-        self.accumulatedLoss = 0
+        self.numAccumulations = 0   # The number of gradient accumulations.
+        self.accumulatedLoss = 0    # The accumulated loss for gradient accumulation.
 
         # Method to converge to the final number of signals.
         self.encodeSignals = generalSignalEncoding(
@@ -190,7 +190,6 @@ class signalEncoderModel(globalModel):
         # ------------------------------------------------------------------ #  
 
     def reverseEncoding(self, decodedData, numSignalPath, signalEncodingLayerLoss, calculateLoss, trainingFlag):
-
         reversePath = []
         # Follow the path back to the original signal.
         for pathInd in range(len(numSignalPath) - 1, -1, -1):
@@ -207,7 +206,7 @@ class signalEncoderModel(globalModel):
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
         # Undo what was done in the initial adjustment.
-        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.001)
+        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.05)
         initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyEncodedData)
 
         # Undo the signal encoding.

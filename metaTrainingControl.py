@@ -18,10 +18,10 @@ import accelerate
 import torch
 
 # Import files for machine learning
-from helperFiles.machineLearning.dataInterface.compileModelData import compileModelData  # Methods to organize model data.
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
 from helperFiles.machineLearning.modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
 from helperFiles.machineLearning.featureAnalysis.featureImportance import featureImportance  # Import feature analysis files.
+from helperFiles.machineLearning.dataInterface.compileModelData import compileModelData  # Methods to organize model data.
 
 # Import meta-analysis files.
 from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.emognitionInterface import emognitionInterface
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # Add arguments for the signal encoder prediction
     parser.add_argument('--numLiftedChannels', type=int, default=32, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
     parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
-    parser.add_argument('--numExpandedSignals', type=int, default=6, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+    parser.add_argument('--numExpandedSignals', type=int, default=3, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
     parser.add_argument('--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')
@@ -211,7 +211,7 @@ if __name__ == "__main__":
             modelMigration.unifyModelWeights([modelPipeline], sharedModelWeights, unifiedLayerData)
 
             # Train the model numTrainingSteps times and store training parameters.
-            modelPipeline.trainModel(dataLoader, submodel, numTrainingSteps, metaTraining=True)
+            modelPipeline.trainModel(dataLoader, submodel, numTrainingSteps, trainingFlag=True)
             accelerator.wait_for_everyone()  # Wait for every device to reach this point before continuing.
 
             # Save and store the new model with its meta-trained weights.
@@ -328,7 +328,7 @@ if __name__ == "__main__":
         modelPipeline = allModels[modelInd]
 
         # Train he final emotion classification layer of the model.
-        modelPipeline.trainModel(dataLoader, numEpochs=50, metaTraining=False, plotSteps=True)
+        modelPipeline.trainModel(dataLoader, numEpochs=50, trainingFlag=False, plotSteps=True)
         modelPipeline.modelHelpers._saveModel(modelPipeline, f"checkpointModel_trainedModel_50Epochs_num{modelInd}.pth",
                                               appendedFolder="emotionModels/_checkpointModels/finalModels/",
                                               saveModelAttributes=True)

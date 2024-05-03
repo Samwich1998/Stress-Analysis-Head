@@ -1,6 +1,7 @@
 # General
 import numpy as np
 import abc
+import random
 
 from matplotlib import pyplot as plt
 
@@ -34,6 +35,9 @@ class generalProtocol(abc.ABC):
         self.numTempBins = len(self.temp_bins)
         self.numLossBins = len(self.loss_bins)
 
+        # for initializing simulated map
+        self.gaussSTD = np.array([0.05, 2.5])  # The standard deviation for the Gaussian distribution
+
         # If we are simulating.
         if simulationParameters['simulateTherapy']:
             # Define a helper class for simulation parameters.
@@ -41,6 +45,7 @@ class generalProtocol(abc.ABC):
             self.simulateTherapy = True
         else:
             self.empatchProtocols = empatchProtocols(self.predictionOrder)
+
             self.simulateTherapy = False
 
             # TODO: Delete this line
@@ -53,6 +58,15 @@ class generalProtocol(abc.ABC):
         timePoint, userState = self.getCurrentState()
         tempIndex = self.getBinIndex(self.temp_bins, userState[0])
 
+        # Track the user state and time delay.
+        self.userStatePath.append(self.compileLossStates(np.asarray([userState]))[0])
+        self.temperatureTimepoints.append((timePoint, tempIndex))
+        self.userFullStatePath.append(userState)
+
+    def initialUserState_nn(self):
+        timePoint, userState = self.getCurrentState()
+        tempIndex = self.getBinIndex(self.temp_bins, userState[0])
+        self.simulationProtocols.simulatedMap = self.initializeHeuristicMap(self.simulationProtocols.numSimulationTrueSamples)
         # Track the user state and time delay.
         self.userStatePath.append(self.compileLossStates(np.asarray([userState]))[0])
         self.temperatureTimepoints.append((timePoint, tempIndex))
@@ -78,7 +92,7 @@ class generalProtocol(abc.ABC):
         initialData = np.zeros((len(initialStates), 2))  # initialData dimension: numSimulationSamples, (T, Loss); 2D array
 
         # Convert the simulated points to a 2D matrix.
-        initialData[:, 1] = self.calculateLoss(initialStates[:, 1:])
+        initialData[:, 1], emotion_state = self.calculateLoss(initialStates[:, 1:])
         initialData[:, 0] = initialStates[:, 0]
 
         return initialData
@@ -91,6 +105,7 @@ class generalProtocol(abc.ABC):
 
             # Sample the new loss form a pre-simulated map.
             newUserLoss = self.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
+            # for neural network only
             PA, NA, SA = None, None, None
         else:
             # TODO: Implement a method to get the next user state.
@@ -110,6 +125,57 @@ class generalProtocol(abc.ABC):
         self.userFullStatePath.append([newUserTemp, PA, NA, SA])
         self.userStatePath.append((newUserTemp, newUserLoss))
 
+    def getNextState_nn(self, newUserTemp):
+        if self.simulateTherapy:
+            # Simulate a new time.
+            lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
+            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
+
+            # Sample the new loss form a pre-simulated map.
+            newUserLoss, initialSimulatedEmoStates = self.getSimulatedLoss_nn(self.userStatePath[-1], newUserTemp) # initialSimulatedStates dim: numSimulationTrueSamples (PA, NA, SA)
+
+            # for neural network only
+            PA, NA, SA = self.get_emotion_state_distinct(newUserTemp, initialSimulatedEmoStates)
+        else:
+            # TODO: Implement a method to get the next user state.
+            # Simulate a new time.
+            lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
+            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
+
+            # Sample the new loss form a pre-simulated map.
+            newUserLoss = self.getSimulatedLoss_nn(self.userStatePath[-1], newUserTemp)
+            PA, NA, SA = None, None, None
+
+        # Get the bin index for the new temperature.
+        tempIndex = self.getBinIndex(self.temp_bins, newUserTemp)
+
+        # Update the user state.
+        self.temperatureTimepoints.append((timePoint, tempIndex))
+        self.userFullStatePath.append([newUserTemp, PA, NA, SA])
+        self.userStatePath.append((newUserTemp, newUserLoss))
+
+    import random
+
+    def get_emotion_state_distinct(self, currentTemp, simulatedEmoMap):
+        bin_index = self.getBinIndex(self.temp_bins, currentTemp)
+
+        # Extract the first column which corresponds to temperatures
+        temperatures = [row[0] for row in simulatedEmoMap]
+
+        # Get bin indexes for all temperatures
+        bin_index_map = [self.getBinIndex(self.temp_bins, temp) for temp in temperatures]
+        matching_entries = [simulatedEmoMap[i] for i in range(len(bin_index_map)) if bin_index_map[i] == bin_index]
+        if matching_entries:
+            # Randomly select one of the matching entries
+            selected_entry = random.choice(matching_entries)
+            pa, na, sa = selected_entry[1] + np.random.normal(loc=0, scale=0.01), selected_entry[2] + np.random.normal(loc=0, scale=0.01), selected_entry[3] + np.random.normal(loc=0, scale=0.01)
+            print('Randomly selected PA, NA, SA: ', (pa, na, sa))
+        else:
+            print('No matching temperature bins found, initializing PA, NA, SA to a constant value....')
+            pa = na = sa = 1.0 / self.numLossBins
+
+        return pa, na, sa
+
     def checkConvergence(self, maxIterations):
         # Check if the therapy has converged.
         if maxIterations is not None:
@@ -125,7 +191,7 @@ class generalProtocol(abc.ABC):
         """ initialStates: numPoints, (PA, NA, SA); 2D array"""
         compiledLoss = np.sum(self.lossWeights * np.power(initialMentalStates - self.finalGoal, 2), axis=1) / self.lossWeights.sum()
 
-        return compiledLoss
+        return compiledLoss, initialMentalStates
 
     def getSimulatedLoss(self, currentUserState, newUserTemp):
         # Unpack the current user state.
@@ -135,16 +201,73 @@ class generalProtocol(abc.ABC):
         currentTempBinIndex = self.getBinIndex(self.temp_bins, currentUserTemp)
         currentLossIndex = self.getBinIndex(self.loss_bins, currentUserLoss)
         newTempBinIndex = self.getBinIndex(self.temp_bins, newUserTemp)
+        # Simulate a new user loss.
 
+        #TODO needs change
+        newUserLoss = self.simulationProtocols.sampleNewLoss(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.01)
+        return newUserLoss
+
+    def getSimulatedLoss_nn(self, currentUserState, newUserTemp):
+        # Unpack the current user state.
+        currentUserTemp, currentUserLoss = currentUserState
+        # TODO: is this right?
+        initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
+        # initialHeuristicStates dimension: numSimulationHeuristicSamples, (T, PA, NA, SA); 2D array
+        # initialSimulatedStates dimension: numSimulationTrueSamples, (T, PA, NA, SA); 2D array
+        # Get the simulated matrix from the simulated points.
+        initialSimulatedData = self.compileLossStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
+        self.simulationProtocols.simulatedMap = self.getProbabilityMatrix_nn(initialSimulatedData)  # Spreading delta function probability.
+        #TODO: end----------------
+
+        # Calculate the bin indices for the current and new user states.
+        currentTempBinIndex = self.getBinIndex(self.temp_bins, currentUserTemp)
+        currentLossIndex = self.getBinIndex(self.loss_bins, currentUserLoss)
+        newTempBinIndex = self.getBinIndex(self.temp_bins, newUserTemp)
         # Simulate a new user loss.
         newUserLoss = self.simulationProtocols.sampleNewLoss(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.01)
+        return newUserLoss, initialSimulatedStates # [:, 1:]
 
-        return newUserLoss
+
+
+    # ------------------------ initial Heuristic map for NN adaptive training ------------------------ #
+    def createGaussianMap_nn(self, gausMean, gausSTD):
+        # Generate a grid for Gaussian distribution calculations
+        x, y = np.meshgrid(self.loss_bins, self.temp_bins)
+
+        # Calculate Gaussian distribution values across the grid
+        gaussMatrix = np.exp(-0.5 * ((x - gausMean[0]) ** 2 / gausSTD[0] ** 2 + (y - gausMean[1]) ** 2 / gausSTD[1] ** 2))
+        gaussMatrix = gaussMatrix / gaussMatrix.sum()  # Normalize the Gaussian matrix
+
+        return gaussMatrix
+
+    def getProbabilityMatrix_nn(self, initialData):
+        """ initialData: numPoints, (T, L); 2D array"""
+        # Initialize probability matrix holder.
+        probabilityMatrix = np.zeros((self.numTempBins, self.numLossBins))
+
+        # Calculate the probability matrix.
+        for initialDataPoints in initialData:
+            currentUserTemp, currentUserLoss = initialDataPoints
+
+            # Generate 2D gaussian matrix.
+            gaussianMatrix = self.createGaussianMap_nn(gausMean=(currentUserLoss, currentUserTemp), gausSTD=self.gaussSTD)
+            probabilityMatrix += gaussianMatrix  # Add the gaussian map to the matrix
+
+
+        # Normalize the probability matrix.
+        probabilityMatrix = probabilityMatrix / probabilityMatrix.sum()
+
+        return probabilityMatrix
 
     # ------------------------ Data Structure Interface ------------------------ #
 
     @staticmethod
     def getBinIndex(allBins, binValue):
+        # print("Type of allBins:", type(allBins), "Shape:", np.shape(allBins))
+        # print("Type of binValue:", type(binValue))
+        # print("allBins:", allBins)
+        # print("binValue:", binValue)
+        # exit()
         return min(np.searchsorted(allBins, binValue, side='right'), len(allBins) - 1)
 
     @staticmethod

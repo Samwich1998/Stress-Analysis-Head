@@ -1,31 +1,23 @@
 # General
-import torch
 from torch import nn, optim
 
 # Import files.
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.nnHelpers.heatTherapyModel import heatTherapyModel
 
 
-class nnProtocol:
+class modelHelpers:
     def __init__(self, modelName, numTempBins, numLossBins, onlineTraining=False):
         # General parameters.
         self.onlineTraining = onlineTraining  # Whether to train the model live.
         self.numTempBins = numTempBins  # The number of temperature bins.
         self.numLossBins = numLossBins  # The number of loss bins.
         self.modelName = modelName      # The model's unique identifier.
-        self.numTemperatures = 1        # The number of temperatures to predict.
-        self.numLosses = 3              # The number of losses to predict.
+        self.numTemperatures = 1        # The number of temperatures to predict. # will be 2D for music therapy
+        self.numLosses = 3              # The number of losses to predict. (PA, NA, SA)
 
         # Model parameters.
         self.lossFunction = None    # The loss function for the model.
         self.optimizer = None       # The optimizer for the model.
-
-        # Initialize the model.
-        self.model = heatTherapyModel(numTemperatures=self.numTemperatures, numLosses=self.numLosses, numTempBins=self.numTempBins, numLossBins=self.numLossBins)
-        self.setupModel()  # Set up the model's training parameters.
-
-        # Initialize the optimal final loss.
-        self.optimalFinalLoss = [1, 0, 0]  # The optimal final loss bin index. [PA, NA, SA].
 
     # ------------------------ Machine Learning Setup ------------------------ #
 
@@ -41,6 +33,7 @@ class nnProtocol:
 
         # TODO: this will porobably be MSE
         self.lossFunction = nn.CrossEntropyLoss(weight=None, reduction='none', label_smoothing=0.0)
+        #self.lossFunction = nn.MSELoss()
 
     # ------------------------ Machine Learning ------------------------ #
 

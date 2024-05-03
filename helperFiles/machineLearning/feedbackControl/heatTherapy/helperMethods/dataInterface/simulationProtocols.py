@@ -39,15 +39,21 @@ class simulationProtocols:
             newLossProbabilities = newLossProbabilities / np.sum(newLossProbabilities)
 
             # Sample a new loss from the distribution.
-            newLossBinIndex = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
-            newUserLoss = self.loss_bins[newLossBinIndex]
+            newLossBinIndex_PA = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
+            newUserLoss_PA = self.loss_bins[newLossBinIndex_PA]
+            newLossBinIndex_NA = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
+            newUserLoss_NA = self.loss_bins[newLossBinIndex_NA]
+            newLossBinIndex_SA = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
+            newUserLoss_SA = self.loss_bins[newLossBinIndex_SA]
         else:
-            newUserLoss = currentUserLoss + np.random.normal(loc=0, scale=0.01)
+            newUserLoss_PA = currentUserLoss + np.random.normal(loc=0, scale=0.01)
+            newUserLoss_NA = currentUserLoss + np.random.normal(loc=0, scale=0.01)
+            newUserLoss_SA = currentUserLoss + np.random.normal(loc=0, scale=0.01)
 
-        return max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss))
+        return max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss_PA)), max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss_NA)), max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss_SA))
 
     def getFirstPoint(self):
-        return self.startingPoint
+        return self.startingPoint  # (T, PA, NA, SA)
 
     # ------------------------ Sampling Methods ------------------------ #
 

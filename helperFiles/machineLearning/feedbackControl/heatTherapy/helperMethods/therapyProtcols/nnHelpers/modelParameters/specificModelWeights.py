@@ -54,9 +54,8 @@ class specificModelWeights(nn.Module):
 
         # Initialize a holder for the loss predictions.
         finalLossPredictions = torch.zeros(self.numLosses, batchSize, self.numLossBins)
-
         # For each loss module.
-        for lossModuleInd in range(self.numLossBins):
+        for lossModuleInd in range(self.numLosses):
             finalLossPredictions[lossModuleInd] = self.lossModules[lossModuleInd](inputData)
 
         return finalLossPredictions

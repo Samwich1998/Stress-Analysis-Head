@@ -1,7 +1,11 @@
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.aStarProtocol import aStarProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.basicProtocol import basicProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.nnProtocol import nnProtocol
+
+# General.
 import time
+
+# Import the necessary libraries.
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.aStarProtocol import aStarProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.basicProtocol import basicProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnProtocol
 
 
 class heatTherapyControl:
@@ -39,8 +43,14 @@ class heatTherapyControl:
         # Until the therapy converges.
         while not self.therapyProtocol.finishedTherapy:
             # Get the next states for the therapy.
-            newUserTemp, allMaps = self.therapyProtocol.updateTherapyState()
-            self.therapyProtocol.getNextState(newUserTemp)
+            therapyState, allMaps = self.therapyProtocol.updateTherapyState()
+            self.therapyProtocol.getNextState(therapyState)
+
+            if self.therapyMethod == "nnProtocol":
+                # Calculate the final loss.
+                trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
+                lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, trueLossValues)
+                self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
 
             if self.plotResults:
                 if self.therapyMethod == "aStarProtocol":
@@ -55,9 +65,9 @@ class heatTherapyControl:
 
 if __name__ == "__main__":
     # User parameters.
-    userTherapyMethod = "aStarProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
+    userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
     userTemperatureBounds = (30, 50)  # The temperature bounds for the therapy.
-    plotTherapyResults = True  # Whether to plot the results.
+    plotTherapyResults = False  # Whether to plot the results.
     userTempBinWidth = 2  # The temperature bin width for the therapy.
 
     # Simulation parameters.
@@ -73,4 +83,16 @@ if __name__ == "__main__":
     therapyProtocol = heatTherapyControl(userTemperatureBounds, userTempBinWidth, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
 
     # Run the therapy protocol.
-    therapyProtocol.runTherapyProtocol(maxIterations=1000)
+    therapyProtocol.runTherapyProtocol(maxIterations=100)
+
+    # TODO: lost per epoch  (optimal, predicted, actual loss) (lossPredictionLoss, minimizeLossBias, currentUserLoss)
+    # TODO: change the architecture
+    # TODO: save the good copy
+    # TODO: figure out the crossentropyerror high issue?
+    # TODO: other types of losses for classification (look into them)
+    # TODO: add a learning rate scheduler
+    # TODO: online training
+    # TODO: saving and loading models
+    # TODO: look into gradient clipping and spectral normalization 
+
+    # loss vs epoch

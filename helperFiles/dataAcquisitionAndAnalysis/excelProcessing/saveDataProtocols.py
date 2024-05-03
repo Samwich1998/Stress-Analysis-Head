@@ -1,7 +1,4 @@
 
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General Modules
 import os
 import time
@@ -10,10 +7,8 @@ import collections
 from openpyxl import load_workbook, Workbook
 
 # Import file for handling excel format
-from excelFormatting import handlingExcelFormat
+from .excelFormatting import handlingExcelFormat
 
-# -------------------------------------------------------------------------- #
-# -------------------------- Saving Data in Excel -------------------------- #
 
 class saveExcelData(handlingExcelFormat):
     

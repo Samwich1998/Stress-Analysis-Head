@@ -102,10 +102,11 @@ class emotionPipeline:
         # Get the models, while considering whether they are distributed or not.
         trainingInformation, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel = self.getDistributedModels(model=None, submodel=None)
 
-        # Common LR values: 10E-6 to 1
+        # Common LR values: 1E-6 to 1
+        # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-3, 'lr': 1E-3 if self.fullTest else 1E-3}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-2, 'lr': 1E-3 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -184,9 +185,6 @@ class emotionPipeline:
 
             # For each minibatch.
             for data in dataLoader:
-                # Apply spectral normalization to the model.
-                # if trainingFlag: self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)   # THIS IS NEEDED FOR TRAINING STABILITY (I used 10 initially).
-
                 # Accumulate gradients.
                 with self.accelerator.accumulate(model):
                     # Extract the data, labels, and testing/training indices.
@@ -355,7 +353,6 @@ class emotionPipeline:
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
             # Finalize all the parameters.
-            # if trainingFlag: self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)  # THIS IS NEEDED FOR TRAINING STABILITY (I used 10 initially).
             self.scheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 

@@ -27,15 +27,15 @@ class emotionPipeline:
                  numSubjectIdentifiers, demographicLength, numSubjects, userInputParams, emotionNames,
                  activityNames, featureNames, submodel, fullTest=True, debuggingResults=False):
         # General parameters.
-        self.numSubjectIdentifiers = numSubjectIdentifiers # The number of subject identifiers to consider. Dim: [numSubjectIdentifiers]
+        self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers to consider. Dim: [numSubjectIdentifiers]
         self.demographicLength = demographicLength  # The amount of demographic information provided to the model (age, weight, etc.). Dim: [numDemographics]
-        self.debuggingResults = debuggingResults    # Whether to print debugging results. Type: bool
-        self.sequenceLength = sequenceLength        # The length of each incoming signal. Type: int
-        self.device = accelerator.device    # Specify whether to use the CPU or GPU capabilities.
-        self.accelerator = accelerator      # Hugging face interface to speed up the training process.
-        self.modelName = modelName      # The unique name of the model to initialize.
-        self.fullTest = fullTest        # Whether to run a full test or not.
-        self.modelID = modelID          # A unique integer identifier for this model.
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
+        self.sequenceLength = sequenceLength  # The length of each incoming signal. Type: int
+        self.device = accelerator.device  # Specify whether to use the CPU or GPU capabilities.
+        self.accelerator = accelerator  # Hugging face interface to speed up the training process.
+        self.modelName = modelName  # The unique name of the model to initialize.
+        self.fullTest = fullTest  # Whether to run a full test or not.
+        self.modelID = modelID  # A unique integer identifier for this model.
 
         # Pre-initialize later parameters.
         self.optimizer = None
@@ -44,14 +44,14 @@ class emotionPipeline:
 
         # Dataset-specific parameters.
         self.allEmotionClasses = allEmotionClasses  # The number of classes (intensity levels) within each emotion to predict. Dim: [numEmotions]
-        self.activityLabelInd = len(emotionNames)   # The index of the activity label in the label array.
-        self.numActivities = len(activityNames)     # The number of activities we are predicting. Type: int
-        self.numEmotions = len(emotionNames)    # The number of emotions we are predicting. Type: int
-        self.activityNames = activityNames      # The names of each activity we are predicting. Dim: numActivities
-        self.maxNumSignals = maxNumSignals      # The maximum number of signals to consider. Type: int
-        self.emotionNames = emotionNames    # The names of each emotion we are predicting. Dim: numEmotions
-        self.featureNames = featureNames    # The names of each signal in the model. Dim: numSignals
-        self.datasetName = datasetName      # The name of the specific dataset being used in this model (case, wesad, etc.)
+        self.activityLabelInd = len(emotionNames)  # The index of the activity label in the label array.
+        self.numActivities = len(activityNames)  # The number of activities we are predicting. Type: int
+        self.numEmotions = len(emotionNames)  # The number of emotions we are predicting. Type: int
+        self.activityNames = activityNames  # The names of each activity we are predicting. Dim: numActivities
+        self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider. Type: int
+        self.emotionNames = emotionNames  # The names of each emotion we are predicting. Dim: numEmotions
+        self.featureNames = featureNames  # The names of each signal in the model. Dim: numSignals
+        self.datasetName = datasetName  # The name of the specific dataset being used in this model (case, wesad, etc.)
 
         # Initialize the emotion model.
         if modelName == "emotionModel":
@@ -61,7 +61,7 @@ class emotionPipeline:
         assert hasattr(self, 'model'), f"Unknown Model Type Requested: {modelName}"
 
         # Extract relevant properties from the model.
-        self.generalTimeWindow = self.model.timeWindows[-1]    # The default time window to use for training and testing.
+        self.generalTimeWindow = self.model.timeWindows[-1]  # The default time window to use for training and testing.
 
         # Initialize helper classes.
         self.organizeLossInfo = organizeTrainingLosses(self.accelerator, self.model, allEmotionClasses, self.activityLabelInd, self.generalTimeWindow)
@@ -73,7 +73,8 @@ class emotionPipeline:
 
         if submodel == "emotionPrediction":
             # Finalize model setup.
-            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
+            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType,
+                                                                                                       predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
             self.model.sharedEmotionModel.lastEmotionLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.emotionDist_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
@@ -183,12 +184,8 @@ class emotionPipeline:
             if 5 < numEpochs: self.accelerator.print(f"\tRound: {epoch}", flush=True)
             numPointsAnalyzed = 0
 
-            # L2 regularization: 1E-4 to 1E-6
-            self.modelHelpers.l2Normalization(self.model, maxNorm=5)
-            # I found 5 < Norm < 10 to be good for my model.
-
             # For each minibatch.
-            for data in dataLoader:
+            for dataInd, data in enumerate(dataLoader):
                 # Accumulate gradients.
                 with self.accelerator.accumulate(model):
                     # Extract the data, labels, and testing/training indices.
@@ -262,7 +259,7 @@ class emotionPipeline:
                         if 0.25 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.5*signalEncodingTrainingLayerLoss
+                            finalLoss = finalLoss + 0.5 * signalEncodingTrainingLayerLoss
                         if 0.25 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         finalLoss = compressionFactor * noisePercentage * finalLoss
@@ -350,12 +347,18 @@ class emotionPipeline:
                     t1 = time.time()
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
-                    t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
+                    t2 = time.time();
+                    self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
                     # if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 10)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
+
+                    if trainingFlag and dataInd % 2 == 0:
+                        # L2 regularization: 1E-4 to 1E-6
+                        self.modelHelpers.l2Normalization(self.model, maxNorm=10)
+                        # I found 5 < Norm < 10 to be good for my model.
             # Finalize all the parameters.
             self.scheduler.step()  # Update the learning rate.
 

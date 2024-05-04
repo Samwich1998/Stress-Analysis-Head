@@ -107,7 +107,7 @@ class saveExcelData(handlingExcelFormat):
                 
                 # Add the data row to the worksheet
                 worksheet.append(row)
-                # Move onto next excel sheet if too much data
+                # Move onto the next Excel sheet if too much data
                 if int(experimentInfoPointer/(firstIndexInFile+1)) == self.maxAddToExcelSheet or int(featureInfoPointer/(firstIndexInFile+1)) == self.maxAddToExcelSheet:
                     break
 

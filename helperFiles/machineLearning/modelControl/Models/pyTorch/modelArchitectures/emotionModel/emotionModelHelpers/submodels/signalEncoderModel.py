@@ -127,7 +127,7 @@ class signalEncoderModel(globalModel):
         # ------------------- Learned Signal Compression ------------------- #
 
         # Learn how to add positional encoding to each signal's position.
-        positionEncodedData = self.encodeSignalsencodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
+        positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
 
         # Compress the signal space into numEncodedSignals.

@@ -69,9 +69,15 @@ if __name__ == "__main__":
     parser.add_argument('--submodel', type=str, default="signalEncoder", help='The component of the model we are training. Options: signalEncoder, autoencoder, emotionPrediction')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
+<<<<<<< HEAD
     parser.add_argument('--numLiftedChannels', type=int, default=16, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
     parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+=======
+    parser.add_argument('--numLiftedChannels', type=int, default=80, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument('--numEncodingLayers', type=int, default=6, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
+    parser.add_argument('--numExpandedSignals', type=int, default=5, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+>>>>>>> e9eb5955 (U)
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
     parser.add_argument('--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')

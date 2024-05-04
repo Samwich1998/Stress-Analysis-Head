@@ -169,17 +169,20 @@ class compileModelData:
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.5956 times smaller than the largest signals.
 
         if submodel == "signalEncoder":
-            minimumBatchSize = 8 if self.userInputParams['deviceListed'].startswith("HPC") else 8
+            minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "autoencoder":
-            minimumBatchSize = 8 if self.userInputParams['deviceListed'].startswith("HPC") else 8
+            minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":
-            minimumBatchSize = 8 if self.userInputParams['deviceListed'].startswith("HPC") else 8
+            minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         else:
             raise Exception()
 
         maxNumSignals = 232
         # Adjust the batch size based on the number of signals used.
-        return int(minimumBatchSize * maxNumSignals / numSignals)
+        maxBatchSize = int(minimumBatchSize * maxNumSignals / numSignals)
+        maxBatchSize = min(maxBatchSize, minimumBatchSize)  # Ensure the maximum batch size is not larger than the number of signals..
+
+        return maxBatchSize
 
     @staticmethod
     def getSequenceLength(submodel, sequenceLength):

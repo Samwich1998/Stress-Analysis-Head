@@ -44,12 +44,12 @@ if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=16,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
     # General model parameters.
-    trainingDate = "2024-05-03 WD10 L2-every1-10 Jacobian-0.5"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-05-04"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     trainTestSplit = 0.2  # The percentage of testing points.
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     useFinalLearningParams = True  # If you want to use FINAL training parameters. The ONLY effect on training is LR.
     plotTrainingSteps = True  # If you want to plot any results from training.
     storeLoss = True  # If you want to record any loss values.
-    fastPass = True  # If you want to only plot/train 240 points. No effect on training.
+    fastPass = False  # If you want to only plot/train 240 points. No effect on training.
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Parse Model Parameters ----------------------- #
@@ -181,18 +181,18 @@ if __name__ == "__main__":
     modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
     modelMigration.unifyModelWeights(allModels, sharedModelWeights, unifiedLayerData)
 
-    # t1 = time.time()
-    # # For each meta-training model.
-    # for modelInd in range(len(allMetaLossDataHolders)):
-    #     lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
-    #     modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
-    #
-    #     with torch.no_grad():
-    #         # Calculate and store all the training and testing losses of the untrained model.
-    #         modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
-    #         modelPipeline.scheduler.step()  # Update the learning rate.
-    # t2 = time.time()
-    # accelerator.print("Total loss calculation time:", t2 - t1)
+    t1 = time.time()
+    # For each meta-training model.
+    for modelInd in range(len(allMetaLossDataHolders)):
+        lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
+        modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
+
+        with torch.no_grad():
+            # Calculate and store all the training and testing losses of the untrained model.
+            modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
+            modelPipeline.scheduler.step()  # Update the learning rate.
+    t2 = time.time()
+    accelerator.print("Total loss calculation time:", t2 - t1)
 
     # For each training epoch
     for epoch in range(2, 1000):
@@ -220,18 +220,18 @@ if __name__ == "__main__":
         modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
         modelMigration.unifyModelWeights(allModels, sharedModelWeights, unifiedLayerData)
 
-        # t1 = time.time()
-        # # For each meta-training model.
-        # for modelInd in range(len(allMetaLossDataHolders)):
-        #     lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
-        #     modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
-        #
-        #     with torch.no_grad():
-        #         # Calculate and store all the training and testing losses of the untrained model.
-        #         modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
-        #         modelPipeline.scheduler.step()  # Update the learning rate.
-        # t2 = time.time()
-        # accelerator.print("Total loss calculation time:", t2 - t1)
+        t1 = time.time()
+        # For each meta-training model.
+        for modelInd in range(len(allMetaLossDataHolders)):
+            lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
+            modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
+
+            with torch.no_grad():
+                # Calculate and store all the training and testing losses of the untrained model.
+                modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
+                modelPipeline.scheduler.step()  # Update the learning rate.
+        t2 = time.time()
+        accelerator.print("Total loss calculation time:", t2 - t1)
 
         if plotSteps:
             t1 = time.time()

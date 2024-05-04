@@ -142,7 +142,7 @@ class modelHelpers:
         return model
 
     @staticmethod
-    def spectralNormalization(model, maxSpectralNorm=2, fastPath=False, l2Norm=False):
+    def spectralNormalization(model, maxSpectralNorm=2, fastPath=False):
         # For each trainable parameter in the model.
         for layerParams in model.parameters():
             # If the parameters are 2D
@@ -150,9 +150,6 @@ class modelHelpers:
 
                 if fastPath:
                     spectralNorm = modelHelpers.power_iteration(layerParams, num_iterations=5)
-                elif l2Norm:
-                    # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
-                    spectralNorm = torch.norm(layerParams, p=2).item()
                 else:
                     # Calculate the spectral norm.
                     singular_values = torch.linalg.svdvals(layerParams)
@@ -161,6 +158,17 @@ class modelHelpers:
                 # Constrain the spectral norm.
                 if maxSpectralNorm < spectralNorm:
                     layerParams.data = layerParams * (maxSpectralNorm / spectralNorm)
+
+    @staticmethod
+    def l2Normalization(model, maxNorm=2):
+        # For each trainable parameter in the model.
+        for layerParams in model.parameters():
+            # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
+            paramNorm = torch.norm(layerParams, p=2).item()
+
+            # Constrain the spectral norm.
+            if maxNorm < paramNorm:
+                layerParams.data = layerParams * (maxNorm / paramNorm)
 
     @staticmethod
     def apply_spectral_normalization(model, max_spectral_norm=2, power_iterations=1):

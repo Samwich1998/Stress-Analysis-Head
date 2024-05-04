@@ -106,7 +106,7 @@ class emotionPipeline:
         # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-4, 'lr': 5E-4 if self.fullTest else 5E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -184,7 +184,8 @@ class emotionPipeline:
             numPointsAnalyzed = 0
 
             # L2 regularization: 1E-4 to 1E-6
-            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)  # Spectral normalization
+            self.modelHelpers.l2Normalization(self.model, maxNorm=5)
+            # I found 5 < Norm < 10 to be good for my model.
 
             # For each minibatch.
             for data in dataLoader:

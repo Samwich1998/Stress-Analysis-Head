@@ -356,7 +356,7 @@ class emotionPipeline:
 
                     if trainingFlag and dataInd % 2 == 0:
                         # L2 regularization: 1E-4 to 1E-6
-                        self.modelHelpers.l2Normalization(self.model, maxNorm=10)
+                        self.modelHelpers.l2Normalization(self.model, maxNorm=5)
                         # I found 5 < Norm < 10 to be good for my model.
             # Finalize all the parameters.
             self.scheduler.step()  # Update the learning rate.

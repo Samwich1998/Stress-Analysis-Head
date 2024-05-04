@@ -45,7 +45,7 @@ class signalEncoderBase(signalEncoderHelpers):
         # Calculate the squared error loss for this layer of compression/expansion.
         squaredErrorLoss_forward = (originalData - encodedDecodedOriginalData)[:, :numActiveSignals, :].pow(2).mean(dim=2).mean(dim=1)
 
-        # Calculate the jacobian loss for this layer of compression/expansion.
+        # Calculate the Jacobian loss for this layer of compression/expansion.
         smoothLatentSpaceLoss_forward = lossCalculations.gradient_penalty(encodedData, encodedDecodedOriginalData, dims=[1, 2])
         smoothLatentSpaceLoss_reverse = lossCalculations.gradient_penalty(originalData, encodedData, dims=[1, 2])
 

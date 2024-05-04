@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------- #
 # ---------------------------- Imported Modules ---------------------------- #
-
+import math
 # General
 import os
 import sys
@@ -292,8 +292,12 @@ class lossCalculations:
             inputs=inputs
         )
 
+        # Get the size of the gradients for normalization.
+        batchSize, elemA, elemB = gradients[0].size()
+
         # Calculate the norm of the gradients.
-        gradients_norm = torch.norm(gradients[0], p=2, dim=dims)
+        gradients_norm = torch.norm(gradients[0], p='fro', dim=dims)
+        gradients_norm = gradients_norm / math.sqrt(elemA*elemB)
 
         return gradients_norm
 

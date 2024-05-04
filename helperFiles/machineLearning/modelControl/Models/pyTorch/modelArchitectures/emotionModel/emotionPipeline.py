@@ -107,7 +107,7 @@ class emotionPipeline:
         # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-4 if self.fullTest else 5E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -381,7 +381,7 @@ class emotionPipeline:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return torch.optim.lr_scheduler.LinearLR(optimizer=self.optimizer, start_factor=1, end_factor=0.1, total_iters=4, last_epoch=-1)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
         elif submodel == "autoencoder":
             return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
         elif submodel == "emotionPrediction":

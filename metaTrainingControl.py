@@ -70,8 +70,8 @@ if __name__ == "__main__":
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
     parser.add_argument('--numLiftedChannels', type=int, default=48, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
-    parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
-    parser.add_argument('--numExpandedSignals', type=int, default=4, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+    parser.add_argument('--numEncodingLayers', type=int, default=4, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
+    parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
     parser.add_argument('--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')
@@ -181,18 +181,18 @@ if __name__ == "__main__":
     modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
     modelMigration.unifyModelWeights(allModels, sharedModelWeights, unifiedLayerData)
 
-    t1 = time.time()
-    # For each meta-training model.
-    for modelInd in range(len(allMetaLossDataHolders)):
-        lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
-        modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
-
-        with torch.no_grad():
-            # Calculate and store all the training and testing losses of the untrained model.
-            modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
-            modelPipeline.scheduler.step()  # Update the learning rate.
-    t2 = time.time()
-    accelerator.print("Total loss calculation time:", t2 - t1)
+    # t1 = time.time()
+    # # For each meta-training model.
+    # for modelInd in range(len(allMetaLossDataHolders)):
+    #     lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
+    #     modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
+    #
+    #     with torch.no_grad():
+    #         # Calculate and store all the training and testing losses of the untrained model.
+    #         modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
+    #         modelPipeline.scheduler.step()  # Update the learning rate.
+    # t2 = time.time()
+    # accelerator.print("Total loss calculation time:", t2 - t1)
 
     # For each training epoch
     for epoch in range(2, 1000):
@@ -220,18 +220,18 @@ if __name__ == "__main__":
         modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
         modelMigration.unifyModelWeights(allModels, sharedModelWeights, unifiedLayerData)
 
-        t1 = time.time()
-        # For each meta-training model.
-        for modelInd in range(len(allMetaLossDataHolders)):
-            lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
-            modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
-
-            with torch.no_grad():
-                # Calculate and store all the training and testing losses of the untrained model.
-                modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
-                modelPipeline.scheduler.step()  # Update the learning rate.
-        t2 = time.time()
-        accelerator.print("Total loss calculation time:", t2 - t1)
+        # t1 = time.time()
+        # # For each meta-training model.
+        # for modelInd in range(len(allMetaLossDataHolders)):
+        #     lossDataLoader = allMetaLossDataHolders[modelInd]  # Contains the same information but with a different batch size.
+        #     modelPipeline = allMetaModels[modelInd] if modelInd < len(metaDatasetNames) else allModels[0]  # Same pipeline instance in training loop.
+        #
+        #     with torch.no_grad():
+        #         # Calculate and store all the training and testing losses of the untrained model.
+        #         modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
+        #         modelPipeline.scheduler.step()  # Update the learning rate.
+        # t2 = time.time()
+        # accelerator.print("Total loss calculation time:", t2 - t1)
 
         if plotSteps:
             t1 = time.time()

@@ -183,6 +183,9 @@ class emotionPipeline:
             if 5 < numEpochs: self.accelerator.print(f"\tRound: {epoch}", flush=True)
             numPointsAnalyzed = 0
 
+            # L2 regularization: 1E-4 to 1E-6
+            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)  # Spectral normalization
+
             # For each minibatch.
             for data in dataLoader:
                 # Accumulate gradients.
@@ -347,13 +350,12 @@ class emotionPipeline:
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
                     t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
-                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 1)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
+                    # if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 10)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
             # Finalize all the parameters.
-            self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=10, fastPath=False, l2Norm=True)  # Spectral normalization
             self.scheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 

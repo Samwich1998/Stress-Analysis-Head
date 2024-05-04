@@ -50,7 +50,7 @@ class signalEncoderBase(signalEncoderHelpers):
         smoothLatentSpaceLoss_reverse = lossCalculations.gradient_penalty(originalData, encodedData, dims=[1, 2])
 
         # Compile the loss for this layer of compression/expansion.
-        layerLoss = squaredErrorLoss_forward + smoothLatentSpaceLoss_forward + smoothLatentSpaceLoss_reverse)
+        layerLoss = squaredErrorLoss_forward + smoothLatentSpaceLoss_forward + smoothLatentSpaceLoss_reverse
         if self.debuggingResults: print("\tSignal encoder reverse layer losses (forward-smoothF-smoothR):", squaredErrorLoss_forward.mean().item(), smoothLatentSpaceLoss_forward.mean().item(), smoothLatentSpaceLoss_reverse.mean().item(), flush=True)
 
         return layerLoss

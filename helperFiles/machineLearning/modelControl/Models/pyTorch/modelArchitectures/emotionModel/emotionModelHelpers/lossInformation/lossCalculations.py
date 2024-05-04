@@ -100,7 +100,7 @@ class lossCalculations:
         # If there is a layer loss, average the loss.
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
-        # Assert that nothing is wrong with the loss calculations. 
+        # Assert that nothing is wrong with the loss calculations.
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, "encoded signal mean loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, "encoded signal reconstructed loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(encodedSignalStandardDeviationLoss, "encoded signal standard deviation loss", assertGradient=False)
@@ -278,6 +278,24 @@ class lossCalculations:
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Standardization Losses ----------------------- #
+
+    @staticmethod
+    def gradient_penalty(inputs, outputs, dims):
+        # Calculate the gradient wrt the inputs.
+        gradients = torch.autograd.grad(
+            grad_outputs=torch.ones_like(outputs, device=outputs.device),
+            allow_unused=False,
+            create_graph=False,
+            retain_graph=True,
+            only_inputs=True,
+            outputs=outputs,
+            inputs=inputs
+        )
+
+        # Calculate the norm of the gradients.
+        gradients_norm = torch.norm(gradients[0], p=2, dim=dims)
+
+        return gradients_norm
 
     @staticmethod
     def calculateStandardizationLoss(inputData, expectedMean=0, expectedStandardDeviation=1, dim=-1):

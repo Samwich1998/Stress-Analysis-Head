@@ -8,11 +8,12 @@ from torchsummary import summary
 # Import helper models
 from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
 from ...emotionDataInterface import emotionDataInterface
+from ...lossInformation.lossCalculations import lossCalculations
 
 
 class signalEncoderBase(signalEncoderHelpers):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None):
-        super(signalEncoderBase, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels)
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None, debuggingResults=False):
+        super(signalEncoderBase, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, debuggingResults)
         # General parameters.
         self.accelerator = accelerator  # Hugging face model optimizations.
 
@@ -30,19 +31,29 @@ class signalEncoderBase(signalEncoderHelpers):
         # Calculate the number of active signals in each path.
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
 
+        # Add noise to the data to ensure that the latent space is continuous.
+        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.001)
+
         # Reverse operation
         if numEncodedSignals < originalNumSignals:
-            encodedDecodedOriginalData = self.expansionModel(encodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.expansionModel(noisyEncodedData, originalNumSignals)
         else:
-            encodedDecodedOriginalData = self.compressionModel(encodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.compressionModel(noisyEncodedData, originalNumSignals)
         # Assert the integrity of the expansions/compressions.
         assert encodedDecodedOriginalData.size(1) == originalData.size(1)
 
         # Calculate the squared error loss for this layer of compression/expansion.
         squaredErrorLoss_forward = (originalData - encodedDecodedOriginalData)[:, :numActiveSignals, :].pow(2).mean(dim=2).mean(dim=1)
-        print("\tSignal encoder reverse operation loss:", squaredErrorLoss_forward.mean().item(), flush=True)
 
-        return squaredErrorLoss_forward
+        # Calculate the jacobian loss for this layer of compression/expansion.
+        smoothLatentSpaceLoss_forward = lossCalculations.gradient_penalty(encodedData, encodedDecodedOriginalData, dims=[1, 2])
+        smoothLatentSpaceLoss_reverse = lossCalculations.gradient_penalty(originalData, encodedData, dims=[1, 2])
+
+        # Compile the loss for this layer of compression/expansion.
+        layerLoss = squaredErrorLoss_forward + 0.01*(smoothLatentSpaceLoss_forward + smoothLatentSpaceLoss_reverse)
+        if self.debuggingResults: print("\tSignal encoder reverse layer losses (forward-smoothF-smoothR):", squaredErrorLoss_forward.mean().item(), smoothLatentSpaceLoss_forward.mean().item(), smoothLatentSpaceLoss_reverse.mean().item(), flush=True)
+
+        return layerLoss
 
     def updateLossValues(self, originalData, encodedData, signalEncodingLayerLoss, trainingFlag):
         # Keep tracking of the loss through each loop.
@@ -92,8 +103,8 @@ class signalEncoderBase(signalEncoderHelpers):
 # -------------------------- Encoder Architecture -------------------------- #
 
 class generalSignalEncoding(signalEncoderBase):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None):
-        super(generalSignalEncoding, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, accelerator)
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None, debuggingResults=False):
+        super(generalSignalEncoding, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, accelerator, debuggingResults)
 
     def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True, trainingFlag=False):
         """ The shape of signalData: (batchSize, numSignals, compressedLength) """
@@ -109,12 +120,12 @@ class generalSignalEncoding(signalEncoderBase):
         assert self.sequenceBounds[0] <= signalDimension <= self.sequenceBounds[1], f"Can only process signals that are within the {self.sequenceBounds}. You provided a sequence of length {signalDimension}"
         assert self.numCompressedSignals <= numSignals, f"We cannot compress or expand if we dont have at least the compressed signal batch. You provided {numSignals} signals."
 
-        # ------------- Signal Compression/Expansion Algorithm ------------- #  
+        # ------------- Signal Compression/Expansion Algorithm ------------- #
 
         # While we have the incorrect number of signals.
         while targetNumSignals != signalData.size(1):
             compressedDataFlag = targetNumSignals < signalData.size(1)
-            originalData = signalData.clone()  # Keep track of the initial stateF
+            originalData = signalData  # Keep track of the initial state
 
             # Compress the signals down to the targetNumSignals.
             if compressedDataFlag: signalData = self.compressionModel(signalData, targetNumSignals)
@@ -129,7 +140,7 @@ class generalSignalEncoding(signalEncoderBase):
             # Keep track of the signal's at each iteration.
             numSignalPath.append(signalData.size(1))
 
-        # ------------------------------------------------------------------ # 
+        # ------------------------------------------------------------------ #
 
         # Assert the integrity of the expansion/compression.
         if numSignals != targetNumSignals:
@@ -147,8 +158,8 @@ class generalSignalEncoding(signalEncoderBase):
         t1 = time.time()
         summary(self, (numSignals, sequenceBounds[1]))
         t2 = time.time()
-        print(t2 - t1)
+        if self.debuggingResults: print(t2 - t1)
 
         # Count the trainable parameters.
         numParams = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        print(f'The model has {numParams} trainable parameters.')
+        if self.debuggingResults: print(f'The model has {numParams} trainable parameters.')

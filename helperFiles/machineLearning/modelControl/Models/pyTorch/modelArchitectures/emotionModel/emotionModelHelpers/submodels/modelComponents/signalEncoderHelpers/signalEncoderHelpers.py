@@ -15,11 +15,14 @@ from .changeVariance import changeVariance
 
 
 class signalEncoderHelpers(nn.Module):
-    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48):
+    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, debuggingResults=False):
         super(signalEncoderHelpers, self).__init__()
+        # General
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
 
         # Compression/Expansion parameters.
         self.sequenceBounds = sequenceBounds                # The minimum and maximum number of signals in any expansion/compression.
+
         self.numEncodingLayers = numEncodingLayers          # The number of layers to encode the signals.
         self.numExpandedSignals = numExpandedSignals        # The final number of signals in any expansion
         self.numCompressedSignals = numExpandedSignals - 1  # The final number of signals in any compression.
@@ -28,11 +31,11 @@ class signalEncoderHelpers(nn.Module):
         assert self.numExpandedSignals - self.numCompressedSignals == 1, "You should only gain 1 channel when expanding or else you may overshoot."
 
         # Initialize signal encoder helper classes.
-        self.channelEncodingInterface = channelEncoding(self.numCompressedSignals, self.numExpandedSignals, self.expansionFactor, numEncodingLayers, self.sequenceBounds, numLiftedChannels)
-        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds)
-        self.finalVarianceInterface = changeVariance()
+        self.channelEncodingInterface = channelEncoding(self.numCompressedSignals, self.numExpandedSignals, self.expansionFactor, numEncodingLayers, self.sequenceBounds, numLiftedChannels, debuggingResults=debuggingResults)
+        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, debuggingResults=debuggingResults)
+        self.finalVarianceInterface = changeVariance(debuggingResults=debuggingResults)
+        self.denoiseSignals = denoiser(debuggingResults=debuggingResults)
         self.dataInterface = emotionDataInterface
-        self.denoiseSignals = denoiser()
 
     # ----------------------- Signal Pairing Methods ----------------------- #
 

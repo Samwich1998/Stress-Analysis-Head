@@ -9,9 +9,10 @@ from .signalEncoderModules import signalEncoderModules
 
 
 class channelPositionalEncoding(signalEncoderModules):
-    def __init__(self, sequenceBounds=(90, 300)):
+    def __init__(self, sequenceBounds=(90, 300), debuggingResults=False):
         super(channelPositionalEncoding, self).__init__()
         # General parameters.
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
 
         # Positional encoding parameters.

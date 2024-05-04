@@ -52,7 +52,6 @@ class emotionDataInterface:
         # Expand the number of signals.
         repeat_times = (maxNumSignals + numSignals - 1) // numSignals  # Calculate the number of times we need to repeat the tensor
         signalDatas = [signalData.repeat_interleave(repeat_times, dim=alteredDim)[:, 0:maxNumSignals, :] for signalData in signalDatas]  # Repeat the tensor along the second dimension
-        print(signalDatas[0].shape)
 
         # Shuffle the signals to ensure that we are not always removing the same signals.
         signalDatas = self.shuffleDimension(signalDatas)

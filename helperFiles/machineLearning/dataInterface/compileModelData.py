@@ -483,7 +483,7 @@ class compileModelData:
             # Initialize and train the model class.
             modelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=metaDatasetName, modelName=modelName, allEmotionClasses=numQuestionOptions.copy(),
                                             sequenceLength=sequenceLength, maxNumSignals=numSignals, numSubjectIdentifiers=numSubjectIdentifiers, demographicLength=demographicLength, numSubjects=numSubjects,
-                                            userInputParams=self.userInputParams, emotionNames=surveyQuestions, activityNames=activityNames, featureNames=currentFeatureNames, submodel=submodel, fullTest=fullTest)
+                                            userInputParams=self.userInputParams, emotionNames=surveyQuestions, activityNames=activityNames, featureNames=currentFeatureNames, submodel=submodel, fullTest=fullTest, debuggingResults=True)
 
             # Hugging face integration.
             modelDataLoader = modelPipeline.acceleratorInterface(modelDataLoader)
@@ -529,7 +529,8 @@ class compileModelData:
                 # Initialize and train the model class.
                 dummyModelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=datasetName, modelName=modelName, allEmotionClasses=[],
                                                      sequenceLength=240, maxNumSignals=500, numSubjectIdentifiers=1, demographicLength=0, numSubjects=1,
-                                                     userInputParams=userInputParams, emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel, fullTest=True)
+                                                     userInputParams=userInputParams, emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel,
+                                                     fullTest=True, debuggingResults=True)
                 # Hugging face integration.
                 dummyModelPipeline.acceleratorInterface()
 

@@ -10,12 +10,13 @@ from .customModules.waveletNeuralOperatorLayer import waveletNeuralOperatorLayer
 
 class channelEncoding(signalEncoderModules):
 
-    def __init__(self, numCompressedSignals, numExpandedSignals, expansionFactor, numEncoderLayers, sequenceBounds, numLiftedChannels):
+    def __init__(self, numCompressedSignals, numExpandedSignals, expansionFactor, numEncoderLayers, sequenceBounds, numLiftedChannels, debuggingResults=False):
         super(channelEncoding, self).__init__()
         # General parameters
         self.numCompressedSignals = numCompressedSignals    # Number of compressed signals.
         self.numExpandedSignals = numExpandedSignals        # Number of expanded signals.
         self.numEncoderLayers = numEncoderLayers            # Number of encoder layers.
+        self.debuggingResults = debuggingResults            # Whether to print debugging results. Type: bool
         self.expansionFactor = expansionFactor              # Expansion factor for the model.
         self.sequenceBounds = sequenceBounds                # The minimum and maximum sequence length.
 

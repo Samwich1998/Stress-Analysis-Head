@@ -10,13 +10,14 @@ from ...._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numEncodingLayers, numLiftedChannels, timeWindows, accelerator):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numEncodingLayers, numLiftedChannels, timeWindows, accelerator, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.numEncodingLayers = numEncodingLayers  # The number of transformer layers during signal encoding.
         self.numLiftedChannels = numLiftedChannels  # The number of channels to lift the signal to.
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence lengths to consider.
         self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider.
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
@@ -29,6 +30,7 @@ class signalEncoderModel(globalModel):
             numExpandedSignals=self.numExpandedSignals,
             numEncodingLayers=self.numEncodingLayers,
             numLiftedChannels=self.numLiftedChannels,
+            debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             accelerator=self.accelerator,
         )
@@ -80,9 +82,17 @@ class signalEncoderModel(globalModel):
         self.numAccumulations = 0
         self.accumulatedLoss = 0
 
+    def setDebuggingResults(self, debuggingResults):
+        self.encodeSignals.channelEncodingInterface.debuggingResults = debuggingResults
+        self.encodeSignals.positionalEncodingInterface.debuggingResults = debuggingResults
+        self.encodeSignals.finalVarianceInterface.debuggingResults = debuggingResults
+        self.encodeSignals.denoiseSignals.debuggingResults = debuggingResults
+        self.encodeSignals.debuggingResults = debuggingResults
+        self.debuggingResults = debuggingResults
+
     def forward(self, signalData, initialSignalData, decodeSignals=False, calculateLoss=False, trainingFlag=False):
         """ The shape of inputData: (batchSize, numSignals, sequenceLength) """
-        print("\nEntering signal encoder model")
+        if self.debuggingResults: print("\nEntering signal encoder model")
 
         # ----------------------- Data Preprocessing ----------------------- #  
 
@@ -117,7 +127,7 @@ class signalEncoderModel(globalModel):
         # ------------------- Learned Signal Compression ------------------- #
 
         # Learn how to add positional encoding to each signal's position.
-        positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
+        positionEncodedData = self.encodeSignalsencodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
 
         # Compress the signal space into numEncodedSignals.
@@ -130,7 +140,7 @@ class signalEncoderModel(globalModel):
         # adjustedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # ---------------------- Signal Reconstruction --------------------- #
-        print("Signal Encoding Downward Path:", numSignals, numSignalForwardPath, numEncodedSignals)
+        if self.debuggingResults: print("Signal Encoding Downward Path:", numSignals, numSignalForwardPath, numEncodedSignals)
 
         if decodeSignals:
             # Perform the reverse operation.
@@ -144,7 +154,7 @@ class signalEncoderModel(globalModel):
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            noisyPotentialEncodedData = emotionDataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.05)
+            noisyPotentialEncodedData = emotionDataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.001)
             potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyPotentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.
@@ -152,11 +162,11 @@ class signalEncoderModel(globalModel):
             encodingReconstructionStateLoss = (positionEncodedData - decodedData).pow(2).mean(dim=2).mean(dim=1)
             finalReconstructionStateLoss = (signalData - reconstructedData).pow(2).mean(dim=2).mean(dim=1)
             finalDenoisedReconstructionStateLoss = (initialSignalData - denoisedReconstructedData).pow(2).mean(dim=2).mean(dim=1)
-            print("State Losses (VEF-D):", varReconstructionStateLoss.detach().mean().item(), encodingReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
+            if self.debuggingResults: print("State Losses (VEF-D):", varReconstructionStateLoss.detach().mean().item(), encodingReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
             # Calculate the loss from taking other routes
             positionReconstructionLoss = (signalData - removedStampEncoding).pow(2).mean(dim=2).mean(dim=1)
             potentialVarReconstructionStateLoss = (signalData - potentialSignalData).pow(2).mean(dim=2).mean(dim=1)
-            print("Path Losses (P-V2-S):", positionReconstructionLoss.detach().mean().item(), potentialVarReconstructionStateLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
+            if self.debuggingResults: print("Path Losses (P-V2-S):", positionReconstructionLoss.detach().mean().item(), potentialVarReconstructionStateLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
 
             # Add up all the losses together.
             if 0.001 < potentialVarReconstructionStateLoss.mean():
@@ -218,7 +228,7 @@ class signalEncoderModel(globalModel):
             trainingFlag=trainingFlag,
         )
         # reconstructedInitEncodingData dimension: batchSize, numSignals, sequenceLength
-        print("Signal Encoding Upward Path:", encodedData.size(1), reversePath, decodedData.size(1))
+        if self.debuggingResults: print("Signal Encoding Upward Path:", encodedData.size(1), reversePath, decodedData.size(1))
         assert reversePath[1:] == numSignalForwardPath[1:][::-1], f"Signal encoding path mismatch: {reversePath[1:]} != {numSignalForwardPath[1:][::-1]} reversed"
 
         # Learn how to remove positional encoding to each signal's position.

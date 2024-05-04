@@ -19,11 +19,12 @@ from .._globalPytorchModel import globalModel
 
 class emotionModelHead(globalModel):
     def __init__(self, submodel, accelerator, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                 emotionNames, activityNames, featureNames, numSubjects, datasetName):
+                 emotionNames, activityNames, featureNames, numSubjects, datasetName, debuggingResults=False):
         super(emotionModelHead, self).__init__()
         # General model parameters.
-        self.numSubjectIdentifiers = numSubjectIdentifiers
+        self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers (subject index, etc.).
         self.demographicLength = demographicLength  # The amount of demographic information (age, weight, etc.). Subject index is not included.
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.numActivities = len(activityNames)  # The number of activities to predict.
         self.numEmotions = len(emotionNames)  # The number of emotions to predict.
         self.sequenceLength = sequenceLength  # The length of each incoming signal: features used in the model.
@@ -35,7 +36,7 @@ class emotionModelHead(globalModel):
         self.device = accelerator.device  # The device the model is running on.
         self.numSubjects = numSubjects  # The maximum number of subjects the model is training on.
         self.accelerator = accelerator  # Hugging face model optimizations.
-        self.datasetName = datasetName
+        self.datasetName = datasetName  # The name of the dataset the model is training on.
 
         # Signal encoder parameters.
         self.numExpandedSignals = userInputParams['numExpandedSignals']     # The number of signals to group when you begin compression or finish expansion.
@@ -73,6 +74,15 @@ class emotionModelHead(globalModel):
         # Populate the current models.
         self.initializeSubmodels(submodel)
 
+    def setDebuggingResults(self, debuggingResults, submodels):
+        # Set the debugging results for the emotion model.
+        self.debuggingResults = debuggingResults
+
+        # For each submodel.
+        for submodel in submodels:
+            # Set the debugging results for the submodel.
+            submodel.setDebuggingResults(debuggingResults)
+
     def initializeSubmodels(self, submodel):
 
         # ------------------------ Data Compression ------------------------ # 
@@ -83,6 +93,7 @@ class emotionModelHead(globalModel):
             numEncodedSignals=self.numEncodedSignals,
             numEncodingLayers=self.numEncodingLayers,
             numLiftedChannels=self.numLiftedChannels,
+            debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             maxNumSignals=self.maxNumSignals,
             timeWindows=self.timeWindows,
@@ -145,8 +156,7 @@ class emotionModelHead(globalModel):
         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
         # reconstructedData dimension: batchSize, numSignals, sequenceLength
         # signalEncodingLayerLoss dimension: batchSize
-        t2 = time.time()
-        print("\tSignal Encoder:", t2 - t1)
+        t2 = time.time(); print("\tSignal Encoder:", t2 - t1)
 
         return encodedData, reconstructedData, signalEncodingLayerLoss
 
@@ -166,8 +176,7 @@ class emotionModelHead(globalModel):
         # reconstructedEncodedData dimension: batchSize, numSignals, sequenceLength
         # signalData dimension: batchSize, numSignals, sequenceLength
         # autoencoderLayerLoss dimension: batchSize
-        t2 = time.time()
-        print("\tAutoencoder:", t2 - t1)
+        t2 = time.time(); print("\tAutoencoder:", t2 - t1)
 
         if fullReconstruction:
             # Denoise the final signals.
@@ -194,8 +203,7 @@ class emotionModelHead(globalModel):
         mappedSignalData, reconstructedCompressedData = self.signalMappingModel(compressedData, remapSignals, trainingFlag)
         # reconstructedCompressedData dimension: batchSize, numEncodedSignals, compressedLength
         # mappedSignalData dimension: batchSize, numEncodedSignals, compressedLength
-        t2 = time.time()
-        print("\tManifold Projection:", t2 - t1)
+        t2 = time.time(); print("\tManifold Projection:", t2 - t1)
 
         return encodedData, reconstructedData, signalEncodingLayerLoss, compressedData, reconstructedEncodedData, denoisedDoubleReconstructedData, autoencoderLayerLoss, mappedSignalData, reconstructedCompressedData
 
@@ -210,8 +218,7 @@ class emotionModelHead(globalModel):
         t1 = time.time()
         # Forward pass through the emotion model to predict complex emotions.
         featureData, activityDistribution, eachBasicEmotionDistribution, finalEmotionDistributions = self.sharedEmotionModel(mappedSignalData, subjectIdentifiers, self.specificEmotionModel, trainingFlag)
-        t2 = time.time()
-        print("\tEmotion Prediction:", t2 - t1)
+        t2 = time.time(); print("\tEmotion Prediction:", t2 - t1)
 
         return encodedData, reconstructedData, signalEncodingLayerLoss, compressedData, reconstructedEncodedData, denoisedDoubleReconstructedData, autoencoderLayerLoss, mappedSignalData, \
             reconstructedCompressedData, featureData, activityDistribution, eachBasicEmotionDistribution, finalEmotionDistributions

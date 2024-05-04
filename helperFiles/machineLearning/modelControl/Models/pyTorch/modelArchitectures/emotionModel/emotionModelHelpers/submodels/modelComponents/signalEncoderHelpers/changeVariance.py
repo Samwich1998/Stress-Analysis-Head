@@ -6,8 +6,11 @@ from .signalEncoderModules import signalEncoderModules
 
 class changeVariance(signalEncoderModules):
 
-    def __init__(self):
+    def __init__(self, debuggingResults=False):
         super(changeVariance, self).__init__()
+        # General parameters.
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
+
         # Map the initial signals into a common subspace.
         self.adjustSignals = self.varianceTransformation(inChannel=1)
         self.removeSignalAdjustment = self.varianceTransformation(inChannel=1)

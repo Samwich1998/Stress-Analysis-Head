@@ -347,17 +347,16 @@ class emotionPipeline:
                     t1 = time.time()
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
-                    t2 = time.time();
-                    self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
+                    t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
 
-                    if trainingFlag and dataInd % 2 == 0:
+                    if trainingFlag and self.accelerator.sync_gradients:
                         # L2 regularization: 1E-4 to 1E-6
-                        self.modelHelpers.l2Normalization(self.model, maxNorm=5)
-                        # I found 5 < Norm < 10 to be good for my model.
+                        self.modelHelpers.l2Normalization(self.model, maxNorm=10)  # THIS WILL SEVERELY EFFECT TRAINING STABILITY
+                        # I found 10 to be good for my model.
             # Finalize all the parameters.
             self.scheduler.step()  # Update the learning rate.
 

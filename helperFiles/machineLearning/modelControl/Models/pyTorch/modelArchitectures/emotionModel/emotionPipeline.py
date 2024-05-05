@@ -355,7 +355,7 @@ class emotionPipeline:
 
                     if trainingFlag and self.accelerator.sync_gradients:
                         # L2 regularization: 1E-4 to 1E-6
-                        self.modelHelpers.l2Normalization(self.model, maxNorm=5)  # THIS WILL SEVERELY EFFECT TRAINING STABILITY
+                        self.modelHelpers.l2Normalization(self.model, maxNorm=15)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
                         # I found 10 to be good for my model.
             # Finalize all the parameters.
             self.scheduler.step()  # Update the learning rate.

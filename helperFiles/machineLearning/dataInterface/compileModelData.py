@@ -180,7 +180,7 @@ class compileModelData:
         maxNumSignals = 232
         # Adjust the batch size based on the number of signals used.
         maxBatchSize = int(minimumBatchSize * maxNumSignals / numSignals)
-        maxBatchSize = min(maxBatchSize, minimumBatchSize)  # Ensure the maximum batch size is not larger than the number of signals..
+        maxBatchSize = min(maxBatchSize, numSignals)  # Ensure the maximum batch size is not larger than the number of signals..
 
         return maxBatchSize
 

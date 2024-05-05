@@ -32,19 +32,19 @@ class signalEncoderBase(signalEncoderHelpers):
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
 
         # Add noise to the data to ensure that the latent space is continuous.
-        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
+        # noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
 
         # Reverse operation
         if numEncodedSignals < originalNumSignals:
-            encodedDecodedOriginalData = self.expansionModel(noisyEncodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.expansionModel(encodedData, originalNumSignals)
         else:
-            encodedDecodedOriginalData = self.compressionModel(noisyEncodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.compressionModel(encodedData, originalNumSignals)
         # Assert the integrity of the expansions/compressions.
         assert encodedDecodedOriginalData.size(1) == originalData.size(1)
 
         # Calculate the squared error loss for this layer of compression/expansion.
         squaredErrorLoss_forward = (originalData - encodedDecodedOriginalData)[:, :numActiveSignals, :].pow(2).mean(dim=2).mean(dim=1)
-        if self.debuggingResults: print("\tSignal encoder reverse layer losses (forward-smoothF-smoothR):", squaredErrorLoss_forward.mean().item())
+        if self.debuggingResults: print("\tSignal encoder reverse layer losses:", squaredErrorLoss_forward.mean().item())
 
         return squaredErrorLoss_forward
 

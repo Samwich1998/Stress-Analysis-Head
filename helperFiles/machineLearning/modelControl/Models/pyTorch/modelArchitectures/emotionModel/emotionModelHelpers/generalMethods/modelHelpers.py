@@ -163,12 +163,13 @@ class modelHelpers:
     def l2Normalization(model, maxNorm=2):
         # For each trainable parameter in the model.
         for layerParams in model.parameters():
-            # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
-            paramNorm = torch.norm(layerParams, p=2).item()
+            if layerParams.ndim > 1:
+                # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
+                paramNorm = torch.norm(layerParams, p=2).item()
 
-            # Constrain the spectral norm.
-            if maxNorm < paramNorm:
-                layerParams.data = layerParams * (maxNorm / paramNorm)
+                # Constrain the spectral norm.
+                if maxNorm < paramNorm:
+                    layerParams.data = layerParams * (maxNorm / paramNorm)
 
     @staticmethod
     def apply_spectral_normalization(model, max_spectral_norm=2, power_iterations=1):

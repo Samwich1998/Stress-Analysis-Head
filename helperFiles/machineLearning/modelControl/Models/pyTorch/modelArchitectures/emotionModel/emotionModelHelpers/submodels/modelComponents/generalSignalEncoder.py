@@ -44,17 +44,9 @@ class signalEncoderBase(signalEncoderHelpers):
 
         # Calculate the squared error loss for this layer of compression/expansion.
         squaredErrorLoss_forward = (originalData - encodedDecodedOriginalData)[:, :numActiveSignals, :].pow(2).mean(dim=2).mean(dim=1)
+        if self.debuggingResults: print("\tSignal encoder reverse layer losses (forward-smoothF-smoothR):", squaredErrorLoss_forward.mean().item())
 
-        # Calculate the Jacobian loss for this layer of compression/expansion.
-        smoothLatentSpaceLoss_forward = lossCalculations.gradient_penalty(encodedData, encodedDecodedOriginalData, dims=[1, 2])
-        smoothLatentSpaceLoss_reverse = lossCalculations.gradient_penalty(originalData, encodedData, dims=[1, 2])
-        # Higher Jacobian contribution leads to noisier encoding, but can potentially lead to better generalization (up to a point).
-
-        # Compile the loss for this layer of compression/expansion.
-        layerLoss = squaredErrorLoss_forward #+ 0.1*(smoothLatentSpaceLoss_forward + smoothLatentSpaceLoss_reverse)
-        if self.debuggingResults: print("\tSignal encoder reverse layer losses (forward-smoothF-smoothR):", squaredErrorLoss_forward.mean().item(), smoothLatentSpaceLoss_forward.mean().item(), smoothLatentSpaceLoss_reverse.mean().item(), flush=True)
-
-        return layerLoss
+        return squaredErrorLoss_forward
 
     def updateLossValues(self, originalData, encodedData, signalEncodingLayerLoss, trainingFlag):
         # Keep tracking of the loss through each loop.

@@ -55,27 +55,23 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[2*inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
-    @staticmethod
-    def neuralWeightParameters(inChannel=1, outChannel=2, secondDimension=46):
+    def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Corrected calculation for the standard deviation
         fan_in = inChannel * secondDimension  # Ensure division is performed before multiplication
-        init_std = (1 / fan_in) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
 
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
-        nn.init.normal_(parameter, 0.0, init_std)
+        parameter = self.modelHelpers.lecunParamInitialization(parameter, fan_in)
 
         return parameter
 
-    @staticmethod
-    def neuralCombinationWeightParameters(inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
+    def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Corrected calculation for the standard deviation
         fan_in = inChannel * initialFrequencyDim  # Ensure division is performed before multiplication
-        init_std = (1 / fan_in) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
 
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
-        nn.init.normal_(parameter, 0.0, init_std)
+        parameter = self.modelHelpers.lecunParamInitialization(parameter, fan_in)
 
         return parameter
 

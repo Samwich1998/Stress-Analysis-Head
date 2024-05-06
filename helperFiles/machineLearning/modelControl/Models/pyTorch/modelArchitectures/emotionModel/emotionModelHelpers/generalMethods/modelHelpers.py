@@ -52,9 +52,17 @@ class modelHelpers:
             # Proper LeCun Normal initialization
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
             std = 1 / fan_in**0.5
-            nn.init.normal_(m.weight, 0.0, std)
+            nn.init.normal_(m.weight, mean=0.0, std=std)
         if hasattr(m, 'bias') and m.bias is not None:
             nn.init.zeros_(m.bias)
+
+    @staticmethod
+    def lecunParamInitialization(parameter, fan_in):
+        # Initialize the weights with a normal distribution.
+        std = (1 / fan_in) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
+        nn.init.normal_(parameter, mean=0.0, std=std)
+
+        return parameter
 
     def initialize_weights(self, model, activationMethod='selu'):
         method_map = {

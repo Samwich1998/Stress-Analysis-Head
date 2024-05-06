@@ -75,6 +75,7 @@ class channelEncoding(signalEncoderModules):
 
             # Apply non-linearity to the processed data.
             processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
         # Learn the final signal.
         processedData = self.projectingCompressionModel(processedData)
@@ -99,6 +100,7 @@ class channelEncoding(signalEncoderModules):
 
             # Apply non-linearity to the processed data.
             processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
         # Learn the final signal.
         processedData = self.projectingExpansionModel(processedData)

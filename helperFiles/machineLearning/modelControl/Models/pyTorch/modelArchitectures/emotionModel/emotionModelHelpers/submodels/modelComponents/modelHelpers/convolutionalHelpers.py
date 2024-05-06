@@ -132,14 +132,17 @@ class convolutionalHelpers(abnormalConvolutions):
 
             # Selu activation function
             if activationType == 'selu':
+                self.modelHelpers.initialize_weights_lecun(layers[-1])
                 layers.append(nn.SELU())
 
             # GELU activation function
             elif activationType == 'gelu':
+                self.modelHelpers.initialize_weights_kaiming(layers[-1])
                 layers.append(nn.GELU())
 
             # ReLU activation function
             elif activationType == 'relu':
+                self.modelHelpers.initialize_weights_kaiming(layers[-1])
                 layers.append(nn.ReLU())
 
             # If no activation function is needed.
@@ -148,7 +151,7 @@ class convolutionalHelpers(abnormalConvolutions):
 
             else:
                 # If the activation function is not recognized.
-                raise ValueError("Activation type must be in ['selu']")
+                raise ValueError("Activation type must be in ['selu', 'gelu', 'relu', 'none']")
 
         return nn.Sequential(*layers)
 

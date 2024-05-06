@@ -1,4 +1,6 @@
 # PyTorch
+import random
+
 import torch
 
 # Import files for machine learning
@@ -151,10 +153,11 @@ class signalEncoderModel(globalModel):
 
         if calculateLoss and decodeSignals:
             # Prepare for loss calculations.
-            removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
+            noisyPositionEncodedData = emotionDataInterface.addNoise(positionEncodedData, random.random() < 0.5 if trainingFlag else trainingFlag, noiseSTD=0.05)
+            removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(noisyPositionEncodedData)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            noisyPotentialEncodedData = emotionDataInterface.addNoise(potentialEncodedData, trainingFlag, noiseSTD=0.05)
+            noisyPotentialEncodedData = emotionDataInterface.addNoise(potentialEncodedData, random.random() < 0.5 if trainingFlag else trainingFlag, noiseSTD=0.05)
             potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyPotentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.

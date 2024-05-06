@@ -1,4 +1,5 @@
 # General
+import random
 import time
 
 # PyTorch
@@ -31,7 +32,7 @@ class signalEncoderBase(signalEncoderHelpers):
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
 
         # Add noise to the data to ensure that the latent space is continuous.
-        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
+        noisyEncodedData = emotionDataInterface.addNoise(encodedData, random.random() < 0.5 if trainingFlag else trainingFlag, noiseSTD=0.01)
 
         # Reverse operation
         if numEncodedSignals < originalNumSignals:

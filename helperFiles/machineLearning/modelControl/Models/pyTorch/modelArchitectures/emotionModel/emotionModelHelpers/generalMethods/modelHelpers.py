@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 from torch.nn.utils import spectral_norm
 
 
@@ -27,38 +26,47 @@ class modelHelpers:
     # -------------------------- Model Weights -------------------------- #
 
     @staticmethod
-    def reset_weights(model):
-        """ Resetting model weights. """
-        for layer in model.children():
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
+    def initialize_weights_uniform(m):
+        if hasattr(m, 'weight'):
+            nn.init.uniform_(m.weight, -0.1, 0.1)
+            if hasattr(m, 'bias') and m.bias is not None:
+                m.bias.data.zero_()
+        return m
 
     @staticmethod
-    def initialize_weights(model):
-        for m in model.modules():
-            if isinstance(m, nn.Linear):
-                # Xavier/Glorot initialization for layers followed by Sigmoid or Tanh
-                init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    init.zeros_(m.bias)
-            elif isinstance(m, nn.Conv1d) or isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
-                # Kaiming/He initialization for layers followed by ReLU
-                init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
-                if m.bias is not None:
-                    init.zeros_(m.bias)
-            elif isinstance(m, nn.LSTM) or isinstance(m, nn.GRU):
-                # Orthogonal initialization for RNNs
-                for name, param in m.named_parameters():
-                    if 'weight_ih' in name:
-                        init.orthogonal_(param.data)
-                    elif 'weight_hh' in name:
-                        init.orthogonal_(param.data)
-                    elif 'bias' in name:
-                        param.data.fill_(0)
-            elif isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
-                # BatchNorm initialization
-                init.constant_(m.weight, 1)
-                init.constant_(m.bias, 0)
+    def initialize_weights_kaiming(m):
+        if hasattr(m, 'weight'):
+            nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
+            if hasattr(m, 'bias') and m.bias is not None:
+                m.bias.data.zero_()
+        return m
+
+    @staticmethod
+    def initialize_weights_xavier(m):
+        if hasattr(m, 'weight'):
+            nn.init.xavier_uniform_(m.weight)
+            if hasattr(m, 'bias') and m.bias is not None:
+                m.bias.data.zero_()
+        return m
+
+    @staticmethod
+    def initialize_weights_lecun(m):
+        if hasattr(m, 'weight'):
+            nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='linear')  # LeCun as a special case of He init
+            if hasattr(m, 'bias') and m.bias is not None:
+                m.bias.data.zero_()
+        return m
+
+    def initialize_weights(self, model, activationMethod='selu'):
+        method_map = {
+            'selu': self.initialize_weights_lecun,
+            'relu': self.initialize_weights_kaiming,
+            'sigmoid': self.initialize_weights_xavier,
+            'tanh': self.initialize_weights_xavier,
+        }
+
+        init_function = method_map.get(activationMethod, self.initialize_weights_uniform)
+        model.apply(init_function)
 
     @staticmethod
     def getAutoencoderWeights(model):
@@ -72,8 +80,7 @@ class modelHelpers:
             autoencoderComponent = modelAttributes[1].split("_")[0]
 
             # If we have a CNN network
-            if autoencoderComponent in ["compressSignalsCNN"] and modelAttributes[-1] == 'weight' and len(
-                    layerParams.data.shape) == 3:
+            if autoencoderComponent in ["compressSignalsCNN"] and modelAttributes[-1] == 'weight' and len(layerParams.data.shape) == 3:
                 # layerParams Dim: numOutChannels, numInChannels/Groups, numInFeatures -> (1, 1, 15)
                 weightsCNN.append(layerParams.data.numpy().copy())
 

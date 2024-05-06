@@ -78,11 +78,13 @@ class emotionPipeline:
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
+        # Weight initialization.
+        # self.modelHelpers.initialize_weights(self.model, activationMethod='selu')
+        self.modelHelpers.l2Normalization(self.model, maxNorm=20)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
+        # self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=1, fastPath=False)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
+
         # Finish setting up the mode.
-        self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=1, fastPath=False)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
-        # self.modelHelpers.l2Normalization(self.model, maxNorm=10)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
-        self.resetModel()  # Reset the model's variable parameters
 
         # Assert data integrity of the inputs.
         assert len(self.emotionNames) == len(self.allEmotionClasses), f"Found {len(self.emotionNames)} emotions with {len(self.allEmotionClasses)} classes specified."
@@ -95,10 +97,6 @@ class emotionPipeline:
             self.optimizer, self.scheduler, self.model, dataLoader = self.accelerator.prepare(self.optimizer, self.scheduler, self.model, dataLoader)
 
         return dataLoader
-
-    def resetModel(self):
-        # Reset the model's parameters.
-        self.modelHelpers.reset_weights(self.model)
 
     def addOptimizer(self, submodel):
         # Get the models, while considering whether they are distributed or not.
@@ -210,14 +208,23 @@ class emotionPipeline:
                         batchData = batchData[trainingColumn]
                         if batchData.size(0) == 0: continue  # We are not training on any points
 
-                    # Augment the data to add some noise to the model.
-                    addingNoiseSTD, addingNoiseRange = self.getAugmentationDeviation(submodel)
+                    # Separate the data into signal, demographic, and subject identifier information.
                     signalData, demographicData, subjectIdentifiers = self.dataInterface.separateData(batchData, self.sequenceLength, self.numSubjectIdentifiers, self.demographicLength)
-                    augmentedSignalData = self.dataInterface.addNoise(signalData, trainingFlag=True, noiseSTD=addingNoiseSTD)
-                    # augmentedSignalData dimension: batchSize, numSignals, sequenceLength
                     # demographicData dimension: batchSize, numSignals, demographicLength
                     # signalData dimension: batchSize, numSignals, sequenceLength
                     # subjectInds dimension: batchSize, numSubjectIdentifiers
+
+                    # Randomly choose to add noise to the model.
+                    augmentedSignalData = signalData.clone()
+                    addingNoiseFlag = random.random() < 0.5
+                    addingNoiseRange = [0, 1]
+                    addingNoiseSTD = 0
+
+                    if addingNoiseFlag:
+                        # Augment the data to add some noise to the model.
+                        addingNoiseSTD, addingNoiseRange = self.getAugmentationDeviation(submodel)
+                        augmentedSignalData = self.dataInterface.addNoise(augmentedSignalData, trainingFlag=True, noiseSTD=addingNoiseSTD)
+                        # augmentedSignalData dimension: batchSize, numSignals, sequenceLength
 
                     # ------------ Forward pass through the model  ------------- #
 
@@ -252,8 +259,10 @@ class emotionPipeline:
                         if signalReconstructedLoss.item() == 0: self.accelerator.print("Not useful\n\n\n\n\n\n"); continue
 
                         # Initialize basic core loss value.
-                        compressionFactor = augmentedSignalData.size(1) / self.model.numEncodedSignals
-                        noisePercentage = 1 - (addingNoiseSTD / addingNoiseRange[1]) + 0.5  # Lower the learning rate for high noise levels.
+                        futureCompressionsFactor = augmentedSignalData.size(1) / self.model.numEncodedSignals  # Increase the learning rate if compressing more signals.
+                        sequenceLengthFactor = augmentedSignalData.size(2) / self.sequenceLength  # Increase the learning rate for longer sequences.
+                        compressionFactor = augmentedSignalData.size(1) / encodedData.size(1)  # Increase the learning rate for larger compressions.
+                        noiseFactor = 1 - (addingNoiseSTD / addingNoiseRange[1]) + 0.5  # Lower the learning rate for high noise levels.
                         finalLoss = signalReconstructedLoss
 
                         # Compile the loss into one value
@@ -263,7 +272,8 @@ class emotionPipeline:
                             finalLoss = finalLoss + 0.5 * signalEncodingTrainingLayerLoss
                         if 0.25 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
-                        finalLoss = compressionFactor * noisePercentage * finalLoss
+                        # Account for the current training state when calculating the loss.
+                        finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
 
                         # Update the user.
                         self.accelerator.print(finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
@@ -415,7 +425,7 @@ class emotionPipeline:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.001)
+            addingNoiseRange = (0, 0.05)
         elif submodel == "autoencoder":
             addingNoiseRange = (0, 0.05)
         elif submodel == "emotionPrediction":

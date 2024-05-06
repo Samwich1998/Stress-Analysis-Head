@@ -21,10 +21,9 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[8, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
-    @staticmethod
-    def learnEncodingStampFNN(numFeatures=1):
+    def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(
-            nn.Linear(numFeatures, numFeatures),
+            self.modelHelpers.initialize_weights_lecun(nn.Linear(numFeatures, numFeatures)),
             nn.SELU(),
         )
 

@@ -73,13 +73,14 @@ class emotionPipeline:
 
         if submodel == "emotionPrediction":
             # Finalize model setup.
-            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType,
-                                                                                                       predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
+            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
             self.model.sharedEmotionModel.lastEmotionLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.emotionDist_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
+        self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=1, fastPath=False)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
+        # self.modelHelpers.l2Normalization(self.model, maxNorm=10)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
         self.resetModel()  # Reset the model's variable parameters
 
@@ -107,7 +108,7 @@ class emotionPipeline:
         # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4 if self.fullTest else 2E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-4, 'lr': 5E-4 if self.fullTest else 5E-4}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -342,7 +343,7 @@ class emotionPipeline:
                     # ------------------- Update the Model  -------------------- #
 
                     # Prevent too high losses from randomizing weights.
-                    while 10 < finalLoss: finalLoss = finalLoss / 10
+                    while 20 < finalLoss: finalLoss = finalLoss / 10
 
                     t1 = time.time()
                     # Calculate the gradients.
@@ -352,11 +353,6 @@ class emotionPipeline:
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                     self.accelerator.print("LR:", self.scheduler.get_last_lr())
-
-                    if trainingFlag and self.accelerator.sync_gradients:
-                        # L2 regularization: 1E-4 to 1E-6
-                        self.modelHelpers.l2Normalization(self.model, maxNorm=20)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
-                        # I found 10 to be good for my model.
             # Finalize all the parameters.
             self.scheduler.step()  # Update the learning rate.
 
@@ -383,9 +379,9 @@ class emotionPipeline:
         if submodel == "signalEncoder":
             return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
         elif submodel == "autoencoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
         elif submodel == "emotionPrediction":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=0 if self.fullTest else 0)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
         else:
             assert False, "No model initialized"
 

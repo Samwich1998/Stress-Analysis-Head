@@ -156,7 +156,7 @@ class compileModelData:
         if metaDatasetName in ['dapper']: return 4 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
 
         # Specify the large batch size datasets.
-        if metaDatasetName in ['case']: return 16 * minimumBatchSize  # 22 times larger than the smallest dataset.
+        if metaDatasetName in ['case']: return 12 * minimumBatchSize  # 22 times larger than the smallest dataset.
 
         assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
 

@@ -8,7 +8,6 @@ from torchsummary import summary
 # Import helper models
 from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
 from ...emotionDataInterface import emotionDataInterface
-from ...lossInformation.lossCalculations import lossCalculations
 
 
 class signalEncoderBase(signalEncoderHelpers):
@@ -32,13 +31,13 @@ class signalEncoderBase(signalEncoderHelpers):
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
 
         # Add noise to the data to ensure that the latent space is continuous.
-        # noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
+        noisyEncodedData = emotionDataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
 
         # Reverse operation
         if numEncodedSignals < originalNumSignals:
-            encodedDecodedOriginalData = self.expansionModel(encodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.expansionModel(noisyEncodedData, originalNumSignals)
         else:
-            encodedDecodedOriginalData = self.compressionModel(encodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.compressionModel(noisyEncodedData, originalNumSignals)
         # Assert the integrity of the expansions/compressions.
         assert encodedDecodedOriginalData.size(1) == originalData.size(1)
 
@@ -53,7 +52,7 @@ class signalEncoderBase(signalEncoderHelpers):
         layerLoss = self.calculateEncodingLoss(originalData, encodedData, trainingFlag)
 
         # If the loss is significant, add it to the total loss.
-        signalEncodingLayerLoss = 1.1*signalEncodingLayerLoss + layerLoss
+        signalEncodingLayerLoss = 1.25*signalEncodingLayerLoss + layerLoss
 
         return signalEncodingLayerLoss
 

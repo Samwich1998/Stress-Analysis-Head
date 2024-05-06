@@ -73,7 +73,8 @@ class emotionPipeline:
 
         if submodel == "emotionPrediction":
             # Finalize model setup.
-            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
+            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType,
+                                                                                                       predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
             self.model.sharedEmotionModel.lastEmotionLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.emotionDist_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
@@ -97,8 +98,6 @@ class emotionPipeline:
         # Get the models, while considering whether they are distributed or not.
         trainingInformation, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel = self.getDistributedModels(model=None, submodel=None)
 
-        # Common LR values: 1E-6 to 1
-        # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
             {'params': signalEncoderModel.parameters(), 'weight_decay': 0, 'lr': 5E-4 if self.fullTest else 5E-4}]
@@ -127,7 +126,8 @@ class emotionPipeline:
         adamOptimizer = optim.AdamW(
             # try RAdam; adam and RAdam are okay, AdamW is a bit better (best?); NAdam is also a bit better
             params=modelParams,
-            lr=5e-5,  # Common values: 0.1 - 0.001
+            weight_decay=0,  # Common WD values: 1E-2 to 1E-6
+            lr=5e-5,  # Common LR values: 1E-6 to 1
         )
         # Set the optimizer.
         self.optimizer = adamOptimizer
@@ -353,7 +353,8 @@ class emotionPipeline:
                     t1 = time.time()
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
-                    t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
+                    t2 = time.time();
+                    self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.

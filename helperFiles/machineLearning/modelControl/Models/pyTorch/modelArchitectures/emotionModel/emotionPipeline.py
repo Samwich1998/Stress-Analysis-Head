@@ -79,9 +79,9 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Weight initialization.
-        # self.modelHelpers.initialize_weights(self.model, activationMethod='selu')
-        self.modelHelpers.l2Normalization(self.model, maxNorm=20)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
-        # self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=1, fastPath=False)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
+        # self.model = self.modelHelpers.initialize_weights(self.model, activationMethod='selu')
+        # self.modelHelpers.l2Normalization(self.model, maxNorm=20) # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
+        # self.modelHelpers.spectralNormalization(self.model, maxSpectralNorm=1, fastPath=False) # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Enables better signal reconstruction (more complex model).
 
         # Finish setting up the mode.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)

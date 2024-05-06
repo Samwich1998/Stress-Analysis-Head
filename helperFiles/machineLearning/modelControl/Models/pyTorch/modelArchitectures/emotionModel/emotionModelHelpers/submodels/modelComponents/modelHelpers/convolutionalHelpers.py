@@ -41,7 +41,7 @@ class convolutionalHelpers(abnormalConvolutions):
 
     def convolutionalFilters_semiResNetBlocks(self, numResNets, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D',
                                               activationType='selu', scalingFactor=1, secondMethodType='pointwise', finalDim=None):
-    
+
         if secondMethodType == 'pointwise':
             secondMethod = self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations,
                                                            groups=groups, strides=strides, convType=secondMethodType, activationType=activationType, numLayers=None),
@@ -118,31 +118,32 @@ class convolutionalHelpers(abnormalConvolutions):
 
             # If adding a standard convolutional layer.
             if convType in ['conv1D', 'pointwise', 'depthwise']:
-                layers.append(nn.Conv1d(in_channels=numChannels[i], out_channels=numChannels[i+1], kernel_size=kernel_sizes[i], stride=strides[i],
-                                        padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='reflect', bias=True))
+                layer = nn.Conv1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
+                                  padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='reflect', bias=True)
 
             # If adding a transposed convolutional layer.
             elif convType == 'transConv1D':
-                layers.append(nn.ConvTranspose1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
-                                                 padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='zeros', bias=True, output_padding=0))
+                layer = nn.ConvTranspose1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
+                                           padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='zeros', bias=True, output_padding=0)
 
             else:
                 # If the convolutional type is not recognized.
                 raise ValueError("Convolution type must be in ['conv1D', 'pointwise', 'depthwise', 'transConv1D']")
 
+            # Initialize the weights of the convolutional layer.
+            layer = self.modelHelpers.initialize_weights(layer, activationMethod=activationType)
+            layers.append(layer)
+
             # Selu activation function
             if activationType == 'selu':
-                self.modelHelpers.initialize_weights_lecun(layers[-1])
                 layers.append(nn.SELU())
 
             # GELU activation function
             elif activationType == 'gelu':
-                self.modelHelpers.initialize_weights_kaiming(layers[-1])
                 layers.append(nn.GELU())
 
             # ReLU activation function
             elif activationType == 'relu':
-                self.modelHelpers.initialize_weights_kaiming(layers[-1])
                 layers.append(nn.ReLU())
 
             # If no activation function is needed.

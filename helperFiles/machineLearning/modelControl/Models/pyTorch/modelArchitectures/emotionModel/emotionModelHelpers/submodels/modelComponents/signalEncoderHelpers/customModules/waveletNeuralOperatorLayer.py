@@ -126,6 +126,12 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
         # Initialize activation method.
         self.activationFunction = nn.SELU()  # Activation function for the Fourier neural operator.
 
+        # Initialize the weights of the model.
+        # self.modelHelpers.l2Normalization(self.fullLowFrequencyWeights, maxNorm=10)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
+        # self.modelHelpers.l2Normalization(self.fullHighFrequencyWeights, maxNorm=10)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
+        # self.modelHelpers.l2Normalization(self.highFrequenciesWeights, maxNorm=10)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
+        # self.modelHelpers.l2Normalization(self.lowFrequencyWeights, maxNorm=10)  # THIS WILL SEVERELY AFFECT TRAINING STABILITY. Larger values allow for better signal reconstruction, but also a more complex model.
+
     def forward(self, inputData, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.
         neuralOperatorOutput = self.waveletNeuralOperator(inputData, lowFrequencyTerms, highFrequencyTerms)

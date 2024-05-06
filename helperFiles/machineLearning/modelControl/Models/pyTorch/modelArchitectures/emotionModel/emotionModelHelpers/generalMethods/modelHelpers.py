@@ -29,33 +29,32 @@ class modelHelpers:
     def initialize_weights_uniform(m):
         if hasattr(m, 'weight'):
             nn.init.uniform_(m.weight, -0.1, 0.1)
-            if hasattr(m, 'bias') and m.bias is not None:
-                m.bias.data.zero_()
-        return m
+        if hasattr(m, 'bias') and m.bias is not None:
+            nn.init.zeros_(m.bias)
 
     @staticmethod
     def initialize_weights_kaiming(m):
         if hasattr(m, 'weight'):
             nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
-            if hasattr(m, 'bias') and m.bias is not None:
-                m.bias.data.zero_()
-        return m
+        if hasattr(m, 'bias') and m.bias is not None:
+            nn.init.zeros_(m.bias)
 
     @staticmethod
     def initialize_weights_xavier(m):
         if hasattr(m, 'weight'):
             nn.init.xavier_uniform_(m.weight)
-            if hasattr(m, 'bias') and m.bias is not None:
-                m.bias.data.zero_()
-        return m
+        if hasattr(m, 'bias') and m.bias is not None:
+            nn.init.zeros_(m.bias)
 
     @staticmethod
     def initialize_weights_lecun(m):
         if hasattr(m, 'weight'):
-            nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='linear')  # LeCun as a special case of He init
-            if hasattr(m, 'bias') and m.bias is not None:
-                m.bias.data.zero_()
-        return m
+            # Proper LeCun Normal initialization
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
+            std = 1 / fan_in**0.5
+            nn.init.normal_(m.weight, 0.0, std)
+        if hasattr(m, 'bias') and m.bias is not None:
+            nn.init.zeros_(m.bias)
 
     def initialize_weights(self, model, activationMethod='selu'):
         method_map = {
@@ -65,8 +64,14 @@ class modelHelpers:
             'tanh': self.initialize_weights_xavier,
         }
 
+        # Get the initialization function.
         init_function = method_map.get(activationMethod, self.initialize_weights_uniform)
-        model.apply(init_function)
+
+        # Apply the initialization function to the model.
+        for modelParam in model.modules():
+            modelParam.apply(init_function)
+
+        return model
 
     @staticmethod
     def getAutoencoderWeights(model):
@@ -172,7 +177,7 @@ class modelHelpers:
         for layerParams in model.parameters():
             if layerParams.ndim > 1:
                 # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
-                paramNorm = torch.norm(layerParams, p=2).item()
+                paramNorm = torch.norm(layerParams, p='fro').item()
 
                 # Constrain the spectral norm.
                 if maxNorm < paramNorm:

@@ -23,7 +23,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(
-            self.modelHelpers.initialize_weights_lecun(nn.Linear(numFeatures, numFeatures)),
+            self.modelHelpers.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu'),
             nn.SELU(),
         )
 
@@ -57,17 +57,27 @@ class signalEncoderModules(convolutionalHelpers):
 
     @staticmethod
     def neuralWeightParameters(inChannel=1, outChannel=2, secondDimension=46):
-        # Calculate standard deviation based on LeCun Normal initialization suited for SELU
-        init_std = (1 / inChannel * secondDimension) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
+        # Corrected calculation for the standard deviation
+        fan_in = inChannel * secondDimension  # Ensure division is performed before multiplication
+        init_std = (1 / fan_in) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
 
-        return nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)) * init_std)
+        # Initialize the weights with a normal distribution.
+        parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
+        nn.init.normal_(parameter, 0.0, init_std)
+
+        return parameter
 
     @staticmethod
     def neuralCombinationWeightParameters(inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
-        # Calculate standard deviation based on LeCun Normal initialization suited for SELU
-        init_std = (1 / inChannel * initialFrequencyDim) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
+        # Corrected calculation for the standard deviation
+        fan_in = inChannel * initialFrequencyDim  # Ensure division is performed before multiplication
+        init_std = (1 / fan_in) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
 
-        return nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)) * init_std)
+        # Initialize the weights with a normal distribution.
+        parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
+        nn.init.normal_(parameter, 0.0, init_std)
+
+        return parameter
 
     @staticmethod
     def neuralBiasParameters(numChannels=2):

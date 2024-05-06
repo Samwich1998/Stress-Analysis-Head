@@ -101,7 +101,7 @@ class emotionPipeline:
         # Common WD values: 1E-2 to 1E-6
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-4, 'lr': 5E-4 if self.fullTest else 5E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 5E-4 if self.fullTest else 5E-4}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -428,7 +428,7 @@ class emotionPipeline:
         else:
             assert False, "No model initialized"
 
-        return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(0, 1)), addingNoiseRange
+        return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
     def setupTraining(self, submodel):
         # Do not train the model at all.

@@ -79,7 +79,6 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
-        self.modelHelpers.l2Normalization(self.model, maxNorm=10)  # Normalize the model weights.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
 
         # Assert data integrity of the inputs.
@@ -100,7 +99,7 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-3 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.

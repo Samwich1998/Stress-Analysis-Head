@@ -17,7 +17,7 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             # Convolution architecture: feature engineering
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
@@ -30,14 +30,10 @@ class signalEncoderModules(convolutionalHelpers):
     # ------------------- Signal Encoding Architectures ------------------- #
 
     def liftingOperator(self, inChannel=1, outChannel=2):
-        assert 2*inChannel <= outChannel, "The output channel must be twice the input channel."
-
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, 2 * inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[2 * inChannel, 2 * inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[2 * inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
 
             # Convolution architecture: lifting operator.
@@ -46,7 +42,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Corrected calculation for the standard deviation
-        fan_in = inChannel * secondDimension  # Ensure division is performed before multiplication
+        fan_in = inChannel*secondDimension  # Ensure division is performed before multiplication
 
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
@@ -56,7 +52,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Corrected calculation for the standard deviation
-        fan_in = inChannel * initialFrequencyDim  # Ensure division is performed before multiplication
+        fan_in = inChannel*initialFrequencyDim  # Ensure division is performed before multiplication
 
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
@@ -85,17 +81,13 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
-        assert 2*outChannel <= inChannel, "The input channel must be more than twice the output channel."
-
         return nn.Sequential(
             # Convolution architecture: lifting operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
 
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[outChannel, 2*outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[2*outChannel, 2*outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[2*outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
         )
 
@@ -108,7 +100,7 @@ class signalEncoderModules(convolutionalHelpers):
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
                 self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
                 self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
         )
@@ -121,8 +113,8 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=6, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 8], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[8, 8], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[8, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
         )

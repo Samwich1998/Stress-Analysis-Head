@@ -64,6 +64,14 @@ class modelHelpers:
 
         return parameter
 
+    @staticmethod
+    def xavierParamInit(parameter, fan_in, fan_out):
+        # Calculate the limit for the Xavier uniform distribution
+        limit = torch.sqrt(torch.tensor(6.0 / (fan_in + fan_out)))
+        nn.init.uniform_(parameter, -limit.item(), limit.item())
+
+        return parameter
+
     def initialize_weights(self, model, activationMethod='selu'):
         method_map = {
             'selu': self.initialize_weights_lecun,
@@ -176,20 +184,19 @@ class modelHelpers:
                     spectralNorm = singular_values.max().item()  # Get the maximum singular value (spectral norm)
 
                 # Constrain the spectral norm.
-                if maxSpectralNorm < spectralNorm:
+                if maxSpectralNorm < spectralNorm != 0:
                     layerParams.data = layerParams * (maxSpectralNorm / spectralNorm)
 
     @staticmethod
     def l2Normalization(model, maxNorm=2):
         # For each trainable parameter in the model.
         for layerParams in model.parameters():
-            if layerParams.ndim > 1:
-                # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
-                paramNorm = torch.norm(layerParams, p='fro').item()
+            # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
+            paramNorm = torch.norm(layerParams, p='fro').item()
 
-                # Constrain the spectral norm.
-                if maxNorm < paramNorm:
-                    layerParams.data = layerParams * (maxNorm / paramNorm)
+            # Constrain the spectral norm.
+            if maxNorm < paramNorm != 0:
+                layerParams.data = layerParams * (maxNorm / paramNorm)
 
     @staticmethod
     def apply_spectral_normalization(model, max_spectral_norm=2, power_iterations=1):

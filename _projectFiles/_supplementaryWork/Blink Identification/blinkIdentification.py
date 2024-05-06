@@ -26,9 +26,9 @@ import compileFeatureNames  # Functions to extract feature names
 
 sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/machineLearning/") 
 import machineLearningInterface
+from dataInterface.dataPreparation import standardizeData
 
 import featureSelection
-
 import plottingPipeline
 
 if __name__ == "__main__":
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     # Extract the features from the training files and organize them.
     trainingClass = trainingProtocols_Supp.trainingProtocols(indivisualFeatureNames, biomarkerOrder, 1, dataExcelFolder, readData)
     subjectOrder, allFinalFeatures, allFinalLabels = trainingClass.streamBlinkData(featureLabelOptions, reanalyzeData)        
-
+    breakpoint()
     # NOT INCLUDING MOVEMENT LABEL
     allFinalFeatures = allFinalFeatures[allFinalLabels != 1]
     allFinalLabels = allFinalLabels[allFinalLabels != 1]
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     performMachineLearning.createModels(modelTypes)
     featureNames = [item for sublist in indivisualFeatureNames for item in sublist]
     # Standardize features
-    standardizeClass_Features = machineLearningInterface.standardizeData(allFinalFeatures)
+    standardizeClass_Features = standardizeData(allFinalFeatures)
     standardizedFeatures = standardizeClass_Features.standardize(allFinalFeatures)
 
     # Compile information into the model class
@@ -211,10 +211,9 @@ if __name__ == "__main__":
         goodFeatures = ["blinkDuration_EOG", "tentDeviationX_EOG", "closingTime_Peak_EOG", "openingTime_Peak_EOG", 
                         "eyesClosedTime_EOG", "accelToPeak_EOG", "peakToAccel_EOG", "velocityPeakInterval_EOG", "velToPeak_EOG", "peakToVel_EOG", "closingSlope_MaxAccel_EOG",
                         "closingSlope_MaxVel_EOG", "closingSlope_MinAccel_EOG", "openingSlope_MinVel_EOG", "closingAccel_MaxAccel_EOG", 
-                        "closingAccel_MaxVel_EOG", "closingAccel_MinAccel_EOG", "openingAccel_MinVel_EOG",
+                        "closingAccel_MinAccel_EOG",
                         "accel0_Vel0_Ratio_EOG", "accel0_Accel1_Ratio_EOG", "accel0_Accel2_Ratio_EOG", 
-                        "velRatio_EOG", "vel0_Accel2_Ratio_EOG", "accel1_Accel2_Ratio_EOG", "peakEntropy_EOG",
-                        "peakKurtosis_EOG", "velFullEntropy_EOG", "accelFullEntropy_EOG"]
+                        "velRatio_EOG", "peakEntropy_EOG", "velFullEntropy_EOG", "accelFullEntropy_EOG"]
         
         # Features to debug with
         testFeatures = ["blinkDuration_EOG", "tentDeviationX_EOG", "closingTime_Peak_EOG", "openingTime_Peak_EOG", 
@@ -225,8 +224,10 @@ if __name__ == "__main__":
         # Get data for all features we want to consider
         possibleFeatures_Cull = performMachineLearning.modelControl.getSpecificFeatures(featureNames, possibleFeatures, standardizedFeatures)
         # Returns performance for each combination of features
-        modelScores, modelSTDs, featureNames_Combinations = performMachineLearning.analyzeFeatureCombinations(modelInd, possibleFeatures_Cull, allFinalLabels, possibleFeatures, numFeaturesCombine, subjectOrder, standardizedFeatures, saveData = True, saveExcelName = saveExcelName, printUpdateAfterTrial = 500, scaleLabels = False, categorical = {0: featureLabelOptions[0], 2: featureLabelOptions[2]}, imbalancedData = True)
-        
+        # modelScores, modelSTDs, featureNames_Combinations = performMachineLearning.analyzeFeatureCombinations(modelInd, possibleFeatures_Cull, allFinalLabels, possibleFeatures, numFeaturesCombine, subjectOrder, standardizedFeatures, saveData = True, saveExcelName = saveExcelName, printUpdateAfterTrial = 500, categorical = {0: featureLabelOptions[0], 2: featureLabelOptions[2]}, imbalancedData = True)
+        #     def analyzeFeatureCombinations(self, modelInd, featureData, featureLabels, featureNames, numFeatures_perCombination, numEpochs = 10, numModelsTrack = 500,
+        #                           saveData = True, imbalancedData = False, saveExcelName = "Feature Combination Accuracy.xlsx", printUpdateAfterTrial = 2000):
+        modelScores, modelSTDs, featureNames_Combinations = performMachineLearning.analyzeFeatureCombinations(modelInd, possibleFeatures_Cull, allFinalLabels, possibleFeatures, numFeaturesCombine, saveData = True, saveExcelName = saveExcelName, printUpdateAfterTrial = 500, imbalancedData = True)
         # Chooses the highest performing feature combination to be the selected features
         selectedFeatures = featureNames_Combinations[0].split()
     
@@ -242,7 +243,7 @@ if __name__ == "__main__":
             print(modelTypes[modelInd])
             
             performMachineLearning.createModels(modelTypes)
-            standardizeClass_Features = machineLearningInterface.standardizeData(allFinalFeatures)
+            standardizeClass_Features = standardizeData(allFinalFeatures)
             standardizedFeatures = standardizeClass_Features.standardize(allFinalFeatures)
 
             # Compile information into the model class

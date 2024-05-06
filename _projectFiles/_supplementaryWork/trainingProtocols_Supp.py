@@ -12,18 +12,10 @@ import natsort
 import openpyxl as xl
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../../helperFiles/machineLearning/modelControl/modelSpecifications/")
-import compileModelInfo    # Functions with model information
-
-# Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../../helperFiles/machineLearning/featureAnalysis/")
-import featurePlotting      # Functions for feature analysis
-
-# Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../../helperFiles/dataAcquisitionAndAnalysis/excelProcessing/")
-# Import excel data interface
-from extractDataProtocols import extractData
-import saveDataProtocols
+from ...helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
+from ...helperFiles.dataAcquisitionAndAnalysis.excelProcessing.extractDataProtocols import extractData
+from ...helperFiles.dataAcquisitionAndAnalysis.excelProcessing.saveDataProtocols import saveExcelData
+from from ...helperFiles.machineLearning.featureAnalysis.featurePlotting import featurePlotting      # Functions for feature analysis
 
 # -------------------------------------------------------------------------- #
 # ---------------------- Extract Test Data from Excel ---------------------- #
@@ -48,9 +40,9 @@ class trainingProtocols(extractData):
         self.featureNames = [item for sublist in self.biomarkerFeatureNames for item in sublist]
         
         # Initialize important classes
-        self.saveInputs = saveDataProtocols.saveExcelData()
-        self.modelInfoClass = compileModelInfo.compileModelInfo("_.pkl", [0,1,2])
-        self.analyzeFeatures = featurePlotting.featurePlotting(self.trainingDataExcelFolder + "dataAnalysis/", overwrite = False)
+        self.saveInputs = saveExcelData()
+        self.modelInfoClass = compileModelInfo("_.pkl", [0,1,2])
+        self.analyzeFeatures = featurePlotting(self.trainingDataExcelFolder + "dataAnalysis/", overwrite = False)
     
     def extractData_Old(self, ExcelSheet, startDataCol = 1, endDataCol = 2, data = None):
         # If Header Exists, Skip Until You Find the Data

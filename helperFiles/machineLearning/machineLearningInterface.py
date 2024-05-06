@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 20 18:47:49 2021
-
-@author: samuelsolomon
-"""
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
 
 # Basic Modules
 import os
@@ -23,11 +13,10 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
 # Import interfaces for reading/writing data
-sys.path.append(os.path.dirname(__file__) + "/../dataAcquisitionAndAnalysis/excelProcessing/")
-import saveDataProtocols
+from ..dataAcquisitionAndAnalysis.excelProcessing.saveDataProtocols import saveExcelData
 
 # Import Files for extracting models
-from modelControl._modelControl import modelControl
+from .modelControl._modelControl import modelControl
 
 # -------------------------------------------------------------------------- #
 # ------------------ Interface with Machine Learning Files ----------------- #
@@ -48,7 +37,7 @@ class machineLearningHead:
             os.makedirs(self.saveDataFolder, exist_ok=True)
         
         # Initialize classes.
-        self.saveDataInterface = saveDataProtocols.saveExcelData()
+        self.saveDataInterface = saveExcelData()
         self.modelControl = modelControl(self.modelFile, self.modelTypes, self.allFeatureNames, self.saveDataFolder) # Create a controller for all models.
         
     def createModels(self, modelTypes):

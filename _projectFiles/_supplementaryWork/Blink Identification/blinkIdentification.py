@@ -1,10 +1,3 @@
-"""
-    Written by Samuel Solomon
-        
-"""
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
 
 # Basic Modules
 import os
@@ -13,21 +6,17 @@ import collections
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-sys.path.append(os.path.dirname(__file__) + "/../")
-import trainingProtocols_Supp       # Functions to Save/Read in Data from Excel
-
-sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/dataAcquisitionAndAnalysis/") 
-import streamingProtocols      # Functions to Handle Data from Arduino
+# Add the directory of the current file to the Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import helperFiles
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/machineLearning/featureAnalysis/compiledFeatureNames/")
-import compileFeatureNames  # Functions to extract feature names
-
-sys.path.append(os.path.dirname(__file__) + "/../../../helperFiles/machineLearning/") 
-import machineLearningInterface
-from dataInterface.dataPreparation import standardizeData
-
+from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames # Functions to extract feature names
+from helperFiles.machineLearning.dataInterface.dataPreparation import standardizeData
+from helperFiles.dataAcquisitionAndAnalysis.streamingProtocols import streamingProtocols    # Functions to Handle Data from Arduino
+from helperFiles.machineLearning.machineLearningInterface import machineLearningHead
+from _projectFiles._supplementaryWork.trainingProtocols_Supp import trainingProtocols      # Functions to Save/Read in Data from Excel
 import featureSelection
 import plottingPipeline
 
@@ -43,7 +32,7 @@ if __name__ == "__main__":
 
     # Compile Feature Names
     featureNamesFolder = "../../Helper Files/Machine Learning/_Compiled Feature Names/All Features/"
-    featureNames, indivisualFeatureNames, biomarkerOrder, = compileFeatureNames.compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+    featureNames, indivisualFeatureNames, biomarkerOrder, = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
     eogFeatureNames = indivisualFeatureNames[0]
     
     dataExcelFolder = os.path.dirname(__file__) + "/Data/"
@@ -98,10 +87,10 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
     # Initialize instance to analyze the data
-    readData = streamingProtocols.streamingProtocols(None, [], None, numPointsPerBatch, moveDataFinger, streamingOrder, biomarkerOrder, [0], False)
+    readData = streamingProtocols(None, [], None, numPointsPerBatch, moveDataFinger, streamingOrder, biomarkerOrder, [0], False)
 
     # Extract the features from the training files and organize them.
-    trainingClass = trainingProtocols_Supp.trainingProtocols(indivisualFeatureNames, biomarkerOrder, 1, dataExcelFolder, readData)
+    trainingClass = trainingProtocols(indivisualFeatureNames, biomarkerOrder, 1, dataExcelFolder, readData)
     subjectOrder, allFinalFeatures, allFinalLabels = trainingClass.streamBlinkData(featureLabelOptions, reanalyzeData)        
     breakpoint()
     # NOT INCLUDING MOVEMENT LABEL
@@ -158,7 +147,7 @@ if __name__ == "__main__":
     trainingFolder = "./"   # Data Folder to Save the Excel Data; MUST END IN '/'
     # os.makedirs(trainingFolder, exist_ok = True)
     
-    performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, trainingFolder)
+    performMachineLearning = machineLearningHead(modelTypes, modelFile, featureNames, trainingFolder)
     modelClasses = performMachineLearning.modelControl.modelClasses
     
     performMachineLearning.createModels(modelTypes)

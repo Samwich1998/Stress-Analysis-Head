@@ -73,13 +73,13 @@ class emotionPipeline:
 
         if submodel == "emotionPrediction":
             # Finalize model setup.
-            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType,
-                                                                                                       predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
+            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
             self.model.sharedEmotionModel.lastEmotionLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.emotionDist_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
+        self.modelHelpers.l2Normalization(self.model, maxNorm=10)  # Normalize the model weights.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
 
         # Assert data integrity of the inputs.
@@ -100,7 +100,7 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 0, 'lr': 5E-4 if self.fullTest else 5E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -211,7 +211,7 @@ class emotionPipeline:
 
                     # Randomly choose to add noise to the model.
                     augmentedSignalData = signalData.clone()
-                    addingNoiseFlag = random.random() < 0.5
+                    addingNoiseFlag = random.random() < 0
                     addingNoiseRange = [0, 1]
                     addingNoiseSTD = 0
 

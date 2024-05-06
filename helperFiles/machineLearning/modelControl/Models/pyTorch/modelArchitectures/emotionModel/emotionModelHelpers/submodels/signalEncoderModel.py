@@ -153,12 +153,10 @@ class signalEncoderModel(globalModel):
 
         if calculateLoss and decodeSignals:
             # Prepare for loss calculations.
-            noisyPositionEncodedData = emotionDataInterface.addNoise(positionEncodedData, random.random() < 0.5 if trainingFlag else trainingFlag, noiseSTD=0.01)
-            removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(noisyPositionEncodedData)
+            removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            noisyPotentialEncodedData = emotionDataInterface.addNoise(potentialEncodedData, random.random() < 0.5 if trainingFlag else trainingFlag, noiseSTD=0.01)
-            potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyPotentialEncodedData)
+            potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(potentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.
             varReconstructionStateLoss = (initialEncodedData - initialDecodedData).pow(2).mean(dim=2).mean(dim=1)

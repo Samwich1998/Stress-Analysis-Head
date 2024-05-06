@@ -31,14 +31,11 @@ class signalEncoderBase(signalEncoderHelpers):
         # Calculate the number of active signals in each path.
         numActiveSignals = originalNumSignals - self.simulateSignalPath(originalNumSignals, numEncodedSignals)[1]
 
-        # Add noise to the data to ensure that the latent space is continuous.
-        noisyEncodedData = emotionDataInterface.addNoise(encodedData, random.random() < 0.5 if trainingFlag else trainingFlag, noiseSTD=0.01)
-
         # Reverse operation
         if numEncodedSignals < originalNumSignals:
-            encodedDecodedOriginalData = self.expansionModel(noisyEncodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.expansionModel(encodedData, originalNumSignals)
         else:
-            encodedDecodedOriginalData = self.compressionModel(noisyEncodedData, originalNumSignals)
+            encodedDecodedOriginalData = self.compressionModel(encodedData, originalNumSignals)
         # Assert the integrity of the expansions/compressions.
         assert encodedDecodedOriginalData.size(1) == originalData.size(1)
 

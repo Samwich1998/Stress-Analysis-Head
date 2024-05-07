@@ -382,11 +382,11 @@ class emotionPipeline:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=10 if self.fullTest else 10)
         elif submodel == "autoencoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=10 if self.fullTest else 10)
         elif submodel == "emotionPrediction":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=10 if self.fullTest else 10)
         else:
             assert False, "No model initialized"
 

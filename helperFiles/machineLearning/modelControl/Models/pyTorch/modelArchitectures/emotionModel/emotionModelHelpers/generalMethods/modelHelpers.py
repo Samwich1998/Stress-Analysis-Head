@@ -81,6 +81,13 @@ class modelHelpers:
         return parameter
 
     @staticmethod
+    def averagingInit(parameter, num_inputs):
+        # Initialize the weights to 1/num_inputs to compute the average of the inputs
+        init_value = 1.0 / num_inputs
+        nn.init.constant_(parameter, init_value)
+        return parameter
+
+    @staticmethod
     def xavierNormalInit(parameter, fan_in, fan_out):
         # Calculate standard deviation for the Xavier normal distribution
         std = math.sqrt(2.0 / (fan_in + fan_out))

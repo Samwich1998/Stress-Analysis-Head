@@ -28,7 +28,10 @@ class modelHelpers:
     @staticmethod
     def initialize_weights_uniform(m):
         if hasattr(m, 'weight'):
-            nn.init.uniform_(m.weight, -0.1, 0.1)
+            # Assuming the weight tensor is of shape [out_features, in_features]
+            num_input_units = m.weight.size(1)  # Get the number of input units
+            bound = 1 / torch.sqrt(torch.tensor(num_input_units, dtype=torch.float))
+            nn.init.uniform_(m.weight, -bound, bound)
         if hasattr(m, 'bias') and m.bias is not None:
             nn.init.zeros_(m.bias)
 
@@ -55,6 +58,10 @@ class modelHelpers:
             nn.init.normal_(m.weight, mean=0.0, std=std)
         if hasattr(m, 'bias') and m.bias is not None:
             nn.init.zeros_(m.bias)
+
+    @staticmethod
+    def uniformParamInitialization(parameter, numUnits):
+        return nn.init.uniform_(parameter, -1/torch.sqrt(numUnits), 1/torch.sqrt(numUnits))
 
     @staticmethod
     def lecunParamInitialization(parameter, fan_in):

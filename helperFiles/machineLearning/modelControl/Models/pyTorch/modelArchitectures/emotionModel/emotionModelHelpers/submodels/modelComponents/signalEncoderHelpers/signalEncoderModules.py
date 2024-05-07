@@ -11,7 +11,7 @@ class signalEncoderModules(convolutionalHelpers):
     def __init__(self):
         super(signalEncoderModules, self).__init__()
 
-    # ------------------- Positional Encoding Architectures ------------------- #'
+    # ------------------- Positional Encoding Architectures ------------------- #
 
     def learnEncodingStampCNN(self):
         return nn.Sequential(
@@ -20,6 +20,13 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
+
+    def positionalEncodingStamp(self, stampLength=1):
+        # Initialize the weights with a uniform distribution.
+        parameter = nn.Parameter(torch.randn(stampLength))
+        parameter = self.modelHelpers.uniformParamInitialization(parameter)
+
+        return parameter
 
     def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(

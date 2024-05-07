@@ -1,13 +1,8 @@
 # General
-import time
-import random
-
-import torch
-# PyTorch
 import torch.optim as optim
-
-# Hugging Face
 import transformers
+import random
+import time
 
 # Import files for machine learning
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods

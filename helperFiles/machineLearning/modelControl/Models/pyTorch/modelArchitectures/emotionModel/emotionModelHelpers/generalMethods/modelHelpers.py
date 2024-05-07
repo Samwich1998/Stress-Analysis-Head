@@ -74,11 +74,31 @@ class modelHelpers:
         return parameter
 
     @staticmethod
-    def xavierParamInit(parameter, fan_in, fan_out):
+    def xavierUniformInit(parameter, fan_in, fan_out):
         # Calculate the limit for the Xavier uniform distribution
-        limit = torch.sqrt(torch.tensor(6.0 / (fan_in + fan_out)))
-        nn.init.uniform_(parameter, -limit.item(), limit.item())
+        limit = math.sqrt(6.0 / (fan_in + fan_out))
+        nn.init.uniform_(parameter, -limit, limit)
+        return parameter
 
+    @staticmethod
+    def xavierNormalInit(parameter, fan_in, fan_out):
+        # Calculate standard deviation for the Xavier normal distribution
+        std = math.sqrt(2.0 / (fan_in + fan_out))
+        nn.init.normal_(parameter, mean=0.0, std=std)
+        return parameter
+
+    @staticmethod
+    def heUniformInit(parameter, fan_in):
+        # Initialize the weights with a uniform distribution using He initialization
+        limit = math.sqrt(6 / fan_in)
+        nn.init.uniform_(parameter, -limit, limit)
+        return parameter
+
+    @staticmethod
+    def heNormalInit(parameter, fan_in):
+        # Initialize the weights with a normal distribution using He initialization
+        std = math.sqrt(2 / fan_in)
+        nn.init.normal_(parameter, mean=0.0, std=std)
         return parameter
 
     def initialize_weights(self, model, activationMethod='selu'):
@@ -87,10 +107,12 @@ class modelHelpers:
             'relu': self.initialize_weights_kaiming,
             'sigmoid': self.initialize_weights_xavier,
             'tanh': self.initialize_weights_xavier,
+            'none': self.initialize_weights_uniform,
         }
 
         # Get the initialization function.
-        init_function = method_map.get(activationMethod, self.initialize_weights_uniform)
+        init_function = method_map.get(activationMethod, None)
+        assert init_function is not None, activationMethod
 
         # Apply the initialization function to the model.
         for modelParam in model.modules():

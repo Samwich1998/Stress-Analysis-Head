@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
@@ -61,7 +63,7 @@ class modelHelpers:
 
     @staticmethod
     def uniformParamInitialization(parameter, numUnits):
-        return nn.init.uniform_(parameter, -1/torch.sqrt(numUnits), 1/torch.sqrt(numUnits))
+        return nn.init.uniform_(parameter, -1/math.sqrt(numUnits), 1/math.sqrt(numUnits))
 
     @staticmethod
     def lecunParamInitialization(parameter, fan_in):

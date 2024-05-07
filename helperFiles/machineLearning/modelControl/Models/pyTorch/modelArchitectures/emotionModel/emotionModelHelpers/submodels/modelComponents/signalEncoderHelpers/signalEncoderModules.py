@@ -24,7 +24,7 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(self, stampLength=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.modelHelpers.uniformParamInitialization(parameter)
+        parameter = self.modelHelpers.lecunParamInitialization(parameter, stampLength)
 
         return parameter
 

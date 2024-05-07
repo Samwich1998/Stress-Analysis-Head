@@ -39,14 +39,12 @@ class channelPositionalEncoding(signalEncoderModules):
         # A list of parameters to encode each signal.
         self.encodingStamp = nn.ParameterList()  # A list of learnable parameters for learnable signal positions.
         self.decodingStamp = nn.ParameterList()  # A list of learnable parameters for learnable signal positions.
-        # Initialize the encoding parameters.
-        init_std = (2 / self.lowFrequencyShape) ** 0.5
 
         # For each encoding bit.
         for stampInd in range(self.numEncodingStamps):
             # Assign a learnable parameter to the signal.
-            self.encodingStamp.append(torch.nn.Parameter(torch.randn(self.lowFrequencyShape) * init_std))
-            self.decodingStamp.append(torch.nn.Parameter(torch.randn(self.lowFrequencyShape) * init_std))
+            self.encodingStamp.append(torch.nn.Parameter(torch.randn(self.lowFrequencyShape)))
+            self.decodingStamp.append(torch.nn.Parameter(torch.randn(self.lowFrequencyShape)))
 
         # Initialize the encoding parameters.
         self.learnStampEncodingCNN = nn.ModuleList()

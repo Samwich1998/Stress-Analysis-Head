@@ -8,7 +8,6 @@ from torchsummary import summary
 
 # Import helper models
 from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
-from ...emotionDataInterface import emotionDataInterface
 
 
 class signalEncoderBase(signalEncoderHelpers):

@@ -59,21 +59,21 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Corrected calculation for the standard deviation
-        fan_in = inChannel  # Ensure division is performed before multiplication
+        fan_in = inChannel*outChannel  # Ensure division is performed before multiplication
 
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
-        parameter = self.modelHelpers.lecunParamInitialization(parameter, fan_in)
+        parameter = self.modelHelpers.heUniformInit(parameter, fan_in)
 
         return parameter
 
     def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Corrected calculation for the standard deviation
-        fan_in = initialFrequencyDim  # Ensure division is performed before multiplication
+        fan_in = initialFrequencyDim*inChannel  # Ensure division is performed before multiplication
 
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
-        parameter = self.modelHelpers.lecunParamInitialization(parameter, fan_in)
+        parameter = self.modelHelpers.heUniformInit(parameter, fan_in)
 
         return parameter
 

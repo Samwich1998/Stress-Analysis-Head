@@ -110,7 +110,7 @@ if __name__ == "__main__":
         storeLoss = True  # Turn on loss storage for HPC.
         fastPass = False  # Turn off fast pass for HPC.
 
-        print("HPC Parameters:", fastPass, accelerator, accelerator.gradient_accumulation_steps, flush=True)
+        print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
 
     # ---------------------------------------------------------------------- #
     # --------------------------- Setup Training --------------------------- #

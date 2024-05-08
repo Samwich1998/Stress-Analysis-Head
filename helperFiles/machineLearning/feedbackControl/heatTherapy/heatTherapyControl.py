@@ -39,7 +39,11 @@ class heatTherapyControl:
     def runTherapyProtocol(self, maxIterations=None):
         # Initialize holder parameters.
         self.therapyProtocol.initializeUserState()
-
+        iteration = 0
+        loss_prediction_loss = []
+        loss_bias = []
+        current_user_loss = []
+        epoch_list = []
         # Until the therapy converges.
         while not self.therapyProtocol.finishedTherapy:
             # Get the next states for the therapy.
@@ -48,9 +52,20 @@ class heatTherapyControl:
 
             if self.therapyMethod == "nnProtocol":
                 # Calculate the final loss.
-                trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
-                lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, trueLossValues)
+                trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:] # from simulation data
+                lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, trueLossValues) #losspredictionloss is from the model
                 self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
+                currentUserLoss = self.therapyProtocol.userStatePath[-1][1]
+                print('lossPredictionLoss: ', lossPredictionLoss)
+                print('minimizeLossBias: ', minimizeLossBias)
+                print('currentUserLoss: ', currentUserLoss)
+                loss_prediction_loss.append(lossPredictionLoss.item())
+                loss_bias.append(minimizeLossBias.item())
+                current_user_loss.append(currentUserLoss)
+                iteration += 1
+                epoch_list.append(iteration)
+                if self.plotResults:
+                    self.therapyProtocol.plotTherapyResults_nn(epoch_list, loss_prediction_loss, loss_bias, current_user_loss)
 
             if self.plotResults:
                 if self.therapyMethod == "aStarProtocol":
@@ -65,9 +80,9 @@ class heatTherapyControl:
 
 if __name__ == "__main__":
     # User parameters.
-    userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
+    userTherapyMethod = "basicProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
     userTemperatureBounds = (30, 50)  # The temperature bounds for the therapy.
-    plotTherapyResults = False  # Whether to plot the results.
+    plotTherapyResults = True  # Whether to plot the results.
     userTempBinWidth = 2  # The temperature bin width for the therapy.
 
     # Simulation parameters.
@@ -76,7 +91,7 @@ if __name__ == "__main__":
         'simulatedMapType': 'uniformSampling',  # The method for generating the simulated map. Options: 'uniformSampling', 'linearSampling', 'parabolicSampling'
         'numSimulationHeuristicSamples': 10,  # The number of simulation samples to generate.
         'numSimulationTrueSamples': 50,  # The number of simulation samples to generate.
-        'simulateTherapy': True,  # Whether to simulate the therapy.
+        'simulateTherapy': False,  # Whether to simulate the therapy.
     }
 
     # Initialize the therapy protocol
@@ -85,12 +100,12 @@ if __name__ == "__main__":
     # Run the therapy protocol.
     therapyProtocol.runTherapyProtocol(maxIterations=100)
 
-    # TODO: lost per epoch  (optimal, predicted, actual loss) (lossPredictionLoss, minimizeLossBias, currentUserLoss)
+    # TODO: lost per epoch  (optimal, predicted, actual loss) (lossPredictionLoss, minimizeLossBias, currentUserLoss) (checked)
     # TODO: change the architecture
     # TODO: save the good copy
     # TODO: figure out the crossentropyerror high issue?
     # TODO: other types of losses for classification (look into them)
-    # TODO: add a learning rate scheduler
+    # TODO: add a learning rate scheduler   (checked)
     # TODO: online training
     # TODO: saving and loading models
     # TODO: look into gradient clipping and spectral normalization 

@@ -66,7 +66,10 @@ class generalProtocol(abc.ABC):
             initialSimulatedData = self.compileLossStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
             self.simulationProtocols.simulatedMap = self.getProbabilityMatrix(initialSimulatedData)  # Spreading delta function probability.
         else:
-            initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
+            # real data points
+            #TODO: file corruption?
+            initialSimulatedStates = self.empatchProtocols.getTherapyData()
+            # initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
             initialSimulatedData = self.compileLossStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
             self.simulationProtocols.simulatedMap = self.getProbabilityMatrix(initialSimulatedData)  # Spreading delta function probability.
 
@@ -158,6 +161,7 @@ class generalProtocol(abc.ABC):
         else:
             # TODO: Implement a method to get the next user state.
             # Simulate a new time.
+
             lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
             timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
 
@@ -357,6 +361,25 @@ class generalProtocol(abc.ABC):
 
         # Print current state information
         print(f"New current state after iteration {num_steps + 1}: Temperature = {self.userStatePath[-1][0]}, Loss = {self.userStatePath[-1][1]}")
+
+    # ------------------------ NN Plotting ------------------------ #
+
+    def plotTherapyResults_nn(self,epoch_list, loss_prediction_loss, loss_bias, current_user_loss):
+        plt.style.use('seaborn-v0_8-pastel')
+        plt.figure(figsize=(10, 6))
+        # plot the loss prediction loss
+        plt.plot(epoch_list, loss_prediction_loss, label='Loss Prediction Loss', marker='o', linestyle='-', color='darkblue', linewidth=2, markersize=8)
+        # plot the loss bias
+        plt.plot(epoch_list, loss_bias, label='Minimize Loss Bias', marker='x', linestyle='--', color='firebrick', linewidth=2, markersize=8)
+        # plot the current User Loss
+        #plt.plot(epoch_list, current_user_loss, label='Current User Loss', marker='s', linestyle=':', color='forestgreen', linewidth=2, markersize=8)
+        plt.xlabel('Epoch', fontsize=14)
+        plt.ylabel('Loss', fontsize=14)
+        plt.title('Therapy Results per Epoch', fontsize=16)
+        plt.legend(frameon=True, loc='best', fontsize=12)
+        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+        plt.show()
+
 
     # ------------------------ Child Class Contract ------------------------ #
 

@@ -15,6 +15,15 @@ class specificModelWeights(nn.Module):
         self.numLossBins = numLossBins      # The number of loss bins.
         self.numLosses = numLosses          # The number of losses.
 
+        #added parameters
+        self.numInputTempFeatures = self.numTemperatures + self.numLosses  # The number of input temperature features.
+        self.numInputLossFeatures = self.numTemperatures * (self.numTempBins + 1) + self.numLosses  # The number of input loss features.
+        # Calculate the number of output shared features.
+        # arbitrary
+        self.numSharedTempFeatures = self.numTempBins * 2  # The number of shared temperature features. Output dimension of the shared model.
+        self.numSharedLossFeatures = self.numLosses * 2  # The number of shared loss features. Output dimension of the shared model.
+        # ------------------------------
+
         # Initialize the module holders.
         self.lossModules = nn.ModuleList()  # Loss modules for each loss [PA, NA, SA].
         self.tempModules = nn.ModuleList()  # Temperature modules for each temperatures [T1, T2, T3].
@@ -23,6 +32,8 @@ class specificModelWeights(nn.Module):
         for tempModuleInd in range(self.numTemperatures):
             self.tempModules.append(nn.Sequential(
                 # Neural architecture
+                nn.Linear(self.numInputTempFeatures, self.numSharedTempFeatures, bias=True),
+                nn.SELU(),
                 nn.Linear(self.numSharedTempFeatures, self.numTempBins, bias=True),
                 nn.Softmax(dim=-1),  # Softmax activation along the feature dimension
             ))
@@ -31,6 +42,8 @@ class specificModelWeights(nn.Module):
         for lossModuleInd in range(self.numLosses):
             self.lossModules.append(nn.Sequential(
                 # Neural architecture
+                nn.Linear(self.numInputLossFeatures, self.numSharedLossFeatures, bias=True),
+                nn.SELU(),
                 nn.Linear(self.numSharedLossFeatures, self.numLossBins, bias=True),
                 nn.Softmax(dim=-1),  # Softmax activation along the feature dimension
             ))

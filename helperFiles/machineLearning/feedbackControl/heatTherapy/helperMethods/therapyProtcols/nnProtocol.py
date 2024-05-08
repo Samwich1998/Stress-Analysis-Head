@@ -1,11 +1,15 @@
 # General
 import torch
 from torch import nn, optim
+from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ExponentialLR
+
 
 # Import files.
 from .generalProtocol import generalProtocol
 from .nnHelpers.heatTherapyModel import heatTherapyModel
 from .nnHelpers.modelHelpers.lossCalculations import lossCalculations
+
 
 
 class nnProtocol(generalProtocol):
@@ -21,10 +25,15 @@ class nnProtocol(generalProtocol):
 
         # Model parameters.
         self.optimizer = None  # The optimizer for the model.
+        # The scheduler for the optimizer.
+        self.scheduler = None
 
         # Model parameters.
         self.model = heatTherapyModel(numTemperatures=self.numTemperatures, numLosses=self.numLosses, numTempBins=self.numTempBins, numLossBins=self.numLossBins)  # The model for the therapy.
         self.setupModelHelpers()
+        self.setupModelScheduler()
+
+
 
         # Initialize helper classes.
         self.lossCalculations = lossCalculations(loss_bins=self.loss_bins, numTemperatures=self.numTemperatures, numLosses=self.numLosses)
@@ -41,6 +50,10 @@ class nnProtocol(generalProtocol):
             {'params': self.model.specificModelWeights.parameters(), 'weight_decay': 1E-2, 'lr': 1E-5},
         ])
 
+    def setupModelScheduler(self):
+        # The scheduler for the optimizer.
+        #self.scheduler = StepLR(self.optimizer, step_size=30, gamma=0.1)
+        self.scheduler = ExponentialLR(self.optimizer, gamma=0.95)
     # ------------------------ nnProtocol ------------------------ #
 
     def updateTherapyState(self):
@@ -82,3 +95,10 @@ class nnProtocol(generalProtocol):
         total_error.backward()  # Calculate the gradients.
         self.optimizer.step()   # Update the weights.
         self.optimizer.zero_grad()  # Zero the gradients.
+
+        self.scheduler.step()
+        # print the learning rate changes after scheduler
+        print('learning rate: ', self.optimizer.param_groups[0]['lr'])
+
+
+

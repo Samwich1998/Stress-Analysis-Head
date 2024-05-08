@@ -14,22 +14,31 @@ class sharedModelWeights(nn.Module):
         # Shared model parameters.
         self.sharedTempFeatureExtraction = nn.Sequential(
             # Neural architecture
-            nn.Linear(in_features=self.numInputTempFeatures, out_features=2*self.numInputTempFeatures, bias=True),
+            nn.Linear(in_features=self.numInputTempFeatures, out_features=2*self.numInputTempFeatures, bias=True), # numInputTempFeatures = 4
             nn.SELU(),
 
             # Neural architecture
-            nn.Linear(in_features=2*self.numInputTempFeatures, out_features=self.numSharedTempFeatures, bias=True),
+            nn.Linear(in_features=2*self.numInputTempFeatures, out_features=self.numSharedTempFeatures, bias=True), # numSharedTempFeatures = 22
             nn.SELU(),
+
+            #Hyperparameter tunning
+            nn.Linear(in_features=self.numSharedTempFeatures, out_features=self.numInputTempFeatures, bias=True),  # numSharedTempFeatures = 22 -> 4
+            nn.SELU(),
+
         )
 
         # Shared model parameters.
         self.sharedLossFeatureExtraction = nn.Sequential(
             # Neural architecture
-            nn.Linear(in_features=self.numInputLossFeatures, out_features=self.numInputLossFeatures, bias=True),
+            nn.Linear(in_features=self.numInputLossFeatures, out_features=self.numInputLossFeatures, bias=True), # numInputLossFeatures = 15
             nn.SELU(),
 
             # Neural architecture
-            nn.Linear(in_features=self.numInputLossFeatures, out_features=self.numSharedLossFeatures, bias=True),
+            nn.Linear(in_features=self.numInputLossFeatures, out_features=self.numSharedLossFeatures, bias=True), # numsharedLossFeaturer = 6 (15->6)
+            nn.SELU(),
+
+            #Hyperparameter tunning
+            nn.Linear(in_features=self.numSharedLossFeatures, out_features=self.numInputLossFeatures, bias=True),  # numSharedTempFeatures = 6 -> 15
             nn.SELU(),
         )
 

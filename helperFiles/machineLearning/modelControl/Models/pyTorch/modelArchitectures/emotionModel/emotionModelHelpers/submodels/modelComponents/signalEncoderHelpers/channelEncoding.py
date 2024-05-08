@@ -36,11 +36,19 @@ class channelEncoding(signalEncoderModules):
         self.compressedNeuralOperatorLayers = nn.ModuleList([])
         self.expandedNeuralOperatorLayers = nn.ModuleList([])
 
+        # Initialize the processing layers.
+        self.compressedProcessingLayers = nn.ModuleList([])
+        self.expandedProcessingLayers = nn.ModuleList([])
+
         # For each encoder model.
         for modelInd in range(self.numEncoderLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq'))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq'))
+            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='linearCNN'))
+            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='linearCNN'))
+
+            # Create the processing layers.
+            self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numLiftedChannels))
+            self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numLiftedChannels))
 
         # Initialize final models.
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numCompressedSignals)
@@ -65,7 +73,7 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            # processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
         # Learn the final signal.
@@ -90,7 +98,7 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            # processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
         # Learn the final signal.

@@ -7,7 +7,7 @@ import math
 class weightInitialization:
 
     def initialize_weights(self, model, activationMethod='selu', layerType='conv'):
-        assert activationMethod in ['selu', 'relu', 'leakyRelu', 'tanh', 'sigmoid'], "Invalid activation method."
+        assert activationMethod in ['selu', 'relu', 'leakyRelu', 'tanh', 'sigmoid', 'none'], "Invalid activation method."
         assert layerType in ['conv', 'fc'], "Invalid layer type."
 
         if activationMethod == 'selu':

@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
 
+
 class CustomLRScheduler:
     def __init__(self, optimizer, baseLRs, minLRs, maxLRs, numModels, numLossesTrack, scaleUp=2.0, scaleDown=0.5, invertLRAdjustment=False):
         # General parameters
@@ -18,6 +19,17 @@ class CustomLRScheduler:
         # Keep track of the learning rate history
         self.lossHistory = []
         self.lrs = baseLRs
+
+
+
+        # For each trainable parameter in the model.
+        for layerParams in model.parameters():
+            # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
+            paramNorm = torch.norm(layerParams, p='fro').item()
+
+            # Constrain the spectral norm.
+            if maxNorm < paramNorm != 0:
+                layerParams.data = layerParams * (maxNorm / paramNorm)
 
     def add_loss(self, modelIndex, loss):
         # Ensure the model index is valid

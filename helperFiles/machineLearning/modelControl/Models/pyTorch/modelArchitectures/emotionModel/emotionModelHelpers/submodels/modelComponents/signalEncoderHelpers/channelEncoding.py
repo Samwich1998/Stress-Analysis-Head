@@ -74,7 +74,7 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            # processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
         # Learn the final signal.
@@ -99,7 +99,7 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            # processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
 
         # Learn the final signal.

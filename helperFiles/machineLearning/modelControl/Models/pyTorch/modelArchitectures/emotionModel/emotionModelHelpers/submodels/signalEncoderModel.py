@@ -1,12 +1,9 @@
 # PyTorch
-import random
-
 import torch
 
 # Import files for machine learning
 from .modelComponents.generalSignalEncoder import generalSignalEncoding  # Framework for encoding/decoding of all signals.
 from .helperModules.trainingSignalEncoder import trainingSignalEncoder
-from ..emotionDataInterface import emotionDataInterface
 from ..generalMethods.generalMethods import generalMethods
 from ...._globalPytorchModel import globalModel
 

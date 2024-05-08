@@ -16,15 +16,15 @@ class signalEncoderModules(convolutionalHelpers):
     def learnEncodingStampCNN(self):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 2], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[2, 2], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[2, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
     def positionalEncodingStamp(self, stampLength=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.modelHelpers.lecunParamInitialization(parameter, stampLength)
+        parameter = self.modelHelpers.heNormalInit(parameter, stampLength)
 
         return parameter
 
@@ -63,16 +63,18 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Initialize the weights with a normal distribution.
         fan_in = inChannel*secondDimension  # Ensure division is performed before multiplication
+        fan_in = inChannel  # Ensure division is performed before multiplication
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
-        parameter = self.modelHelpers.averagingInit(parameter, fan_in)
+        parameter = self.modelHelpers.heNormalInit(parameter, fan_in)
 
         return parameter
 
     def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Initialize the weights with a normal distribution.
         fan_in = inChannel*initialFrequencyDim  # Ensure division is performed before multiplication
+        fan_in = inChannel  # Ensure division is performed before multiplication
         parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
-        parameter = self.modelHelpers.averagingInit(parameter, fan_in)
+        parameter = self.modelHelpers.heNormalInit(parameter, fan_in)
 
         return parameter
 

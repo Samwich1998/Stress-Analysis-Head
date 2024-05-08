@@ -43,22 +43,7 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=6, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
 
             # Convolution architecture: lifting operator.
@@ -106,22 +91,7 @@ class signalEncoderModules(convolutionalHelpers):
 
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=6, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
         )
 

@@ -342,7 +342,7 @@ class emotionPipeline:
                     # ------------------- Update the Model  -------------------- #
 
                     # Prevent too high losses from randomizing weights.
-                    while 20 < finalLoss: finalLoss = finalLoss / 10
+                    while 100 < finalLoss: finalLoss = finalLoss / 10
 
                     t1 = time.time()
                     # Calculate the gradients.

@@ -17,23 +17,23 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             # Convolution architecture: feature engineering
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
     def positionalEncodingStamp(self, stampLength=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.modelHelpers.heNormalInit(parameter, stampLength)
+        parameter = self.weightInitialization.heNormalInit(parameter, stampLength)
 
         return parameter
 
     def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(
-            self.modelHelpers.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu'),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu', layerType='fc'),
             nn.SELU(),
 
-            self.modelHelpers.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu'),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu', layerType='fc'),
             nn.SELU(),
         )
 
@@ -63,18 +63,16 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Initialize the weights with a normal distribution.
         fan_in = inChannel*secondDimension  # Ensure division is performed before multiplication
-        fan_in = inChannel  # Ensure division is performed before multiplication
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
-        parameter = self.modelHelpers.heNormalInit(parameter, fan_in)
+        parameter = self.weightInitialization.heNormalInit(parameter, fan_in)
 
         return parameter
 
     def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Initialize the weights with a normal distribution.
         fan_in = inChannel*initialFrequencyDim  # Ensure division is performed before multiplication
-        fan_in = inChannel  # Ensure division is performed before multiplication
         parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
-        parameter = self.modelHelpers.heNormalInit(parameter, fan_in)
+        parameter = self.weightInitialization.heNormalInit(parameter, fan_in)
 
         return parameter
 
@@ -85,7 +83,7 @@ class signalEncoderModules(convolutionalHelpers):
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=2, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )

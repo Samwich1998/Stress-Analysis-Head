@@ -25,107 +25,7 @@ class modelHelpers:
                 assert not assertGradient or variable.grad is not None, "No gradient present in {variableName}: {variable}"
                 self.assertVariableIntegrity(variable.grad, variableName + " gradient", assertGradient=False)
 
-    # -------------------------- Model Weights -------------------------- #
-
-    @staticmethod
-    def initialize_weights_uniform(m):
-        if hasattr(m, 'weight'):
-            # Assuming the weight tensor is of shape [out_features, in_features]
-            num_input_units = m.weight.size(1)  # Get the number of input units
-            bound = 1 / torch.sqrt(torch.tensor(num_input_units, dtype=torch.float))
-            nn.init.uniform_(m.weight, -bound, bound)
-        if hasattr(m, 'bias') and m.bias is not None:
-            nn.init.zeros_(m.bias)
-
-    @staticmethod
-    def initialize_weights_kaiming(m):
-        if hasattr(m, 'weight'):
-            nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
-        if hasattr(m, 'bias') and m.bias is not None:
-            nn.init.zeros_(m.bias)
-
-    @staticmethod
-    def initialize_weights_xavier(m):
-        if hasattr(m, 'weight'):
-            nn.init.xavier_uniform_(m.weight)
-        if hasattr(m, 'bias') and m.bias is not None:
-            nn.init.zeros_(m.bias)
-
-    @staticmethod
-    def initialize_weights_lecun(m):
-        if hasattr(m, 'weight'):
-            # Proper LeCun Normal initialization
-            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
-            std = 1 / fan_in**0.5
-            nn.init.normal_(m.weight, mean=0.0, std=std)
-        if hasattr(m, 'bias') and m.bias is not None:
-            nn.init.zeros_(m.bias)
-
-    @staticmethod
-    def uniformParamInitialization(parameter, numUnits):
-        return nn.init.uniform_(parameter, -1/math.sqrt(numUnits), 1/math.sqrt(numUnits))
-
-    @staticmethod
-    def lecunParamInitialization(parameter, fan_in):
-        # Initialize the weights with a normal distribution.
-        std = (1 / fan_in) ** 0.5  # Adjusted fan_in for SELU according to LeCun's recommendation
-        nn.init.normal_(parameter, mean=0.0, std=std)
-
-        return parameter
-
-    @staticmethod
-    def xavierUniformInit(parameter, fan_in, fan_out):
-        # Calculate the limit for the Xavier uniform distribution
-        limit = math.sqrt(6.0 / (fan_in + fan_out))
-        nn.init.uniform_(parameter, -limit, limit)
-        return parameter
-
-    @staticmethod
-    def averagingInit(parameter, num_inputs):
-        # Initialize the weights to 1/num_inputs to compute the average of the inputs
-        init_value = 1.0 / num_inputs
-        nn.init.constant_(parameter, init_value)
-        return parameter
-
-    @staticmethod
-    def xavierNormalInit(parameter, fan_in, fan_out):
-        # Calculate standard deviation for the Xavier normal distribution
-        std = math.sqrt(2.0 / (fan_in + fan_out))
-        nn.init.normal_(parameter, mean=0.0, std=std)
-        return parameter
-
-    @staticmethod
-    def heUniformInit(parameter, fan_in):
-        # Initialize the weights with a uniform distribution using He initialization
-        limit = math.sqrt(6 / fan_in)
-        nn.init.uniform_(parameter, -limit, limit)
-        return parameter
-
-    @staticmethod
-    def heNormalInit(parameter, fan_in):
-        # Initialize the weights with a normal distribution using He initialization
-        std = math.sqrt(2 / fan_in)
-        nn.init.normal_(parameter, mean=0.0, std=std)
-        return parameter
-
-    def initialize_weights(self, model, activationMethod='selu'):
-        method_map = {
-            'selu': self.initialize_weights_lecun,
-            'relu': self.initialize_weights_kaiming,
-            'sigmoid': self.initialize_weights_xavier,
-            'tanh': self.initialize_weights_xavier,
-            'none': self.initialize_weights_uniform,
-        }
-
-        # Get the initialization function.
-        init_function = method_map.get(activationMethod, None)
-        assert init_function is not None, activationMethod
-
-        # Apply the initialization function to the model.
-        for modelParam in model.modules():
-            modelParam.apply(init_function)
-
-        return model
+    # -------------------------- Model Interface -------------------------- #
 
     @staticmethod
     def getAutoencoderWeights(model):
@@ -154,8 +54,6 @@ class modelHelpers:
     def printModelParams(model):
         for name, param in model.named_parameters():
             print(name, param.data)
-
-    # -------------------------- Model Interface -------------------------- #
 
     @staticmethod
     def getLastActivationLayer(lossType, predictingProb=False):

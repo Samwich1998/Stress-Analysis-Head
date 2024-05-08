@@ -131,7 +131,7 @@ class convolutionalHelpers(abnormalConvolutions):
                 raise ValueError("Convolution type must be in ['conv1D', 'pointwise', 'depthwise', 'transConv1D']")
 
             # Initialize the weights of the convolutional layer.
-            layer = self.modelHelpers.initialize_weights(layer, activationMethod=activationType)
+            layer = self.weightInitialization.initialize_weights(layer, activationMethod=activationType, layerType='conv')
             layers.append(layer)
 
             # Selu activation function

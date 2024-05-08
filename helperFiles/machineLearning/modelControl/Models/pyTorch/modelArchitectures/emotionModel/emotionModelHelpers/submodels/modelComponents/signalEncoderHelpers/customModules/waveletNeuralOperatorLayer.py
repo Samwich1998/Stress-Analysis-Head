@@ -45,6 +45,7 @@ class waveletNeuralOperatorLayer(signalEncoderModules):
         self.encodeLowFrequency = encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs']           # Whether to encode the low-frequency signal.
         self.encodeLowFrequencyFull = encodeHighFrequencyProtocol == 'allFreqs'    # Whether to encode the high frequencies into the low-frequency signal.
         self.encodeHighFrequencyFull = encodeLowFrequencyProtocol == 'allFreqs'     # Whether to encode the low-frequency signal into the high-frequency signal.
+        assert not (self.encodeLowFrequencyFull and self.encodeHighFrequencyFull), 'I am skeptical about this benefitting the model. I would recommend reconsidering this.'
 
         # Fourier neural operator parameters.
         self.numDecompositions = numDecompositions  # Maximum number of decompositions to apply.

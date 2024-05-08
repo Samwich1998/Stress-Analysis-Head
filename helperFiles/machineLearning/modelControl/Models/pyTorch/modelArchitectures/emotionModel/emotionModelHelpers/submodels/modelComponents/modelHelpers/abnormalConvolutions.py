@@ -4,6 +4,7 @@ import torch.nn as nn
 
 # Import helper classes.
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.weightInitialization import weightInitialization
 
 
 class abnormalConvolutions(nn.Module):
@@ -11,7 +12,7 @@ class abnormalConvolutions(nn.Module):
     def __init__(self):
         super(abnormalConvolutions, self).__init__()
         # Initialize helper classes.
-        self.modelHelpers = modelHelpers()
+        self.weightInitialization = weightInitialization()
 
     # --------------------------- Pooling Layers --------------------------- #
 

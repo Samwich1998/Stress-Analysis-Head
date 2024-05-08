@@ -22,7 +22,6 @@ class signalEncoderHelpers(nn.Module):
 
         # Compression/Expansion parameters.
         self.sequenceBounds = sequenceBounds                # The minimum and maximum number of signals in any expansion/compression.
-
         self.numEncodingLayers = numEncodingLayers          # The number of layers to encode the signals.
         self.numExpandedSignals = numExpandedSignals        # The final number of signals in any expansion
         self.numCompressedSignals = numExpandedSignals - 1  # The final number of signals in any compression.

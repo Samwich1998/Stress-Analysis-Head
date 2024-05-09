@@ -118,7 +118,7 @@ class emotionPipeline:
                 {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4}])
 
         # Set the optimizer.
-        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel)
+        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-10, submodel=submodel)
 
         # Set the learning rate scheduler.
         self.scheduler = self.getLearningRateScheduler(submodel)

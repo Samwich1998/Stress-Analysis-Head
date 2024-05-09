@@ -60,31 +60,47 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
-    @staticmethod
-    def neuralWeightParameters(inChannel=1, outChannel=2, secondDimension=46):
+    def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Initialize the weights with a normal distribution.
-        parameter = torch.ones((outChannel, inChannel, secondDimension)) / inChannel
-        minChannel = min(inChannel, outChannel)
+        fan_in = inChannel*secondDimension  # Ensure division is performed before multiplication
+        parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
+        parameter = self.weightInitialization.heNormalInit(parameter, fan_in)
 
-        # For each reference dimension.
-        for secondDimInd in range(secondDimension):
-            # Case 1: Use a slice of the identity matrix
-            parameter[:, :, secondDimInd][0:minChannel, 0:minChannel] = torch.eye(minChannel) - parameter[:, :, secondDimInd][0:minChannel, 0:minChannel]
+        return parameter
 
-        return nn.Parameter(parameter)
-
-    @staticmethod
-    def neuralCombinationWeightParameters(inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
+    def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Initialize the weights with a normal distribution.
-        parameter = torch.ones((inChannel, initialFrequencyDim, finalFrequencyDim)) / initialFrequencyDim
-        minFrequencyDim = min(initialFrequencyDim, finalFrequencyDim)
+        fan_in = inChannel*initialFrequencyDim  # Ensure division is performed before multiplication
+        parameter = nn.Parameter(torch.randn((inChannel, initialFrequencyDim, finalFrequencyDim)))
+        parameter = self.weightInitialization.heNormalInit(parameter, fan_in)
 
-        # For each reference dimension.
-        for firstDimIndex in range(inChannel):
-            # Case 1: Use a slice of the identity matrix
-            parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim] = torch.eye(minFrequencyDim) - parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim]
+        return parameter
 
-        return nn.Parameter(parameter)
+    # @staticmethod
+    # def neuralWeightParameters(inChannel=1, outChannel=2, secondDimension=46):
+    #     # Initialize the weights with a normal distribution.
+    #     parameter = torch.ones((outChannel, inChannel, secondDimension)) / inChannel
+    #     minChannel = min(inChannel, outChannel)
+    #
+    #     # For each reference dimension.
+    #     for secondDimInd in range(secondDimension):
+    #         # Case 1: Use a slice of the identity matrix
+    #         parameter[:, :, secondDimInd][0:minChannel, 0:minChannel] = torch.eye(minChannel) - parameter[:, :, secondDimInd][0:minChannel, 0:minChannel]
+    #
+    #     return nn.Parameter(parameter)
+    #
+    # @staticmethod
+    # def neuralCombinationWeightParameters(inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
+    #     # Initialize the weights with a normal distribution.
+    #     parameter = torch.ones((inChannel, initialFrequencyDim, finalFrequencyDim)) / initialFrequencyDim
+    #     minFrequencyDim = min(initialFrequencyDim, finalFrequencyDim)
+    #
+    #     # For each reference dimension.
+    #     for firstDimIndex in range(inChannel):
+    #         # Case 1: Use a slice of the identity matrix
+    #         parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim] = torch.eye(minFrequencyDim) - parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim]
+    #
+    #     return nn.Parameter(parameter)
 
     @staticmethod
     def neuralBiasParameters(numChannels=2):

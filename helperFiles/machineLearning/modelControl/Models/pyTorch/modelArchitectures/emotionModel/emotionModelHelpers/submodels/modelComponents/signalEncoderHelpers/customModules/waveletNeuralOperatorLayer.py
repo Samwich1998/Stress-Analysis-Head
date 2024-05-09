@@ -126,13 +126,12 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
         for layerInd in range(self.numLayers):
+            # Apply the activation function if we already applied a linear transformation.
+            if layerInd != 0: frequencies = self.activationFunction(frequencies)
+            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+
             # Learn a new set of wavelet coefficients to transform the data.
             frequencies = torch.einsum(equationString, weights[layerInd], frequencies)
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
-
-            if layerInd != 0:
-                # Apply the activation function.
-                frequencies = self.activationFunction(frequencies)
-                # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
         return frequencies

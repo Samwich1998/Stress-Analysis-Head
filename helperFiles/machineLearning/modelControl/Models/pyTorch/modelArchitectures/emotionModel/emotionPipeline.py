@@ -378,6 +378,7 @@ class emotionPipeline:
         #     Common LR values: 1E-6 to 1
 
         if submodel == "signalEncoder":
+            # AdamW hurting the complexity too much; RAdam makes really simple encoded states;
             return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
         elif submodel == "autoencoder":
             return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)

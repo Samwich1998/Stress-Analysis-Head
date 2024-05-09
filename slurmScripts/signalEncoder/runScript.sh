@@ -6,9 +6,9 @@ numLiftedChannelsEnd=16     # Memory limited from 48-96.
 # Total: 4
 
 numExpandedSignalsStart=4   # Minimum 4; Maximum 6
-numExpandedSignalsStep=-1
+numExpandedSignalsStep=-2
 numExpandedSignalsEnd=2     # Minimum: 2
-# Total: 3
+# Total: 2
 
 numEncodingLayersStart=8    # Absolute minimum is 0.
 numEncodingLayersStep=-1

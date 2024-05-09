@@ -97,6 +97,7 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
+        # The more complex this is the better the model learns without making the encoding space too complex.
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering.
@@ -113,6 +114,7 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     def signalPostProcessing(self, inChannel=2):
+        # This will make the model make a more complex encoded space.
         return nn.Sequential(
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )

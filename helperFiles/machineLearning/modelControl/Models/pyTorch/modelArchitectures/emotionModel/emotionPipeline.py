@@ -96,7 +96,7 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4 if self.fullTest else 2E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 0, 'lr': 5E-4 if self.fullTest else 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -119,7 +119,7 @@ class emotionPipeline:
                 {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4}])
 
         # Set the optimizer.
-        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=0)
+        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel)
 
         # Set the learning rate scheduler.
         self.scheduler = self.getLearningRateScheduler(submodel)
@@ -363,7 +363,7 @@ class emotionPipeline:
         # ------------------------------------------------------------------ #
 
     @staticmethod
-    def setOptimizer(params, lr, weight_decay, submodel=None):
+    def setOptimizer(params, lr, weight_decay, submodel):
         # General options to choose from:
         #     nAdam = optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
         #     adamW = optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
@@ -379,7 +379,7 @@ class emotionPipeline:
 
         if submodel == "signalEncoder":
             # AdamW hurting the complexity too much; RAdam makes really simple encoded states;
-            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+            return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=False)
         elif submodel == "autoencoder":
             return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
         elif submodel == "emotionPrediction":

@@ -167,16 +167,16 @@ class signalEncoderModel(globalModel):
             if self.debuggingResults: print("Path Losses (P-V2-S):", positionReconstructionLoss.detach().mean().item(), potentialVarReconstructionStateLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
 
             # Add up all the losses together.
-            if 0.001 < potentialVarReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss
+            # if 0.001 < potentialVarReconstructionStateLoss.mean():
+            #     signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss
             if 0.001 < finalReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + 0.5*finalReconstructionStateLoss
+                signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
             if 0.001 < encodingReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionStateLoss
             if 0.001 < varReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
-            if 0.001 < positionReconstructionLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
+            # if 0.001 < positionReconstructionLoss.mean():
+            #     signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
             if 0.001 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
 

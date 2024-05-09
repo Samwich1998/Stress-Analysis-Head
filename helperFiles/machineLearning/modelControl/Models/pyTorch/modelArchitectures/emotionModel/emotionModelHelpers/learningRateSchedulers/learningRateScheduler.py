@@ -1,79 +1,93 @@
 import torch
-import torch.optim as optim
+import tensorly as tl
+from tensorly.decomposition import parafac
+
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.emotionDataInterface import emotionDataInterface
 
 
 class CustomLRScheduler:
-    def __init__(self, optimizer, baseLRs, minLRs, maxLRs, numModels, numLossesTrack, scaleUp=2.0, scaleDown=0.5, invertLRAdjustment=False):
+    def __init__(self, numPrincipleComponents, numParamSamples=5, addingNoiseSTD=1E-3):
         # General parameters
-        self.numLossesTrack = numLossesTrack
-        self._optimizer = optimizer
-        self.numModels = numModels
-        self.numEpochs = 0
-        self.minLRs = minLRs
-        self.maxLRs = maxLRs
-        self.lrs = baseLRs
-        self.scaleUp = scaleUp
-        self.scaleDown = scaleDown
-        self.invertLRAdjustment = invertLRAdjustment  # Flag to toggle the behavior of learning rate adjustment
+        self.numPrincipleComponents = numPrincipleComponents  # Number of principal components to retain.
+        self.emotionDataInterface = emotionDataInterface()  # Initialize the data interface.
+        self.numParamSamples = numParamSamples  # Number of samples to evaluate the model.
+        self.addingNoiseSTD = addingNoiseSTD  # Deviation from the mean for the principal components.
+        self.directions = [0]
 
-        # Keep track of the learning rate history
-        self.lossHistory = []
-        self.lrs = baseLRs
+        # Assert the validity of the input.
+        assert numPrincipleComponents > 0, "The number of principal components must be greater than 0."
+        assert numParamSamples > 2, "The number of samples must be at least 1, as it represents the first forward pass."
 
+    def apply_pca_and_update(self, model, data, targets, loss_fn):
+        """
+        Apply PCA to the learnable parameters of the model and update the weights.
 
+        Args:
+        model (nn.Module): PyTorch model whose parameters will be modified.
+        K (int): Number of principal components to retain.
+        R (float): Scaling factor for the principal component in the update rule.
+        """
+        # Set up the update parameters.
+        original_training_state = model.training  # Store the original training state.
+        finalParamDatas = []  # Initialize the final parameter data.
+        model.eval()  # Set the model to evaluation mode.
 
-        # For each trainable parameter in the model.
-        for layerParams in model.parameters():
-            # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
-            paramNorm = torch.norm(layerParams, p='fro').item()
+        with ((torch.no_grad())):  # Ensure no gradients are computed in this block.
+            for name, param in model.named_parameters():
+                originalParam = param.data.clone()  # Store the original parameters.
+                paramLosses = torch.zeros((self.numParamSamples - 1, len(self.directions)), device=data.device)  # Initialize the loss history.
 
-            # Constrain the spectral norm.
-            if maxNorm < paramNorm != 0:
-                layerParams.data = layerParams * (maxNorm / paramNorm)
+                if param.requires_grad:
+                    gradient_tensor = param.grad.data.detach().clone()
+                    # Decompose the gradient tensor, selecting the top 'k' components.
+                    decomposedGradientTensorInfo = parafac(gradient_tensor, rank=self.numPrincipleComponents, init='random')
+                    # principleComponents dimension: (numDimensions, gradient_tensor.size(dimensionInd), numPrincipleComponents).
+                    # decomposedGradientTensorInfo dimension: weights, principleComponents.
+                    # weights dimension: numPrincipleComponents.
+                    # numDimensions: len(gradient_tensor.size()).
 
-    def add_loss(self, modelIndex, loss):
-        # Ensure the model index is valid
-        if not (0 <= modelIndex < self.numModels):
-            raise ValueError("Invalid model index")
+                    # Reconstruct the gradient tensor from the principal components only.
+                    reconstructed_grad = tl.cp_to_tensor(decomposedGradientTensorInfo)
+                    # reconstructed_grad dimension: gradient_tensor.size().
 
-        # Append the new loss value
-        self.lossHistory[modelIndex].append(loss)
+                    # Perform updates and evaluate the model.
+                    for sampleInd in range(1, self.numParamSamples + 1):
+                        # Update the parameter along the direction of the principal components.
+                        walkingDistance = sampleInd / self.numParamSamples  # Scaling factor for step size.
+                        param.data = originalParam + walkingDistance * reconstructed_grad
 
-        # Check if the loss history exceeds the maximum length
-        if self.numLossesTrack < len(self.lossHistory[modelIndex]):
-            # Remove the oldest loss value
-            self.lossHistory[modelIndex].pop(0)
+                        # Evaluate the model with noisy data.
+                        for directionInd in range(len(self.directions)):
+                            direction = self.directions[directionInd]
 
-    def resetLossHistory(self):
-        self.lossHistory = [[] for _ in range(self.numModels)]
+                            # Add noise to the data. The noise is scaled by the direction.
+                            noisyData = self.emotionDataInterface.addNoise(data, trainingFlag=True, noiseSTD=direction * self.addingNoiseSTD)
+                            # noisyData dimension: batchSize, numSignals, sequenceLength.
 
-    def step_and_update_lr(self):
-        """ Step with the inner optimizer """
-        self._update_learning_rate()
-        self._optimizer.step()
+                            # Calculate the loss.
+                            output = model(noisyData)  # Forward pass.
+                            loss = loss_fn(output, targets)  # Compute the loss.
+                            # Store the loss. The first sample is the original parameter.
 
-    def zero_grad(self):
-        """ Zero out the gradients with the inner optimizer """
-        self._optimizer.zero_grad()
+                            # Store the loss. The first sample is the original parameter.
+                            paramLosses[sampleInd - 1, directionInd] = loss.mean().item()
+                            # paramLosses dimension: (numParamSamples-1, 3).
 
-    def _update_learning_rate(self):
-        """ Learning rate scheduling per step based on average loss history """
-        self.numEpochs += 1
+                    # Calculate the gradients of the loss with respect to each parameter.
+                    dL_dP, dL_dX = torch.gradient(paramLosses, spacing=[reconstructed_grad.norm(p='fro') / self.numParamSamples, self.addingNoiseSTD])
+                    # Average the gradients over the noise.
+                    smoothedParamLosses = paramLosses.mean(dim=1)
+                    dL_dP = dL_dP.mean(dim=1)
+                    dL_dX = dL_dX.mean(dim=1)
 
-        for modelInd in range(self.numModels):
-            if len(self.lossHistory) == 0:
-                continue  # Skip if no loss history
+                    # Find the best magnitude to update the parameter.
+                    learningRate = 0.6 * (smoothedParamLosses.argmin() + 1) / self.numParamSamples + \
+                                   0.3 * (dL_dP.argmin() + 1) / self.numParamSamples + \
+                                   0.1 * (dL_dX.argmin() + 1) / self.numParamSamples
+                    # Update the parameter.
+                    finalParamDatas.append(originalParam + learningRate * reconstructed_grad)
 
-            avg_loss = sum(self.lossHistory) / len(self.lossHistory)
-            lr_adjustment = self.scaleDown  # Default to scale down
+        # Restore the original training state.
+        model.train(original_training_state)
 
-            if (avg_loss < 0.1 and not self.invertLRAdjustment) or (avg_loss > 0.1 and self.invertLRAdjustment):
-                lr_adjustment = self.scaleUp  # Scale up condition
-
-            # Update learning rate within bounds
-            new_lr = min(max(self.minLRs[modelInd], self.lrs[modelInd] * lr_adjustment), self.maxLRs[modelInd])
-            self.lrs[modelInd] = new_lr
-
-            # Apply the new learning rate
-            for param_group in self._optimizer.param_groups:
-                param_group['lr'] = new_lr
+        return model

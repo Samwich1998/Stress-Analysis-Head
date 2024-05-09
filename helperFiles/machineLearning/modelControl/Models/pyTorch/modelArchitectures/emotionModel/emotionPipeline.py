@@ -1,4 +1,5 @@
 # General
+import torch
 import torch.optim as optim
 import transformers
 import random
@@ -68,7 +69,8 @@ class emotionPipeline:
 
         if submodel == "emotionPrediction":
             # Finalize model setup.
-            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
+            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType,
+                                                                                                       predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
             self.model.sharedEmotionModel.lastEmotionLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.emotionDist_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
@@ -116,15 +118,8 @@ class emotionPipeline:
                 {'params': specificEmotionModel.predictUserEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
                 {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4}])
 
-        # Define the optimizer.
-        adamOptimizer = optim.AdamW(
-            # try RAdam; adam and RAdam are okay, AdamW is a bit better (best?); NAdam is also a bit better
-            params=modelParams,
-            weight_decay=0,  # Common WD values: 1E-2 to 1E-6
-            lr=5e-5,  # Common LR values: 1E-6 to 1
-        )
         # Set the optimizer.
-        self.optimizer = adamOptimizer
+        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=0)
 
         # Set the learning rate scheduler.
         self.scheduler = self.getLearningRateScheduler(submodel)
@@ -220,7 +215,7 @@ class emotionPipeline:
                     # Train the signal encoder
                     if submodel == "signalEncoder":
                         # Randomly choose to use an inflated number of signals.
-                        maxNumSignals = 96 if self.datasetName in ["case"] else 192
+                        maxNumSignals = 96 if self.datasetName in ["case"] else max(model.maxNumSignals, 256)
                         maxNumSignals = random.choices(population=[model.maxNumSignals, maxNumSignals], weights=[0.8, 0.2], k=1)[0]
 
                         # Augment the signals to train an arbitrary sequence length and order.
@@ -366,6 +361,31 @@ class emotionPipeline:
         self.accelerator.wait_for_everyone()  # Wait before continuing.
 
         # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def setOptimizer(params, lr, weight_decay, submodel=None):
+        # General options to choose from:
+        #     nAdam = optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+        #     adamW = optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
+        #     rAdam = optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
+
+        # General guidelines:
+        #     AdamR (Adam with a warm restart) is an adaptation of the Adam optimizer that incorporates warm restarts to the LR to avoid poor local minima and encourages exploration of the loss landscape by periodically resetting the LR. Use when you converge to suboptimal solutions.
+        #     NAdam combines Adam with Nesterov momentum: a variant of the classical momentum technique, taking into account the momentum in a slightly different way that tends to result in better convergence in practice. Use in deep architectures that is sensitive to the optimizer.
+        #     AdamW modifies the way Adam implements weight decay, decoupling it from the gradient updates, leading to a more effective use of L2 regularization. Use when regularization is a problem.
+        #     If decoupled_weight_decay is True, then it adds adamW to the optimizer
+        #     Common WD values: 1E-2 to 1E-6
+        #     Common LR values: 1E-6 to 1
+
+        if submodel == "signalEncoder":
+            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+        elif submodel == "autoencoder":
+            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+        elif submodel == "emotionPrediction":
+            # adam and RAdam are okay, AdamW is a bit better (best?); NAdam is also a bit better
+            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+        else:
+            assert False, "No optimizer initialized"
 
     def getLearningRateScheduler(self, submodel):
         # Options:

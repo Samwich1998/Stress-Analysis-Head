@@ -23,6 +23,7 @@ scikit-learn
 tensorflow
 pytorch_wavelets
 PyWavelets
+tensorly
 
 pyeeg
 eeglib

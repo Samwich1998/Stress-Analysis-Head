@@ -56,11 +56,6 @@ class signalEncoderModules(convolutionalHelpers):
                 self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
 
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
-
             # Convolution architecture: lifting operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
@@ -68,28 +63,26 @@ class signalEncoderModules(convolutionalHelpers):
     @staticmethod
     def neuralWeightParameters(inChannel=1, outChannel=2, secondDimension=46):
         # Initialize the weights with a normal distribution.
-        fan_in = inChannel * secondDimension
-        parameter = torch.ones((outChannel, inChannel, secondDimension)) / fan_in
+        parameter = torch.ones((outChannel, inChannel, secondDimension)) / inChannel
         minChannel = min(inChannel, outChannel)
 
         # For each reference dimension.
         for secondDimInd in range(secondDimension):
             # Case 1: Use a slice of the identity matrix
-            parameter[:, :, secondDimInd][0:minChannel, 0:minChannel] = torch.eye(minChannel)
+            parameter[:, :, secondDimInd][0:minChannel, 0:minChannel] = torch.eye(minChannel) - parameter[:, :, secondDimInd][0:minChannel, 0:minChannel]
 
         return nn.Parameter(parameter)
 
     @staticmethod
     def neuralCombinationWeightParameters(inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Initialize the weights with a normal distribution.
-        fan_in = inChannel * initialFrequencyDim
-        parameter = torch.ones((inChannel, initialFrequencyDim, finalFrequencyDim)) / fan_in
+        parameter = torch.ones((inChannel, initialFrequencyDim, finalFrequencyDim)) / initialFrequencyDim
         minFrequencyDim = min(initialFrequencyDim, finalFrequencyDim)
 
         # For each reference dimension.
         for firstDimIndex in range(inChannel):
             # Case 1: Use a slice of the identity matrix
-            parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim] = torch.eye(minFrequencyDim)
+            parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim] = torch.eye(minFrequencyDim) - parameter[firstDimIndex, :, :][0:minFrequencyDim, 0:minFrequencyDim]
 
         return nn.Parameter(parameter)
 
@@ -100,32 +93,34 @@ class signalEncoderModules(convolutionalHelpers):
     def linearSkipConnectionEncoding(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
         return nn.Sequential(
+            ResNet(module=nn.Sequential(
+                # Convolution architecture: feature engineering.
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            ), numCycles=1),
+
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=2, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=2, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
     def signalPostProcessing(self, inChannel=2):
         return nn.Sequential(
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+
+            # ResNet(module=nn.Sequential(
+            #     # Convolution architecture: feature engineering.
+            #     self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            # ), numCycles=1),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            ), numCycles=1),
 
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering.

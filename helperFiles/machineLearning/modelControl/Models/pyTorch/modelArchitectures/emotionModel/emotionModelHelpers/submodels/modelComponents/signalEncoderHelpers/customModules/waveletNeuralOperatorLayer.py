@@ -37,8 +37,8 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
         # Apply the activation function if we already applied a linear transformation.
         lowFrequency = self.activationFunction(lowFrequency)
-        for highFrequencyInd in range(highFrequencies):
-            highFrequencies[highFrequencyInd] = self.activationFunction[highFrequencies[highFrequencyInd]]
+        for highFrequencyInd in range(len(highFrequencies)):
+            highFrequencies[highFrequencyInd] = self.activationFunction(highFrequencies[highFrequencyInd])
 
         # Mix each frequency decomposition, separating high and low frequencies.
         lowFrequency, highFrequencies = self.mixSeperatedFrequencyComponents(lowFrequency, highFrequencies, lowFrequencyTerms, highFrequencyTerms)

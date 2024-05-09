@@ -35,6 +35,9 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
         # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
 
+        # Apply the activation function if we already applied a linear transformation.
+        frequencies = self.activationFunction(lowFrequency)
+
         # Mix each frequency decomposition, separating high and low frequencies.
         lowFrequency, highFrequencies = self.mixSeperatedFrequencyComponents(lowFrequency, highFrequencies, lowFrequencyTerms, highFrequencyTerms)
         # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
@@ -87,10 +90,6 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         # 'oif,boi->bof' = weights.size(), frequencies.size() -> frequencies.size()
 
         if self.encodeLowFrequencyFull:
-            # Must add non-linearity as we already did a linear transformation.
-            lowFrequencyHolder = self.activationFunction(lowFrequency)
-            # frequencies dimension: batchSize, numOutputSignals, lowFrequencyShape
-
             # Mix all the frequency terms into one set of frequencies.
             lowFrequencyHolder = torch.cat(tensors=(lowFrequencyHolder, *highFrequencies), dim=2)
             # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape + sum(highFrequenciesShapes)
@@ -102,12 +101,8 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         if self.encodeHighFrequencyFull:
             # For each set of high-frequency coefficients.
             for highFrequencyInd in range(len(highFrequencies)):
-                # Must add non-linearity as we already did a linear transformation.
-                highFrequenciesComponent = self.activationFunction(highFrequencies[highFrequencyInd])
-                # frequencies dimension: batchSize, numOutputSignals, lowFrequencyShape
-
                 # Mix all the frequency terms into one set of frequencies.
-                highFrequenciesComponent = torch.cat(tensors=(lowFrequency, highFrequenciesComponent), dim=2)
+                highFrequenciesComponent = torch.cat(tensors=(lowFrequency, highFrequencies[highFrequencyInd]), dim=2)
                 # highFrequenciesComponent dimension: batchSize, numOutputSignals, lowFrequencyShape + highFrequenciesShapes[highFrequencyInd]
 
                 # Learn a new set of wavelet coefficients to transform the data.
@@ -126,12 +121,16 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
         for layerInd in range(self.numLayers):
-            # Apply the activation function if we already applied a linear transformation.
-            if layerInd != 0: frequencies = self.activationFunction(frequencies)
-            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+            # # Apply the activation function if we already applied a linear transformation.
+            # if layerInd != 0: frequencies = self.activationFunction(frequencies)
+            # # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
             # Learn a new set of wavelet coefficients to transform the data.
             frequencies = torch.einsum(equationString, weights[layerInd], frequencies)
+            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+
+            # Apply the activation function if we already applied a linear transformation.
+            frequencies = self.activationFunction(frequencies)
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
         return frequencies

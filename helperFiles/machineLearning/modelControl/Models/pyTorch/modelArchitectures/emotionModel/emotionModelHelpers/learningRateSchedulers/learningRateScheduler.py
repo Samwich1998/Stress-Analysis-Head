@@ -32,15 +32,17 @@ class CustomLRScheduler:
         finalParamDatas = []  # Initialize the final parameter data.
         model.eval()  # Set the model to evaluation mode.
 
-        with ((torch.no_grad())):  # Ensure no gradients are computed in this block.
+        with torch.no_grad():  # Ensure no gradients are computed in this block.
             for name, param in model.named_parameters():
-                originalParam = param.data.clone()  # Store the original parameters.
-                paramLosses = torch.zeros((self.numParamSamples - 1, len(self.directions)), device=data.device)  # Initialize the loss history.
-
                 if param.requires_grad:
+                    # Prepare the data for the model.
+                    originalParam = param.data.clone()  # Store the original parameters.
+                    paramLosses = torch.zeros((self.numParamSamples - 1), device=data.device)  # Initialize the loss history.
                     gradient_tensor = param.grad.data.detach().clone()
+
                     # Decompose the gradient tensor, selecting the top 'k' components.
-                    decomposedGradientTensorInfo = parafac(gradient_tensor, rank=self.numPrincipleComponents, init='random')
+                    decomposedGradientTensorInfo = parafac(gradient_tensor, rank=self.numPrincipleComponents, n_iter_max=100, init='svd', svd='truncated_svd',
+                                                           normalize_factors=False, orthogonalise=False, tol=1e-08, random_state=None, l2_reg=0, cvg_criterion='abs_rec_error', linesearch=True)
                     # principleComponents dimension: (numDimensions, gradient_tensor.size(dimensionInd), numPrincipleComponents).
                     # decomposedGradientTensorInfo dimension: weights, principleComponents.
                     # weights dimension: numPrincipleComponents.
@@ -56,25 +58,17 @@ class CustomLRScheduler:
                         walkingDistance = sampleInd / self.numParamSamples  # Scaling factor for step size.
                         param.data = originalParam + walkingDistance * reconstructed_grad
 
-                        # Evaluate the model with noisy data.
-                        for directionInd in range(len(self.directions)):
-                            direction = self.directions[directionInd]
+                        # Calculate the loss.
+                        output = model(data)  # Forward pass.
+                        loss = loss_fn(output, targets)  # Compute the loss.
+                        # Store the loss. The first sample is the original parameter.
 
-                            # Add noise to the data. The noise is scaled by the direction.
-                            noisyData = self.emotionDataInterface.addNoise(data, trainingFlag=True, noiseSTD=direction * self.addingNoiseSTD)
-                            # noisyData dimension: batchSize, numSignals, sequenceLength.
-
-                            # Calculate the loss.
-                            output = model(noisyData)  # Forward pass.
-                            loss = loss_fn(output, targets)  # Compute the loss.
-                            # Store the loss. The first sample is the original parameter.
-
-                            # Store the loss. The first sample is the original parameter.
-                            paramLosses[sampleInd - 1, directionInd] = loss.mean().item()
-                            # paramLosses dimension: (numParamSamples-1, 3).
+                        # Store the loss. The first sample is the original parameter.
+                        paramLosses[sampleInd - 1] = loss.mean().item()
+                        # paramLosses dimension: (numParamSamples-1, 3).
 
                     # Calculate the gradients of the loss with respect to each parameter.
-                    dL_dP, dL_dX = torch.gradient(paramLosses, spacing=[reconstructed_grad.norm(p='fro') / self.numParamSamples, self.addingNoiseSTD])
+                    dL_dP, dL_dX = torch.gradient(paramLosses, spacing=[reconstructed_grad.norm(p='fro') / self.numParamSamples])
                     # Average the gradients over the noise.
                     smoothedParamLosses = paramLosses.mean(dim=1)
                     dL_dP = dL_dP.mean(dim=1)
@@ -86,6 +80,9 @@ class CustomLRScheduler:
                                    0.1 * (dL_dX.argmin() + 1) / self.numParamSamples
                     # Update the parameter.
                     finalParamDatas.append(originalParam + learningRate * reconstructed_grad)
+
+                    # Reset the parameter to the original state.
+                    param.data = originalParam
 
         # Restore the original training state.
         model.train(original_training_state)

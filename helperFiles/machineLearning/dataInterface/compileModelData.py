@@ -360,7 +360,7 @@ class compileModelData:
     # -------------------- Machine Learning Preparation -------------------- #
 
     def compileModels(self, metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
-                      metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, fullTest, metaTraining, specificInfo=None, random_state=42):
+                      metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining, specificInfo=None, random_state=42):
         # Initialize relevant holders.
         lossDataHolders = []
         allDataLoaders = []
@@ -486,7 +486,7 @@ class compileModelData:
             # Initialize and train the model class.
             modelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=metaDatasetName, modelName=modelName, allEmotionClasses=numQuestionOptions.copy(),
                                             sequenceLength=sequenceLength, maxNumSignals=numSignals, numSubjectIdentifiers=numSubjectIdentifiers, demographicLength=demographicLength, numSubjects=numSubjects,
-                                            userInputParams=self.userInputParams, emotionNames=surveyQuestions, activityNames=activityNames, featureNames=currentFeatureNames, submodel=submodel, fullTest=fullTest, debuggingResults=True)
+                                            userInputParams=self.userInputParams, emotionNames=surveyQuestions, activityNames=activityNames, featureNames=currentFeatureNames, submodel=submodel, debuggingResults=True)
 
             # Hugging face integration.
             modelDataLoader = modelPipeline.acceleratorInterface(modelDataLoader)

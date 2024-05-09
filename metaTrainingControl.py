@@ -51,10 +51,9 @@ if __name__ == "__main__":
     # General model parameters.
     trainingDate = "2024-05-08"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
-    trainTestSplit = 0.2  # The percentage of testing points.
+    testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useFinalLearningParams = True  # If you want to use FINAL training parameters. The ONLY effect on training is LR.
     plotTrainingSteps = True  # If you want to plot any results from training.
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
@@ -110,6 +109,10 @@ if __name__ == "__main__":
         storeLoss = True  # Turn on loss storage for HPC.
         fastPass = False  # Turn off fast pass for HPC.
 
+        if args.submodel == "signalEncoder":
+            if args.numLiftedChannels <= 32 and args.numEncodingLayers <= 4:
+                accelerator.gradient_accumulation_steps = 8
+
         print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
 
     # ---------------------------------------------------------------------- #
@@ -159,15 +162,14 @@ if __name__ == "__main__":
         surveyAnswerTimes, numQuestionOptions = modelCompiler.compileProjectAnalysis(loadCompiledData=True)
 
     # ---------------------------------------------------------------------- #
-    # -------------------------- Model Compilation ------------------------- #    
+    # -------------------------- Model Compilation ------------------------- #
 
     # Compile the meta-learning modules.
     allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModels(metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
-                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, trainTestSplit, useFinalLearningParams, metaTraining=True,
-                                                                                            specificInfo=None, random_state=42)
+                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None, random_state=42)
     # Compile the final modules.
     allModels, allDataLoaders, allLossDataHolders = modelCompiler.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
-                                                                                [featureNames], datasetNames, modelName, submodel, trainTestSplit, useFinalLearningParams, metaTraining=False, specificInfo=None, random_state=42)
+                                                                                [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, random_state=42)
     # Create the meta-loss models and data loaders.
     allMetaLossDataHolders.extend(allLossDataHolders)
 

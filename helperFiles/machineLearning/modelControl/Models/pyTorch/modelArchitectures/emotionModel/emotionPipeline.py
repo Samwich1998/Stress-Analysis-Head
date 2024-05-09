@@ -21,7 +21,7 @@ class emotionPipeline:
 
     def __init__(self, accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals,
                  numSubjectIdentifiers, demographicLength, numSubjects, userInputParams, emotionNames,
-                 activityNames, featureNames, submodel, fullTest=True, debuggingResults=False):
+                 activityNames, featureNames, submodel, debuggingResults=False):
         # General parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers to consider. Dim: [numSubjectIdentifiers]
         self.demographicLength = demographicLength  # The amount of demographic information provided to the model (age, weight, etc.). Dim: [numDemographics]
@@ -30,7 +30,6 @@ class emotionPipeline:
         self.device = accelerator.device  # Specify whether to use the CPU or GPU capabilities.
         self.accelerator = accelerator  # Hugging face interface to speed up the training process.
         self.modelName = modelName  # The unique name of the model to initialize.
-        self.fullTest = fullTest  # Whether to run a full test or not.
         self.modelID = modelID  # A unique integer identifier for this model.
 
         # Pre-initialize later parameters.
@@ -96,27 +95,27 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 0, 'lr': 5E-4 if self.fullTest else 1E-3}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-3}]
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
-                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4 if self.fullTest else 2E-4})
+                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4})
         if submodel == "emotionPrediction":
             modelParams.extend([
                 # Specify the model parameters for the signal mapping.
-                {'params': signalMappingModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
+                {'params': signalMappingModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-44},
 
                 # Specify the model parameters for the feature extraction.
-                {'params': sharedEmotionModel.extractCommonFeatures.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
+                {'params': sharedEmotionModel.extractCommonFeatures.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
 
                 # Specify the model parameters for the human activity recognition.
-                {'params': sharedEmotionModel.extractActivityFeatures.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
-                {'params': specificEmotionModel.classifyHumanActivity.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
+                {'params': sharedEmotionModel.extractActivityFeatures.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
+                {'params': specificEmotionModel.classifyHumanActivity.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
 
                 # Specify the model parameters for the emotion prediction.
-                {'params': sharedEmotionModel.predictBasicEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
-                {'params': specificEmotionModel.predictUserEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4},
-                {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4 if self.fullTest else 1E-4}])
+                {'params': sharedEmotionModel.predictBasicEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
+                {'params': specificEmotionModel.predictUserEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
+                {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4}])
 
         # Set the optimizer.
         self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel)
@@ -381,7 +380,7 @@ class emotionPipeline:
             # AdamW hurting the complexity too much; RAdam makes really simple encoded states;
             return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=False)
         elif submodel == "autoencoder":
-            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+            return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=False)
         elif submodel == "emotionPrediction":
             # adam and RAdam are okay, AdamW is a bit better (best?); NAdam is also a bit better
             return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
@@ -398,11 +397,11 @@ class emotionPipeline:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5)
         elif submodel == "autoencoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5)
         elif submodel == "emotionPrediction":
-            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5 if self.fullTest else 5)
+            return transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=5)
         else:
             assert False, "No model initialized"
 

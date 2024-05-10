@@ -15,7 +15,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def learnEncodingStampCNN(self):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
 
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering.
@@ -33,7 +33,7 @@ class signalEncoderModules(convolutionalHelpers):
             ), numCycles=1),
 
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
     def positionalEncodingStamp(self, stampLength=1):

@@ -60,6 +60,7 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
         # Add the bias terms.
         reconstructedData = reconstructedData + self.operatorBiases
+        reconstructedData = self.activationFunction(reconstructedData)
         # outputData dimension: batchSize, numOutputSignals, sequenceLength
 
         return reconstructedData

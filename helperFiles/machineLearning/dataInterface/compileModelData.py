@@ -129,11 +129,11 @@ class compileModelData:
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
 
         if submodel == "signalEncoder":
-            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
+            totalMinBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "autoencoder":
-            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
+            totalMinBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":
-            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
+            totalMinBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         else:
             raise Exception()
 
@@ -156,7 +156,7 @@ class compileModelData:
         if metaDatasetName in ['dapper']: return 4 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
 
         # Specify the large batch size datasets.
-        if metaDatasetName in ['case']: return 12 * minimumBatchSize  # 22 times larger than the smallest dataset.
+        if metaDatasetName in ['case']: return 8 * minimumBatchSize  # 22 times larger than the smallest dataset.
 
         assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
 

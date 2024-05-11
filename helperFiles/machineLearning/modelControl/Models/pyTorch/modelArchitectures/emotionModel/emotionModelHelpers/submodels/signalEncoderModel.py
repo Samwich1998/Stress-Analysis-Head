@@ -178,7 +178,7 @@ class signalEncoderModel(globalModel):
             if 0.001 < positionReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + 0.1*positionReconstructionLoss
             if 0.001 < signalEncodingLayerLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
+                signalEncodingLoss = signalEncodingLoss + 0.1*signalEncodingLayerLoss
 
             if trainingFlag:
                 # Accumulate the loss.

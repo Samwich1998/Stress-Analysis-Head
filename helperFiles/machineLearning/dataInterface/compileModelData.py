@@ -129,11 +129,11 @@ class compileModelData:
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
 
         if submodel == "signalEncoder":
-            totalMinBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
+            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
         elif submodel == "autoencoder":
-            totalMinBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
+            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
         elif submodel == "emotionPrediction":
-            totalMinBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
+            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
         else:
             raise Exception()
 

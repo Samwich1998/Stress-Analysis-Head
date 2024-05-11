@@ -17,6 +17,7 @@ class weightInitialization:
                 model.apply(self.initialize_weights_kaiming)
         else:
             model.reset_parameters()
+        model.reset_parameters()
 
         return model
 

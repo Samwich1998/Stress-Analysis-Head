@@ -10,7 +10,7 @@ numExpandedSignalsStep=-2
 numExpandedSignalsEnd=2     # Minimum: 2
 # Total: 2
 
-numEncodingLayersStart=8    # Absolute minimum is 0.
+numEncodingLayersStart=6    # Absolute minimum is 0.
 numEncodingLayersStep=-1
 numEncodingLayersEnd=0      # Memory limited from 10-12.
 # Total: 9

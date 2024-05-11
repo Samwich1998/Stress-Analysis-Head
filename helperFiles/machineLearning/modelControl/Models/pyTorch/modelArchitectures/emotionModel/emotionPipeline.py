@@ -99,11 +99,11 @@ class emotionPipeline:
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
-                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4})
+                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4})
         if submodel == "emotionPrediction":
             modelParams.extend([
                 # Specify the model parameters for the signal mapping.
-                {'params': signalMappingModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-44},
+                {'params': signalMappingModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4},
 
                 # Specify the model parameters for the feature extraction.
                 {'params': sharedEmotionModel.extractCommonFeatures.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},

@@ -31,7 +31,7 @@ class trainingSignalEncoder:
             forwardDirection = not forwardDirection
         elif random.random() < 0.25:
             # Randomly change the direction sometimes.
-            numEncodings = random.randint(a=numEncodings, b=self.maxNumEncodings) + 1
+            numEncodings = random.randint(a=numEncodings+1, b=self.maxNumEncodings+1)
 
         # For each compression/expansion, we are training.
         for numEncodingInd in range(abs(numEncodings)):
@@ -49,7 +49,7 @@ class trainingSignalEncoder:
         # Adjust the number of encodings.
         if numEncodedSignals == numSignals: numEncodedSignals = numEncodedSignals + 1  # It's not useful to train on nothing.
         numEncodedSignals = max(numEncodedSignals, self.numEncodedSignals)   # Ensure that we are not over-training.
-        print(f"\tTraining Augmentation Stage (numEncodings totalNumEncodings): {'' if forwardDirection else '-'}{self.numEncodings} {totalNumEncodings}")
+        print(f"\tTraining Augmentation Stage (numEncodings totalNumEncodings): {'' if forwardDirection else '-'}{self.numEncodings} {totalNumEncodings} {self.maxNumEncodings}")
 
         return numEncodedSignals, totalNumEncodings, forwardDirection
 
@@ -57,7 +57,7 @@ class trainingSignalEncoder:
         encodingDirection = forwardDirection*2 - 1
         finalLoss = finalReconstructionStateLoss.mean()
         # If we can keep going forwards.
-        if finalLoss < 0.1 or (self.numEncodings in [-1, 1] and finalLoss < 0.2):
+        if finalLoss < 0.2 or (self.numEncodings in [-1, 1] and finalLoss < 0.3):
             if encodingDirection*totalNumEncodings == self.numEncodings:
                 self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
 
@@ -66,6 +66,6 @@ class trainingSignalEncoder:
                     self.numEncodings = min(self.maxNumEncodings, max(self.numEncodings, encodingDirection*totalNumEncodings + 1))
                     if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
 
-        elif 0.3 < finalLoss:
+        elif 0.4 < finalLoss:
             # If we cannot complete the current goal, then record the error.
             self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)

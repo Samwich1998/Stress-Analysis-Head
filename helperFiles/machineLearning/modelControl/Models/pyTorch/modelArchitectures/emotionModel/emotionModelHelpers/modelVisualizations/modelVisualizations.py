@@ -253,8 +253,8 @@ class modelVisualizations(globalPlottingProtocols):
                 # Reconstruct the initial data.
                 with torch.no_grad():
                     numSignalForwardPath = model.signalEncoderModel.encodeSignals.simulateSignalPath(numSignals, targetNumSignals=model.numEncodedSignals)[0]
-                    _, _, _, propagatedReconstructedTestingData, _ = model.signalEncoderModel.reconstructEncodedData(testingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)
-                    _, _, _, propagatedReconstructedTrainingData, _ = model.signalEncoderModel.reconstructEncodedData(trainingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)
+                    _, _, _, propagatedReconstructedTestingData, _ = model.signalEncoderModel.reconstructEncodedData(testingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False)
+                    _, _, _, propagatedReconstructedTrainingData, _ = model.signalEncoderModel.reconstructEncodedData(trainingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False)
 
                 # Check the autoencoder propagated error.
                 self.autoencoderViz.plotAutoencoder(testingSignalData.detach().cpu(), propagatedReconstructedTestingData.detach().cpu(), epoch=currentEpoch,

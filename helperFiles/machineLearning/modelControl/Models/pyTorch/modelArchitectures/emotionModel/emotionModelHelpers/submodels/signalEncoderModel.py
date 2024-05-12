@@ -146,7 +146,7 @@ class signalEncoderModel(globalModel):
         if decodeSignals:
             # Perform the reverse operation.
             initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData, signalEncodingLayerLoss = \
-                self.reconstructEncodedData(encodedData, numSignalForwardPath, signalEncodingLayerLoss=signalEncodingLayerLoss, calculateLoss=calculateLoss)
+                self.reconstructEncodedData(encodedData, numSignalForwardPath, signalEncodingLayerLoss=signalEncodingLayerLoss, calculateLoss=calculateLoss, trainingFlag=trainingFlag)
 
         # ------------------------ Loss Calculations ----------------------- #
 
@@ -220,15 +220,17 @@ class signalEncoderModel(globalModel):
 
         return decodedData, reversePath, signalEncodingLayerLoss
 
-    def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False):
+    def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
         # Undo what was done in the initial adjustment.
-        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(encodedData)
+        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.01)
+        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyEncodedData)
+        noisyInitialDecodedData = self.encodeSignals.dataInterface.addNoise(initialDecodedData, trainingFlag=trainingFlag, noiseSTD=0.001)
 
         # Undo the signal encoding.
         decodedData, reversePath, signalEncodingLayerLoss = self.reverseEncoding(
             signalEncodingLayerLoss=signalEncodingLayerLoss,
             numSignalPath=numSignalForwardPath,
-            decodedData=initialDecodedData,
+            decodedData=noisyInitialDecodedData,
             calculateLoss=calculateLoss,
         )
         # reconstructedInitEncodingData dimension: batchSize, numSignals, sequenceLength

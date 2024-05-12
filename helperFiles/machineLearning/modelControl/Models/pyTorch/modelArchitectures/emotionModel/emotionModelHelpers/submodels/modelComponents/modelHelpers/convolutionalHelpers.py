@@ -78,9 +78,14 @@ class convolutionalHelpers(abnormalConvolutions):
         return nn.Sequential(*layers)
 
     def convolutionalFiltersBlocks(self, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None):
+        if not isinstance(kernel_sizes, list): kernel_sizes = [kernel_sizes] * numBlocks
+        if not isinstance(dilations, list): dilations = [dilations] * numBlocks
+        if not isinstance(strides, list): strides = [strides] * numBlocks
+        if not isinstance(groups, list): groups = [groups] * numBlocks
+
         layers = []
         for i in range(numBlocks):
-            layers.append(self.convolutionalFilters(numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations, groups=groups, strides=strides, convType=convType, activationType=activationType, numLayers=numLayers))
+            layers.append(self.convolutionalFilters(numChannels=numChannels, kernel_sizes=kernel_sizes[i], dilations=dilations[i], groups=groups[i], strides=strides[i], convType=convType, activationType=activationType, numLayers=numLayers))
 
         return nn.Sequential(*layers)
 

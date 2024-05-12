@@ -1,16 +1,16 @@
 #!/bin/bash
 
-numLiftedChannelsStart=64   # Absolute minimum is 16 or 32.
+numLiftedChannelsStart=80   # Absolute minimum is 16 or 32.
 numLiftedChannelsStep=-16
 numLiftedChannelsEnd=16     # Memory limited from 48-96.
-# Total: 4
+# Total: 5
 
 numExpandedSignalsStart=4   # Minimum 4; Maximum 6
 numExpandedSignalsStep=-2
 numExpandedSignalsEnd=2     # Minimum: 2
 # Total: 2
 
-numEncodingLayersStart=6    # Absolute minimum is 0.
+numEncodingLayersStart=8    # Absolute minimum is 0.
 numEncodingLayersStep=-1
 numEncodingLayersEnd=0      # Memory limited from 10-12.
 # Total: 9

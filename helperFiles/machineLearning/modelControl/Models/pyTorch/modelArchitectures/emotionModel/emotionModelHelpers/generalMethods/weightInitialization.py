@@ -17,7 +17,6 @@ class weightInitialization:
                 model.apply(self.initialize_weights_kaiming)
         else:
             model.reset_parameters()
-        model.reset_parameters()
 
         return model
 
@@ -47,9 +46,8 @@ class weightInitialization:
         nn.init.kaiming_uniform_(m.weight, a=math.sqrt(5))
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
-            if fan_in != 0:
-                bound = 1 / math.sqrt(fan_in)
-                nn.init.uniform_(m.bias, -bound, bound)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
     def initialize_weights_xavier(m):
@@ -83,7 +81,6 @@ class weightInitialization:
 
     @staticmethod
     def default_init_conv1d(parameter, fan_in):
-        # fan_in = in_channels * kernel_size
         # Calculate the bound for the uniform distribution
         bound = math.sqrt(6 / fan_in)
         # Apply the initialization

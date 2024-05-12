@@ -21,6 +21,13 @@ class weightInitialization:
 
         return model
 
+    @ staticmethod
+    def reset_weights(model):
+        """ Resetting model weights. """
+        for layer in model.children():
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+
     # -------------------------- Layer Weights -------------------------- #
 
     @staticmethod

@@ -169,8 +169,10 @@ class compileModelData:
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.2677 times smaller than the largest signals.
 
         if submodel == "signalEncoder":
-            minimumBatchSize = 32 if self.userInputParams['numLiftedChannels'] <= 48 else 16
-            minimumBatchSize = minimumBatchSize if self.userInputParams['numEncodingLayers'] <= 2 else 64
+            minimumBatchSize = 16 if 80 <= self.userInputParams['numLiftedChannels'] else 32
+            if 6 <= self.userInputParams['numEncodingLayers'] and 64 <= self.userInputParams['numLiftedChannels']: minimumBatchSize = 16
+            if self.userInputParams['numEncodingLayers'] <= 2 and self.userInputParams['numLiftedChannels'] <= 64: minimumBatchSize = 64
+            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 64
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":

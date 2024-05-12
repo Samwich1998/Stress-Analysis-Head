@@ -4,13 +4,14 @@ from ..modelComponents.signalEncoderHelpers.signalEncoderHelpers import signalEn
 
 
 class trainingSignalEncoder:
-    def __init__(self, numEncodedSignals, expansionFactor):
+    def __init__(self, numEncodedSignals, expansionFactor, maxNumEncodings=4):
         super(trainingSignalEncoder, self).__init__()
         # General model parameters
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.expansionFactor = expansionFactor
 
         # Specify the training parameters.
+        self.maxNumEncodings = maxNumEncodings
         self.maxKeepNumEncodingBuffer = 5
         self.keepNumEncodingBuffer = 0
         self.numEncodings = 1  # The number of compressions/expansions possible for this dataset.
@@ -20,6 +21,7 @@ class trainingSignalEncoder:
         # Set up the training parameters
         forwardDirection = 0 <= self.numEncodings
         compressingSignalFlag = forwardDirection + (self.numEncodedSignals < numSignals) != 1
+        numEncodings = self.numEncodings
         numEncodedSignals = numSignals  # Initialize starting point.
         totalNumEncodings = 0
 
@@ -27,9 +29,12 @@ class trainingSignalEncoder:
             # Randomly change the direction sometimes.
             compressingSignalFlag = not compressingSignalFlag
             forwardDirection = not forwardDirection
+        elif random.random() < 0.25:
+            # Randomly change the direction sometimes.
+            numEncodings = random.randint(a=numEncodings, b=self.maxNumEncodings) + 1
 
         # For each compression/expansion, we are training.
-        for numEncodingInd in range(abs(self.numEncodings)):
+        for numEncodingInd in range(abs(numEncodings)):
             totalNumEncodings = numEncodingInd + 1
 
             if compressingSignalFlag:
@@ -58,7 +63,7 @@ class trainingSignalEncoder:
 
                 # If we have a proven track record.
                 if self.keepNumEncodingBuffer == 0:
-                    self.numEncodings = max(self.numEncodings, encodingDirection*totalNumEncodings + 1)
+                    self.numEncodings = min(self.maxNumEncodings, max(self.numEncodings, encodingDirection*totalNumEncodings + 1))
                     if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
 
         elif 0.3 < finalLoss:

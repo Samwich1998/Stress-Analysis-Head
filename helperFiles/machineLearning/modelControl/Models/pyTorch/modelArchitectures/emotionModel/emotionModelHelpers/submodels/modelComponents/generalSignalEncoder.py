@@ -1,5 +1,4 @@
 # General
-import random
 import time
 
 # PyTorch
@@ -18,7 +17,7 @@ class signalEncoderBase(signalEncoderHelpers):
 
     # ---------------------------- Loss Methods ---------------------------- #
 
-    def calculateEncodingLoss(self, originalData, encodedData, trainingFlag):
+    def calculateEncodingLoss(self, originalData, encodedData):
         # originalData  encodedDecodedOriginalData
         #          \         /
         #          encodedData
@@ -44,11 +43,12 @@ class signalEncoderBase(signalEncoderHelpers):
 
         return squaredErrorLoss_forward
 
-    def updateLossValues(self, originalData, encodedData, signalEncodingLayerLoss, trainingFlag):
+    def updateLossValues(self, originalData, encodedData, signalEncodingLayerLoss):
         # Keep tracking of the loss through each loop.
-        layerLoss = self.calculateEncodingLoss(originalData, encodedData, trainingFlag)
+        layerLoss = self.calculateEncodingLoss(originalData, encodedData)
 
         # If the loss is significant, add it to the total loss.
+        if layerLoss.mean().item() > 0.01: layerLoss = 1.1 * layerLoss
         signalEncodingLayerLoss = 1.25*signalEncodingLayerLoss + layerLoss
 
         return signalEncodingLayerLoss
@@ -95,7 +95,7 @@ class generalSignalEncoding(signalEncoderBase):
     def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None, debuggingResults=False):
         super(generalSignalEncoding, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, accelerator, debuggingResults)
 
-    def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True, trainingFlag=False):
+    def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True):
         """ The shape of signalData: (batchSize, numSignals, compressedLength) """
         # Initialize first time parameters for signal encoding.
         if signalEncodingLayerLoss is None: signalEncodingLayerLoss = torch.zeros((signalData.size(0),), device=signalData.device)
@@ -114,7 +114,7 @@ class generalSignalEncoding(signalEncoderBase):
         # While we have the incorrect number of signals.
         while targetNumSignals != signalData.size(1):
             compressedDataFlag = targetNumSignals < signalData.size(1)
-            originalData = signalData  # Keep track of the initial state
+            originalData = signalData.clone()  # Keep track of the initial state
 
             # Compress the signals down to the targetNumSignals.
             if compressedDataFlag: signalData = self.compressionModel(signalData, targetNumSignals)
@@ -124,7 +124,7 @@ class generalSignalEncoding(signalEncoderBase):
 
             if calculateLoss:
                 # Keep track of the error during each compression/expansion.
-                signalEncodingLayerLoss = self.updateLossValues(originalData, signalData, signalEncodingLayerLoss, trainingFlag)
+                signalEncodingLayerLoss = self.updateLossValues(originalData, signalData, signalEncodingLayerLoss)
 
             # Keep track of the signal's at each iteration.
             numSignalPath.append(signalData.size(1))

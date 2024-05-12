@@ -225,7 +225,7 @@ class modelMigration:
     # ------------------------ Saving Model Methods ------------------------ #
 
     def saveModels(self, modelPipelines, modelName, datasetNames, sharedModelWeights, submodelsSaving,
-                   submodel, trainingDate, numEpochs, metaTraining, saveModelAttributes=True):
+                   submodel, trainingDate, numEpochs, metaTraining, saveModelAttributes=True, storeOptimizer=False):
         # Assert the integrity of the input variables.
         assert len(modelPipelines) == len(datasetNames), f"You provided {len(modelPipelines)} models to save, but only {len(datasetNames)} datasetNames."
         assert 0 < len(modelPipelines), "No models provided to save."
@@ -235,8 +235,8 @@ class modelMigration:
         for datasetInd, (modelPipeline, datasetName) in enumerate(zip(modelPipelines, datasetNames)):
             # Update the specific model information to save.
             trainingInformation = modelPipeline.getDistributedModels(model=None, submodel="trainingInformation")
-            trainingInformation.storeOptimizer(modelPipeline.optimizer, True)
-            trainingInformation.storeScheduler(modelPipeline.scheduler, True)
+            trainingInformation.storeOptimizer(modelPipeline.optimizer, storeOptimizer)
+            trainingInformation.storeScheduler(modelPipeline.scheduler, storeOptimizer)
 
             # Save the individual model's information.
             self._saveModel(modelPipeline.model, modelName, datasetName, sharedModelWeights, submodelsSaving, subAttributesSaving,

@@ -106,6 +106,7 @@ class emotionModelHead(globalModel):
         self.autoencoderModel = autoencoderModel(
             compressionFactor=self.compressionFactor,
             compressedLength=self.compressedLength,
+            debuggingResults=self.debuggingResults,
             expansionFactor=self.expansionFactor,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
@@ -181,7 +182,7 @@ class emotionModelHead(globalModel):
         if fullReconstruction:
             # Denoise the final signals.
             numSignalForwardPath = self.signalEncoderModel.encodeSignals.simulateSignalPath(initialSignalData.size(1), encodedData.size(1))[0]
-            doubleReconstructedData = self.signalEncoderModel.reconstructEncodedData(reconstructedEncodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False)[3]
+            doubleReconstructedData = self.signalEncoderModel.reconstructEncodedData(reconstructedEncodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)[3]
             denoisedDoubleReconstructedData = self.autoencoderModel.generalAutoencoder.applyDenoiserLast(doubleReconstructedData)
             # denoisedDoubleReconstructedData dimension: batchSize, numSignals, sequenceLength
 

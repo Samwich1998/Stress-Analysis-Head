@@ -1,6 +1,3 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # PyTorch
 import torch
 import torch.nn as nn
@@ -9,9 +6,6 @@ import torch.nn.functional as F
 # Abstract class
 import abc
 
-
-# -------------------------------------------------------------------------- #
-# --------------------------- Global Model Class --------------------------- #
 
 class globalModel(nn.Module, abc.ABC):
     def __init__(self):

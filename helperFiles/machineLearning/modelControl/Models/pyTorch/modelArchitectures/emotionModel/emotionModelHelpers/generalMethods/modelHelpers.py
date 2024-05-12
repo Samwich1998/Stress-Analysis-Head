@@ -1,5 +1,3 @@
-import math
-
 import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm

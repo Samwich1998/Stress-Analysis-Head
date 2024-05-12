@@ -29,7 +29,7 @@ class trainingSignalEncoder:
             # Randomly change the direction sometimes.
             compressingSignalFlag = not compressingSignalFlag
             forwardDirection = not forwardDirection
-        elif random.random() < 0.25:
+        elif random.random() < 0.1:
             # Randomly change the direction sometimes.
             numEncodings = random.randint(a=numEncodings+1, b=self.maxNumEncodings+1)
 
@@ -57,7 +57,7 @@ class trainingSignalEncoder:
         encodingDirection = forwardDirection*2 - 1
         finalLoss = finalReconstructionStateLoss.mean()
         # If we can keep going forwards.
-        if finalLoss < 0.2 or (self.numEncodings in [-1, 1] and finalLoss < 0.3):
+        if finalLoss < 0.1 or (self.numEncodings in [-1, 1] and finalLoss < 0.2):
             if encodingDirection*totalNumEncodings == self.numEncodings:
                 self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
 
@@ -66,6 +66,6 @@ class trainingSignalEncoder:
                     self.numEncodings = min(self.maxNumEncodings, max(self.numEncodings, encodingDirection*totalNumEncodings + 1))
                     if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
 
-        elif 0.4 < finalLoss:
+        elif 0.3 < finalLoss:
             # If we cannot complete the current goal, then record the error.
             self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)

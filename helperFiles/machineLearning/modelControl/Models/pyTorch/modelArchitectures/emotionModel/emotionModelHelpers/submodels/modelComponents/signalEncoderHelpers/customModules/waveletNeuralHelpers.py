@@ -60,6 +60,10 @@ class waveletNeuralHelpers(signalEncoderModules):
         maximumNumDecompositions = math.floor(math.log(sequenceBounds[0]) / math.log(2))  # The sequence length can be up to 2**numDecompositions.
         assert self.numDecompositions < maximumNumDecompositions, f'The number of decompositions must be less than {maximumNumDecompositions}.'
 
+        # Verify that the number of layers is appropriate.
+        if numLayers > 1: print("Warning: If the number of layers != 1 ... we have to apply a non-linearity in the wavelet domain. This is NOT recommended for autoencoders.")
+        assert numLayers != 0, "The number of layers must be greater than 0."
+
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)
         self.idwt = DWT1DInverse(wave=self.wavelet, mode=self.mode)

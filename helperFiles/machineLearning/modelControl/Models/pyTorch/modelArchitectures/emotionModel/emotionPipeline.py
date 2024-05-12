@@ -1,11 +1,11 @@
 # General
-import torch
 import torch.optim as optim
 import transformers
 import random
 import time
 
 # Import files for machine learning
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.weightInitialization import weightInitialization
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from .emotionModelHelpers.lossInformation.organizeTrainingLosses import organizeTrainingLosses
@@ -68,17 +68,21 @@ class emotionPipeline:
 
         if submodel == "emotionPrediction":
             # Finalize model setup.
-            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType,
-                                                                                                       predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
+            self.model.sharedEmotionModel.lastActivityLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.activityClass_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
             self.model.sharedEmotionModel.lastEmotionLayer = self.modelHelpers.getLastActivationLayer(self.organizeLossInfo.emotionDist_lossType, predictingProb=True)  # Apply activation on the last layer: 'softmax', 'logsoftmax', or None.
         else:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
+        self.modelHelpers.l2Normalization(self.model, maxNorm=self.maxNormL2(submodel))  # Spectral normalization.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
 
         # Assert data integrity of the inputs.
         assert len(self.emotionNames) == len(self.allEmotionClasses), f"Found {len(self.emotionNames)} emotions with {len(self.allEmotionClasses)} classes specified."
+
+    def resetModel(self):
+        # Reset the model's parameters (to python default values).
+        weightInitialization.reset_weights(self.model)
 
     def acceleratorInterface(self, dataLoader=None):
         if dataLoader is None:
@@ -95,15 +99,15 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4}]
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-8, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
-                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4})
+                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-8, 'lr': 2E-4})
         if submodel == "emotionPrediction":
             modelParams.extend([
                 # Specify the model parameters for the signal mapping.
-                {'params': signalMappingModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4},
+                {'params': signalMappingModel.parameters(), 'weight_decay': 1E-6, 'lr': 1E-4},
 
                 # Specify the model parameters for the feature extraction.
                 {'params': sharedEmotionModel.extractCommonFeatures.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
@@ -118,7 +122,7 @@ class emotionPipeline:
                 {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4}])
 
         # Set the optimizer.
-        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel)
+        self.optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-10, submodel=submodel)
 
         # Set the learning rate scheduler.
         self.scheduler = self.getLearningRateScheduler(submodel)
@@ -199,7 +203,7 @@ class emotionPipeline:
 
                     # Randomly choose to add noise to the model.
                     augmentedSignalData = signalData.clone()
-                    addingNoiseFlag = random.random() < 0
+                    addingNoiseFlag = random.random() < 0.5
                     addingNoiseRange = [0, 1]
                     addingNoiseSTD = 0
 
@@ -243,17 +247,17 @@ class emotionPipeline:
 
                         # Initialize basic core loss value.
                         futureCompressionsFactor = augmentedSignalData.size(1) / self.model.numEncodedSignals  # Increase the learning rate if compressing more signals.
-                        sequenceLengthFactor = augmentedSignalData.size(2) / self.sequenceLength  # Increase the learning rate for longer sequences.
+                        sequenceLengthFactor = max(0.75, augmentedSignalData.size(2) / self.sequenceLength)  # Increase the learning rate for longer sequences.
                         compressionFactor = augmentedSignalData.size(1) / encodedData.size(1)  # Increase the learning rate for larger compressions.
                         noiseFactor = 1 - (addingNoiseSTD / addingNoiseRange[1]) + 0.5  # Lower the learning rate for high noise levels.
                         finalLoss = signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.3 < encodedSignalStandardDeviationLoss:
+                        if 0.25 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
-                        if 0.01 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.1*signalEncodingTrainingLayerLoss
-                        if 0.3 < encodedSignalMeanLoss:
+                        if 0.001 < signalEncodingTrainingLayerLoss:
+                            finalLoss = finalLoss + 0.5*signalEncodingTrainingLayerLoss
+                        if 0.25 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
                         finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
@@ -343,6 +347,7 @@ class emotionPipeline:
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
                     t2 = time.time();
                     self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
+                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
@@ -362,6 +367,17 @@ class emotionPipeline:
         # ------------------------------------------------------------------ #
 
     @staticmethod
+    def maxNormL2(submodel):
+        if submodel == "signalEncoder":
+            return 8  # Empirically: 5 < maxNorm < 10
+        elif submodel == "autoencoder":
+            return 5
+        elif submodel == "emotionPrediction":
+            return 5
+        else:
+            assert False, "No optimizer initialized"
+
+    @staticmethod
     def setOptimizer(params, lr, weight_decay, submodel):
         # General options to choose from:
         #     nAdam = optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
@@ -378,12 +394,12 @@ class emotionPipeline:
 
         if submodel == "signalEncoder":
             # AdamW hurting the complexity too much; RAdam makes really simple encoded states;
-            return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
+            return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "autoencoder":
-            return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
+            return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":
             # adam and RAdam are okay, AdamW is a bit better (best?); NAdam is also a bit better
-            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+            return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         else:
             assert False, "No optimizer initialized"
 
@@ -435,7 +451,7 @@ class emotionPipeline:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.01)
+            addingNoiseRange = (0, 0.001)
         elif submodel == "autoencoder":
             addingNoiseRange = (0, 0.01)
         elif submodel == "emotionPrediction":

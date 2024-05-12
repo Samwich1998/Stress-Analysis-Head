@@ -30,7 +30,7 @@ class trainingSignalEncoder:
             forwardDirection = not forwardDirection
         elif random.random() < 0.2:
             # Randomly compress/expand more.
-            numEncodings = numEncodings+2
+            numEncodings = numEncodings + 1
 
         # For each compression/expansion, we are training.
         for numEncodingInd in range(abs(numEncodings)):
@@ -56,7 +56,7 @@ class trainingSignalEncoder:
         encodingDirection = forwardDirection*2 - 1
         finalLoss = finalReconstructionStateLoss.mean()
         # If we can keep going forwards.
-        if finalLoss < 0.15 or (self.numEncodings in [-1, 1] and finalLoss < 0.25):
+        if finalLoss < 0.2 or (self.numEncodings in [-1, 1] and finalLoss < 0.3):
             if encodingDirection*totalNumEncodings == self.numEncodings:
                 self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
 

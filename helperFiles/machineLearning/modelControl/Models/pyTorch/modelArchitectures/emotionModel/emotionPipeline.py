@@ -99,7 +99,7 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-4, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -369,7 +369,7 @@ class emotionPipeline:
     @staticmethod
     def maxNormL2(submodel):
         if submodel == "signalEncoder":
-            return 5  # Empirically: StrongL 5 < maxNorm < 10; Weaker: 10 < maxNorm < 20
+            return 10  # Empirically: StrongL 5 < maxNorm < 10; Weaker: 10 < maxNorm < 20
         elif submodel == "autoencoder":
             return 5
         elif submodel == "emotionPrediction":

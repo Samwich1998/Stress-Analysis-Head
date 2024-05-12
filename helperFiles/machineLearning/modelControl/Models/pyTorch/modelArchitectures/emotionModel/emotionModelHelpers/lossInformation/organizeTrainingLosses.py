@@ -107,12 +107,12 @@ class organizeTrainingLosses(lossCalculations):
                     model.signalEncoderModel.numEncodingsBufferPath_timeAnalysis[timeWindowInd].append(model.signalEncoderModel.trainingMethods.keepNumEncodingBuffer)
                     model.signalEncoderModel.numEncodingsPath_timeAnalysis[timeWindowInd].append(model.signalEncoderModel.trainingMethods.numEncodings)
                     # Calculate and Store the optimal loss only once.
-                    if len(model.signalEncoderModel.trainingLosses_timeReconstructionSVDAnalysis[timeWindowInd]) == 0:
+                    if len(model.signalEncoderModel.trainingLosses_timeReconstructionOptimalAnalysis[timeWindowInd]) == 0:
                         optimalTrainingLoss = self.getOptimalLoss(model.signalEncoderModel.calculateOptimalLoss, segmentedSignalData, allTrainingMasks, reconstructionIndex)
                         optimalTestingLoss = self.getOptimalLoss(model.signalEncoderModel.calculateOptimalLoss, segmentedSignalData, allTestingMasks, reconstructionIndex)
 
                         # Store the signal encoder loss information.
-                        self.storeLossInformation(optimalTrainingLoss, optimalTestingLoss, model.signalEncoderModel.trainingLosses_timeReconstructionSVDAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeReconstructionSVDAnalysis[timeWindowInd])
+                        self.storeLossInformation(optimalTrainingLoss, optimalTestingLoss, model.signalEncoderModel.trainingLosses_timeReconstructionOptimalAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeReconstructionOptimalAnalysis[timeWindowInd])
                     # Inform the user about the final loss.
                     print(f"\tSignal encoder {timeWindow} second losses:", signalReconstructedTrainingLoss.item(), signalReconstructedTestingLoss.item())
 

@@ -8,10 +8,10 @@ from torch import nn
 
 # Import files for machine learning
 from .channelPositionalEncoding import channelPositionalEncoding
-from .denoiser import denoiser
 from ....emotionDataInterface import emotionDataInterface
 from .channelEncoding import channelEncoding
 from .changeVariance import changeVariance
+from .denoiser import denoiser
 
 
 class signalEncoderHelpers(nn.Module):

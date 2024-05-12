@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 
 # Import helper classes.
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.weightInitialization import weightInitialization
 
 

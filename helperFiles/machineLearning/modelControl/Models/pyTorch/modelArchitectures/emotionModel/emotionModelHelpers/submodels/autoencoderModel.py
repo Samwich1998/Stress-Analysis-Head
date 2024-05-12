@@ -8,16 +8,21 @@ from ...._globalPytorchModel import globalModel
 
 
 class autoencoderModel(globalModel):
-    def __init__(self, compressedLength, timeWindows, accelerator, compressionFactor, expansionFactor):
+    def __init__(self, compressedLength, timeWindows, compressionFactor, expansionFactor, accelerator, debuggingResults=False):
         super(autoencoderModel, self).__init__()
         # General model parameters.
-        self.compressedLength = compressedLength  # The final length of the compressed signal after the autoencoder. MUST BE CHANGED IN AUTOENCODER.py
-        self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
+        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
+        self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding. Type: list
         self.accelerator = accelerator  # Hugging face model optimizations.
 
         # Autoencoder parameters.
-        self.compressionFactor = compressionFactor  # The expansion factor of the autoencoder
-        self.expansionFactor = expansionFactor  # The expansion factor of the autoencoder
+        self.compressionFactor = compressionFactor  # The expansion factor of the autoencoder. Type: float
+        self.compressedLength = compressedLength  # The final length of the compressed signal after the autoencoder. Type: int
+        self.expansionFactor = expansionFactor  # The expansion factor of the autoencoder. Type: float
+
+        # Gradient accumulation parameters.
+        self.numAccumulations = 0   # The number of gradient accumulations.
+        self.accumulatedLoss = 0    # The accumulated loss for gradient accumulation.
 
         # Method to reconstruct the original signal.
         self.generalAutoencoder = generalAutoencoder(accelerator, compressionFactor, expansionFactor)
@@ -26,6 +31,8 @@ class autoencoderModel(globalModel):
         self.trainingMethods = trainingAutoEncoder(compressedLength, compressionFactor, expansionFactor)
 
         # Initialize loss holders.
+        self.trainingLosses_timeReconstructionOptimalAnalysis = None
+        self.testingLosses_timeReconstructionOptimalAnalysis = None
         self.trainingLosses_timeReconstructionAnalysis = None
         self.testingLosses_timeReconstructionAnalysis = None
         self.numEncodingsBufferPath_timeAnalysis = None
@@ -37,27 +44,38 @@ class autoencoderModel(globalModel):
         self.testingLosses_timeSTDAnalysis = None
         self.numEncodingsPath_timeAnalysis = None
 
+        self.trainingLosses_timeReconstructionSVDAnalysis = None
+        self.testingLosses_timeReconstructionSVDAnalysis = None
+
         # Reset the model.
         self.resetModel()
 
     def resetModel(self):
-        # Signal encoder reconstructed loss holders.
+        # Autoencoder reconstructed loss holders.
         self.trainingLosses_timeReconstructionAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeReconstructionAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
         # Time analysis loss methods.
         self.trainingLosses_timeLayerAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeLayerAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
 
-        # Signal encoder mean loss holders.
+        # Autoencoder mean loss holders.
         self.trainingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean testing losses. Dim: numTimeWindows, numEpochs
-        # Signal encoder standard deviation loss holders.
+        # Autoencoder standard deviation loss holders.
         self.trainingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation testing losses. Dim: numTimeWindows, numEpochs
 
         # Compression analysis.
         self.numEncodingsBufferPath_timeAnalysis = [[] for _ in self.timeWindows]  # List of list of buffers at each epoch. Dim: numTimeWindows, numEpochs
         self.numEncodingsPath_timeAnalysis = [[] for _ in self.timeWindows]  # List of list of the number of compressions at each epoch. Dim: numTimeWindows, numEpochs
+
+        # Autoencoder optimal reconstruction loss holders
+        self.trainingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
+        self.testingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
+
+        # Keep track of gradient accumulation.
+        self.numAccumulations = 0
+        self.accumulatedLoss = 0
 
     def forward(self, encodedData, reconstructSignals=False, calculateLoss=False, trainingFlag=False):
         """ The shape of inputData: (batchSize, numSignals, sequenceLength) """
@@ -70,10 +88,14 @@ class autoencoderModel(globalModel):
         # encodedData dimension: batchSize, numSignals, initialSequenceLength
 
         # Create placeholders for the final variables.
-        denoisedReconstructedEncodedData = torch.zeros_like(encodedData, device=encodedData.device)
+        bridgedReconstructedEncodedData = torch.zeros_like(encodedData, device=encodedData.device)
         autoencoderLoss = torch.zeros(batchSize, device=encodedData.device)
         # reconstructedEncodedData dimension: batchSize, numSignals, initialSequenceLength
         # autoencoderLoss dimension: batchSize
+
+        # Initialize training parameters
+        reconstructedInitialCompressedData = None
+        reconstructedEncodedData = None
 
         # ---------------------- Training Augmentation --------------------- #
 
@@ -83,73 +105,70 @@ class autoencoderModel(globalModel):
         totalNumEncodings = 0
 
         if trainingFlag:
-            # Assert the integrity of the algorithm.
-            assert reconstructSignals and calculateLoss
-
             # Set up the training parameters
+            assert reconstructSignals and calculateLoss, f"Training requires decoding and loss calculations. reconstructSignals: {reconstructSignals}, calculateLoss: {calculateLoss}"
             compressedLength, totalNumEncodings, forwardDirection = self.trainingMethods.augmentFinalTarget(initialSequenceLength)
 
         # --------------------- Signal Compression --------------------- # 
 
         # Data reduction: remove unnecessary timepoints from the signals.
         noisyEncodedData = self.generalAutoencoder.dataInterface.addNoise(encodedData, trainingFlag, noiseSTD=0.01)
-        initialCompressedData, numSignalPath, autoencoderLayerLoss = self.generalAutoencoder(inputData=noisyEncodedData, targetSequenceLength=compressedLength, initialSequenceLength=initialSequenceLength,
-                                                                                             autoencoderLayerLoss=None, calculateLoss=calculateLoss)
-        noisyInitialCompressedData = self.generalAutoencoder.dataInterface.addNoise(initialCompressedData, trainingFlag, noiseSTD=0.01)
+        initialCompressedData, numSignalPath, autoencoderLayerLoss = self.generalAutoencoder(inputData=noisyEncodedData, targetSequenceLength=compressedLength, initialSequenceLength=initialSequenceLength, autoencoderLayerLoss=None, calculateLoss=calculateLoss)
         # compressedData dimension: batchSize, numSignals, compressedLength
         print("Autoencoder Downward path:", encodedData.size(2), numSignalPath, initialCompressedData.size(2), flush=True)
 
         # Adjust the final statistics of the data.
-        compressedData = self.generalAutoencoder.adjustSignalVariance(noisyInitialCompressedData)
+        compressedData = self.generalAutoencoder.adjustSignalVariance(initialCompressedData)
 
         # -------------------- Signal Reconstruction ------------------- #  
 
         if reconstructSignals:
             # Reconstruct the original signal points.
-            noisyCompressedData, reconstructedInitialCompressedData, reconstructedEncodedData, denoisedReconstructedEncodedData, numSignalPath, autoencoderLayerLoss = \
-                    self.decompressData(compressedData, initialSequenceLength, initialSequenceLength, autoencoderLayerLoss=autoencoderLayerLoss, calculateLoss=calculateLoss, trainingFlag=trainingFlag)
+            noisyCompressedData, reconstructedInitialCompressedData, reconstructedEncodedData, bridgedReconstructedEncodedData, numSignalPath, autoencoderLayerLoss = \
+                    self.decompressData(compressedData, initialSequenceLength, initialSequenceLength, autoencoderLayerLoss=autoencoderLayerLoss, calculateLoss=calculateLoss)
 
-            if calculateLoss:
-                # Calculate the immediately reconstructed data.
-                halfReconstructedData, _, _ = self.generalAutoencoder(initialSequenceLength=initialSequenceLength, targetSequenceLength=initialSequenceLength,
-                                                                      inputData=noisyInitialCompressedData, calculateLoss=False, autoencoderLayerLoss=None)
-                # Calculate the immediately reconstructing variance.
-                varianceHolder = self.generalAutoencoder.adjustSignalVariance(encodedData)
-                noisyVarianceHolder = self.generalAutoencoder.dataInterface.addNoise(varianceHolder, trainingFlag, noiseSTD=0.01)
-                varReconstructedEncodedData = self.generalAutoencoder.unAdjustSignalVariance(noisyVarianceHolder)
+        # ------------------------ Loss Calculations ----------------------- #
 
-                # Calculate the loss by comparing encoder/decoder outputs.
-                finalReconstructionStateLoss = (encodedData - reconstructedEncodedData).pow(2).mean(dim=2).mean(dim=1)
-                finalDenoisedReconstructionStateLoss = (encodedData - denoisedReconstructedEncodedData).pow(2).mean(dim=2).mean(dim=1)
-                varReconstructionStateLoss = (initialCompressedData - reconstructedInitialCompressedData).pow(2).mean(dim=-1).mean(dim=1)
-                print("State Losses (VF-D):", varReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
-                # Calculate the loss from taking other routes
-                autoencoderLayerLoss = autoencoderLayerLoss.view(batchSize, numSignals).mean(dim=1)
-                encodingReconstructionLoss = (encodedData - halfReconstructedData).pow(2).mean(dim=-1).mean(dim=1)
-                varReconstructionLoss = (encodedData - varReconstructedEncodedData).pow(2).mean(dim=-1).mean(dim=1)
-                print("Path Losses (E2-V2-S):", encodingReconstructionLoss.detach().mean().item(), varReconstructionLoss.detach().mean().item(), autoencoderLayerLoss.detach().mean().item())
+        if calculateLoss and reconstructSignals:
+            # Calculate the immediately reconstructed data.
+            halfReconstructedData, _, _ = self.generalAutoencoder(initialSequenceLength=initialSequenceLength, targetSequenceLength=initialSequenceLength, inputData=initialCompressedData, calculateLoss=False, autoencoderLayerLoss=None)
+            # Calculate the immediately reconstructing variance.
+            varianceHolder = self.generalAutoencoder.adjustSignalVariance(encodedData)
+            varReconstructedEncodedData = self.generalAutoencoder.unAdjustSignalVariance(varianceHolder)
 
-                # Add up all the losses together.
-                if 0.001 < varReconstructionStateLoss.mean():
-                    autoencoderLoss = autoencoderLoss + varReconstructionStateLoss
-                if 0.001 < encodingReconstructionLoss.mean():
-                    autoencoderLoss = autoencoderLoss + encodingReconstructionLoss
-                if 0.001 < varReconstructionLoss.mean():
-                    autoencoderLoss = autoencoderLoss + varReconstructionLoss
-                if 0.001 < autoencoderLayerLoss.mean():
-                    autoencoderLoss = autoencoderLoss + autoencoderLayerLoss
+            # Calculate the loss by comparing encoder/decoder outputs.
+            finalReconstructionStateLoss = (encodedData - reconstructedEncodedData).pow(2).mean(dim=2).mean(dim=1)
+            finalDenoisedReconstructionStateLoss = (encodedData - bridgedReconstructedEncodedData).pow(2).mean(dim=2).mean(dim=1)
+            varReconstructionStateLoss = (initialCompressedData - reconstructedInitialCompressedData).pow(2).mean(dim=-1).mean(dim=1)
+            print("State Losses (VF-D):", varReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
+            # Calculate the loss from taking other routes
+            autoencoderLayerLoss = autoencoderLayerLoss.view(batchSize, numSignals).mean(dim=1)
+            encodingReconstructionLoss = (encodedData - halfReconstructedData).pow(2).mean(dim=-1).mean(dim=1)
+            varReconstructionLoss = (encodedData - varReconstructedEncodedData).pow(2).mean(dim=-1).mean(dim=1)
+            print("Path Losses (E2-V2-S):", encodingReconstructionLoss.detach().mean().item(), varReconstructionLoss.detach().mean().item(), autoencoderLayerLoss.detach().mean().item())
 
-                if trainingFlag:
-                    self.trainingMethods.adjustNumEncodings(totalNumEncodings, autoencoderLayerLoss, finalDenoisedReconstructionStateLoss, forwardDirection)
+            # Add up all the losses together.
+            if 0.001 < encodingReconstructionLoss.mean():
+                autoencoderLoss = autoencoderLoss + 0.1*encodingReconstructionLoss
+            if 0.001 < finalReconstructionStateLoss.mean():
+                autoencoderLoss = autoencoderLoss + finalReconstructionStateLoss
+            if 0.001 < varReconstructionStateLoss.mean():
+                autoencoderLoss = autoencoderLoss + varReconstructionStateLoss
+            if 0.001 < varReconstructionLoss.mean():
+                autoencoderLoss = autoencoderLoss + 0.1*varReconstructionLoss
+            if 0.001 < autoencoderLayerLoss.mean():
+                autoencoderLoss = autoencoderLoss + 0.1*autoencoderLayerLoss
 
-        return compressedData, denoisedReconstructedEncodedData, autoencoderLoss
+            if trainingFlag:
+                self.trainingMethods.adjustNumEncodings(totalNumEncodings, autoencoderLayerLoss, finalDenoisedReconstructionStateLoss, forwardDirection)
+
+        return compressedData, bridgedReconstructedEncodedData, autoencoderLoss
 
         # ------------------------------------------------------------------ #  
 
-    def decompressData(self, compressedData, initialSequenceLength, targetSequenceLength, autoencoderLayerLoss=None, calculateLoss=False, trainingFlag=False):
+    def decompressData(self, compressedData, initialSequenceLength, targetSequenceLength, autoencoderLayerLoss=None, calculateLoss=False):
         # Remove any noise from the inner network.
-        noisyCompressedData = self.generalAutoencoder.dataInterface.addNoise(compressedData, trainingFlag, noiseSTD=0.01)
-        reconstructedInitialCompressedData = self.generalAutoencoder.unAdjustSignalVariance(noisyCompressedData)
+        reconstructedInitialCompressedData = self.generalAutoencoder.unAdjustSignalVariance(compressedData)
 
         # Reconstruct to the current signal number in the path.
         reconstructedEncodedData, numSignalPath, autoencoderLayerLoss = self.generalAutoencoder(inputData=reconstructedInitialCompressedData,
@@ -161,6 +180,6 @@ class autoencoderModel(globalModel):
         print("Autoencoder Upward path:", numSignalPath, flush=True)
 
         # Denoise the final signals.
-        denoisedReconstructedEncodedData = self.generalAutoencoder.applyAutoencoderDenoiser(reconstructedEncodedData)
+        bridgedReconstructedEncodedData = self.generalAutoencoder.applyAutoencoderDenoiser(reconstructedEncodedData)
 
-        return noisyCompressedData, reconstructedInitialCompressedData, reconstructedEncodedData, denoisedReconstructedEncodedData, numSignalPath, autoencoderLayerLoss
+        return compressedData, reconstructedInitialCompressedData, reconstructedEncodedData, bridgedReconstructedEncodedData, numSignalPath, autoencoderLayerLoss

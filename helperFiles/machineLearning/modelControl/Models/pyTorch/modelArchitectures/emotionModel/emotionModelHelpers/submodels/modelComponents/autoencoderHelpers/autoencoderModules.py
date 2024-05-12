@@ -21,7 +21,7 @@ class autoencoderModules(convolutionalHelpers):
         self.accelerator = accelerator               # Hugging face model optimizations.
         
         # Initialize helper classes
-        self.dataInterface = emotionDataInterface()
+        self.dataInterface = emotionDataInterface
 
     # ---------------------- Encoder-Specific Modules ---------------------- #
 

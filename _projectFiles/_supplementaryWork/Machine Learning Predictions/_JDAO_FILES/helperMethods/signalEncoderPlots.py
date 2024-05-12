@@ -138,7 +138,7 @@ class signalEncoderPlots(trainingPlots):
                             smoothedLossCurves[timeWindowInd, modelInd] = [smoothedTrainLoss, smoothedTestLoss]
 
                         # Get the losses.
-                        optimalLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionSVDAnalysis)
+                        optimalLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionOptimalAnalysis)
                         trainingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.trainingLosses_timeReconstructionAnalysis)
                         testingLossHolders[:, modelInd, numLiftedChannelInd, numExpandedSignalInd, numEncodingLayerInd] = self.getSmoothedFinalLosses(currentModel.testingLosses_timeReconstructionAnalysis)
 

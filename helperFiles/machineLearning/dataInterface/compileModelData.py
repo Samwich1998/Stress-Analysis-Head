@@ -120,7 +120,7 @@ class compileModelData:
 
         return loadSubmodelDate, loadSubmodelEpochs, loadSubmodel
 
-    def getBatchSize(self, submodel, metaDatasetName):
+    def getTrainingBatchSize(self, submodel, metaDatasetName):
         # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals.
         # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals.
         # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 232 signals.
@@ -160,13 +160,13 @@ class compileModelData:
 
         assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
 
-    def getMaxBatchSize(self, submodel, numSignals):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals. 2.28125 times smaller than the largest signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals. 2.949 times smaller than the largest signals.
+    def getInferenceBatchSize(self, submodel, numSignals):
+        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals. 1.8125 times smaller than the largest signals.
+        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals. 2.3434 times smaller than the largest signals.
         # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 232 signals. 1.0 times smaller than the largest signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals. 7.1219 times smaller than the largest signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals. 3.356 times smaller than the largest signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.5956 times smaller than the largest signals.
+        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals. 5.6585 times smaller than the largest signals.
+        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals. 3.712 times smaller than the largest signals.
+        # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.2677 times smaller than the largest signals.
 
         if submodel == "signalEncoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
@@ -180,7 +180,7 @@ class compileModelData:
         maxNumSignals = 232
         # Adjust the batch size based on the number of signals used.
         maxBatchSize = int(minimumBatchSize * maxNumSignals / numSignals)
-        maxBatchSize = min(maxBatchSize, numSignals)  # Ensure the maximum batch size is not larger than the number of signals..
+        maxBatchSize = min(maxBatchSize, numSignals)  # Ensure the maximum batch size is not larger than the number of signals.
 
         return maxBatchSize
 
@@ -477,7 +477,7 @@ class compileModelData:
             # ---------------------- Create the Model ---------------------- #
 
             # Get the model parameters
-            batch_size = self.getBatchSize(submodel, metaDatasetName)
+            batch_size = self.getTrainingBatchSize(submodel, metaDatasetName)
 
             # Organize the training data into the expected pytorch format.
             pytorchDataClass = pytorchDataInterface(batch_size=batch_size, num_workers=0, shuffle=True, accelerator=self.accelerator)
@@ -507,7 +507,7 @@ class compileModelData:
 
             # Organize the training data into the expected pytorch format.
             numExperiments, numSignals, signalDimension = dataLoader.dataset.getSignalInfo()
-            pytorchDataClass = pytorchDataInterface(batch_size=self.getMaxBatchSize(submodel, numSignals), num_workers=0, shuffle=False, accelerator=self.accelerator)
+            pytorchDataClass = pytorchDataInterface(batch_size=self.getInferenceBatchSize(submodel, numSignals), num_workers=0, shuffle=False, accelerator=self.accelerator)
             modelDataLoader = pytorchDataClass.getDataLoader(*dataLoader.dataset.getAll())
 
             # Store the information.

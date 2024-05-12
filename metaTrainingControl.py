@@ -44,7 +44,7 @@ if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=4,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     accelerator.print("Total loss calculation time:", t2 - t1)
 
     # For each training epoch
-    for epoch in range(2, 1000):
+    for epoch in range(1, 1000):
         print(f"\nEpoch: {epoch}", flush=True)
         plotSteps = plotTrainingSteps and epoch % numEpoch_toPlot == 0
         saveFullModel = epoch % numEpoch_toSaveFull == 0

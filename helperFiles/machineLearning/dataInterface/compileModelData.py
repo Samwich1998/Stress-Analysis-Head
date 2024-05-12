@@ -170,7 +170,7 @@ class compileModelData:
 
         if submodel == "signalEncoder":
             minimumBatchSize = 32 if self.userInputParams['numLiftedChannels'] <= 48 else 16
-            minimumBatchSize = minimumBatchSize if self.userInputParams['numEncodingLayers'] <= 1 else 64
+            minimumBatchSize = minimumBatchSize if self.userInputParams['numEncodingLayers'] <= 2 else 64
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":

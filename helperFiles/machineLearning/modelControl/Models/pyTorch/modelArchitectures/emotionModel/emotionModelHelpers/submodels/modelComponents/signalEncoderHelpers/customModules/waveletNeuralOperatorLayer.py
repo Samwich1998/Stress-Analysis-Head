@@ -35,11 +35,6 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
         # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
 
-        # Apply the activation function if we already applied a linear transformation.
-        lowFrequency = self.activationFunction(lowFrequency)
-        for highFrequencyInd in range(len(highFrequencies)):
-            highFrequencies[highFrequencyInd] = self.activationFunction(highFrequencies[highFrequencyInd])
-
         # Mix each frequency decomposition, separating high and low frequencies.
         lowFrequency, highFrequencies = self.mixSeperatedFrequencyComponents(lowFrequency, highFrequencies, lowFrequencyTerms, highFrequencyTerms)
         # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
@@ -60,7 +55,6 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
         # Add the bias terms.
         reconstructedData = reconstructedData + self.operatorBiases
-        reconstructedData = self.activationFunction(reconstructedData)
         # outputData dimension: batchSize, numOutputSignals, sequenceLength
 
         return reconstructedData
@@ -124,16 +118,12 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
         for layerInd in range(self.numLayers):
-            # # Apply the activation function if we already applied a linear transformation.
-            # if layerInd != 0: frequencies = self.activationFunction(frequencies)
-            # # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+            # Apply the activation function if we already applied a linear transformation.
+            if layerInd != 0: frequencies = self.activationFunction(frequencies)
+            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
             # Learn a new set of wavelet coefficients to transform the data.
             frequencies = torch.einsum(equationString, weights[layerInd], frequencies)
-            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
-
-            # Apply the activation function if we already applied a linear transformation.
-            frequencies = self.activationFunction(frequencies)
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
         return frequencies

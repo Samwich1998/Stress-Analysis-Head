@@ -74,8 +74,9 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
-        self.modelHelpers.l2Normalization(self.model, maxNorm=self.maxNormL2(submodel), checkOnly=True)  # Spectral normalization.
+        self.modelHelpers.l2Normalization(self.model, maxNorm=self.maxNormL2(submodel), checkOnly=True)
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
+        self.resetModel()  # Reset the model's parameters (to python default values).
 
         # Assert data integrity of the inputs.
         assert len(self.emotionNames) == len(self.allEmotionClasses), f"Found {len(self.emotionNames)} emotions with {len(self.allEmotionClasses)} classes specified."
@@ -99,7 +100,7 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-4, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -347,7 +348,7 @@ class emotionPipeline:
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
                     t2 = time.time();
                     self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
-                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 10)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
+                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
@@ -417,7 +418,7 @@ class emotionPipeline:
             return optim.ASGD(params, lr=lr, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=weight_decay)
         elif optimizerType == 'LBFGS':
             # LBFGS is an optimizer that approximates the Broyden–Fletcher–Goldfarb–Shanno algorithm, which is a quasi-Newton method.
-            # Use it for small datasets where the exact second-order Hessian matrix computation is possible.
+            # Use it for small datasets where the exact second-order Hessian matrix computation is possible. Maybe cant use optimizer.step()??
             return optim.LBFGS(params, lr=lr, max_iter=20, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn=None)
         elif optimizerType == 'RMSprop':
             # RMSprop is an adaptive learning rate method designed to solve Adagrad's radically diminishing learning rates.
@@ -436,8 +437,12 @@ class emotionPipeline:
 
     def setOptimizer(self, params, lr, weight_decay, submodel):
         if submodel == "signalEncoder":
-            # Bad optimizers: RAdam; Good optimizers: AdamW, Adam, NAdam
-            return self.getOptimizer(optimizerType="SGD", params=params, lr=lr, weight_decay=weight_decay)
+            # Noisy encoding, No reconstruction: RMSprop, Adadelta
+            # Noisy encoding, Noisy reconstruction: Adamax, RAdam
+            # Noisy Encoding, Okay reconstruction: NAdam, AdamW
+            # Unstable encoding, Noisy reconstruction: SGD, Adam
+            # Stable encoding, No reconstruction: ASGD
+            return self.getOptimizer(optimizerType="NAdam", params=params, lr=lr, weight_decay=weight_decay)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

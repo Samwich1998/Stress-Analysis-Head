@@ -23,7 +23,7 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(self, stampLength=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.weightInitialization.kaimingUniformBiasInit(parameter, fan_in=stampLength)
+        parameter = self.weightInitialization.heNormalInit(parameter, fan_in=stampLength)
 
         return parameter
 
@@ -65,9 +65,9 @@ class signalEncoderModules(convolutionalHelpers):
 
         return parameter
 
-    def neuralBiasParameters(self, numChannels=2):
-        parameter = nn.Parameter(torch.randn((1, numChannels, 1)))
-        parameter = self.weightInitialization.kaimingUniformBiasInit(parameter, fan_in=numChannels)
+    @staticmethod
+    def neuralBiasParameters(numChannels=2):
+        parameter = nn.Parameter(torch.zeros((1, numChannels, 1)))
 
         return parameter
 
@@ -75,6 +75,7 @@ class signalEncoderModules(convolutionalHelpers):
         # The more complex this is, the better the model learns. However, it makes the encoding space too complex.
         return nn.Sequential(
             # Convolution architecture: feature engineering
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
 
@@ -83,7 +84,7 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             ), numCycles=1),
         )
 

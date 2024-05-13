@@ -188,6 +188,31 @@ class compileModelData:
         return maxBatchSize
 
     @staticmethod
+    def getSubmodelsSaving(submodel):
+        # Get the submodels to save
+        if submodel == "signalEncoder":
+            submodelsSaving = ["trainingInformation", "signalEncoderModel"]
+        elif submodel == "autoencoder":
+            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel"]
+        elif submodel == "emotionPrediction":
+            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel", "signalMappingModel", "specificEmotionModel", "sharedEmotionModel"]
+        else:
+            assert False, "No model initialized"
+
+        return submodelsSaving
+
+    @staticmethod
+    def maxNormL2(submodel):
+        if submodel == "signalEncoder":
+            return 10  # Empirically: StrongL 5 < maxNorm < 10; Weaker: 10 < maxNorm < 20
+        elif submodel == "autoencoder":
+            return 5
+        elif submodel == "emotionPrediction":
+            return 5
+        else:
+            assert False, "No optimizer initialized"
+
+    @staticmethod
     def getSequenceLength(submodel, sequenceLength):
         if submodel == "signalEncoder":
             return 90, 240

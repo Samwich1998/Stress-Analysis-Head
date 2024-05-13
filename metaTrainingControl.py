@@ -136,6 +136,7 @@ if __name__ == "__main__":
     # Specify training parameters
     numEpoch_toPlot, numEpoch_toSaveFull = modelCompiler.getEpochInfo(submodel)
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
+    submodelsSaving = modelCompiler.getSubmodelsSaving(submodel)
 
     # ---------------------------------------------------------------------- #
     # ------------------------- Feature Compilation ------------------------ #
@@ -263,7 +264,6 @@ if __name__ == "__main__":
             # Prepare to save the model.
             modelPipeline = allMetaModels[-1]
             numEpochs = modelPipeline.getTrainingEpoch(submodel) or epoch
-            submodelsSaving = modelPipeline.getSubmodelsSaving(submodel)
             modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
 
             # Create a copy of the pipelines together

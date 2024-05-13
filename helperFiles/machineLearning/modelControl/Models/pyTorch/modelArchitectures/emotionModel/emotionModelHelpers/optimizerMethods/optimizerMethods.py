@@ -42,17 +42,16 @@ class optimizerMethods:
             # Observations on properties:
             #     Momentum is not good (Used value of 0.9)
             # Observations on encoding:
-            #     No encoding structure: Rprop, Adamax, RMSprop
-            #     No-Noisy encoding structure: Adam, NAdam, RAdam
-            #     Noisy encoding structure: AdamW
-            #     Okay encoding structure: SGD, ASGD, Adadelta
+            #     No encoding structure: SGD, Adamax, RAdam, NAdam
+            #     No-Noisy encoding structure: Adam, AdamW, Rprop
+            #     Noisy encoding structure: RMSprop
+            #     Okay encoding structure: ASGD, Adadelta
             # Observations on reconstruction:
-            #     No reconstruction: Adadelta, RMSprop
-            #     No reconstruction, but trying: ASGD, Adamax
-            #     No-Noisy reconstruction: SGD
-            #     Noisy reconstruction: RAdam
-            #     Okay reconstruction: AdamW, Adam, NAdam, Rprop
-            return self.getOptimizer(optimizerType="AdamW", params=params, lr=lr, weight_decay=weight_decay, momentum=0)
+            #     No reconstruction: Adadelta
+            #     No-Noisy reconstruction: ASGD
+            #     Noisy reconstruction: RAdam, Adamax, Rprop, SGD
+            #     Okay reconstruction: AdamW, Adam, NAdam, RMSprop
+            return self.getOptimizer(optimizerType="RMSprop", params=params, lr=lr, weight_decay=weight_decay, momentum=0)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

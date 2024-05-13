@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # Training flags.
     plotTrainingSteps = True  # If you want to plot any results from training.
-    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 

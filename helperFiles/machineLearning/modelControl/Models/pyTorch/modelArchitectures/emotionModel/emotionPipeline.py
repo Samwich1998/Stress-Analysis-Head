@@ -392,6 +392,7 @@ class emotionPipeline:
         elif optimizerType == 'Adagrad':
             return optim.Adagrad(params, lr=lr, lr_decay=0, weight_decay=weight_decay, initial_accumulator_value=0, eps=1e-10)
         elif optimizerType == 'Adam':
+            # May have an issue with GPU!?
             return optim.Adam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif optimizerType == 'AdamW':
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
@@ -417,7 +418,7 @@ class emotionPipeline:
     def setOptimizer(self, params, lr, weight_decay, submodel):
         if submodel == "signalEncoder":
             # RAdam is bad; AdamW is good;
-            return self.getOptimizer(optimizerType="AdamW", params=params, lr=lr, weight_decay=weight_decay)
+            return self.getOptimizer(optimizerType="NAdam", params=params, lr=lr, weight_decay=weight_decay)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

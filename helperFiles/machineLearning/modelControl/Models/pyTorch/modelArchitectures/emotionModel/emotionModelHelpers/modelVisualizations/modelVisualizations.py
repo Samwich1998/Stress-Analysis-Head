@@ -233,7 +233,7 @@ class modelVisualizations(globalPlottingProtocols):
                 self.signalEncoderViz.plotOneSignalEncoding(trainingEncodedData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Training Signal Encoding", numBatchPlots=1)
 
                 # Plot the encoding example.
-                self.signalEncoderViz.plotSignalEncodingMap(model, testingEncodedData.detach().cpu(), testingSignalData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Test Signal  Map", numBatchPlots=1)
+                self.signalEncoderViz.plotSignalEncodingMap(model, testingEncodedData.detach().cpu(), testingSignalData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Test Signal Map", numBatchPlots=1)
                 self.signalEncoderViz.plotSignalEncodingMap(model, trainingEncodedData.detach().cpu(), trainingSignalData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Training Signal Encoding Map", numBatchPlots=1)
 
                 # Plot all encoding dimensions.

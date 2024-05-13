@@ -346,7 +346,7 @@ class emotionPipeline:
                     t1 = time.time()
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
-                    t2 = time.time();
+                    t2 = time.time()
                     self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
                     if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
@@ -423,7 +423,7 @@ class emotionPipeline:
         elif optimizerType == 'RMSprop':
             # RMSprop is an adaptive learning rate method designed to solve Adagrad's radically diminishing learning rates.
             # It is well-suited to handle non-stationary objectives as in training neural networks.
-            return optim.RMSprop(params, lr=lr, alpha=0.99, eps=1e-08, weight_decay=weight_decay, momentum=0.9, centered=False)
+            return optim.RMSprop(params, lr=lr, alpha=0.99, eps=1e-08, weight_decay=weight_decay, momentum=0.2, centered=False)
         elif optimizerType == 'Rprop':
             # Rprop (Resilient Propagation) uses only the signs of the gradients, disregarding their magnitude.
             # Suitable for batch training, where the robustness of noisy gradients and the size of updates matters.
@@ -431,18 +431,21 @@ class emotionPipeline:
         elif optimizerType == 'SGD':
             # SGD (Stochastic Gradient Descent) is simple yet effective, suitable for large datasets.
             # Use with momentum for non-convex optimization; ideal for most cases unless complexities require adaptive learning rates.
-            return optim.SGD(params, lr=lr, momentum=0.9, dampening=0, weight_decay=weight_decay, nesterov=True)
+            return optim.SGD(params, lr=lr, momentum=0.2, dampening=0, weight_decay=weight_decay, nesterov=True)
         else:
             assert False, "No optimizer initialized"
 
     def setOptimizer(self, params, lr, weight_decay, submodel):
         if submodel == "signalEncoder":
+            # Observations:
+            #     Momentum is not good (Used value of 0.9)
             # Noisy encoding, No reconstruction: RMSprop, Adadelta
             # Noisy encoding, Noisy reconstruction: Adamax, RAdam
-            # Noisy Encoding, Okay reconstruction: NAdam, AdamW
-            # Unstable encoding, Noisy reconstruction: SGD, Adam
+            # Noisy Encoding, Okay reconstruction: NAdam, AdamW, Rprop
+            # Unstable encoding, Noisy reconstruction: SGD
+            # Unstable encoding, Okay reconstruction: Adam
             # Stable encoding, No reconstruction: ASGD
-            return self.getOptimizer(optimizerType="NAdam", params=params, lr=lr, weight_decay=weight_decay)
+            return self.getOptimizer(optimizerType="Adam", params=params, lr=lr, weight_decay=weight_decay)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

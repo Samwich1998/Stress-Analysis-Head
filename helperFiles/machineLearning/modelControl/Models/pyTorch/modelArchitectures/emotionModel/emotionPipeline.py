@@ -380,44 +380,63 @@ class emotionPipeline:
     @staticmethod
     def getOptimizer(optimizerType, params, lr, weight_decay):
         # General guidelines:
-        #     AdamR (Adam with a warm restart) is an adaptation of the Adam optimizer that incorporates warm restarts to the LR to avoid poor local minima and encourages exploration of the loss landscape by periodically resetting the LR. Use when you converge to suboptimal solutions.
-        #     NAdam combines Adam with Nesterov momentum: a variant of the classical momentum technique, taking into account the momentum in a slightly different way that tends to result in better convergence in practice. Use in deep architectures that is sensitive to the optimizer.
-        #     AdamW modifies the way Adam implements weight decay, decoupling it from the gradient updates, leading to a more effective use of L2 regularization. Use when regularization is a problem.
-        #     If decoupled_weight_decay is True, then it adds adamW to the optimizer
         #     Common WD values: 1E-2 to 1E-6
         #     Common LR values: 1E-6 to 1
 
         if optimizerType == 'Adadelta':
+            # Adadelta is an extension of Adagrad that seeks to reduce its aggressive, monotonically decreasing learning rate.
+            # Use it when you don’t want to manually tune the learning rate.
             return optim.Adadelta(params, lr=lr, rho=0.9, eps=1e-06, weight_decay=weight_decay)
         elif optimizerType == 'Adagrad':
-            # May have an issue with GPU!?
+            # Adagrad adapts the learning rates based on the parameters. It performs well with sparse data.
+            # Use it if you are dealing with sparse features or in NLP tasks. Not compatible with GPU?!?
             return optim.Adagrad(params, lr=lr, lr_decay=0, weight_decay=weight_decay, initial_accumulator_value=0, eps=1e-10)
         elif optimizerType == 'Adam':
+            # Adam is a first-order gradient-based optimization of stochastic objective functions, based on adaptive estimates.
+            # It's broadly used and suitable for most problems without much hyperparameter tuning.
             return optim.Adam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif optimizerType == 'AdamW':
+            # AdamW modifies the way Adam implements weight decay, decoupling it from the gradient updates, leading to a more effective use of L2 regularization.
+            # Use when regularization is a priority and particularly when fine-tuning pre-trained models.
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif optimizerType == 'NAdam':
+            # NAdam combines Adam with Nesterov momentum, aiming to combine the benefits of Nesterov accelerated gradient and Adam.
+            # Use in deep architectures where fine control over convergence is needed.
             return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
         elif optimizerType == 'RAdam':
+            # RAdam (Rectified Adam) is an Adam variant that introduces a term to rectify the variance of the adaptive learning rate.
+            # Use it when facing unstable or poor training results with Adam, especially in smaller sample sizes.
             return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
         elif optimizerType == 'Adamax':
+            # Adamax is a variant of Adam based on the infinity norm, proposed as a more stable alternative.
+            # Suitable for embeddings and sparse gradients.
             return optim.Adamax(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay)
         elif optimizerType == 'ASGD':
+            # ASGD (Averaged Stochastic Gradient Descent) is used when you require robustness over a large number of epochs.
+            # Suitable for larger-scale and less well-behaved problems; often used in place of SGD when training for a very long time.
             return optim.ASGD(params, lr=lr, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=weight_decay)
         elif optimizerType == 'LBFGS':
+            # LBFGS is an optimizer that approximates the Broyden–Fletcher–Goldfarb–Shanno algorithm, which is a quasi-Newton method.
+            # Use it for small datasets where the exact second-order Hessian matrix computation is possible.
             return optim.LBFGS(params, lr=lr, max_iter=20, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn=None)
         elif optimizerType == 'RMSprop':
+            # RMSprop is an adaptive learning rate method designed to solve Adagrad's radically diminishing learning rates.
+            # It is well-suited to handle non-stationary objectives as in training neural networks.
             return optim.RMSprop(params, lr=lr, alpha=0.99, eps=1e-08, weight_decay=weight_decay, momentum=0.9, centered=False)
         elif optimizerType == 'Rprop':
+            # Rprop (Resilient Propagation) uses only the signs of the gradients, disregarding their magnitude.
+            # Suitable for batch training, where the robustness of noisy gradients and the size of updates matters.
             return optim.Rprop(params, lr=lr, etas=(0.5, 1.2), step_sizes=(1e-06, 50))
         elif optimizerType == 'SGD':
+            # SGD (Stochastic Gradient Descent) is simple yet effective, suitable for large datasets.
+            # Use with momentum for non-convex optimization; ideal for most cases unless complexities require adaptive learning rates.
             return optim.SGD(params, lr=lr, momentum=0.9, dampening=0, weight_decay=weight_decay, nesterov=True)
         else:
             assert False, "No optimizer initialized"
 
     def setOptimizer(self, params, lr, weight_decay, submodel):
         if submodel == "signalEncoder":
-            # RAdam is bad; AdamW is good;
+            # Bad optimizers: RAdam; Good optimizers: AdamW, Adam, NAdam
             return self.getOptimizer(optimizerType="SGD", params=params, lr=lr, weight_decay=weight_decay)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)

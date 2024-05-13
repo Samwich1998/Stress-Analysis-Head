@@ -3,6 +3,7 @@ import transformers
 
 
 class optimizerMethods:
+
     def addOptimizer(self, submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):
         modelParams = [
             # Specify the model parameters for the signal encoding.
@@ -32,7 +33,7 @@ class optimizerMethods:
         optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel)
 
         # Set the learning rate scheduler.
-        scheduler = self.getLearningRateScheduler(submodel)
+        scheduler = self.getLearningRateScheduler(submodel, optimizer)
 
         return optimizer, scheduler
 

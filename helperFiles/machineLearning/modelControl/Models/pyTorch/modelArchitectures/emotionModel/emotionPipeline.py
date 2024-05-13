@@ -417,7 +417,7 @@ class emotionPipeline:
     def setOptimizer(self, params, lr, weight_decay, submodel):
         if submodel == "signalEncoder":
             # RAdam is bad; AdamW is good;
-            return self.getOptimizer(optimizerType="Adagrad", params=params, lr=lr, weight_decay=weight_decay)
+            return self.getOptimizer(optimizerType="Adam", params=params, lr=lr, weight_decay=weight_decay)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

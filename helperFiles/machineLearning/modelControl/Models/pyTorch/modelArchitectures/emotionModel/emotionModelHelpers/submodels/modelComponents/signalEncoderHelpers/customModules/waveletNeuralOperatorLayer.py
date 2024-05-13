@@ -82,8 +82,8 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
     def mixAllFrequencyComponents(self, lowFrequency, highFrequencies):
         # Initialize the relevant parameters.
         lowFrequencyHolder = lowFrequency
-        equationString = 'oif,boi->bof'  # The equation to apply the weights.
-        # b = batchSize, o = numOutputSignals, i = initialFrequencyDim, f = finalFrequencyDim
+        equationString = 'fic,bci->bcf'  # The equation to apply the weights.
+        # b = batchSize, c = numOutputSignals, i = initialFrequencyDim, f = finalFrequencyDim
         # 'oif,boi->bof' = weights.size(), frequencies.size() -> frequencies.size()
 
         if self.encodeLowFrequencyFull:

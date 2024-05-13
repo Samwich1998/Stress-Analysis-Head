@@ -49,12 +49,13 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-05-12"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-05-12 Adadelta"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
     plotTrainingSteps = True  # If you want to plot any results from training.
+    useParamsHPC = False  # If you want to use HPC parameters.
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
@@ -104,7 +105,7 @@ if __name__ == "__main__":
     submodel = args.submodel
 
     # Self-check the hpc parameters.
-    if userInputParams['deviceListed'].startswith("HPC"):
+    if userInputParams['deviceListed'].startswith("HPC") and useParamsHPC:
         accelerator.gradient_accumulation_steps = 16
         storeLoss = True  # Turn on loss storage for HPC.
         fastPass = False  # Turn off fast pass for HPC.

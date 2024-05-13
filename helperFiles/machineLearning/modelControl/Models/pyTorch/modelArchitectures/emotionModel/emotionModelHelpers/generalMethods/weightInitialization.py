@@ -6,19 +6,23 @@ import math
 
 class weightInitialization:
 
-    def initialize_weights(self, model, activationMethod='selu', layerType='conv'):
+    def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv'):
         assert activationMethod in ['selu', 'relu', 'leakyRelu', 'tanh', 'sigmoid', 'none'], "Invalid activation method."
         assert layerType in ['conv', 'fc'], "Invalid layer type."
 
+        # Calculate the gain.
+        nonLinearity = activationMethod if activationMethod != 'linear' else 'leaky_relu'
+        gain = torch.nn.init.calculate_gain(nonLinearity, param=modelParam)
+
         if activationMethod == 'selu':
             if layerType == 'conv':
-                model.apply(self.initialize_weights_kaiming)
+                self.kaiming_uniform_weights(modelParam, a=0, nonlinearity=activationMethod)
             elif layerType == 'fc':
-                model.apply(self.initialize_weights_kaiming)
+                self.kaiming_uniform_weights(modelParam, a=0, nonlinearity=activationMethod)
         else:
-            model.reset_parameters()
+            modelParam.reset_parameters()
 
-        return model
+        return modelParam
 
     @ staticmethod
     def reset_weights(model):
@@ -40,13 +44,13 @@ class weightInitialization:
             nn.init.zeros_(m.bias)
 
     @staticmethod
-    def initialize_weights_kaiming(m):
+    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu'):
         # Taken from pytorch default documentation: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L44-L48
         # Pytorch default for linear layers.
-        nn.init.kaiming_uniform_(m.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
-            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            bound = 1 / math.sqrt(fan_in) if fan_in != 0 else 0
             nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
@@ -67,9 +71,9 @@ class weightInitialization:
             nn.init.zeros_(m.bias)
 
     @staticmethod
-    def initialize_weights_kaimingLecun(m):
+    def initialize_weights_kaimingLecun(m, a=math.sqrt(5), nonlinearity='relu'):
         if hasattr(m, 'weight'):
-            nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
+            nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
         if hasattr(m, 'bias') and m.bias is not None:
             nn.init.zeros_(m.bias)
 
@@ -85,6 +89,7 @@ class weightInitialization:
         bound = math.sqrt(6 / fan_in)
         # Apply the initialization
         nn.init.uniform_(parameter, -bound, bound)
+        return parameter
 
     @staticmethod
     def lecunParamInitialization(parameter, fan_in):
@@ -95,8 +100,16 @@ class weightInitialization:
         return parameter
 
     @staticmethod
-    def kaimingUniformInit(parameter):
-        nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
+    def kaimingUniformBiasInit(bias, fan_in):
+        if bias is not None:
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(bias, -bound, bound)
+        return bias
+
+    @staticmethod
+    def kaimingUniformInit(parameter, a=math.sqrt(5), nonlinearity='relu'):
+        parameter = nn.init.kaiming_uniform_(parameter, a=a, mode='fan_in', nonlinearity=nonlinearity)
+        return parameter
 
     @staticmethod
     def xavierUniformInit(parameter, fan_in, fan_out):

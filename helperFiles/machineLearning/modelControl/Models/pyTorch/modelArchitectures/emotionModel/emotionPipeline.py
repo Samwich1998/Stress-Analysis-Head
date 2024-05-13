@@ -74,7 +74,7 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
-        self.modelHelpers.l2Normalization(self.model, maxNorm=self.maxNormL2(submodel))  # Spectral normalization.
+        self.modelHelpers.l2Normalization(self.model, maxNorm=self.maxNormL2(submodel), checkOnly=True)  # Spectral normalization.
         self.addOptimizer(submodel)  # Initialize the optimizer (for back propagation)
 
         # Assert data integrity of the inputs.
@@ -99,7 +99,7 @@ class emotionPipeline:
 
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 2E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 1E-4 < lr < 5E-4
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -347,7 +347,7 @@ class emotionPipeline:
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
                     t2 = time.time();
                     self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
-                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 5)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
+                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 10)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
                     # Backpropagation the gradient.
                     self.optimizer.step()  # Adjust the weights.
                     self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
@@ -378,12 +378,7 @@ class emotionPipeline:
             assert False, "No optimizer initialized"
 
     @staticmethod
-    def setOptimizer(params, lr, weight_decay, submodel):
-        # General options to choose from:
-        #     nAdam = optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
-        #     adamW = optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
-        #     rAdam = optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
-
+    def getOptimizer(optimizerType, params, lr, weight_decay):
         # General guidelines:
         #     AdamR (Adam with a warm restart) is an adaptation of the Adam optimizer that incorporates warm restarts to the LR to avoid poor local minima and encourages exploration of the loss landscape by periodically resetting the LR. Use when you converge to suboptimal solutions.
         #     NAdam combines Adam with Nesterov momentum: a variant of the classical momentum technique, taking into account the momentum in a slightly different way that tends to result in better convergence in practice. Use in deep architectures that is sensitive to the optimizer.
@@ -392,10 +387,37 @@ class emotionPipeline:
         #     Common WD values: 1E-2 to 1E-6
         #     Common LR values: 1E-6 to 1
 
-        if submodel == "signalEncoder":
-            # AdamW hurting the complexity too much; RAdam makes really simple encoded states;
+        if optimizerType == 'Adadelta':
+            return optim.Adadelta(params, lr=lr, rho=0.9, eps=1e-06, weight_decay=weight_decay)
+        elif optimizerType == 'Adagrad':
+            return optim.Adagrad(params, lr=lr, lr_decay=0, weight_decay=weight_decay, initial_accumulator_value=0, eps=1e-10)
+        elif optimizerType == 'Adam':
+            return optim.Adam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
+        elif optimizerType == 'AdamW':
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
-            # return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
+        elif optimizerType == 'NAdam':
+            return optim.NAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, momentum_decay=0.004, decoupled_weight_decay=True)
+        elif optimizerType == 'RAdam':
+            return optim.RAdam(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, decoupled_weight_decay=True)
+        elif optimizerType == 'Adamax':
+            return optim.Adamax(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay)
+        elif optimizerType == 'ASGD':
+            return optim.ASGD(params, lr=lr, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=weight_decay)
+        elif optimizerType == 'LBFGS':
+            return optim.LBFGS(params, lr=lr, max_iter=20, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn=None)
+        elif optimizerType == 'RMSprop':
+            return optim.RMSprop(params, lr=lr, alpha=0.99, eps=1e-08, weight_decay=weight_decay, momentum=0.9, centered=False)
+        elif optimizerType == 'Rprop':
+            return optim.Rprop(params, lr=lr, etas=(0.5, 1.2), step_sizes=(1e-06, 50))
+        elif optimizerType == 'SGD':
+            return optim.SGD(params, lr=lr, momentum=0.9, dampening=0, weight_decay=weight_decay, nesterov=True)
+        else:
+            assert False, "No optimizer initialized"
+
+    def setOptimizer(self, params, lr, weight_decay, submodel):
+        if submodel == "signalEncoder":
+            # RAdam is bad; AdamW is good;
+            return self.getOptimizer(optimizerType="Adadelta", params=params, lr=lr, weight_decay=weight_decay)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

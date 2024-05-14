@@ -51,7 +51,7 @@ class optimizerMethods:
             #     No-Noisy reconstruction: ASGD
             #     Noisy reconstruction: RAdam, Adamax, Rprop, SGD
             #     Okay reconstruction: AdamW, Adam, NAdam, RMSprop
-            return self.getOptimizer(optimizerType="AdamW", params=params, lr=lr, weight_decay=weight_decay, momentum=0)
+            return self.getOptimizer(optimizerType="RMSprop", params=params, lr=lr, weight_decay=weight_decay, momentum=0)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

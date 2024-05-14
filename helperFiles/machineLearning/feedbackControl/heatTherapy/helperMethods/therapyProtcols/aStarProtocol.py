@@ -110,7 +110,7 @@ class aStarProtocol(generalProtocol):
     def getUpdatedPersonalizedMap(self):
         # Assert the integrity of the state tracking.
         assert len(self.temperatureTimepoints) == len(self.discretePersonalizedMap), \
-            f"The time delays and discrete maps are not the same length. {self.temperatureTimepoints} {self.discretePersonalizedMap}"
+            f"The time delays and discrete maps are not the same length. {len(self.temperatureTimepoints)} {len(self.discretePersonalizedMap)}"
         # Unpack the temperature-timepoints relation.
         tempTimepoints = np.asarray(self.temperatureTimepoints)
         associatedTempInds = tempTimepoints[:, 1]

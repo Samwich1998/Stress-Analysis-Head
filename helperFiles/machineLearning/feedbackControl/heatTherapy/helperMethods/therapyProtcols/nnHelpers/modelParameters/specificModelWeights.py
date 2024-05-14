@@ -32,20 +32,24 @@ class specificModelWeights(nn.Module):
         for tempModuleInd in range(self.numTemperatures):
             self.tempModules.append(nn.Sequential(
                 # Neural architecture
-                nn.Linear(self.numInputTempFeatures, self.numSharedTempFeatures, bias=True),
+                nn.Linear(self.numSharedTempFeatures, self.numSharedTempFeatures, bias=True),
                 nn.SELU(),
+                
                 nn.Linear(self.numSharedTempFeatures, self.numTempBins, bias=True),
                 nn.Softmax(dim=-1),  # Softmax activation along the feature dimension
+
             ))
 
         # For each loss module.
         for lossModuleInd in range(self.numLosses):
             self.lossModules.append(nn.Sequential(
-                # Neural architecture
-                nn.Linear(self.numInputLossFeatures, self.numSharedLossFeatures, bias=True),
+                nn.Linear(self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),
+                nn.SELU(),
+                nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),
+                nn.SELU(),
+                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True),
                 nn.SELU(),
                 nn.Linear(self.numSharedLossFeatures, self.numLossBins, bias=True),
-                nn.Softmax(dim=-1),  # Softmax activation along the feature dimension
             ))
 
     def predictNextTemperature(self, inputData):

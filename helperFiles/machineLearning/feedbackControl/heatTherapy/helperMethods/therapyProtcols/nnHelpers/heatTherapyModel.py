@@ -7,7 +7,7 @@ from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.thera
 
 
 class heatTherapyModel(nn.Module):
-    def __init__(self, numTemperatures=1, numLosses=3, numTempBins=11, numLossBins=51):
+    def __init__(self, numTemperatures=1, numLosses=3, numTempBins=11, numLossBins=101):
         # General model parameters.
         super().__init__()
         # General model parameters.
@@ -43,17 +43,19 @@ class heatTherapyModel(nn.Module):
         )
 
     def forward(self, initialPatientStates):
-        if not isinstance(initialPatientStates, torch.Tensor):
-            # Convert to a PyTorch tensor and ensure the data type is float32
-            initialPatientStates = torch.from_numpy(initialPatientStates).to(torch.float32)
-        else:
-            initialPatientStates = initialPatientStates.float()
+        print('initialPatientStates: ', initialPatientStates)
+        print('number of temperature bins: ', self.numTempBins)
+        print('number of loss bins: ', self.numLossBins)
+
         # Add a batch dimension
         if initialPatientStates.dim() == 1:
             initialPatientStates = initialPatientStates.unsqueeze(0)  # Add a batch dimension [[T, PA, NA, SA]].
 
-        # Verify that the tensor is of type float32
+        # Assert the validity of the input tensor.
+        assert len(initialPatientStates.size()) == 2, "Input tensor must have 2 dimensions."
         assert initialPatientStates.dtype == torch.float32, "Tensor must be of type float32"
+        assert initialPatientStates.size(1) == 4, "Input tensor must have 4 features."
+        # Extract the dimensions of the input data.
         batchSize, numInitialFeatures = initialPatientStates.size()
         # initialPatientStates dimensions: [batchSize, numInputFeatures=4].
 

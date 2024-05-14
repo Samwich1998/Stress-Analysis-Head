@@ -1,7 +1,7 @@
 # General
 import torch
 from torch import nn
-
+import torch.nn.functional as F
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.generalProtocol import generalProtocol
 
 
@@ -14,6 +14,7 @@ class lossCalculations:
 
         # Model parameters.
         self.classificationLoss = nn.CrossEntropyLoss(weight=None, reduction='none', label_smoothing=0.0)
+        self.divergenceLoss = nn.KLDivLoss(reduction='batchmean', log_target=False)
 
         # Initialize the optimal final loss.
         self.optimalLoss = [1, 0, 0]  # The optimal final loss bin index. [PA, NA, SA].
@@ -25,9 +26,9 @@ class lossCalculations:
         """ Score the model based on the final loss. """
         # Unpack the final loss predictions.
         finalTemperaturePredictions, finalLossPredictions = therapyState
+        # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
         # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
         # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
-        # trueLossValues dimensions: [numLosses].
 
         # Prepare the final loss predictions.
         batchSize = finalTemperaturePredictions.size(1)  # Extract the batch size.
@@ -40,6 +41,37 @@ class lossCalculations:
         for lossInd in range(self.numLosses):
             lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd]).mean()
 
+        minimizeLossBias = 0
+        # Bias the model to minimize the loss.
+        for lossInd in range(self.numLosses):
+            expectedLoss = self.optimalFinalLossBinIndex[lossInd].expand(batchSize)  # expectedLoss dimensions: [batchSize].
+            minimizeLossBias = minimizeLossBias + self.classificationLoss(finalLossPredictions[lossInd], expectedLoss).mean()
+
+        return lossPredictionLoss, minimizeLossBias
+
+    def scoreModel_offline(self, therapyState, trueLossValues):
+        """ Score the model based on the final loss. """
+        # Unpack the final loss predictions.
+        finalTemperaturePredictions, finalLossPredictions = therapyState
+        # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
+        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
+        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
+
+        # Unpack the loss predictions.
+        numLosses, batchSize, numLossBins = finalLossPredictions.size()
+        assert numLosses == self.numLosses, "The number of losses must match the expected number of losses."
+        assert numLossBins == len(self.loss_bins), "The number of loss bins must match the expected number of loss bins."
+        assert len(trueLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
+        assert len(trueLossValues[0]) == numLossBins, "The true loss values must have the correct batch size."
+        trueLossValues = torch.tensor(trueLossValues).unsqueeze(1)
+
+        # Prepare the final loss predictions.
+        lossPredictionLoss = 0
+
+        # Bias the model to predict the next loss.
+        for lossInd in range(self.numLosses):
+            lossPredictionLoss = lossPredictionLoss + self.divergenceLoss(F.log_softmax(finalLossPredictions[lossInd], dim=-1), trueLossValues[lossInd])
+            #lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd].argmax(dim=-1)).mean()
         minimizeLossBias = 0
         # Bias the model to minimize the loss.
         for lossInd in range(self.numLosses):

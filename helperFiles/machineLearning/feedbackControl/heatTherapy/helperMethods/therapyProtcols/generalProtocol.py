@@ -146,13 +146,12 @@ class generalProtocol(abc.ABC):
 
         # initialize to the current state (assume the initial states are the same)
         # For simulation training only
-        newUserLoss_simulated, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss_offline(self.userStatePath[-1], 30) # userState[0] # _dist shape = (11.) probability distribution
+        newUserLoss_simulated, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss_offline(self.userStatePath[-1], newUserTemp=30)  # userState[0] # _dist shape = (11.) probability distribution
         print("1111***** distribution at 30 for PA, NA, SA *****", (PA_dist, NA_dist, SA_dist))
         # assume initial distribution
         self.userFullStatePathDistribution = [[userState[0], PA_dist, NA_dist, SA_dist]]
         # print(self.userFullStatePathDistribution)  # dim: [T, array(PA_dist), array(NA_dist), array(SA_dist)]
         self.userStatePath_simulated = self.userStatePath.copy()  # Maybe remove
-
 
     def getCurrentState(self):
         if self.simulateTherapy:

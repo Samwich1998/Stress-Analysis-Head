@@ -123,7 +123,7 @@ class nnProtocol(generalProtocol):
         else:
             newUserTemp = torch.FloatTensor(1,).uniform_(self.temperatureBounds[0], self.temperatureBounds[1])[0]
             #newUserTemp = self.temp_bins[newUserTemp_bin] + 0.5  # mid temp
-            newUserTemp = 45
+            newUserTemp = 30
         newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = super().getNextState_offline(30)
 
         print('*****PA_dist_simulated: ', PA_dist_simulated)

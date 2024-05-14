@@ -4,23 +4,28 @@ from ..modelComponents.signalEncoderHelpers.signalEncoderHelpers import signalEn
 
 
 class trainingSignalEncoder:
-    def __init__(self, numEncodedSignals, expansionFactor):
+    def __init__(self, numEncodedSignals, expansionFactor, accelerator):
         super(trainingSignalEncoder, self).__init__()
         # General model parameters
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.expansionFactor = expansionFactor
+        self.accelerator = accelerator
 
         # Specify the training parameters.
         self.maxKeepNumEncodingBuffer = 5
         self.keepNumEncodingBuffer = 0
         self.numEncodings = 1  # The number of compressions/expansions possible for this dataset.
 
+        # Gradient accumulation parameters.
+        self.numAccumulations = 0   # The number of gradient accumulations.
+        self.accumulatedLoss = 0    # The accumulated loss for gradient accumulation.
+
     def augmentFinalTarget(self, numSignals):
         """ The shape of inputData: (batchSize, numSignals, sequenceLength) """
         # Set up the training parameters
         forwardDirection = 0 <= self.numEncodings
         compressingSignalFlag = forwardDirection + (self.numEncodedSignals < numSignals) != 1
-        numEncodings = self.numEncodings
+        numEncodings = self.numEncodings  # The number of compressions/expansions.
         numEncodedSignals = numSignals  # Initialize starting point.
         totalNumEncodings = 0
 
@@ -53,18 +58,32 @@ class trainingSignalEncoder:
         return numEncodedSignals, totalNumEncodings, forwardDirection
 
     def adjustNumEncodings(self, totalNumEncodings, finalReconstructionStateLoss, forwardDirection):
-        encodingDirection = forwardDirection*2 - 1
+        # Set up the training parameters.
         finalLoss = finalReconstructionStateLoss.mean()
-        # If we can keep going forwards.
-        if finalLoss < 0.1 or (self.numEncodings in [-1] and finalLoss < 0.2):
-            if encodingDirection*totalNumEncodings == self.numEncodings:
-                self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
+        encodingDirection = forwardDirection*2 - 1
 
-                # If we have a proven track record.
-                if self.keepNumEncodingBuffer == 0:
-                    self.numEncodings = max(self.numEncodings, encodingDirection*totalNumEncodings + 1)
-                    if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
+        # Accumulate the loss.
+        self.accumulatedLoss = self.accumulatedLoss + finalLoss
+        self.numAccumulations = self.numAccumulations + 1
 
-        elif 0.3 < finalLoss:
-            # If we cannot complete the current goal, then record the error.
-            self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)
+        # If we have accumulated enough gradients for a full batch.
+        if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
+            accumulatedLoss = self.accumulatedLoss / self.numAccumulations
+
+            # If we can keep going forwards.
+            if accumulatedLoss < 0.1 or (self.numEncodings in [-1] and accumulatedLoss < 0.2):
+                if encodingDirection*totalNumEncodings == self.numEncodings:
+                    self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
+
+                    # If we have a proven track record.
+                    if self.keepNumEncodingBuffer == 0:
+                        self.numEncodings = max(self.numEncodings, encodingDirection*totalNumEncodings + 1)
+                        if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
+
+            elif 0.3 < accumulatedLoss:
+                # If we cannot complete the current goal, then record the error.
+                self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)
+
+            # Reset the accumulation counter.
+            self.numAccumulations = 0
+            self.accumulatedLoss = 0

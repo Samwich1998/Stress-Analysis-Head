@@ -1,4 +1,3 @@
-# PyTorch
 import torch
 
 # Import files for machine learning
@@ -14,6 +13,7 @@ class autoencoderModel(globalModel):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding. Type: list
         self.accelerator = accelerator  # Hugging face model optimizations.
+        self.plotEncoding = True  # Whether to plot the encoding process. Type: bool
 
         # Autoencoder parameters.
         self.compressionFactor = compressionFactor  # The expansion factor of the autoencoder. Type: float
@@ -160,7 +160,18 @@ class autoencoderModel(globalModel):
                 autoencoderLoss = autoencoderLoss + 0.1*autoencoderLayerLoss
 
             if trainingFlag:
-                self.trainingMethods.adjustNumEncodings(totalNumEncodings, autoencoderLayerLoss, finalDenoisedReconstructionStateLoss, forwardDirection)
+                self.trainingMethods.adjustNumEncodings(totalNumEncodings, finalDenoisedReconstructionStateLoss, forwardDirection)
+
+                # Accumulate the loss.
+                self.accumulatedLoss = self.accumulatedLoss + finalDenoisedReconstructionStateLoss.mean()
+                self.numAccumulations = self.numAccumulations + 1
+
+                if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
+                    self.trainingMethods.adjustNumEncodings(totalNumEncodings, self.accumulatedLoss / self.numAccumulations, forwardDirection)
+
+                    # Reset the accumulation counter.
+                    self.numAccumulations = 0
+                    self.accumulatedLoss = 0
 
         return compressedData, bridgedReconstructedEncodedData, autoencoderLoss
 

@@ -1,4 +1,5 @@
-# PyTorch
+import matplotlib.pyplot as plt
+import random
 import torch
 
 # Import files for machine learning
@@ -24,10 +25,6 @@ class signalEncoderModel(globalModel):
         self.numLiftedChannels = numLiftedChannels  # The number of channels to lift the signal to.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence lengths to consider.
         self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider.
-
-        # Gradient accumulation parameters.
-        self.numAccumulations = 0   # The number of gradient accumulations.
-        self.accumulatedLoss = 0    # The accumulated loss for gradient accumulation.
 
         # Method to converge to the final number of signals.
         self.encodeSignals = generalSignalEncoding(
@@ -83,8 +80,8 @@ class signalEncoderModel(globalModel):
         self.testingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
 
         # Keep track of gradient accumulation.
-        self.numAccumulations = 0
-        self.accumulatedLoss = 0
+        self.trainingMethods.numAccumulations = 0
+        self.trainingMethods.accumulatedLoss = 0
 
     def setDebuggingResults(self, debuggingResults):
         self.encodeSignals.channelEncodingInterface.debuggingResults = debuggingResults
@@ -189,34 +186,8 @@ class signalEncoderModel(globalModel):
             if 0.001 < varReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
 
-            if self.plotEncoding:
-                import random
-                if random.random() < 0.02:
-                    import matplotlib.pyplot as plt
-                    plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
-                    plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-                    plt.show()
-
-                    plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-                    plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-                    plt.show()
-
-                    plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-                    plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2)
-                    plt.show()
-
-                    plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-                    plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5)
-                    plt.show()
-
-                    plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-                    plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5)
-                    plt.show()
-
-                    plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
-                    plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
-                    plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
-                    plt.show()
+            if self.plotEncoding and random.random() < 0.02:
+                self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
             if trainingFlag:
                 # Accumulate the loss.
@@ -229,8 +200,6 @@ class signalEncoderModel(globalModel):
                     # Reset the accumulation counter.
                     self.numAccumulations = 0
                     self.accumulatedLoss = 0
-
-        # ------------------------------------------------------------------ #
 
         return encodedData, denoisedReconstructedData, signalEncodingLoss
 
@@ -285,3 +254,30 @@ class signalEncoderModel(globalModel):
             if printLoss: print("\tFIRST Optimal Compression Loss STD:", pcaReconstructionLoss.mean().item())
 
             return pcaReconstructionLoss
+
+    @staticmethod
+    def plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
+        plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
+        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+        plt.show()
+
+        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+        plt.show()
+
+        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+        plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2)
+        plt.show()
+
+        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+        plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5)
+        plt.show()
+
+        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+        plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5)
+        plt.show()
+
+        plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
+        plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
+        plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
+        plt.show()

@@ -22,6 +22,7 @@ class trainingAutoEncoder:
         # Set up the training parameters
         forwardDirection = 0 <= self.numEncodings
         compressingSignalFlag = forwardDirection + (self.compressedLength < signalLength) != 1
+        numEncodings = self.numEncodings  # The number of compressions/expansions.
         compressedLength = signalLength  # Initialize starting point.
         totalNumEncodings = 0
 
@@ -29,9 +30,12 @@ class trainingAutoEncoder:
             # Randomly change the direction sometimes.
             compressingSignalFlag = not compressingSignalFlag
             forwardDirection = not forwardDirection
+        elif random.random() < 0.25:
+            # Randomly compress/expand more.
+            numEncodings = numEncodings + 1
 
         # For each compression/expansion, we are training.
-        for numEncodingInd in range(abs(self.numEncodings)):
+        for numEncodingInd in range(abs(numEncodings)):
             totalNumEncodings = numEncodingInd + 1
 
             if compressingSignalFlag:
@@ -45,21 +49,21 @@ class trainingAutoEncoder:
 
         # It's not useful to train on nothing.
         if compressedLength == signalLength: compressedLength = compressedLength + 1
-        print(f"\tTraining Augmentation Stage (numEncodings totalNumEncodings): {'' if forwardDirection else '-'}{self.numEncodings} {totalNumEncodings}")
+        print(f"\tTraining Augmentation Stage (numEncodings totalNumEncodings): {'' if forwardDirection else '-'}{numEncodings} {totalNumEncodings}")
 
         return compressedLength, totalNumEncodings, forwardDirection
 
-    def adjustNumEncodings(self, totalNumEncodings, autoencoderLayerLoss, finalReconstructionStateLoss, forwardDirection):
+    def adjustNumEncodings(self, totalNumEncodings, finalReconstructionStateLoss, forwardDirection):
         encodingDirection = forwardDirection*2 - 1
         finalLoss = finalReconstructionStateLoss.mean()
         # If we can keep going forwards.
-        if (finalLoss < 0.025 and autoencoderLayerLoss.mean() < 0.05) or (self.numEncodings == -1 and finalLoss < 0.25):
+        if finalLoss < 0.1 or (self.numEncodings in [-1] and finalLoss < 0.2):
             if encodingDirection*totalNumEncodings == self.numEncodings:
                 self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
 
                 # If we have a proven track record.
                 if self.keepNumEncodingBuffer == 0:
-                    self.numEncodings = max(self.numEncodings, encodingDirection * totalNumEncodings + 1)
+                    self.numEncodings = max(self.numEncodings, encodingDirection*totalNumEncodings + 1)
                     if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
 
         elif 0.3 < finalLoss:

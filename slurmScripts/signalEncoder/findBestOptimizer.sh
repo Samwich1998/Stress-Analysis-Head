@@ -1,9 +1,9 @@
 #!/bin/bash
 
 optimizers=('Adadelta' 'Adagrad' 'Adam' 'AdamW' 'NAdam' 'RAdam' 'Adamax' 'ASGD' 'LBFGS' 'RMSprop' 'Rprop' 'SGD')
-numLiftedChannels=64
+numLiftedChannels=32
 numExpandedSignals=2
-numEncodingLayers=3
+numEncodingLayers=4
 
 
 for optimizer in "${optimizers[@]}"

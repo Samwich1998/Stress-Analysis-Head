@@ -74,7 +74,7 @@ class emotionPipeline:
             self.generalTimeWindowInd = self.model.timeWindows.index(self.generalTimeWindow)
 
         # Finish setting up the mode.
-        self.modelHelpers.l2Normalization(self.model, maxNorm=10, checkOnly=True)
+        self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
         self.compileOptimizer(submodel)  # Initialize the optimizer (for back propagation)
         self.resetModel()  # Reset the model's parameters (to python default values).
 

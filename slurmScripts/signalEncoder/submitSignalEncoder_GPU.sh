@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Specify the module parameters
-#SBATCH --time=7-00:00:00   # Total runtime. Maximum 7 days = 128 hours
+#SBATCH --time=9-00:00:00   # Total runtime. Maximum 9-10 days
 #SBATCH --gres=gpu:p100:1   # Number of GPUs on the node. Maximum of 4
 #SBATCH --mem-per-cpu=48G
 #SBATCH --partition=gpu     # Specify the GPU partition (May change)
@@ -28,4 +28,4 @@ nvcc --version
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # RUN FILE
-sh signalencoderGroupAnalysis.sh $1 $2 $3 $4
+sh signalencoderGroupAnalysis.sh "$1" "$2" "$3" "$4" "$5"

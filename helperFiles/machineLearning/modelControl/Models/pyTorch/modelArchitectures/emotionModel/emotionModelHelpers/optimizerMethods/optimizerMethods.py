@@ -96,7 +96,7 @@ class optimizerMethods:
         elif optimizerType == 'Adagrad':
             # Adagrad adapts the learning rates based on the parameters. It performs well with sparse data.
             # Use it if you are dealing with sparse features or in NLP tasks. Not compatible with GPU?!?
-            return optim.Adagrad(params, lr=lr, lr_decay=0, weight_decay=weight_decay, initial_accumulator_value=0, eps=1e-10)
+            return optim.Adagrad(params, lr=lr, lr_decay=0, weight_decay=weight_decay, initial_accumulator_value=0.2, eps=1e-10)
         elif optimizerType == 'Adam':
             # Adam is a first-order gradient-based optimization of stochastic objective functions, based on adaptive estimates.
             # It's broadly used and suitable for most problems without much hyperparameter tuning.

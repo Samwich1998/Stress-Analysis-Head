@@ -7,6 +7,7 @@ from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from .emotionModelHelpers.lossInformation.organizeTrainingLosses import organizeTrainingLosses
+from .emotionModelHelpers.modelParameters import modelParameters
 from .emotionModelHelpers.modelVisualizations.modelVisualizations import modelVisualizations
 
 # Import files for the emotion model
@@ -60,6 +61,7 @@ class emotionPipeline:
         # Initialize helper classes.
         self.organizeLossInfo = organizeTrainingLosses(self.accelerator, self.model, allEmotionClasses, self.activityLabelInd, self.generalTimeWindow)
         self.modelVisualization = modelVisualizations(accelerator, self.generalTimeWindow, modelSubfolder="trainingFigures/")
+        self.modelParameters = modelParameters(userInputParams=userInputParams, accelerator=accelerator)
         self.optimizerMethods = optimizerMethods(userInputParams)
         self.modelMigration = modelMigration(accelerator)
         self.dataInterface = emotionDataInterface()
@@ -76,7 +78,6 @@ class emotionPipeline:
         # Finish setting up the mode.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
         self.compileOptimizer(submodel)  # Initialize the optimizer (for back propagation)
-        self.resetModel()  # Reset the model's parameters (to python default values).
 
         # Assert data integrity of the inputs.
         assert len(self.emotionNames) == len(self.allEmotionClasses), f"Found {len(self.emotionNames)} emotions with {len(self.allEmotionClasses)} classes specified."
@@ -176,7 +177,7 @@ class emotionPipeline:
 
                     if addingNoiseFlag:
                         # Augment the data to add some noise to the model.
-                        addingNoiseSTD, addingNoiseRange = self.getAugmentationDeviation(submodel)
+                        addingNoiseSTD, addingNoiseRange = self.modelParameters.getAugmentationDeviation(submodel)
                         augmentedSignalData = self.dataInterface.addNoise(augmentedSignalData, trainingFlag=True, noiseSTD=addingNoiseSTD)
                         # augmentedSignalData dimension: batchSize, numSignals, sequenceLength
 
@@ -352,19 +353,6 @@ class emotionPipeline:
             return len(specificEmotionModel.trainingLosses_signalReconstruction)
         else:
             raise Exception()
-
-    def getAugmentationDeviation(self, submodel):
-        # Get the submodels to save
-        if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.001)
-        elif submodel == "autoencoder":
-            addingNoiseRange = (0, 0.01)
-        elif submodel == "emotionPrediction":
-            addingNoiseRange = (0, 0.01)
-        else:
-            assert False, "No model initialized"
-
-        return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
     def setupTraining(self, submodel):
         # Do not train the model at all.

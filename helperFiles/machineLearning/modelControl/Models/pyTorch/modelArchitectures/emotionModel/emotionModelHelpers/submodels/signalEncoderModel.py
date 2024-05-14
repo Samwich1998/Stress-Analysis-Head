@@ -37,7 +37,7 @@ class signalEncoderModel(globalModel):
         )
 
         # Initialize helper classes.
-        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor)
+        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor, accelerator)
 
         # Initialize loss holders.
         self.trainingLosses_timeReconstructionOptimalAnalysis = None
@@ -190,16 +190,7 @@ class signalEncoderModel(globalModel):
                 self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
             if trainingFlag:
-                # Accumulate the loss.
-                self.accumulatedLoss = self.accumulatedLoss + finalDenoisedReconstructionStateLoss.mean()
-                self.numAccumulations = self.numAccumulations + 1
-
-                if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
-                    self.trainingMethods.adjustNumEncodings(totalNumEncodings, self.accumulatedLoss / self.numAccumulations, forwardDirection)
-
-                    # Reset the accumulation counter.
-                    self.numAccumulations = 0
-                    self.accumulatedLoss = 0
+                self.trainingMethods.adjustNumEncodings(totalNumEncodings, denoisedReconstructedData, forwardDirection)
 
         return encodedData, denoisedReconstructedData, signalEncodingLoss
 

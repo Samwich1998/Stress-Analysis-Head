@@ -18,6 +18,7 @@ import accelerate
 import torch
 
 # Import files for machine learning
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.modelParameters import modelParameters
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
 from helperFiles.machineLearning.modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
 from helperFiles.machineLearning.featureAnalysis.featureImportance import featureImportance  # Import feature analysis files.
@@ -130,15 +131,16 @@ if __name__ == "__main__":
     sharedModelWeights = ["signalEncoderModel", "autoencoderModel", "sharedEmotionModel"]
 
     # Initialize the metaController class.
+    modelInfoClass = compileModelInfo(modelFile="_.pkl", modelTypes=[0, 1, 2])
     modelCompiler = compileModelData(submodel, userInputParams, accelerator)
-    modelInfoClass = compileModelInfo("_.pkl", [0, 1, 2])
+    modelParameters = modelParameters(userInputParams, accelerator)
     modelMigration = modelMigration(accelerator)
     featureAnalysis = featureImportance("")
 
     # Specify training parameters
-    numEpoch_toPlot, numEpoch_toSaveFull = modelCompiler.getEpochInfo(submodel)
+    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel)
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
-    submodelsSaving = modelCompiler.getSubmodelsSaving(submodel)
+    submodelsSaving = modelParameters.getSubmodelsSaving(submodel)
 
     # ---------------------------------------------------------------------- #
     # ------------------------- Feature Compilation ------------------------ #
@@ -310,8 +312,6 @@ if __name__ == "__main__":
                                      featureNames=modelPipeline.featureNames, modelType="", shapSubfolder="")
 
     exit()
-
-    27 * 75 + 11 * 407 + 10 * 145 + 12 * 364 + 2 * 1650
 
     # Prepare our model for training.
     modelMigration.resetLayerStatistics(allModels, sharedModelWeights)  # Reset any statistics in the model.
@@ -516,7 +516,7 @@ if __name__ == "__main__":
             trueLabels[trainingIndices] = allTrainingLabels.argmax(axis=1)
 
         finalClassPredictions = finalPredictions.argmax(axis=2)
-        averageClassPrecitions = finalClassPredictions.mean(axis=0)
+        averageClassPredictions = finalClassPredictions.mean(axis=0)
         plt.plot(finalClassPredictions, trueLabels, 'ko')
         plt.xlabel("Predicted Emotion Rating")
         plt.ylabel("Emotion Rating")

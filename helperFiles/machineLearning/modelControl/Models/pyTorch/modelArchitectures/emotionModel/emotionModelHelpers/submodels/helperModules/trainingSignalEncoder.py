@@ -17,6 +17,7 @@ class trainingSignalEncoder:
         self.numEncodings = 1  # The number of compressions/expansions possible for this dataset.
 
         # Gradient accumulation parameters.
+        self.numAccumulatedPoints = 0  # The number of points accumulated.
         self.numAccumulations = 0   # The number of gradient accumulations.
         self.accumulatedLoss = 0    # The accumulated loss for gradient accumulation.
 
@@ -57,18 +58,19 @@ class trainingSignalEncoder:
 
         return numEncodedSignals, totalNumEncodings, forwardDirection
 
-    def adjustNumEncodings(self, totalNumEncodings, finalReconstructionStateLoss, forwardDirection):
+    def adjustNumEncodings(self, totalNumEncodings, denoisedReconstructedData, forwardDirection):
         # Set up the training parameters.
-        finalLoss = finalReconstructionStateLoss.mean()
+        finalLoss = denoisedReconstructedData.detach().mean()
         encodingDirection = forwardDirection*2 - 1
 
         # Accumulate the loss.
-        self.accumulatedLoss = self.accumulatedLoss + finalLoss
+        self.numAccumulatedPoints = self.numAccumulatedPoints + denoisedReconstructedData.size(0)
+        self.accumulatedLoss = self.accumulatedLoss + finalLoss.item()
         self.numAccumulations = self.numAccumulations + 1
 
         # If we have accumulated enough gradients for a full batch.
         if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
-            accumulatedLoss = self.accumulatedLoss / self.numAccumulations
+            accumulatedLoss = self.accumulatedLoss / self.numAccumulatedPoints
 
             # If we can keep going forwards.
             if accumulatedLoss < 0.1 or (self.numEncodings in [-1] and accumulatedLoss < 0.2):
@@ -85,5 +87,6 @@ class trainingSignalEncoder:
                 self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)
 
             # Reset the accumulation counter.
+            self.numAccumulatedPoints = 0
             self.numAccumulations = 0
             self.accumulatedLoss = 0

@@ -1,5 +1,10 @@
+import random
 
-class compileModelData:
+# Import helper files.
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods
+
+
+class modelParameters:
     def __init__(self, userInputParams, accelerator=None):
         # General parameters
         self.userInputParams = userInputParams
@@ -10,32 +15,55 @@ class compileModelData:
         self.signalEncoderModelInfo = None
         self.autoencoderModelInfo = None
 
+        # Helper classes.
+        self.generalMethods = generalMethods()
+
+    def editTrainingName(self, userInputParams=None):
+        if userInputParams is not None:
+            self.userInputParams = userInputParams
+
+        # Embedded information for each model.
+        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
+        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace(__old='.', __new='')} expansionFactor {str(userInputParams['expansionFactor']).replace(__old='.', __new='')}"
+        self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {userInputParams['sequenceLength']}"
+
     @staticmethod
     def getModelInfo(submodel, specificInfo=None):
+        # Base case: information hard-coded.
         if specificInfo is not None:
             return specificInfo
 
-        elif submodel == "signalEncoder":
-            # No model information to load.
-            loadSubmodel = None
-            loadSubmodelDate = None
-            loadSubmodelEpochs = None
+        # No model information to load.
+        loadSubmodelEpochs = None
+        loadSubmodelDate = None
+        loadSubmodel = None
 
-        elif submodel == "autoencoder":
+        if submodel == "autoencoder":
             # Model loading information.
-            loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
-            loadSubmodel = "signalEncoder"  # The model's component we are loading.
             loadSubmodelDate = f"2024-04-06 Final signalEncoder on cuda at numExpandedSignals 4 at numEncodingLayers 4"  # The date the model was trained.
+            loadSubmodel = "signalEncoder"  # The model's component we are loading.
+            loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
 
         elif submodel == "emotionPrediction":
             # Model loading information.
-            loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
-            loadSubmodel = "autoencoder"  # The model's component we are loading.
             loadSubmodelDate = f"2024-01-10 Final signalEncoder"  # The date the model was trained.
-        else:
-            raise Exception()
+            loadSubmodel = "autoencoder"  # The model's component we are loading.
+            loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
 
         return loadSubmodelDate, loadSubmodelEpochs, loadSubmodel
+
+    def getAugmentationDeviation(self, submodel):
+        # Get the submodels to save
+        if submodel == "signalEncoder":
+            addingNoiseRange = (0, 0.001)
+        elif submodel == "autoencoder":
+            addingNoiseRange = (0, 0.01)
+        elif submodel == "emotionPrediction":
+            addingNoiseRange = (0, 0.01)
+        else:
+            assert False, "No model initialized"
+
+        return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
     def getTrainingBatchSize(self, submodel, metaDatasetName):
         # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals.
@@ -105,31 +133,6 @@ class compileModelData:
         return maxBatchSize
 
     @staticmethod
-    def getSubmodelsSaving(submodel):
-        # Get the submodels to save
-        if submodel == "signalEncoder":
-            submodelsSaving = ["trainingInformation", "signalEncoderModel"]
-        elif submodel == "autoencoder":
-            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel"]
-        elif submodel == "emotionPrediction":
-            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel", "signalMappingModel", "specificEmotionModel", "sharedEmotionModel"]
-        else:
-            assert False, "No model initialized"
-
-        return submodelsSaving
-
-    @staticmethod
-    def maxNormL2(submodel):
-        if submodel == "signalEncoder":
-            return 10  # Empirically: StrongL 5 < maxNorm < 10; Weaker: 10 < maxNorm < 20
-        elif submodel == "autoencoder":
-            return 5
-        elif submodel == "emotionPrediction":
-            return 5
-        else:
-            assert False, "No maxL2Norm initialized"
-
-    @staticmethod
     def getSequenceLength(submodel, sequenceLength):
         if submodel == "signalEncoder":
             return 90, 240
@@ -172,3 +175,28 @@ class compileModelData:
             return 10, 1
         else:
             raise Exception()
+
+    @staticmethod
+    def getSubmodelsSaving(submodel):
+        # Get the submodels to save
+        if submodel == "signalEncoder":
+            submodelsSaving = ["trainingInformation", "signalEncoderModel"]
+        elif submodel == "autoencoder":
+            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel"]
+        elif submodel == "emotionPrediction":
+            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel", "signalMappingModel", "specificEmotionModel", "sharedEmotionModel"]
+        else:
+            assert False, "No model initialized"
+
+        return submodelsSaving
+
+    @staticmethod
+    def maxNormL2(submodel):
+        if submodel == "signalEncoder":
+            return 10  # Empirically: StrongL 5 < maxNorm < 10; Weaker: 10 < maxNorm < 20
+        elif submodel == "autoencoder":
+            return 5
+        elif submodel == "emotionPrediction":
+            return 5
+        else:
+            assert False, "No maxL2Norm initialized"

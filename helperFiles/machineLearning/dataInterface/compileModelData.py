@@ -1,260 +1,28 @@
-# General
-import gzip
-import os
-import copy
-import pickle
-import random
-import itertools
-import numpy as np
 from sklearn.model_selection import train_test_split
-
-# PyTorch
+import numpy as np
+import itertools
 import torch
+import copy
+import os
 
 # Import files for training and testing the model
 from ..modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionPipeline import emotionPipeline
 from ..modelControl.modelSpecifications.compileModelInfo import compileModelInfo  # Functions with model information
+from .compileModelDataHelpers import compileModelDataHelpers
 
 # Import interfaces for the model's data
-from ..modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.emotionDataInterface import emotionDataInterface
 from ...dataAcquisitionAndAnalysis.metadataAnalysis.globalMetaAnalysis import globalMetaAnalysis
 from ..featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames  # Functions to extract feature names
 from ..modelControl.Models.pyTorch.Helpers.dataLoaderPyTorch import pytorchDataInterface
-from ..modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
-from .dataPreparation import standardizeData
 
 
-class compileModelData:
+class compileModelData(compileModelDataHelpers):
+
     def __init__(self, submodel, userInputParams, accelerator=None):
-        # General parameters
-        self.compiledInfoLocation = os.path.dirname(__file__) + "/../../../_experimentalData/_compiledData/"
-        self.compiledExtension = ".pkl.gz"
-        self.userInputParams = userInputParams
-        self.missingLabelValue = torch.nan
-        self.accelerator = accelerator
-
-        # Make Output Folder Directory if Not Already Created
-        os.makedirs(self.compiledInfoLocation, exist_ok=True)
+        super().__init__(submodel, userInputParams, accelerator)
 
         # Initialize relevant classes.
-        self.modelMigration = modelMigration(accelerator, debugFlag=False)
-        self.modelInfoClass = compileModelInfo("_.pkl", [0, 1, 2])
-        self.dataInterface = emotionDataInterface
-
-        # Submodel-specific parameters
-        self.emotionPredictionModelInfo = None
-        self.signalEncoderModelInfo = None
-        self.autoencoderModelInfo = None
-        self.numIndices_perShift = None
-        self.maxClassPercentage = None
-        self.dontShiftDatasets = None
-        self.numSecondsShift = None
-        self.minNumClasses = None
-        self.minSeqLength = None
-        self.maxSeqLength = None
-        self.numShifts = None
-
-        # Set the submodel-specific parameters
-        if submodel is not None: self.addSubmodelParameters(submodel, userInputParams)
-
-    def addSubmodelParameters(self, submodel, userInputParams):
-        self.userInputParams = userInputParams
-
-        # Exclusion criterion.
-        self.minNumClasses, self.maxClassPercentage = self.getExclusionCriteria(submodel)
-        self.minSeqLength, self.maxSeqLength = self.getSequenceLength(submodel, userInputParams['sequenceLength'])  # Seconds.
-
-        # Data augmentation.
-        samplingFrequency = 1
-        self.dontShiftDatasets, self.numSecondsShift, numSeconds_perShift = self.getShiftInfo(submodel)
-        # Data augmentation parameters calculations
-        self.numShifts = 1 + self.numSecondsShift // numSeconds_perShift  # The first shift is the identity transformation.
-        self.numIndices_perShift = (samplingFrequency * numSeconds_perShift)  # This must be an integer
-        assert samplingFrequency == 1, "Check your code if samplingFrequency != 1 is okay."
-
-        # Embedded information for each model.
-        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
-        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace('.', '')} expansionFactor {str(userInputParams['expansionFactor']).replace('.', '')}"
-        self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {self.maxSeqLength}"
-
-    # ---------------------------------------------------------------------- #
-    # ---------------------- Model Specific Parameters --------------------- #
-
-    def embedInformation(self, submodel, trainingDate):
-        if submodel == "signalEncoder":
-            trainingDate = f"{trainingDate} {self.signalEncoderModelInfo}"
-        elif submodel == "autoencoder":
-            trainingDate = f"{trainingDate} {self.autoencoderModelInfo}"
-        elif submodel == "emotionPrediction":
-            trainingDate = f"{trainingDate} {self.emotionPredictionModelInfo}"
-        else:
-            raise Exception()
-        print("trainingDate:", trainingDate, flush=True)
-
-        return trainingDate
-
-    @staticmethod
-    def getModelInfo(submodel, specificInfo=None):
-        if specificInfo is not None:
-            return specificInfo
-
-        elif submodel == "signalEncoder":
-            # No model information to load.
-            loadSubmodel = None
-            loadSubmodelDate = None
-            loadSubmodelEpochs = None
-
-        elif submodel == "autoencoder":
-            # Model loading information.
-            loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
-            loadSubmodel = "signalEncoder"  # The model's component we are loading.
-            loadSubmodelDate = f"2024-04-06 Final signalEncoder on cuda at numExpandedSignals 4 at numEncodingLayers 4"  # The date the model was trained.
-
-        elif submodel == "emotionPrediction":
-            # Model loading information.
-            loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
-            loadSubmodel = "autoencoder"  # The model's component we are loading.
-            loadSubmodelDate = f"2024-01-10 Final signalEncoder"  # The date the model was trained.
-        else:
-            raise Exception()
-
-        return loadSubmodelDate, loadSubmodelEpochs, loadSubmodel
-
-    def getTrainingBatchSize(self, submodel, metaDatasetName):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 232 signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
-
-        if submodel == "signalEncoder":
-            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
-        elif submodel == "autoencoder":
-            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
-        elif submodel == "emotionPrediction":
-            totalMinBatchSize = 16 if self.userInputParams['deviceListed'].startswith("HPC") else 16
-        else:
-            raise Exception()
-
-        # Adjust the batch size based on the number of gradient accumulations.
-        gradientAccumulation = self.accelerator.gradient_accumulation_steps
-        minimumBatchSize = totalMinBatchSize // gradientAccumulation
-        # Assert that the batch size is divisible by the gradient accumulation steps.
-        assert totalMinBatchSize % gradientAccumulation == 0, "The total batch size must be divisible by the gradient accumulation steps."
-        assert gradientAccumulation <= totalMinBatchSize, "The gradient accumulation steps must be less than the total batch size."
-
-        # Specify the small batch size datasets.
-        if metaDatasetName in ['wesad']: return minimumBatchSize  # 1 times larger than the smallest dataset.
-
-        # Specify the small-medium batch size datasets.
-        if metaDatasetName in ['empatch']: return 2 * minimumBatchSize  # 2.5466 times larger than the smallest dataset.
-        if metaDatasetName in ['amigos']: return 2 * minimumBatchSize  # 2.3733 times larger than the smallest dataset.
-
-        # Specify the medium batch size datasets.
-        if metaDatasetName in ['emognition']: return 4 * minimumBatchSize  # 5.4266 times larger than the smallest dataset.
-        if metaDatasetName in ['dapper']: return 4 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
-
-        # Specify the large batch size datasets.
-        if metaDatasetName in ['case']: return 8 * minimumBatchSize  # 22 times larger than the smallest dataset.
-
-        assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
-
-    def getInferenceBatchSize(self, submodel, numSignals):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals. 1.8125 times smaller than the largest signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals. 2.3434 times smaller than the largest signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 232 signals. 1.0 times smaller than the largest signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals. 5.6585 times smaller than the largest signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals. 3.712 times smaller than the largest signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.2677 times smaller than the largest signals.
-
-        if submodel == "signalEncoder":
-            minimumBatchSize = 16 if 80 <= self.userInputParams['numLiftedChannels'] else 32
-            if 6 <= self.userInputParams['numEncodingLayers'] and 64 <= self.userInputParams['numLiftedChannels']: minimumBatchSize = 16
-            if self.userInputParams['numEncodingLayers'] <= 2: minimumBatchSize = 32
-            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 64
-        elif submodel == "autoencoder":
-            minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
-        elif submodel == "emotionPrediction":
-            minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
-        else:
-            raise Exception()
-
-        maxNumSignals = 232
-        # Adjust the batch size based on the number of signals used.
-        maxBatchSize = int(minimumBatchSize * maxNumSignals / numSignals)
-        maxBatchSize = min(maxBatchSize, numSignals)  # Ensure the maximum batch size is not larger than the number of signals.
-
-        return maxBatchSize
-
-    @staticmethod
-    def getSubmodelsSaving(submodel):
-        # Get the submodels to save
-        if submodel == "signalEncoder":
-            submodelsSaving = ["trainingInformation", "signalEncoderModel"]
-        elif submodel == "autoencoder":
-            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel"]
-        elif submodel == "emotionPrediction":
-            submodelsSaving = ["trainingInformation", "signalEncoderModel", "autoencoderModel", "signalMappingModel", "specificEmotionModel", "sharedEmotionModel"]
-        else:
-            assert False, "No model initialized"
-
-        return submodelsSaving
-
-    @staticmethod
-    def maxNormL2(submodel):
-        if submodel == "signalEncoder":
-            return 10  # Empirically: StrongL 5 < maxNorm < 10; Weaker: 10 < maxNorm < 20
-        elif submodel == "autoencoder":
-            return 5
-        elif submodel == "emotionPrediction":
-            return 5
-        else:
-            assert False, "No maxL2Norm initialized"
-
-    @staticmethod
-    def getSequenceLength(submodel, sequenceLength):
-        if submodel == "signalEncoder":
-            return 90, 240
-        elif submodel == "autoencoder":
-            return 90, 240
-        elif submodel == "emotionPrediction":
-            return sequenceLength, sequenceLength
-        else:
-            raise Exception()
-
-    @staticmethod
-    def getShiftInfo(submodel):
-        if submodel == "signalEncoder":
-            return ["wesad", "emognition", "amigos", "dapper", "case"], 40, 50
-        elif submodel == "autoencoder":
-            return ["wesad", "emognition", "amigos", "dapper", "case"], 40, 50
-        elif submodel == "emotionPrediction":
-            return ['case', 'amigos'], 4, 2
-        else:
-            raise Exception()
-
-    @staticmethod
-    def getExclusionCriteria(submodel):
-        if submodel == "signalEncoder":
-            return -1, 2  # Emotion classes dont matter.
-        elif submodel == "autoencoder":
-            return -1, 2  # Emotion classes dont matter.
-        elif submodel == "emotionPrediction":
-            return 2, 0.8
-        else:
-            raise Exception()
-
-    @staticmethod
-    def getEpochInfo(submodel):
-        if submodel == "signalEncoder":
-            return 10, 1
-        elif submodel == "autoencoder":
-            return 10, 1
-        elif submodel == "emotionPrediction":
-            return 10, 1
-        else:
-            raise Exception()
+        self.modelInfoClass = compileModelInfo(modelFile="_.pkl", modelTypes=[0, 1, 2])
 
     # ---------------------------------------------------------------------- #
     # ------------------------ Compile Analysis Data ------------------------ #
@@ -292,8 +60,8 @@ class compileModelData:
 
         data_to_store = {
             # Compile the project data together
-            f"{compiledModelName}": [allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
-                                     allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
+            f"{compiledModelName}": [allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes,
+                                     allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes,
                                      subjectOrder, experimentalOrder, activityNames, activityLabels, allFinalFeatures, allFinalLabels, featureLabelTypes,
                                      featureNames, surveyQuestions, surveyAnswersList, surveyAnswerTimes, numQuestionOptions]
         }
@@ -375,16 +143,6 @@ class compileModelData:
             metaSubjectOrder, metaExperimentalOrder, metaActivityNames, metaActivityLabels, metaFinalFeatures, metaFinalLabels, \
             metaFeatureLabelTypes, metaFeatureNames, metaSurveyQuestions, metaSurveyAnswersList, metaSurveyAnswerTimes, metaNumQuestionOptions, metaDatasetNames
 
-    def saveCompiledInfo(self, data_to_store, saveDataName):
-        with gzip.open(f'{self.compiledInfoLocation}{saveDataName}{self.compiledExtension}', 'wb') as file:
-            pickle.dump(data_to_store, file)
-
-    def loadCompiledInfo(self, loadDataName):
-        with gzip.open(f'{self.compiledInfoLocation}{loadDataName}{self.compiledExtension}', 'rb') as file:
-            data_loaded = pickle.load(file)
-        return data_loaded[f"{loadDataName}"]
-
-    # ---------------------------------------------------------------------- #
     # -------------------- Machine Learning Preparation -------------------- #
 
     def compileModels(self, metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
@@ -395,7 +153,7 @@ class compileModelData:
         allModelPipelines = []
 
         # Specify model parameters
-        loadSubmodelDate, loadSubmodelEpochs, loadSubmodel = self.getModelInfo(submodel, specificInfo)
+        loadSubmodelDate, loadSubmodelEpochs, loadSubmodel = self.modelParameters.getModelInfo(submodel, specificInfo)
 
         print(f"\nSplitting the data into {'meta-' if metaTraining else ''}models:", flush=True)
         # For each meta-information collected.
@@ -450,8 +208,8 @@ class compileModelData:
             # ---------------------- Test/Train Split ---------------------- #
 
             # Initiate a mask for distinguishing between training and testing data.
-            currentTestingMask = torch.full(allFeatureLabels.shape, False, dtype=torch.bool)
-            currentTrainingMask = torch.full(allFeatureLabels.shape, False, dtype=torch.bool)
+            currentTestingMask = torch.full(allFeatureLabels.shape, fill_value=False, dtype=torch.bool)
+            currentTrainingMask = torch.full(allFeatureLabels.shape, fill_value=False, dtype=torch.bool)
 
             # For each type of label recorded during the trial.
             for labelTypeInd in range(allFeatureLabels.shape[1]):
@@ -465,16 +223,18 @@ class compileModelData:
                 currentIndices = np.delete(allExperimentalIndices.copy(), torch.nonzero(missingClassMask))
 
                 if len(currentIndices) != 0:
-                    # print((~missingClassMask).sum() , testSplitRatio*len(currentIndices))
-                    # if (~missingClassMask).sum() > testSplitRatio*len(currentIndices):
-                    #     continue
-                    try:
-                        stratifyBy = currentFeatureLabels[~missingClassMask]
-                        # Randomly split the data and labels, keeping a balance between testing/training.
-                        Training_Indices, Testing_Indices = train_test_split(currentIndices, test_size=testSplitRatio, shuffle=True,
-                                                                             stratify=stratifyBy, random_state=random_state)
-                    except Exception as e:
-                        continue
+                    # Get the number of unique classes for stratification.
+                    stratifyBy = currentFeatureLabels[~missingClassMask]
+                    minTestSplitRatio = len(np.unique(stratifyBy, return_counts=False)) / len(stratifyBy)
+
+                    # Adjust the test split ratio if necessary.
+                    if testSplitRatio < minTestSplitRatio:
+                        print(f"\t\tWarning: The test split ratio is too small for the number of classes. Adjusting to {minTestSplitRatio}.", flush=True)
+
+                    # Randomly split the data and labels, keeping a balance between testing/training.
+                    Training_Indices, Testing_Indices = train_test_split(currentIndices, test_size=max(minTestSplitRatio, testSplitRatio),
+                                                                         shuffle=True, stratify=stratifyBy, random_state=random_state)
+
                     # Populate the training and testing mask                        
                     currentTestingMask[:, labelTypeInd][Testing_Indices] = True
                     currentTrainingMask[:, labelTypeInd][Training_Indices] = True
@@ -505,7 +265,7 @@ class compileModelData:
             # ---------------------- Create the Model ---------------------- #
 
             # Get the model parameters
-            batch_size = self.getTrainingBatchSize(submodel, metaDatasetName)
+            batch_size = self.modelParameters.getTrainingBatchSize(submodel, metaDatasetName)
 
             # Organize the training data into the expected pytorch format.
             pytorchDataClass = pytorchDataInterface(batch_size=batch_size, num_workers=0, shuffle=True, accelerator=self.accelerator)
@@ -535,7 +295,7 @@ class compileModelData:
 
             # Organize the training data into the expected pytorch format.
             numExperiments, numSignals, signalDimension = dataLoader.dataset.getSignalInfo()
-            pytorchDataClass = pytorchDataInterface(batch_size=self.getInferenceBatchSize(submodel, numSignals), num_workers=0, shuffle=False, accelerator=self.accelerator)
+            pytorchDataClass = pytorchDataInterface(batch_size=self.modelParameters.getInferenceBatchSize(submodel, numSignals), num_workers=0, shuffle=False, accelerator=self.accelerator)
             modelDataLoader = pytorchDataClass.getDataLoader(*dataLoader.dataset.getAll())
 
             # Store the information.
@@ -559,9 +319,8 @@ class compileModelData:
 
                 # Initialize and train the model class.
                 dummyModelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=datasetName, modelName=modelName, allEmotionClasses=[],
-                                                     sequenceLength=240, maxNumSignals=500, numSubjectIdentifiers=1, demographicLength=0, numSubjects=1,
-                                                     userInputParams=userInputParams, emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel,
-                                                     fullTest=True, debuggingResults=True)
+                                                     sequenceLength=240, maxNumSignals=500, numSubjectIdentifiers=1, demographicLength=0, numSubjects=1, userInputParams=userInputParams,
+                                                     emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel, debuggingResults=True)
                 # Hugging face integration.
                 dummyModelPipeline.acceleratorInterface()
 
@@ -572,317 +331,3 @@ class compileModelData:
         self.modelMigration.loadModels(allDummyModelPipelines, loadSubmodel, loadSubmodelDate, loadSubmodelEpochs, metaTraining=True, loadModelAttributes=True, loadModelWeights=False)
 
         return allDummyModelPipelines
-
-    # ---------------------------------------------------------------------- #
-    # ------------------------- Signal Organization ------------------------ #
-
-    @staticmethod
-    def organizeActivityLabels(activityNames, activityLabels):
-        """
-        Purpose: To remove any activityNames where the label is not present and 
-                 reindex the activityLabels from 0 to number of unique activities after culling.
-        Parameters:
-        - activityNames: a list of all unique activity names (strings).
-        - activityLabels: a 1D tensor of index hashes for the unique activityName.
-        """
-        # Convert activityNames to a numpy array for easier string handling
-        activityNames = np.asarray(activityNames)
-
-        # Find the unique activity labels
-        uniqueActivityLabels, culledActivityLabels = torch.unique(activityLabels, return_inverse=True)
-
-        # Get the corresponding unique activity names
-        uniqueActivityNames = activityNames[uniqueActivityLabels.int()]
-
-        assert len(activityLabels) == len(culledActivityLabels)
-        return uniqueActivityNames, culledActivityLabels.double()
-
-    @staticmethod
-    def segmentSignals_toModel(numSignals, numSignalsCombine, random_state, metaTraining=True):
-        random.seed(random_state)
-
-        # If its our data.
-        if not metaTraining:
-            signalCombinationInds = itertools.combinations(range(0, numSignals), numSignalsCombine)
-            assert numSignalsCombine <= numSignals, f"You cannot make {numSignalsCombine} combination with only {numSignals} signals."
-        else:
-            signalCombinationInds = []
-            allCombinations = list(range(numSignals))
-            for _ in range(1):
-                # Create a list of all possible combinations of indices
-                random.shuffle(allCombinations)
-
-                # Iterate over the shuffled list and create signalCombinationInds
-                for groupInd in range(0, len(allCombinations), numSignalsCombine):
-                    # Form a group of random signals
-                    group = allCombinations[groupInd:groupInd + numSignalsCombine]
-                    # If the group is too small, add some more.
-                    if len(group) < numSignalsCombine:
-                        group.extend(allCombinations[0:numSignalsCombine - len(group)])
-
-                    # Organize the signal groupings.
-                    signalCombinationInds.append(group)
-
-        print(f"\tPotentially Initializing {len(signalCombinationInds)} models per emotion", flush=True)
-        return signalCombinationInds
-
-    def organizeSignals(self, allSignalData, signalInds):
-        """
-        Purpose: Create the final signal array (of ccorrect length).
-        --------------------------------------------
-        allSignalData : A list of size (batchSize, numSignals, sequenceLength)
-        signalInds : A list of size (numSignalsCombine,)
-        """
-        featureData = [];
-        # Compile the feature's data across all experiments.
-        for experimentInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[experimentInd])
-            data = signalData[signalInds, :]
-
-            # Assertions about data integrity.
-            numSignals, sequenceLength = data.shape
-            assert self.minSeqLength <= sequenceLength, f"Expected {self.minSeqLength}, but recieved {data.shape[1]} "
-
-            # Standardize the signals
-            standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
-            data = standardizeClass.standardize(data)
-            # Get the standardization information
-            dataMeans, dataSTDs = standardizeClass.getStatistics()
-
-            # Add buffer if needed.
-            if sequenceLength < self.maxSeqLength + self.numSecondsShift:
-                prependedBuffer = np.ones((numSignals, self.maxSeqLength + self.numSecondsShift - sequenceLength)) * data[:, 0:1]
-                data = np.hstack((prependedBuffer, data))
-            elif self.maxSeqLength + self.numSecondsShift < sequenceLength:
-                data = data[:, -self.maxSeqLength - self.numSecondsShift:]
-
-            # This is good data
-            featureData.append(data.tolist())
-        featureData = torch.tensor(featureData)
-
-        # Assert the integrity.
-        assert len(featureData) != 0
-
-        return featureData
-
-    def organizeLabels(self, allFeatureLabels, metaTraining, metaDatasetName, numSignals):
-        # Convert to tensor and zero out the class indices
-        allFeatureLabels = torch.tensor(np.asarray(allFeatureLabels))
-
-        allSingleClassIndices = []
-        # For each type of label recorded during the trial.
-        for labelTypeInd in range(allFeatureLabels.shape[1]):
-            featureLabels = allFeatureLabels[:, labelTypeInd]
-            allSingleClassIndices.append([])
-
-            # Remove unknown labels.
-            goodLabelInds = 0 <= featureLabels  # The minimum label should be 0
-            featureLabels[~goodLabelInds] = self.missingLabelValue
-
-            # Count the classes
-            unique_classes, class_counts = torch.unique(featureLabels[goodLabelInds], return_counts=True)
-            if (class_counts < 2).any():
-                # Find the bad experiments (batches) with only one sample.
-                badClasses = unique_classes[torch.nonzero(class_counts < 2).reshape(1, -1)[0]]
-
-                # Remove the datapoint as we cannot split the class between test/train
-                badLabelInds = torch.isin(featureLabels, badClasses)
-                allSingleClassIndices[-1].extend(badLabelInds)
-
-                # Reassess the class counts
-                finalMask = goodLabelInds & ~badLabelInds
-                unique_classes, class_counts = torch.unique(featureLabels[finalMask], return_counts=True)
-
-            # Ensure greater variability in the class rating system.
-            if metaTraining and (len(unique_classes) < self.minNumClasses or len(featureLabels) * self.maxClassPercentage <= class_counts.max().item()):
-                featureLabels[:] = self.missingLabelValue
-
-            # Save the edits made to the featureLabels
-            allFeatureLabels[:, labelTypeInd] = featureLabels
-
-        # Report back the information from this dataset
-        numExperiments, numAllLabels = allFeatureLabels.shape
-        numGoodEmotions = torch.sum(~torch.all(torch.isnan(allFeatureLabels), dim=0)).item()
-        print(f"\t{metaDatasetName.capitalize()}: Found {numGoodEmotions - 1} (out of {numAllLabels - 1}) well-labeled emotions across {numExperiments} experiments with {numSignals} signals.", flush=True)
-
-        return allFeatureLabels, allSingleClassIndices
-
-    def addDemographicInfo(self, allFeatureData, allSubjectInds, datasetInd):
-        """
-        Purpose: The same signal without the last few seconds still has the same label
-        --------------------------------------------
-        allFeatureData : A 3D list of all signals in each experiment (batchSize, numSignals, sequenceLength)
-        allSubjectInds : A 1D numpy array of size (batchSize,)
-        """
-        # Get the dimensions of the input arrays
-        numExperiments, numSignals, totalLength = allFeatureData.shape
-        demographicLength = 0
-        numSubjectIdentifiers = 2
-
-        # Create lists to store the new augmented data.
-        updatedFeatureData = torch.zeros((numExperiments, numSignals, self.maxSeqLength + demographicLength + 2))
-
-        # For each recorded experiment.
-        for experimentInd in range(numExperiments):
-            # Compile an array of subject indices.
-            subjectInds = torch.full((numSignals, 1), allSubjectInds[experimentInd])
-            datasetInds = torch.full((numSignals, 1), datasetInd)
-
-            # Collect the demographic information.
-            demographicContext = torch.hstack((subjectInds, datasetInds))
-            assert demographicLength + numSubjectIdentifiers == demographicContext.shape[1], "Asserting I am self-consistent. Hardcoded assertion"
-
-            # Add the demographic data to the feature array.
-            updatedFeatureData[experimentInd] = torch.hstack((allFeatureData[experimentInd], demographicContext))
-
-        return updatedFeatureData, numSubjectIdentifiers, demographicLength
-
-    # ---------------------------------------------------------------------- #
-    # -------------------------- Data Augmentation ------------------------- #
-
-    def addShiftedSignals(self, allFeatureData, allFeatureLabels, currentTrainingMask, currentTestingMask, allSubjectInds):
-        """
-        Purpose: The same signal without the last few seconds still has the same label
-        --------------------------------------------
-        allFeatureData : A 3D list of all signals in each experiment (batchSize, numSignals, sequenceLength)
-        allFeatureLabels : A numpy array of all labels per experiment of size (batchSize, numLabels)
-        currentTestingMask : A boolean mask of testing data of size (batchSize, numLabels)
-        currentTrainingMask : A boolean mask of training data of size (batchSize, numLabels)
-        allSubjectInds : A 1D numpy array of size (batchSize,)
-        """
-        # Get the dimensions of the input arrays
-        numExperiments, numSignals, totalLength = allFeatureData.shape
-        _, numLabels = allFeatureLabels.shape
-
-        # Create lists to store the new augmented data, labels, and masks
-        augmentedFeatureData = torch.zeros((numExperiments * self.numShifts, numSignals, self.maxSeqLength))
-        augmentedFeatureLabels = torch.zeros((numExperiments * self.numShifts, numLabels))
-        augmentedTrainingMask = torch.full(augmentedFeatureLabels.shape, False, dtype=torch.bool)
-        augmentedTestingMask = torch.full(augmentedFeatureLabels.shape, False, dtype=torch.bool)
-        augmentedSubjectInds = torch.zeros((numExperiments * self.numShifts))
-
-        # For each recorded experiment.
-        for experimentInd in range(numExperiments):
-
-            # For each shift in the signals.
-            for shiftInd in range(self.numShifts):
-                # Create shifted signals
-                shiftedSignals = allFeatureData[experimentInd, :, -self.maxSeqLength - shiftInd * self.numIndices_perShift:totalLength - shiftInd * self.numIndices_perShift]
-
-                # Append the shifted data and corresponding labels and masks
-                augmentedFeatureData[experimentInd * self.numShifts + shiftInd] = shiftedSignals
-                augmentedFeatureLabels[experimentInd * self.numShifts + shiftInd] = allFeatureLabels[experimentInd]
-                augmentedTrainingMask[experimentInd * self.numShifts + shiftInd] = currentTrainingMask[experimentInd]
-                augmentedTestingMask[experimentInd * self.numShifts + shiftInd] = currentTestingMask[experimentInd]
-                augmentedSubjectInds[experimentInd * self.numShifts + shiftInd] = allSubjectInds[experimentInd]
-
-        # import matplotlib.pyplot as plt
-        # plt.plot(allFeatureData[0][0][-self.maxSeqLength:], 'k', linewidth=3, label="Original Curve")
-        # plt.plot(augmentedFeatureData[0][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[1][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[2][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[3][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[4][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[5][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[6][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[7][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[8][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.plot(augmentedFeatureData[9][0], 'tab:red', linewidth=1, label="Shifted Curve", alpha = 0.5)
-        # plt.xlabel("Time (Seconds)")
-        # plt.ylabel("AU")
-        # # plt.plot(augmentedFeatureData[0][0], 'tab:blue', linewidth=2)
-        # plt.show()
-
-        return augmentedFeatureData, augmentedFeatureLabels, augmentedTrainingMask, augmentedTestingMask, augmentedSubjectInds
-
-    # ---------------------------------------------------------------------- #
-    # ---------------------------- Data Cleaning --------------------------- #
-
-    def _removeBadExperiments(self, allSignalData, allLabels, subjectInds):
-        """
-        Purpose: Remove bad experiments from the data list.
-        --------------------------------------------
-        allSignalData : A list of size (batchSize, numSignals, sequenceLength)
-        allLabels : A 2D numpy array of size (batchSize, numLabels)
-        subjectInds : A 1D numpy array of size (batchSize,)
-        """
-        # Initialize data holders.
-        goodBatchInds = []
-        finalData = []
-
-        # For each set of signals.
-        for dataInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[dataInd])
-            numSignals, sequenceLength = signalData.shape
-
-            # Assert that the signal is long enough.
-            if sequenceLength < self.minSeqLength: continue
-
-            # Compile the good batches.
-            goodBatchInds.append(dataInd)
-            finalData.append(signalData)
-
-        return finalData, allLabels[goodBatchInds], subjectInds[goodBatchInds]
-
-    @staticmethod
-    def _removeBadSignals(allSignalData, featureNames):
-        """
-        Purpose: Remove poor signals from ALL data batches.
-        --------------------------------------------
-        allSignalData : A list of size (batchSize, numSignals, sequenceLength)
-        featureNames : A numpy array of size (numSignals,)
-        """
-        # Initialize data holders.
-        goodFeatureInds = set(np.arange(0, len(featureNames)))
-        assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), allSignalData
-
-        # For each set of signals.
-        for dataInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[dataInd])
-
-            # Calculate time-series statistics for each signal.
-            signalStandardDeviations = np.std(signalData, axis=1)
-
-            # Remove any feature that doesn't vary enough.
-            badIndices = np.where(signalStandardDeviations == 0)[0]
-            goodFeatureInds.difference_update(badIndices)
-        # Convert the set into a sorted list ofn indices.
-        goodFeatureInds = np.array(list(goodFeatureInds))
-        goodFeatureInds.sort()
-
-        finalData = []
-        # For each experimental data point.
-        for experimentInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[experimentInd])
-
-            finalData.append(signalData[goodFeatureInds, :])
-
-        # Only featureNames the labels of the good experiments.
-        featureNames = featureNames[goodFeatureInds]
-
-        return finalData, featureNames
-
-    # ---------------------------------------------------------------------- #
-    # -------------------------- Data Organization ------------------------- #
-
-    @staticmethod
-    def _selectSignals(allSignalData, signalInds):
-        """
-        Purpose: keep of the signalInds in allSignalData.
-        --------------------------------------------
-        allSignalData : A list of size (batchSize, numSignals, sequenceLength)
-        featureInds : A list of size (numSignalsKeep,)
-        """
-        # Base case, no indices selected.
-        if signalInds is None:
-            return allSignalData
-
-        selectedData = []
-        # For each set of signals.
-        for dataInd in range(len(allSignalData)):
-            # Select and store only the signalInds.
-            signalData = np.asarray(allSignalData[dataInd])
-            selectedData.append(signalData[signalInds, :])
-        return selectedData
-
-    # ---------------------------------------------------------------------- #

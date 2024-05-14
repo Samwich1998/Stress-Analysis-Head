@@ -15,8 +15,13 @@ class changeVariance(signalEncoderModules):
         self.adjustSignals = self.varianceTransformation(inChannel=1)
         self.removeSignalAdjustment = self.varianceTransformation(inChannel=1)
 
+        self.smoothenEncodingSpace = self.smoothDataModel(inChannel=1)
+
     def adjustSignalVariance(self, inputData):
-        return self.encodingInterface(inputData, self.adjustSignals)
+        adjustedData = self.encodingInterface(inputData, self.adjustSignals)
+        adjustedData = self.encodingInterface(adjustedData, self.smoothenEncodingSpace)
+
+        return adjustedData
 
     def unAdjustSignalVariance(self, inputData):
         return self.encodingInterface(inputData, self.removeSignalAdjustment)

@@ -73,9 +73,9 @@ class compileModelData:
         assert samplingFrequency == 1, "Check your code if samplingFrequency != 1 is okay."
 
         # Embedded information for each model.
-        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
-        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} at compressionFactor {str(userInputParams['compressionFactor']).replace('.', '')} expansionFactor {str(userInputParams['expansionFactor']).replace('.', '')}"
-        self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with seqLength {self.maxSeqLength}"
+        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
+        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace('.', '')} expansionFactor {str(userInputParams['expansionFactor']).replace('.', '')}"
+        self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {self.maxSeqLength}"
 
     # ---------------------------------------------------------------------- #
     # ---------------------- Model Specific Parameters --------------------- #
@@ -210,7 +210,7 @@ class compileModelData:
         elif submodel == "emotionPrediction":
             return 5
         else:
-            assert False, "No optimizer initialized"
+            assert False, "No maxL2Norm initialized"
 
     @staticmethod
     def getSequenceLength(submodel, sequenceLength):

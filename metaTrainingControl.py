@@ -49,7 +49,7 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-05-12 RMSprop LearnableTanhshrink 64-3"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-05-12 LearnableTanhshrink 64-3"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     testSplitRatio = 0.2  # The percentage of testing points.
 
@@ -66,25 +66,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify model parameters.')
 
     # Add arguments for the general model
-    parser.add_argument('--submodel', type=str, default="signalEncoder", help='The component of the model we are training. Options: signalEncoder, autoencoder, emotionPrediction')
-    parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
+    parser.add_argument(name_or_flags='--submodel', type=str, default="signalEncoder", help='The component of the model we are training. Options: signalEncoder, autoencoder, emotionPrediction')
+    parser.add_argument(name_or_flags='--optimizerType', type=str, default='RMSprop', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
+    parser.add_argument(name_or_flags='--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=64, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
-    parser.add_argument('--numEncodingLayers', type=int, default=3, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
-    parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+    parser.add_argument(name_or_flags='--numLiftedChannels', type=int, default=64, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument(name_or_flags='--numEncodingLayers', type=int, default=3, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
+    parser.add_argument(name_or_flags='--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
-    parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
-    parser.add_argument('--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')
+    parser.add_argument(name_or_flags='--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
+    parser.add_argument(name_or_flags='--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')
     # Add arguments for the emotion prediction
-    parser.add_argument('--numInterpreterHeads', type=int, default=4, help='The number of ways to interpret a set of physiological signals.')
-    parser.add_argument('--numBasicEmotions', type=int, default=8, help='The number of basic emotions (basis states of emotions).')
-    parser.add_argument('--sequenceLength', type=int, default=240, help='The maximum number of time series points to consider')
+    parser.add_argument(name_or_flags='--numInterpreterHeads', type=int, default=4, help='The number of ways to interpret a set of physiological signals.')
+    parser.add_argument(name_or_flags='--numBasicEmotions', type=int, default=8, help='The number of basic emotions (basis states of emotions).')
+    parser.add_argument(name_or_flags='--sequenceLength', type=int, default=240, help='The maximum number of time series points to consider')
     # Parse the arguments
     args = parser.parse_args()
 
     # Organize the input information into a dictionary.
     userInputParams = {
         # Assign general model parameters
+        'optimizerType': args.optimizerType,  # The optimizerType used during training convergence.
         'deviceListed': args.deviceListed,  # The device we are running the platform on.
         'submodel': args.submodel,  # The component of the model we are training.
         # Assign signal encoder parameters

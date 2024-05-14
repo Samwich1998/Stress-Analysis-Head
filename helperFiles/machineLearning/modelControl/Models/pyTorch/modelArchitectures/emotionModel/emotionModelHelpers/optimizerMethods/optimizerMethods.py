@@ -4,6 +4,10 @@ import transformers
 
 class optimizerMethods:
 
+    def __init__(self, userInputParams):
+        # Set the user input parameters.
+        self.userInputParams = userInputParams
+
     def addOptimizer(self, submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):
         modelParams = [
             # Specify the model parameters for the signal encoding.
@@ -30,14 +34,14 @@ class optimizerMethods:
                 {'params': specificEmotionModel.predictComplexEmotions.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4}])
 
         # Set the optimizer.
-        optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel)
+        optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.
         scheduler = self.getLearningRateScheduler(submodel, optimizer)
 
         return optimizer, scheduler
 
-    def setOptimizer(self, params, lr, weight_decay, submodel):
+    def setOptimizer(self, params, lr, weight_decay, submodel, optimizerType):
         if submodel == "signalEncoder":
             # Observations on properties:
             #     Momentum is not good (Used value of 0.9)
@@ -51,7 +55,7 @@ class optimizerMethods:
             #     No-Noisy reconstruction: ASGD
             #     Noisy reconstruction: RAdam, Adamax, Rprop, SGD
             #     Okay reconstruction: AdamW, Adam, NAdam, RMSprop
-            return self.getOptimizer(optimizerType="RMSprop", params=params, lr=lr, weight_decay=weight_decay, momentum=0)
+            return self.getOptimizer(optimizerType=optimizerType, params=params, lr=lr, weight_decay=weight_decay, momentum=0)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)
         elif submodel == "emotionPrediction":

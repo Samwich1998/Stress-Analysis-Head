@@ -60,9 +60,9 @@ class emotionPipeline:
         # Initialize helper classes.
         self.organizeLossInfo = organizeTrainingLosses(self.accelerator, self.model, allEmotionClasses, self.activityLabelInd, self.generalTimeWindow)
         self.modelVisualization = modelVisualizations(accelerator, self.generalTimeWindow, modelSubfolder="trainingFigures/")
+        self.optimizerMethods = optimizerMethods(userInputParams)
         self.modelMigration = modelMigration(accelerator)
         self.dataInterface = emotionDataInterface()
-        self.optimizerMethods = optimizerMethods()
         self.generalMethods = generalMethods()
         self.modelHelpers = modelHelpers()
 

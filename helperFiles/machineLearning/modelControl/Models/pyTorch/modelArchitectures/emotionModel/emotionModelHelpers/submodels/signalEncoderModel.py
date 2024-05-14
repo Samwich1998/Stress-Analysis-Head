@@ -15,6 +15,7 @@ class signalEncoderModel(globalModel):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
+        self.plotEncoding = True  # Whether to plot the encoding process. Type: bool
 
         # Signal encoder parameters.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
@@ -188,33 +189,34 @@ class signalEncoderModel(globalModel):
             if 0.001 < varReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
 
-            import random
-            if random.random() < 0.05:
-                import matplotlib.pyplot as plt
-                plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
-                plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-                plt.show()
+            if self.plotEncoding:
+                import random
+                if random.random() < 0.02:
+                    import matplotlib.pyplot as plt
+                    plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
+                    plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+                    plt.show()
 
-                plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-                plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-                plt.show()
+                    plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+                    plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+                    plt.show()
 
-                plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-                plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2)
-                plt.show()
+                    plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+                    plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2)
+                    plt.show()
 
-                plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-                plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5)
-                plt.show()
+                    plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+                    plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5)
+                    plt.show()
 
-                plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-                plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5)
-                plt.show()
+                    plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+                    plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5)
+                    plt.show()
 
-                plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
-                plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
-                plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
-                plt.show()
+                    plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
+                    plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
+                    plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
+                    plt.show()
 
             if trainingFlag:
                 # Accumulate the loss.
@@ -250,8 +252,8 @@ class signalEncoderModel(globalModel):
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
         # Undo what was done in the initial adjustment.
-        # noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.001)
-        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(encodedData)
+        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0.001)
+        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyEncodedData)
 
         # Undo the signal encoding.
         decodedData, reversePath, signalEncodingLayerLoss = self.reverseEncoding(

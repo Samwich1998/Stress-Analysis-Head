@@ -125,15 +125,14 @@ class modelHelpers:
     def l2Normalization(model, maxNorm=2, checkOnly=False):
         # For each trainable parameter in the model with its name.
         for name, layerParams in model.named_parameters():
-            if layerParams.ndim <= 2:
-                # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
-                paramNorm = torch.norm(layerParams, p='fro').item()
+            # Calculate the L2 norm. THIS IS NOT SN, except for the 1D case.
+            paramNorm = torch.norm(layerParams, p='fro').item()
 
-                # Constrain the spectral norm.
-                if maxNorm < paramNorm != 0:
-                    print("You should fix this with weight initialization:", paramNorm, name)
-                    if not checkOnly:
-                        layerParams.data = layerParams * (maxNorm / paramNorm)
+            # Constrain the spectral norm.
+            if maxNorm < paramNorm != 0:
+                print("You should fix this with weight initialization:", paramNorm, name)
+                if not checkOnly:
+                    layerParams.data = layerParams * (maxNorm / paramNorm)
 
     @staticmethod
     def apply_spectral_normalization(model, max_spectral_norm=2, power_iterations=1):

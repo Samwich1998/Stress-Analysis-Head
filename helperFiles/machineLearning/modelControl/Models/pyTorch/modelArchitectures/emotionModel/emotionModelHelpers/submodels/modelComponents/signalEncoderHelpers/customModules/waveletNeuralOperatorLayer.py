@@ -54,7 +54,7 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         # reconstructedData dimension: batchSize, numOutputSignals, sequenceLength
 
         # Add the bias terms.
-        reconstructedData = reconstructedData + self.operatorBiases
+        # reconstructedData = reconstructedData + self.operatorBiases
         # outputData dimension: batchSize, numOutputSignals, sequenceLength
 
         return reconstructedData
@@ -70,6 +70,7 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             for highFrequencyInd in range(len(highFrequencies)):
                 # Learn a new set of wavelet coefficients to transform the data.
                 highFrequencies[highFrequencyInd] = self.applyEncoding(equationString, highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
+                # highFrequencies[highFrequencyInd] = self.applyEncoding_highFreq(highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
                 # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
 
         if self.encodeLowFrequency:
@@ -124,6 +125,23 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
             # Learn a new set of wavelet coefficients to transform the data.
             frequencies = torch.einsum(equationString, weights[layerInd], frequencies)
+            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+
+        return frequencies
+
+    def applyEncoding_highFreq(self, frequencies, weights, frequencyTerms=None):
+        if frequencyTerms is not None:
+            # Apply the learned wavelet coefficients.
+            frequencies = frequencies + frequencyTerms
+            # frequencies dimension: batchSize, numInputSignals, frequencyDimension
+
+        for layerInd in range(self.numLayers):
+            # Apply the activation function if we already applied a linear transformation.
+            if layerInd != 0: frequencies = self.activationFunction(frequencies)
+            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+
+            # Learn a new set of wavelet coefficients to transform the data.
+            frequencies = weights[layerInd](frequencies.permute(0, 2, 1)).permute(0, 2, 1)
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
         return frequencies

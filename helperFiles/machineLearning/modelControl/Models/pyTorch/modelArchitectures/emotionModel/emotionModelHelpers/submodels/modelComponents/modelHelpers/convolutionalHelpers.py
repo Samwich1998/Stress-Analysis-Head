@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import LearnableTanhshrink
 # Import files.
 from .abnormalConvolutions import abnormalConvolutions
 
@@ -143,6 +144,18 @@ class convolutionalHelpers(abnormalConvolutions):
             if activationType == 'selu':
                 layers.append(nn.SELU())
 
+            # LearnableTanhshrink activation function
+            elif activationType == 'LearnableTanhshrink':
+                layers.append(LearnableTanhshrink())
+
+            # PReLU activation function
+            elif activationType == 'PReLU':
+                layers.append(nn.PReLU())
+
+            # Tanhshrink activation function
+            elif activationType == 'Tanhshrink':
+                layers.append(nn.Tanhshrink())
+
             # GELU activation function
             elif activationType == 'gelu':
                 layers.append(nn.GELU())
@@ -157,7 +170,7 @@ class convolutionalHelpers(abnormalConvolutions):
 
             else:
                 # If the activation function is not recognized.
-                raise ValueError("Activation type must be in ['selu', 'gelu', 'relu', 'none']")
+                raise ValueError("Activation type must be in ['selu', 'gelu', 'relu', 'LearnableTanhshrink' 'PReLU', 'Tanhshrink', 'none']")
 
         return nn.Sequential(*layers)
 

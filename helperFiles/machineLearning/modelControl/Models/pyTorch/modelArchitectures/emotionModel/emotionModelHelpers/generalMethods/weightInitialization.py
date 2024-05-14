@@ -7,24 +7,19 @@ import math
 class weightInitialization:
 
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv'):
-        assert activationMethod in ['selu', 'relu', 'leakyRelu', 'tanh', 'sigmoid', 'none'], "Invalid activation method."
-        assert layerType in ['conv', 'fc'], "Invalid layer type."
-
-        # Calculate the gain.
-        nonLinearity = activationMethod if activationMethod != 'linear' else 'leaky_relu'
-        gain = torch.nn.init.calculate_gain(nonLinearity, param=modelParam)
+        assert layerType in ['conv', 'fc'], "I have not considered this layer's initialization strategy yet."
 
         if activationMethod == 'selu':
             if layerType == 'conv':
-                self.kaiming_uniform_weights(modelParam, a=0, nonlinearity=activationMethod)
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=0, nonlinearity=activationMethod)
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         else:
             modelParam.reset_parameters()
 
         return modelParam
 
-    @ staticmethod
+    @staticmethod
     def reset_weights(model):
         """ Resetting model weights. """
         for layer in model.children():
@@ -65,7 +60,7 @@ class weightInitialization:
         if hasattr(m, 'weight'):
             # Proper LeCun Normal initialization
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
-            std = 1 / fan_in**0.5
+            std = 1 / fan_in ** 0.5
             nn.init.normal_(m.weight, mean=0.0, std=std)
         if hasattr(m, 'bias') and m.bias is not None:
             nn.init.zeros_(m.bias)
@@ -81,7 +76,7 @@ class weightInitialization:
 
     @staticmethod
     def uniformParamInitialization(parameter, numUnits):
-        return nn.init.uniform_(parameter, -1/math.sqrt(numUnits), 1/math.sqrt(numUnits))
+        return nn.init.uniform_(parameter, -1 / math.sqrt(numUnits), 1 / math.sqrt(numUnits))
 
     @staticmethod
     def default_init_conv1d(parameter, fan_in):

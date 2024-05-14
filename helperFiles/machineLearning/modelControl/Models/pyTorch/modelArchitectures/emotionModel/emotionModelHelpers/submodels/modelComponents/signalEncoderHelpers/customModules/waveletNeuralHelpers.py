@@ -101,11 +101,13 @@ class waveletNeuralHelpers(signalEncoderModules):
 
                 # Initialize the high-frequency weights to learn how to change the channels.
                 highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
+                # highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters_highFreq(inChannel=self.numInputSignals, outChannel=self.numOutputSignals))
 
                 # For each subsequent layer.
                 for layerInd in range(self.numLayers - 1):
                     # Learn a new set of wavelet coefficients to transform the data.
                     highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
+                    # highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters_highFreq(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals))
         else:
             highFrequenciesWeights = None
 

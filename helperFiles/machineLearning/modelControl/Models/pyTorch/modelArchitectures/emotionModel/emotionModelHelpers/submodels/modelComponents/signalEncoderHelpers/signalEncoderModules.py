@@ -16,6 +16,12 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             # Convolution architecture: lifting operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+
+            ResNet(module=nn.Sequential(
+                # Convolution architecture: feature engineering
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            ), numCycles=1),
+
             self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
         )
@@ -122,7 +128,7 @@ class signalEncoderModules(convolutionalHelpers):
         assert inChannel == 1, "The input channel must be 1."
 
         return nn.Sequential(
-            # self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None),
         )
 
     # ----------------------- Denoiser Architectures ----------------------- #

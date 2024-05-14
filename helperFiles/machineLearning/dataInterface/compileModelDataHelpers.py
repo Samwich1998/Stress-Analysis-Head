@@ -17,9 +17,10 @@ class compileModelDataHelpers:
     def __init__(self, submodel, userInputParams, accelerator=None):
         # General parameters
         self.compiledInfoLocation = os.path.dirname(__file__) + "/../../../_experimentalData/_compiledData/"
-        self.compiledExtension = ".pkl.gz"
         self.userInputParams = userInputParams
         self.missingLabelValue = torch.nan
+        self.compiledExtension = ".pkl.gz"
+        self.standardizeSignals = True
         self.accelerator = accelerator
 
         # Make Output Folder Directory if Not Already Created
@@ -156,8 +157,9 @@ class compileModelDataHelpers:
             assert self.minSeqLength <= sequenceLength, f"Expected {self.minSeqLength}, but received {data.shape[1]} "
 
             # Standardize the signals
-            standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
-            data = standardizeClass.standardize(data)
+            if self.standardizeSignals:
+                standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
+                data = standardizeClass.standardize(data)
 
             # Add buffer if needed.
             if sequenceLength < self.maxSeqLength + self.numSecondsShift:
@@ -265,10 +267,10 @@ class compileModelDataHelpers:
         _, numLabels = allFeatureLabels.shape
 
         # Create lists to store the new augmented data, labels, and masks
-        augmentedFeatureData = torch.zeros((numExperiments * self.numShifts, numSignals, self.maxSeqLength))
         augmentedFeatureLabels = torch.zeros((numExperiments * self.numShifts, numLabels))
-        augmentedTrainingMask = torch.full(augmentedFeatureLabels.shape, False, dtype=torch.bool)
-        augmentedTestingMask = torch.full(augmentedFeatureLabels.shape, False, dtype=torch.bool)
+        augmentedFeatureData = torch.zeros((numExperiments * self.numShifts, numSignals, self.maxSeqLength))
+        augmentedTrainingMask = torch.full(augmentedFeatureLabels.shape, fill_value=False, dtype=torch.bool)
+        augmentedTestingMask = torch.full(augmentedFeatureLabels.shape, fill_value=False, dtype=torch.bool)
         augmentedSubjectInds = torch.zeros((numExperiments * self.numShifts))
 
         # For each recorded experiment.
@@ -280,11 +282,11 @@ class compileModelDataHelpers:
                 shiftedSignals = allFeatureData[experimentInd, :, -self.maxSeqLength - shiftInd * self.numIndices_perShift:totalLength - shiftInd * self.numIndices_perShift]
 
                 # Append the shifted data and corresponding labels and masks
-                augmentedFeatureData[experimentInd * self.numShifts + shiftInd] = shiftedSignals
                 augmentedFeatureLabels[experimentInd * self.numShifts + shiftInd] = allFeatureLabels[experimentInd]
                 augmentedTrainingMask[experimentInd * self.numShifts + shiftInd] = currentTrainingMask[experimentInd]
                 augmentedTestingMask[experimentInd * self.numShifts + shiftInd] = currentTestingMask[experimentInd]
                 augmentedSubjectInds[experimentInd * self.numShifts + shiftInd] = allSubjectInds[experimentInd]
+                augmentedFeatureData[experimentInd * self.numShifts + shiftInd] = shiftedSignals
 
         # import matplotlib.pyplot as plt
         # plt.plot(allFeatureData[0][0][-self.maxSeqLength:], 'k', linewidth=3, label="Original Curve")

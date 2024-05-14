@@ -190,7 +190,7 @@ class signalEncoderModel(globalModel):
                 self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
             if trainingFlag:
-                self.trainingMethods.adjustNumEncodings(totalNumEncodings, denoisedReconstructedData, forwardDirection)
+                self.trainingMethods.adjustNumEncodings(totalNumEncodings, denoisedReconstructedData.mean(dim=2).mean(dim=1), forwardDirection)
 
         return encodedData, denoisedReconstructedData, signalEncodingLoss
 

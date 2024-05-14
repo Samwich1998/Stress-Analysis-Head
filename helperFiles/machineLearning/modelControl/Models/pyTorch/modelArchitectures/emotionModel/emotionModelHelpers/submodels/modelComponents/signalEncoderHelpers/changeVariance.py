@@ -12,16 +12,11 @@ class changeVariance(signalEncoderModules):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
 
         # Map the initial signals into a common subspace.
-        self.adjustSignals = self.varianceTransformation(inChannel=1)
         self.removeSignalAdjustment = self.varianceTransformation(inChannel=1)
-
-        self.smoothenEncodingSpace = self.smoothDataModel(inChannel=1)
+        self.adjustSignals = self.varianceTransformation(inChannel=1)
 
     def adjustSignalVariance(self, inputData):
-        adjustedData = self.encodingInterface(inputData, self.adjustSignals)
-        adjustedData = self.encodingInterface(adjustedData, self.smoothenEncodingSpace)
-
-        return adjustedData
+        return self.encodingInterface(inputData, self.adjustSignals)
 
     def unAdjustSignalVariance(self, inputData):
         return self.encodingInterface(inputData, self.removeSignalAdjustment)

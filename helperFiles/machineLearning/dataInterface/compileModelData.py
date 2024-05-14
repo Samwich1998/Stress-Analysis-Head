@@ -148,17 +148,16 @@ class compileModelData(compileModelDataHelpers):
     def compileModels(self, metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
                       metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining, specificInfo=None, random_state=42):
         # Initialize relevant holders.
+        allModelPipelines = []
         lossDataHolders = []
         allDataLoaders = []
-        allModelPipelines = []
 
         # Specify model parameters
         loadSubmodelDate, loadSubmodelEpochs, loadSubmodel = self.modelParameters.getModelInfo(submodel, specificInfo)
-
         print(f"\nSplitting the data into {'meta-' if metaTraining else ''}models:", flush=True)
+
         # For each meta-information collected.
         for metadataInd in range(len(metaAlignedFeatureIntervals)):
-
             allAlignedFeatureIntervals = metaAlignedFeatureIntervals[metadataInd].copy()
             numQuestionOptions = metaNumQuestionOptions[metadataInd].copy()
             subjectOrder = np.asarray(metaSubjectOrder[metadataInd]).copy()
@@ -229,7 +228,8 @@ class compileModelData(compileModelDataHelpers):
 
                     # Adjust the test split ratio if necessary.
                     if testSplitRatio < minTestSplitRatio:
-                        print(f"\t\tWarning: The test split ratio is too small for the number of classes. Adjusting to {minTestSplitRatio}.", flush=True)
+                        print(f"\t\tWarning: The test split ratio is too small for the number of classes. Ignoring {surveyQuestions[labelTypeInd]} labels", flush=True)
+                        continue
 
                     # Randomly split the data and labels, keeping a balance between testing/training.
                     Training_Indices, Testing_Indices = train_test_split(currentIndices, test_size=max(minTestSplitRatio, testSplitRatio),

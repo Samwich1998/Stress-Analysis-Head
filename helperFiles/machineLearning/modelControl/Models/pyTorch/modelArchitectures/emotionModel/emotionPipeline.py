@@ -7,8 +7,8 @@ from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from .emotionModelHelpers.lossInformation.organizeTrainingLosses import organizeTrainingLosses
-from .emotionModelHelpers.modelParameters import modelParameters
 from .emotionModelHelpers.modelVisualizations.modelVisualizations import modelVisualizations
+from .emotionModelHelpers.modelParameters import modelParameters
 
 # Import files for the emotion model
 from .emotionModelHelpers.emotionDataInterface import emotionDataInterface

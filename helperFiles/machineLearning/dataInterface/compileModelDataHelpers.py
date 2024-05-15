@@ -65,7 +65,7 @@ class compileModelDataHelpers:
 
         # Embedded information for each model.
         self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
-        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace(__old='.', __new='')} expansionFactor {str(userInputParams['expansionFactor']).replace(__old='.', __new='')}"
+        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace('.', '')} expansionFactor {str(userInputParams['expansionFactor']).replace('.', '')}"
         self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {userInputParams['sequenceLength']}"
 
     # ---------------------- Model Specific Parameters --------------------- #

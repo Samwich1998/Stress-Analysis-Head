@@ -63,17 +63,16 @@ class trainingSignalEncoder:
         assert len(denoisedReconstructedData.size()) == 1, f"The shape of the data must be (batchSize,) not {denoisedReconstructedData.size()}"
 
         # Set up the training parameters.
-        finalLoss = denoisedReconstructedData.detach().mean()
         encodingDirection = forwardDirection*2 - 1
 
         # Accumulate the loss.
         self.numAccumulatedPoints = self.numAccumulatedPoints + denoisedReconstructedData.size(0)
-        self.accumulatedLoss = self.accumulatedLoss + finalLoss
+        self.accumulatedLoss = self.accumulatedLoss + denoisedReconstructedData.detach().mean()
         self.numAccumulations = self.numAccumulations + 1
 
         # If we have accumulated enough gradients for a full batch.
         if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
-            accumulatedLoss = self.accumulatedLoss.mean() / self.accumulatedLoss
+            accumulatedLoss = self.accumulatedLoss.mean() / self.numAccumulations
 
             # If we can keep going forwards.
             if accumulatedLoss < 0.1 or (self.numEncodings in [-1] and accumulatedLoss < 0.2):

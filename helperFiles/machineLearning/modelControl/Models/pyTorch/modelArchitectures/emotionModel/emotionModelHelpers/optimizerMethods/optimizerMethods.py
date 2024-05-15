@@ -47,9 +47,9 @@ class optimizerMethods:
             #     Momentum is not good (Used value of 0.9)
             # Observations on encoding:
             #     No encoding structure: SGD, Adamax, RAdam, NAdam
-            #     No-Noisy encoding structure: Adam, AdamW, Rprop
+            #     No-Noisy encoding structure: Adam, Rprop
             #     Noisy encoding structure: RMSprop
-            #     Okay encoding structure: ASGD, Adadelta
+            #     Okay encoding structure: AdamW, ASGD, Adadelta
             # Observations on reconstruction:
             #     No reconstruction: Adadelta
             #     No-Noisy reconstruction: ASGD

@@ -16,7 +16,7 @@ class signalEncoderModel(globalModel):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
-        self.plotEncoding = False  # Whether to plot the encoding process. Type: bool
+        self.plotEncoding = True  # Whether to plot the encoding process. Type: bool
 
         # Signal encoder parameters.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.

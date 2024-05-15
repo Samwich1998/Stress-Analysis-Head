@@ -212,8 +212,7 @@ class signalEncoderModel(globalModel):
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
         # Undo what was done in the initial adjustment.
-        noisyEncodedData = self.encodeSignals.dataInterface.addNoise(encodedData, trainingFlag=trainingFlag, noiseSTD=0)
-        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(noisyEncodedData)
+        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(encodedData)
 
         # Undo the signal encoding.
         decodedData, reversePath, signalEncodingLayerLoss = self.reverseEncoding(

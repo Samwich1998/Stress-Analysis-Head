@@ -10,22 +10,8 @@ class modelParameters:
         self.userInputParams = userInputParams
         self.accelerator = accelerator
 
-        # Submodel-specific parameters
-        self.emotionPredictionModelInfo = None
-        self.signalEncoderModelInfo = None
-        self.autoencoderModelInfo = None
-
         # Helper classes.
         self.generalMethods = generalMethods()
-
-    def editTrainingName(self, userInputParams=None):
-        if userInputParams is not None:
-            self.userInputParams = userInputParams
-
-        # Embedded information for each model.
-        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
-        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace(__old='.', __new='')} expansionFactor {str(userInputParams['expansionFactor']).replace(__old='.', __new='')}"
-        self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {userInputParams['sequenceLength']}"
 
     @staticmethod
     def getModelInfo(submodel, specificInfo=None):

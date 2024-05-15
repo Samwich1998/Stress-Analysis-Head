@@ -48,7 +48,8 @@ class compileModelDataHelpers:
         if submodel is not None: self.addSubmodelParameters(submodel, userInputParams)
 
     def addSubmodelParameters(self, submodel, userInputParams):
-        self.userInputParams = userInputParams
+        if userInputParams is not None:
+            self.userInputParams = userInputParams
 
         # Exclusion criterion.
         self.minNumClasses, self.maxClassPercentage = self.modelParameters.getExclusionCriteria(submodel)
@@ -61,6 +62,11 @@ class compileModelDataHelpers:
         self.numShifts = 1 + self.numSecondsShift // numSeconds_perShift  # The first shift is the identity transformation.
         self.numIndices_perShift = (samplingFrequency * numSeconds_perShift)  # This must be an integer
         assert samplingFrequency == 1, "Check your code if samplingFrequency != 1 is okay."
+
+        # Embedded information for each model.
+        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numLiftedChannels {userInputParams['numLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numEncodingLayers {userInputParams['numEncodingLayers']}"
+        self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace(__old='.', __new='')} expansionFactor {str(userInputParams['expansionFactor']).replace(__old='.', __new='')}"
+        self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {userInputParams['sequenceLength']}"
 
     # ---------------------- Model Specific Parameters --------------------- #
 

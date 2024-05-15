@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     # Add arguments for the general model
     parser.add_argument('--submodel', type=str, default="signalEncoder", help='The component of the model we are training. Options: signalEncoder, autoencoder, emotionPrediction')
-    parser.add_argument('--optimizerType', type=str, default='RMSprop', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
+    parser.add_argument('--optimizerType', type=str, default='AdamW', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
     parser.add_argument('--numLiftedChannels', type=int, default=48, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     accelerator.print("Total loss calculation time:", t2 - t1)
 
     # For each training epoch
-    for epoch in range(1, 1000):
+    for epoch in range(2, 1000):
         print(f"\nEpoch: {epoch}", flush=True)
         plotSteps = plotTrainingSteps and epoch % numEpoch_toPlot == 0
         saveFullModel = epoch % numEpoch_toSaveFull == 0
@@ -273,8 +273,8 @@ if __name__ == "__main__":
             # Create a copy of the pipelines together
             allPipelines = allMetaModels + allModels
             # Save the current version of the model.11
-            modelMigration.saveModels(allPipelines, modelName, allDatasetNames, sharedModelWeights, submodelsSaving,
-                                      submodel, trainingDate, numEpochs, metaTraining=True, saveModelAttributes=True, storeOptimizer=False)
+            modelMigration.saveModels(allPipelines, modelName, allDatasetNames, sharedModelWeights, submodelsSaving, submodel,
+                                      trainingDate, numEpochs, metaTraining=True, saveModelAttributes=True, storeOptimizer=False)
 
         # Wait before continuing.
         accelerator.wait_for_everyone()

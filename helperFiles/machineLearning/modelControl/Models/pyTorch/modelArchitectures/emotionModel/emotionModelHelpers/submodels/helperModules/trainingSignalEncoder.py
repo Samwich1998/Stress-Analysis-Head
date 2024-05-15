@@ -70,6 +70,8 @@ class trainingSignalEncoder:
         if encodingDirection * totalNumEncodings == self.numEncodings:
             self.numAccumulatedPoints = self.numAccumulatedPoints + denoisedReconstructedData.size(0)
             self.accumulatedLoss = self.accumulatedLoss + denoisedReconstructedData.detach().sum()
+            print(0, self.accumulatedLoss, self.numAccumulatedPoints)
+        print(self.accumulatedLoss, self.numAccumulatedPoints)
 
         # If we have accumulated enough gradients for a full batch.
         if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:

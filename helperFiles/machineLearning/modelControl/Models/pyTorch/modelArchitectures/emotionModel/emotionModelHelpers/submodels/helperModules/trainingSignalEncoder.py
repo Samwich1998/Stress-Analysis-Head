@@ -73,10 +73,11 @@ class trainingSignalEncoder:
 
         # If we have accumulated enough gradients for a full batch.
         if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
-            accumulatedLoss = self.accumulatedLoss / self.numAccumulatedPoints
 
             # If the batch has enough relevant points.
             if self.numAccumulatedPoints != 0:
+                accumulatedLoss = self.accumulatedLoss / self.numAccumulatedPoints
+
                 # And the average loss for this batch is good enough.
                 if accumulatedLoss < 0.1 or (self.numEncodings in [-1] and accumulatedLoss < 0.2):
                     self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)  # Move the buffer down.

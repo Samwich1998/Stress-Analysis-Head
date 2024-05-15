@@ -81,7 +81,7 @@ class trainingSignalEncoder:
 
                     # If we have a proven track record.
                     if self.keepNumEncodingBuffer == 0:
-                        self.numEncodings = max(self.numEncodings, encodingDirection*totalNumEncodings + 1)
+                        self.numEncodings = self.numEncodings + 1
                         if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
 
             elif 0.3 < accumulatedLoss:

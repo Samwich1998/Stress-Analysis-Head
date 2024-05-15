@@ -63,30 +63,33 @@ class trainingSignalEncoder:
         assert len(denoisedReconstructedData.size()) == 1, f"The shape of the data must be (batchSize,) not {denoisedReconstructedData.size()}"
 
         # Set up the training parameters.
+        self.numAccumulations = self.numAccumulations + 1
         encodingDirection = forwardDirection*2 - 1
 
-        # Accumulate the loss.
-        self.numAccumulatedPoints = self.numAccumulatedPoints + denoisedReconstructedData.size(0)
-        self.accumulatedLoss = self.accumulatedLoss + denoisedReconstructedData.detach().mean()
-        self.numAccumulations = self.numAccumulations + 1
+        # Accumulate the loss if you have done enough encodings.
+        if encodingDirection * totalNumEncodings == self.numEncodings:
+            self.numAccumulatedPoints = self.numAccumulatedPoints + denoisedReconstructedData.size(0)
+            self.accumulatedLoss = self.accumulatedLoss + denoisedReconstructedData.detach().sum()
 
         # If we have accumulated enough gradients for a full batch.
         if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
-            accumulatedLoss = self.accumulatedLoss.mean() / self.numAccumulations
+            accumulatedLoss = self.accumulatedLoss / self.numAccumulatedPoints
 
-            # If we can keep going forwards.
-            if accumulatedLoss < 0.1 or (self.numEncodings in [-1] and accumulatedLoss < 0.2):
-                if encodingDirection*totalNumEncodings == self.numEncodings:
-                    self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)
+            # If the batch has enough relevant points.
+            if self.numAccumulatedPoints != 0:
+                # And the average loss for this batch is good enough.
+                if accumulatedLoss < 0.1 or (self.numEncodings in [-1] and accumulatedLoss < 0.2):
+                    self.keepNumEncodingBuffer = max(0, self.keepNumEncodingBuffer - 1)  # Move the buffer down.
 
                     # If we have a proven track record.
                     if self.keepNumEncodingBuffer == 0:
                         self.numEncodings = self.numEncodings + 1
                         if self.numEncodings == 0: self.numEncodings = 1  # Zero is not useful.
+                        self.keepNumEncodingBuffer = 1  # Assume the best for the next round with a small buffer.
 
-            elif 0.3 < accumulatedLoss:
-                # If we cannot complete the current goal, then record the error.
-                self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)
+                elif 0.3 < accumulatedLoss:
+                    # If we cannot complete the current goal, then record the error.
+                    self.keepNumEncodingBuffer = min(self.maxKeepNumEncodingBuffer, self.keepNumEncodingBuffer + 1)
 
             # Reset the accumulation counter.
             self.numAccumulatedPoints = 0

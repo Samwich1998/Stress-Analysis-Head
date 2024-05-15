@@ -21,12 +21,12 @@ do
   do
       for numEncodingLayers in $(seq $numEncodingLayersStart $numEncodingLayersStep $numEncodingLayersEnd)
       do
-          echo "Submitting job with $numLiftedChannels numLiftedChannels and $numExpandedSignals numExpandedSignals and $numEncodingLayers numEncodingLayers on $1"
+          echo "Submitting job with $numLiftedChannels numLiftedChannels and $numExpandedSignals numExpandedSignals and $numEncodingLayers numEncodingLayers on $1 with AdamW"
 
           if [ "$1" == "CPU" ]; then
-              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_CPU.sh "$numLiftedChannels" "$numExpandedSignals" "$numEncodingLayers" "$1"
+              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_CPU.sh "$numLiftedChannels" "$numExpandedSignals" "$numEncodingLayers" "$1" "AdamW"
           elif [ "$1" == "GPU" ]; then
-              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_GPU.sh "$numLiftedChannels" "$numExpandedSignals" "$numEncodingLayers" "$1"
+              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_GPU.sh "$numLiftedChannels" "$numExpandedSignals" "$numEncodingLayers" "$1" "AdamW"
           else
               echo "No known device listed: $1"
           fi

@@ -40,8 +40,8 @@ if __name__ == "__main__":
 
     # Protocol switches: only the first true variable executes.
     readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    streamData = False  # Stream in Data from the Board and Analyze.
-    trainModel = True  # Train Model with ALL Data in 'trainingFolder'.
+    streamData = True  # Stream in Data from the Board and Analyze.
+    trainModel = False  # Train Model with ALL Data in 'trainingFolder'.
     metaTrainModel = False
 
     # User options during the run: any number can be true.
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     # Specify biomarker information.
     streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in.
-    extractFeaturesFrom = ["eog", "eeg", "eda", "temp"]  # "eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
+    extractFeaturesFrom = []  # "eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
     allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
     # Compile feature names
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         recordQuestionnaire = not plotStreamedData  # Only use one GUI: questionnaire or streaming
 
         # Save streaming data information as excel fileY
-        saveExcelPath = "./_experimentalData/allSensors/_finalDataset/2024-03-18 HeatingPad Trial Shukun.xlsx"
+        saveExcelPath = "./_experimentalData/allSensors/_finalDataset/2024-05-16 HeatingPad Trial Ruixiao.xlsx"
         # saveExcelPath = "./_Supplementary/Blink Identification/_experimentalData/2023-05-22 Watching Blink 3.xlsx"
         # Extract filename
         fileName = os.path.basename(saveExcelPath).split(".")[0]

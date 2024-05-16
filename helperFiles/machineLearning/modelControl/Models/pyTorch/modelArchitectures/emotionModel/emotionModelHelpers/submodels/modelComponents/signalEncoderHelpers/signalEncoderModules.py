@@ -31,6 +31,7 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu', layerType='fc'),
             nn.SELU(),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='selu', layerType='fc'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -83,9 +84,8 @@ class signalEncoderModules(convolutionalHelpers):
         # The more complex this is, the better the model learns. However, it makes the encoding space too complex.
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=2, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None),
         )
 
     def signalPostProcessing(self, inChannel=2):

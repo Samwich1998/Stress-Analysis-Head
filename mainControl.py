@@ -45,7 +45,7 @@ if __name__ == "__main__":
     metaTrainModel = False
 
     # User options during the run: any number can be true.
-    plotStreamedData = False  # Graph the Data to Show Incoming Signals + Analysis.
+    plotStreamedData = True  # Graph the Data to Show Incoming Signals + Analysis.
     useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.
 
     # ---------------------------------------------------------------------- #
@@ -56,7 +56,11 @@ if __name__ == "__main__":
 
     # Specify biomarker information.
     streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in.
+<<<<<<< HEAD
     extractFeaturesFrom = []  # "eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
+=======
+    extractFeaturesFrom = []  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
+>>>>>>> e1651278dd (U)
     allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
     # Compile feature names
@@ -81,9 +85,13 @@ if __name__ == "__main__":
         recordQuestionnaire = not plotStreamedData  # Only use one GUI: questionnaire or streaming
 
         # Save streaming data information as excel fileY
+<<<<<<< HEAD
         saveExcelPath = "./_experimentalData/allSensors/_finalDataset/2024-05-16 HeatingPad Trial Ruixiao.xlsx"
         # saveExcelPath = "./_Supplementary/Blink Identification/_experimentalData/2023-05-22 Watching Blink 3.xlsx"
         # Extract filename
+=======
+        saveExcelPath = "./_experimentalData/allSensors/_finalDataset/2024-03-18 HeatingPad Trial Sam-delete.xlsx"
+>>>>>>> e1651278dd (U)
         fileName = os.path.basename(saveExcelPath).split(".")[0]
     else:
         # Specify flags when not streaming

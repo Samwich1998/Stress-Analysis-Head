@@ -5,6 +5,9 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+
+import tensorflow
+import tensorflow.keras as keras
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.applications.resnet50 import preprocess_input
 from PIL import Image

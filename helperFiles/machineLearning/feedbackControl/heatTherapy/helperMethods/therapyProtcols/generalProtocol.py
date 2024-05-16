@@ -4,6 +4,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 import random
 import abc
+import torch
+import seaborn as sns
 
 
 # Import helper files.
@@ -24,7 +26,6 @@ class generalProtocol(abc.ABC):
         self.userFullStatePath = []         # The path of the user state. Order: (T, PA, NA, SA)
         self.userStatePath = []             # The path of the user state. Order: (T, Loss)
 
-
         self.userFullStatePathDistribution = [] # The path of the user state with loss distribution. Tailored for simulation nnProtocol (T, PA_distribution, NA_distribution, SA_distribution)
         self.userStatePath_simulated = [] # The path of the user state with simulated loss. Tailored for simulation nnProtocol (T, Loss)
         # Define loss information
@@ -40,6 +41,15 @@ class generalProtocol(abc.ABC):
         # Initialize the number of bins for the temperature and loss.
         self.numTempBins = len(self.temp_bins)
         self.numLossBins = len(self.loss_bins)
+
+        # Initialize heatmaps for plotting
+        heatmap_size = (self.numTempBins, self.numLossBins)
+        self.pa_heatmap = np.zeros(heatmap_size)
+        self.na_heatmap = np.zeros(heatmap_size)
+        self.sa_heatmap = np.zeros(heatmap_size)
+        self.pa_heatmap_predicted = np.zeros(heatmap_size)
+        self.na_heatmap_predicted = np.zeros(heatmap_size)
+        self.sa_heatmap_predicted = np.zeros(heatmap_size)
 
         # If we are simulating.
         if simulationParameters['simulateTherapy']:
@@ -138,20 +148,18 @@ class generalProtocol(abc.ABC):
         # Get the user information.
         timePoint, userState = self.getCurrentState()  # userState: (T, PA, NA, SA)
         tempIndex = self.getBinIndex(self.temp_bins, userState[0])
-
         # Track the user state and time delay.
         self.userStatePath.append(self.compileLossStates(np.asarray([userState]))[0])  # userStatePath: (numEpochs, 2=(T, Loss))
         self.temperatureTimepoints.append((timePoint, tempIndex))  # temperatureTimepoints: (numEpochs, 2=(time, tempIndex))
         self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(T, PA, NA, SA))
 
-        # initialize to the current state (assume the initial states are the same)
-        # For simulation training only
-        newUserLoss_simulated, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss_offline(self.userStatePath[-1], newUserTemp=30)  # userState[0] # _dist shape = (11.) probability distribution
-        print("1111***** distribution at 30 for PA, NA, SA *****", (PA_dist, NA_dist, SA_dist))
+        # ------------------------ For neural network simulation only ------------------------ #
+        # initialize to the current state
+        newUserLoss_simulated, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss(self.userStatePath[-1], userState[0])  # userState[0] # _dist shape = (11.) probability distribution
         # assume initial distribution
         self.userFullStatePathDistribution = [[userState[0], PA_dist, NA_dist, SA_dist]]
-        # print(self.userFullStatePathDistribution)  # dim: [T, array(PA_dist), array(NA_dist), array(SA_dist)]
-        self.userStatePath_simulated = self.userStatePath.copy()  # Maybe remove
+        self.userStatePath_simulated = self.userStatePath.copy()
+        # ---------------------------------------------------------------------------------------- #
 
     def getCurrentState(self):
         if self.simulateTherapy:
@@ -186,47 +194,18 @@ class generalProtocol(abc.ABC):
 
             # Sample the new loss form a pre-simulated map.
             newUserLoss, PA, NA, SA, _, _, _ = self.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
-            newUserLoss_simulated, newUserLoss_PA_simulated, newUserLoss_NA_simulated, newUserLoss_SA_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.getSimulatedLoss(self.userStatePath_simulated[-1], newUserTemp)# newUserTemp
+            newUserLoss_simulated, newUserLoss_PA_simulated, newUserLoss_NA_simulated, newUserLoss_SA_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.getSimulatedLoss(self.userStatePath_simulated[-1], newUserTemp)
+            # User state update
+            self.userStatePath_simulated.append([newUserTemp, newUserLoss_simulated])
+            return newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated
         else:
             # TODO: Implement a method to get the next user state.
             # Simulate a new time.
             lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
             timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
             # Sample the new loss form a pre-simulated map.
-            newUserLoss, PA, NA, SA, _, _, _ = self.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
-            #PA, NA, SA = None, None, None
-            newUserLoss_simulated, _, _, _, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.getSimulatedLoss(self.userStatePath_simulated[-1], newUserTemp)
-
-        # Get the bin index for the new temperature.
-        tempIndex = self.getBinIndex(self.temp_bins, newUserTemp)
-
-        # Update the user state.
-        self.temperatureTimepoints.append((timePoint, tempIndex))
-        self.userFullStatePath.append([newUserTemp, PA, NA, SA])
-        self.userStatePath.append([newUserTemp, newUserLoss])
-        self.userStatePath_simulated.append([newUserTemp, newUserLoss_simulated])
-
-        return newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated
-
-    def getNextState_offline(self, newUserTemp):
-        if self.simulateTherapy:
-            # Simulate a new time.
-            lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
-            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
-
-            # Sample the new loss form a pre-simulated map.
-            newUserLoss, PA, NA, SA, _, _, _ = self.getSimulatedLoss_offline(self.userStatePath[-1], newUserTemp)
-            newUserLoss_simulated, newUserLoss_PA_simulated, newUserLoss_NA_simulated, newUserLoss_SA_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.getSimulatedLoss_offline(self.userStatePath_simulated[-1], newUserTemp)
-
-        else:
-            # TODO: Implement a method to get the next user state.
-            # Simulate a new time.
-            lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
-            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
-            # Sample the new loss form a pre-simulated map.
-            newUserLoss, PA, NA, SA, _, _, _ = self.getSimulatedLoss_offline(self.userStatePath[-1], newUserTemp)
+            newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
             # PA, NA, SA = None, None, None
-            newUserLoss_simulated, _, _, _, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.getSimulatedLoss_offline(self.userStatePath_simulated[-1], newUserTemp)
 
         # Get the bin index for the new temperature.
         tempIndex = self.getBinIndex(self.temp_bins, newUserTemp)
@@ -235,10 +214,8 @@ class generalProtocol(abc.ABC):
         self.temperatureTimepoints.append((timePoint, tempIndex))
         self.userFullStatePath.append([newUserTemp, PA, NA, SA])
         self.userStatePath.append([newUserTemp, newUserLoss])
-
-        return newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated
-
-
+        return newUserLoss, PA_dist, NA_dist, SA_dist
+        # return newUserLoss, PA, NA, SA
 
     def checkConvergence(self, maxIterations):
         # Check if the therapy has converged.
@@ -263,27 +240,11 @@ class generalProtocol(abc.ABC):
 
         # Calculate the bin indices for the current and new user states.
         currentTempBinIndex = self.getBinIndex(self.temp_bins, currentUserTemp)
-
         currentLossIndex = self.getBinIndex(self.loss_bins, currentUserLoss)
         newTempBinIndex = self.getBinIndex(self.temp_bins, newUserTemp)
 
         # Simulate a new user loss.
         PA, NA, SA, PA_dist, NA_dist, SA_dist = self.simulationProtocols.sampleNewLoss(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.00)
-        newUserLoss = self.calculateLoss(np.asarray([[PA, NA, SA]]))[0]
-        return newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist
-
-    def getSimulatedLoss_offline(self, currentUserState, newUserTemp):
-        # Unpack the current user state.
-        currentUserTemp, currentUserLoss = currentUserState
-
-        # Calculate the bin indices for the current and new user states.
-        currentTempBinIndex = self.getBinIndex(self.temp_bins, currentUserTemp)
-
-        currentLossIndex = self.getBinIndex(self.loss_bins, currentUserLoss)
-        newTempBinIndex = self.getBinIndex(self.temp_bins, newUserTemp)
-
-        # Simulate a new user loss.
-        PA, NA, SA, PA_dist, NA_dist, SA_dist = self.simulationProtocols.sampleNewLoss_offline(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.00)
         newUserLoss = self.calculateLoss(np.asarray([[PA, NA, SA]]))[0]
         return newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist
 
@@ -310,7 +271,6 @@ class generalProtocol(abc.ABC):
             # Generate 2D gaussian matrix.
             gaussianMatrix = self.createGaussianMap_nn(gausMean=(currentUserLoss, currentUserTemp), gausSTD=self.gaussSTD)
             probabilityMatrix += gaussianMatrix  # Add the gaussian map to the matrix
-
 
         # Normalize the probability matrix.
         probabilityMatrix = probabilityMatrix / probabilityMatrix.sum()
@@ -435,6 +395,64 @@ class generalProtocol(abc.ABC):
         plt.title('Therapy Results per Epoch', fontsize=16)
         plt.legend(frameon=True, loc='best', fontsize=12)
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+        plt.show()
+
+    def plot_loss_comparison(self, trueLossValues, therapyState):
+        colors = ['k', 'b', 'g']
+        labels = ['PA', 'NA', 'SA']
+
+        plt.figure(figsize=(10, 6))
+
+        for i in range(3):
+            # Plot true loss values
+            plt.plot(trueLossValues[i], color=colors[i], label=f'True {labels[i]}')
+            # Plot softmax predictions
+            softmax_values = torch.softmax(therapyState[1][i].squeeze(), dim=-1).detach().numpy()
+            plt.plot(softmax_values, color=colors[i], linestyle='--', label=f'Predicted {labels[i]}')
+
+        plt.xlabel('Loss bins')
+        plt.ylabel('Probability')
+        plt.title('Comparison of True and Predicted Loss Values')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def plot_heatmaps(self, currentPA, currentNA, currentSA, currentPA_pred, currentNA_pred, currentSA_pred, currentTemp):
+        # Define bins
+        temperature_bins = np.arange(self.temperatureBounds[0], self.temperatureBounds[1], self.tempBinWidth)
+        loss_bins = np.arange(self.lossBounds[0], self.lossBounds[1], self.lossBinWidth)
+
+        # Determine the index
+        temperature_index = np.digitize(currentTemp, temperature_bins) - 1
+
+        # Fill the heatmaps
+        for i in range(self.numLossBins):
+            self.pa_heatmap[i, temperature_index] = currentPA[i]
+            self.na_heatmap[i, temperature_index] = currentNA[i]
+            self.sa_heatmap[i, temperature_index] = currentSA[i]
+            self.pa_heatmap_predicted[i, temperature_index] = currentPA_pred[i]
+            self.na_heatmap_predicted[i, temperature_index] = currentNA_pred[i]
+            self.sa_heatmap_predicted[i, temperature_index] = currentSA_pred[i]
+
+        # Plotting the heat maps
+        fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+
+        heatmaps = [
+            (self.pa_heatmap, 'PA Distribution'),
+            (self.na_heatmap, 'NA Distribution'),
+            (self.sa_heatmap, 'SA Distribution'),
+            (self.pa_heatmap_predicted, 'PA Distribution Predicted'),
+            (self.na_heatmap_predicted, 'NA Distribution Predicted'),
+            (self.sa_heatmap_predicted, 'SA Distribution Predicted')
+        ]
+
+        for idx, (heatmap, title) in enumerate(heatmaps):
+            sns.heatmap(heatmap, ax=axes[idx // 3, idx % 3], cmap='coolwarm', xticklabels=temperature_bins, yticklabels=np.round(loss_bins, 2), annot=False)
+            axes[idx // 3, idx % 3].set_title(title)
+            axes[idx // 3, idx % 3].set_xlabel('Temperature')
+            axes[idx // 3, idx % 3].set_ylabel('Loss')
+
+        plt.tight_layout()
         plt.show()
 
 

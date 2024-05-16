@@ -39,7 +39,7 @@ class lossCalculations:
         lossPredictionLoss = 0
         # Bias the model to predict the next loss.
         for lossInd in range(self.numLosses):
-            lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd]).mean()
+            lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues).mean()
 
         minimizeLossBias = 0
         # Bias the model to minimize the loss.
@@ -70,7 +70,9 @@ class lossCalculations:
 
         # Bias the model to predict the next loss.
         for lossInd in range(self.numLosses):
+            # KL divergence loss
             lossPredictionLoss = lossPredictionLoss + self.divergenceLoss(F.log_softmax(finalLossPredictions[lossInd], dim=-1), trueLossValues[lossInd])
+            # cross entropy loss
             #lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd].argmax(dim=-1)).mean()
         minimizeLossBias = 0
         # Bias the model to minimize the loss.

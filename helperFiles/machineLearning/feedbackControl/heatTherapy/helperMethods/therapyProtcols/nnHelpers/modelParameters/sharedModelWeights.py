@@ -50,6 +50,26 @@ class sharedModelWeights(nn.Module):
             nn.SELU(),
         )
 
+        # Shared model parameters.
+        self.sharedFeatureExtractionTotal = nn.Sequential(
+            # Neural architecture
+            nn.Linear(in_features=self.numInputLossFeatures, out_features=2*self.numInputLossFeatures, bias=True), # numInputLossFeatures = 15
+            nn.SELU(),
+
+            # Neural architecture
+            nn.Linear(in_features=2*self.numInputLossFeatures, out_features=2*self.numInputLossFeatures, bias=True), # numInputLossFeatures = 15
+            nn.SELU(),
+
+            # Neural architecture
+            nn.Linear(in_features=2*self.numInputLossFeatures, out_features=self.numSharedLossFeatures, bias=True), # numsharedLossFeaturer = 6 (15->6)
+            nn.SELU(),
+
+            #Hyperparameter tunning
+            nn.Linear(in_features=self.numSharedLossFeatures, out_features=self.numSharedLossFeatures, bias=True),  # numSharedTempFeatures = 6 -> 15
+            nn.SELU(),
+        )
+
+
     def calculateSharedTempFeatures(self, inputData):
         return self.sharedTempFeatureExtraction(inputData)
 

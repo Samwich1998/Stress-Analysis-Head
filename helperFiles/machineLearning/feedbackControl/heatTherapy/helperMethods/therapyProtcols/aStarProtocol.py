@@ -38,6 +38,10 @@ class aStarProtocol(generalProtocol):
         self.trackCurrentState(currentUserState)  # Keep track of each discrete temperature-loss pair.
         personalizedMap = self.getUpdatedPersonalizedMap()  # Convert the discrete map to a probability distribution.
 
+        # Get the current time point.
+        timePoint, userState = self.getCurrentState()
+        self.temperatureTimepoints.append((timePoint, tempBinIndex))
+
         # Combine the heuristic and personalized maps and update the weighting.
         probabilityMap = self.percentHeuristic * self.heuristicMap + (1 - self.percentHeuristic) * personalizedMap
         self.updateAlpha()
@@ -109,6 +113,10 @@ class aStarProtocol(generalProtocol):
 
     def getUpdatedPersonalizedMap(self):
         # Assert the integrity of the state tracking.
+        print(f"Length of temperatureTimepoints: {len(self.temperatureTimepoints)}")
+        print(f"Content of temperatureTimepoints: {self.temperatureTimepoints}")
+        print(f"Length of discretePersonalizedMap: {len(self.discretePersonalizedMap)}")
+        print(f"Content of discretePersonalizedMap: {self.discretePersonalizedMap}")
         assert len(self.temperatureTimepoints) == len(self.discretePersonalizedMap), \
             f"The time delays and discrete maps are not the same length. {len(self.temperatureTimepoints)} {len(self.discretePersonalizedMap)}"
         # Unpack the temperature-timepoints relation.

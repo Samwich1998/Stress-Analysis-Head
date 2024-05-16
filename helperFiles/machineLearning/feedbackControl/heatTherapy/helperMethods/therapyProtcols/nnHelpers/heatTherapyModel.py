@@ -67,6 +67,7 @@ class heatTherapyModel(nn.Module):
         compiledTemperaturePredictions = finalTemperaturePredictions.transpose(0, 1).contiguous().view(batchSize, self.numTemperatures * self.numTempBins)
         nextPatientStates = torch.cat(tensors=(compiledTemperaturePredictions, initialPatientStates), dim=1)
         # nextPatientStates dimensions: [batchSize, numInputLossFeatures].
+        print('nextPatientStates: ', nextPatientStates)
 
         # Predict the expected loss of the patient.
         finalLossPredictions = self.predictNextState(nextPatientStates)

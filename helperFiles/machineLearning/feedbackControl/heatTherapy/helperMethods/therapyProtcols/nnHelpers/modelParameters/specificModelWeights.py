@@ -15,6 +15,7 @@ class specificModelWeights(nn.Module):
         self.numLossBins = numLossBins      # The number of loss bins.
         self.numLosses = numLosses          # The number of losses.
 
+
         #added parameters
         self.numInputTempFeatures = self.numTemperatures + self.numLosses  # The number of input temperature features.
         self.numInputLossFeatures = self.numTemperatures * (self.numTempBins + 1) + self.numLosses  # The number of input loss features.
@@ -22,11 +23,14 @@ class specificModelWeights(nn.Module):
         # arbitrary
         self.numSharedTempFeatures = self.numTempBins * 2  # The number of shared temperature features. Output dimension of the shared model.
         self.numSharedLossFeatures = self.numLosses * 2  # The number of shared loss features. Output dimension of the shared model.
+
+        self.numParameters = 4
         # ------------------------------
 
         # Initialize the module holders.
         self.lossModules = nn.ModuleList()  # Loss modules for each loss [PA, NA, SA].
         self.tempModules = nn.ModuleList()  # Temperature modules for each temperatures [T1, T2, T3].
+        self.stateModules = nn.ModuleList()  # Coefficient modules for delta temperature [a, b, c, d].
 
         # For each loss module.
         for tempModuleInd in range(self.numTemperatures):
@@ -50,6 +54,19 @@ class specificModelWeights(nn.Module):
                 nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True),
                 nn.SELU(),
                 nn.Linear(self.numSharedLossFeatures, self.numLossBins, bias=True),
+            ))
+
+        # TODO: double check
+        # For each coefficient module.
+        for stateModuleInd in range(self.numParameters):
+            self.stateModules.append(nn.Sequential(
+                nn.Linear(self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),
+                nn.SELU(),
+                nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),
+                nn.SELU(),
+                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True),
+                nn.SELU(),
+                nn.Linear(self.numSharedLossFeatures, 1, bias=True),
             ))
 
     def predictNextTemperature(self, inputData):
@@ -76,3 +93,15 @@ class specificModelWeights(nn.Module):
             finalLossPredictions[lossModuleInd] = self.lossModules[lossModuleInd](inputData)
 
         return finalLossPredictions
+
+    def predictingStates(self, inputData):
+        # Extract the input dimensions.
+        batchSize, numInputFeatures = inputData.size()
+
+        # Initialize a holder for the loss predictions.
+        finalStatePredictions = torch.zeros(self.numParameters, batchSize, 1)
+        # For each loss module.
+        for stateModuleInd in range(self.numParameters):
+            finalStatePredictions[stateModuleInd] = self.stateModules[stateModuleInd](inputData)
+
+        return finalStatePredictions

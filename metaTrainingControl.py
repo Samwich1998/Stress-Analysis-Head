@@ -45,7 +45,7 @@ if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=4,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     parser.add_argument('--optimizerType', type=str, default='AdamW', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=32, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument('--numLiftedChannels', type=int, default=64, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
     parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
@@ -176,10 +176,10 @@ if __name__ == "__main__":
 
     # Compile the meta-learning modules.
     allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModels(metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
-                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None, random_state=42)
+                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None, useParamsHPC=useParamsHPC, random_state=42)
     # Compile the final modules.
     allModels, allDataLoaders, allLossDataHolders = modelCompiler.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
-                                                                                [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, random_state=42)
+                                                                                [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, useParamsHPC=useParamsHPC, random_state=42)
     # Create the meta-loss models and data loaders.
     allMetaLossDataHolders.extend(allLossDataHolders)
 

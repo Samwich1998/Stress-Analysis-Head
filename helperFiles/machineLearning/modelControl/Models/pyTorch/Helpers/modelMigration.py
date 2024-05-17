@@ -183,6 +183,7 @@ class modelMigration:
         for attr_name, attr_value in modelAttributes.items():
             # Remove hidden attributes.
             if attr_name.startswith(("_", "accelerator")): continue
+            if 'accelerator' in attr_name: continue
 
             # Remove the DDP addon for modules.
             if attr_name.startswith("module."): attr_name = attr_name[len("module."):]

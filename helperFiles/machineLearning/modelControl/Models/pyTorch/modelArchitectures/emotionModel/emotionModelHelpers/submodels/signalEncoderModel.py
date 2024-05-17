@@ -10,13 +10,13 @@ from ...._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numEncodingLayers, numLiftedChannels, timeWindows, accelerator, debuggingResults=False):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numEncodingLayers, numLiftedChannels, timeWindows, accelerator, useParamsHPC=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
+        self.plotEncoding = useParamsHPC  # Whether to plot the encoding process. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
-        self.plotEncoding = True  # Whether to plot the encoding process. Type: bool
 
         # Signal encoder parameters.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
@@ -33,7 +33,6 @@ class signalEncoderModel(globalModel):
             numLiftedChannels=self.numLiftedChannels,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
-            accelerator=self.accelerator,
         )
 
         # Initialize helper classes.
@@ -186,7 +185,7 @@ class signalEncoderModel(globalModel):
             if 0.001 < varReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
 
-            if self.plotEncoding and random.random() < 0.02:
+            if self.plotEncoding and random.random() < 0.01:
                 self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
             if trainingFlag:

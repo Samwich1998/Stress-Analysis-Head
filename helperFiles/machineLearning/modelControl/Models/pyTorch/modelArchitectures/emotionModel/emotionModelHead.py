@@ -19,7 +19,7 @@ from .._globalPytorchModel import globalModel
 
 class emotionModelHead(globalModel):
     def __init__(self, submodel, accelerator, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                 emotionNames, activityNames, featureNames, numSubjects, datasetName, debuggingResults=False):
+                 emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults=False):
         super(emotionModelHead, self).__init__()
         # General model parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers (subject index, etc.).
@@ -34,6 +34,7 @@ class emotionModelHead(globalModel):
         self.featureNames = featureNames  # The names of each feature/signal in the model. Dim: numSignals
         self.emotionNames = emotionNames  # The names of each emotion we are predicting. Dim: numEmotions
         self.device = accelerator.device  # The device the model is running on.
+        self.useParamsHPC = useParamsHPC  # Whether to use the HPC parameters.
         self.numSubjects = numSubjects  # The maximum number of subjects the model is training on.
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.datasetName = datasetName  # The name of the dataset the model is training on.

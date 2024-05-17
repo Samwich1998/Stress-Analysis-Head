@@ -19,13 +19,14 @@ class emotionPipeline:
 
     def __init__(self, accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals,
                  numSubjectIdentifiers, demographicLength, numSubjects, userInputParams, emotionNames,
-                 activityNames, featureNames, submodel, debuggingResults=False):
+                 activityNames, featureNames, submodel, useParamsHPC, debuggingResults=False):
         # General parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers to consider. Dim: [numSubjectIdentifiers]
         self.demographicLength = demographicLength  # The amount of demographic information provided to the model (age, weight, etc.). Dim: [numDemographics]
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.sequenceLength = sequenceLength  # The length of each incoming signal. Type: int
         self.device = accelerator.device  # Specify whether to use the CPU or GPU capabilities.
+        self.useParamsHPC = useParamsHPC  # Whether to use the HPC parameters.
         self.accelerator = accelerator  # Hugging face interface to speed up the training process.
         self.modelName = modelName  # The unique name of the model to initialize.
         self.modelID = modelID  # A unique integer identifier for this model.
@@ -49,7 +50,7 @@ class emotionPipeline:
         # Initialize the emotion model.
         if modelName == "emotionModel":
             self.model = emotionModelHead(submodel, self.accelerator, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                                          emotionNames, activityNames, featureNames, numSubjects, datasetName, debuggingResults)
+                                          emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults)
         # Assert that the model has been initialized.
         assert hasattr(self, 'model'), f"Unknown Model Type Requested: {modelName}"
 

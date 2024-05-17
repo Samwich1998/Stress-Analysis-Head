@@ -154,11 +154,11 @@ class modelParameters:
     @staticmethod
     def getEpochInfo(submodel):
         if submodel == "signalEncoder":
-            return 10, 1
+            return 10, 10  # numEpoch_toPlot, numEpoch_toSaveFull
         elif submodel == "autoencoder":
-            return 10, 1
+            return 10, 10  # numEpoch_toPlot, numEpoch_toSaveFull
         elif submodel == "emotionPrediction":
-            return 10, 1
+            return 10, 10  # numEpoch_toPlot, numEpoch_toSaveFull
         else:
             raise Exception()
 

@@ -7,9 +7,9 @@ class trainingSignalEncoder:
     def __init__(self, numEncodedSignals, expansionFactor, accelerator):
         super(trainingSignalEncoder, self).__init__()
         # General model parameters
+        self.gradient_accumulation_steps = accelerator.gradient_accumulation_steps
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.expansionFactor = expansionFactor
-        self.accelerator = accelerator
 
         # Specify the training parameters.
         self.maxKeepNumEncodingBuffer = 5
@@ -34,7 +34,7 @@ class trainingSignalEncoder:
             # Randomly change the direction sometimes.
             compressingSignalFlag = not compressingSignalFlag
             forwardDirection = not forwardDirection
-        elif random.random() < 0.25:
+        if random.random() < 0.25:
             # Randomly compress/expand more.
             numEncodings = numEncodings + 1
 
@@ -72,7 +72,7 @@ class trainingSignalEncoder:
             self.accumulatedLoss = self.accumulatedLoss + denoisedReconstructedData.detach().sum()
 
         # If we have accumulated enough gradients for a full batch.
-        if self.accelerator.gradient_accumulation_steps <= self.numAccumulations:
+        if self.gradient_accumulation_steps <= self.numAccumulations:
 
             # If the batch has enough relevant points.
             if self.numAccumulatedPoints != 0:

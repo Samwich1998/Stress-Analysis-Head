@@ -10,10 +10,8 @@ from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
 
 
 class signalEncoderBase(signalEncoderHelpers):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None, debuggingResults=False):
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, debuggingResults=False):
         super(signalEncoderBase, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, debuggingResults)
-        # General parameters.
-        self.accelerator = accelerator  # Hugging face model optimizations.
 
     # ---------------------------- Loss Methods ---------------------------- #
 
@@ -92,8 +90,8 @@ class signalEncoderBase(signalEncoderHelpers):
 # -------------------------- Encoder Architecture -------------------------- #
 
 class generalSignalEncoding(signalEncoderBase):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, accelerator=None, debuggingResults=False):
-        super(generalSignalEncoding, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, accelerator, debuggingResults)
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, debuggingResults=False):
+        super(generalSignalEncoding, self).__init__(sequenceBounds, numExpandedSignals, numEncodingLayers, numLiftedChannels, debuggingResults)
 
     def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True):
         """ The shape of signalData: (batchSize, numSignals, compressedLength) """

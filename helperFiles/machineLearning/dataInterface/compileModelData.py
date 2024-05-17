@@ -320,7 +320,7 @@ class compileModelData(compileModelDataHelpers):
                 # Initialize and train the model class.
                 dummyModelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=datasetName, modelName=modelName, allEmotionClasses=[],
                                                      sequenceLength=240, maxNumSignals=500, numSubjectIdentifiers=1, demographicLength=0, numSubjects=1, userInputParams=userInputParams,
-                                                     emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel, debuggingResults=True)
+                                                     emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel, useParamsHPC=True, debuggingResults=True)
                 # Hugging face integration.
                 dummyModelPipeline.acceleratorInterface()
 

@@ -217,17 +217,17 @@ class emotionPipeline:
                         sequenceLengthFactor = max(0.75, augmentedSignalData.size(2) / self.sequenceLength)  # Increase the learning rate for longer sequences.
                         compressionFactor = augmentedSignalData.size(1) / encodedData.size(1)  # Increase the learning rate for larger compressions.
                         noiseFactor = 1 - (addingNoiseSTD / addingNoiseRange[1]) + 0.5  # Lower the learning rate for high noise levels.
-                        finalLoss = signalReconstructedLoss
+                        finalLoss = compressionFactor*signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.3 < encodedSignalStandardDeviationLoss:
+                        if 0.4 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.75*signalEncodingTrainingLayerLoss
-                        if 0.3 < encodedSignalMeanLoss:
+                        if 0.4 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
-                        finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
+                        finalLoss = noiseFactor*sequenceLengthFactor*futureCompressionsFactor * finalLoss
 
                         # Update the user.
                         self.accelerator.print(finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")

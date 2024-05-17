@@ -220,7 +220,7 @@ class emotionPipeline:
                         finalLoss = compressionFactor*signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if (finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss) or 0.75 < encodedSignalStandardDeviationLoss:
+                        if (finalLoss < 0.1 and 0.4 < encodedSignalStandardDeviationLoss) or 0.75 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.75*signalEncodingTrainingLayerLoss

@@ -201,11 +201,11 @@ class emotionPipeline:
                         # signalEncodingLayerLoss dimension: batchSize
 
                         # Assert that nothing is wrong with the predictions.
-                        self.modelHelpers.assertVariableIntegrity(signalEncodingLayerLoss, "signal encoder layer loss", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(reconstructedData, "reconstructed signal data", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(augmentedSignalData, "augmented signal data", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(signalData, "initial signal data", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(encodedData, "encoded data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(signalEncodingLayerLoss, variableName="signal encoder layer loss", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(reconstructedData, variableName="reconstructed signal data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(augmentedSignalData, variableName="augmented signal data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(signalData, variableName="initial signal data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(encodedData, variableName="encoded data", assertGradient=False)
 
                         # Calculate the error in signal compression (signal encoding loss).
                         signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalStandardDeviationLoss, signalEncodingTrainingLayerLoss \
@@ -220,11 +220,11 @@ class emotionPipeline:
                         finalLoss = compressionFactor*signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.4 < encodedSignalStandardDeviationLoss:
+                        if 0.35 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.75*signalEncodingTrainingLayerLoss
-                        if 0.4 < encodedSignalMeanLoss:
+                        if 0.35 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor*sequenceLengthFactor*futureCompressionsFactor * finalLoss
@@ -247,10 +247,10 @@ class emotionPipeline:
                         # autoencoderLayerLoss dimension: batchSize
 
                         # Assert that nothing is wrong with the predictions.
-                        self.modelHelpers.assertVariableIntegrity(denoisedDoubleReconstructedData, "denoised double reconstructed data", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(reconstructedEncodedData, "reconstructed encoded data", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(autoencoderLayerLoss, "autoencoder layer loss", assertGradient=False)
-                        self.modelHelpers.assertVariableIntegrity(compressedData, "compressed data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(denoisedDoubleReconstructedData, variableName="denoised double reconstructed data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(reconstructedEncodedData, variableName="reconstructed encoded data", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(autoencoderLayerLoss, variableName="autoencoder layer loss", assertGradient=False)
+                        self.modelHelpers.assertVariableIntegrity(compressedData, variableName="compressed data", assertGradient=False)
 
                         # Calculate the error in signal reconstruction (autoencoder loss).
                         encodedReconstructedLoss, compressedMeanLoss, compressedStandardDeviationLoss, autoencoderTrainingLayerLoss = \

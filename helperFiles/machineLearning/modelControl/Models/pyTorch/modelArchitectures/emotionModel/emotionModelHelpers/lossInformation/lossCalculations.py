@@ -101,9 +101,9 @@ class lossCalculations:
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
         # Assert that nothing is wrong with the loss calculations.
-        self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, "encoded signal mean loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, "encoded signal reconstructed loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(encodedSignalStandardDeviationLoss, "encoded signal standard deviation loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, variableName="encoded signal mean loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, variableName="encoded signal reconstructed loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(encodedSignalStandardDeviationLoss, variableName="encoded signal standard deviation loss", assertGradient=False)
         if signalEncodingLayerLoss is not None: self.modelHelpers.assertVariableIntegrity(signalEncodingLayerLoss, "encoded signal layer loss", assertGradient=False)
 
         return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalStandardDeviationLoss, signalEncodingLayerLoss
@@ -132,9 +132,9 @@ class lossCalculations:
         if autoencoderLayerLoss is not None: autoencoderLayerLoss = autoencoderLayerLoss.mean()
 
         # Assert that nothing is wrong with the loss calculations. 
-        self.modelHelpers.assertVariableIntegrity(compressedMeanLoss, "autoencoder mean loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(reconstructedLoss, "autoencoder reconstructed loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(compressedStandardDeviationLoss, "autoencoder standard deviation loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(compressedMeanLoss, variableName="autoencoder mean loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(reconstructedLoss, variableName="autoencoder reconstructed loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(compressedStandardDeviationLoss, variableName="autoencoder standard deviation loss", assertGradient=False)
         if autoencoderLayerLoss is not None: self.modelHelpers.assertVariableIntegrity(autoencoderLayerLoss, "autoencoder layer loss", assertGradient=False)
 
         return reconstructedLoss, compressedMeanLoss, compressedStandardDeviationLoss, autoencoderLayerLoss

@@ -65,7 +65,7 @@ class lossCalculations:
         #assert numLossBins == len(self.loss_bins), "The number of loss bins must match the expected number of loss bins."
         assert len(deltaLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
         #assert len(deltaLossValues[0]) == numLossBins, "The true loss values must have the correct batch size."
-        trueLossValues = torch.tensor(deltaLossValues).unsqueeze(1)
+        trueLossValues = deltaLossValues.unsqueeze(1)
 
         # Prepare the final loss predictions.
         lossPredictionLoss = 0

@@ -305,6 +305,12 @@ class generalProtocol(abc.ABC):
     def boundNewTemperature(self, newTemp, bufferZone=0.5):
         return max(self.temperatureBounds[0] + bufferZone, min(self.temperatureBounds[1] - bufferZone, newTemp))
 
+    def standardizeTemperature(self, temperature):
+        return (temperature - self.temperatureBounds[0]) / (self.temperatureBounds[1] - self.temperatureBounds[0])
+
+    def unstandardizeTemperature(self, temperature):
+        return temperature * (self.temperatureBounds[1] - self.temperatureBounds[0]) + self.temperatureBounds[0]
+
     # ------------------------ Debugging Interface ------------------------ #
 
     def plotTherapyResults(self, final_map_pack):

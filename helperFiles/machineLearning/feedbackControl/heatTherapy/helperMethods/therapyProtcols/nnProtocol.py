@@ -77,6 +77,7 @@ class nnProtocol(generalProtocol):
             # NA_distribution = np.random.choice(NA_distribution_array)
             # SA_distribution = np.random.choice(SA_distribution_array)
             temperature, PA, NA, SA = self.userFullStatePath[-1]
+            temperature = self.standardizeTemperature(temperature)
 
             # Update currentUserState with randomly chosen values
             currentUserState = torch.tensor([temperature, PA, NA, SA], dtype=torch.float32)  # dim: tensor[T, PA, NA, SA]

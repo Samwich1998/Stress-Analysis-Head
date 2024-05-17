@@ -8,15 +8,14 @@ class specificModelWeights(nn.Module):
         # General model parameters.
         super().__init__()
         # General model parameters.
-        self.numSharedTempFeatures = numSharedTempFeatures    # The number of shared temperature features.
-        self.numSharedLossFeatures = numSharedLossFeatures    # The number of shared loss features.
-        self.numTemperatures = numTemperatures     # The number of predicted temperatures.
-        self.numTempBins = numTempBins      # The number of temperature bins.
-        self.numLossBins = numLossBins      # The number of loss bins.
-        self.numLosses = numLosses          # The number of losses.
+        self.numSharedTempFeatures = numSharedTempFeatures  # The number of shared temperature features.
+        self.numSharedLossFeatures = numSharedLossFeatures  # The number of shared loss features.
+        self.numTemperatures = numTemperatures  # The number of predicted temperatures.
+        self.numTempBins = numTempBins  # The number of temperature bins.
+        self.numLossBins = numLossBins  # The number of loss bins.
+        self.numLosses = numLosses  # The number of losses.
 
-
-        #added parameters
+        # added parameters
         self.numInputTempFeatures = self.numTemperatures + self.numLosses  # The number of input temperature features.
         self.numInputLossFeatures = self.numTemperatures * (self.numTempBins + 1) + self.numLosses  # The number of input loss features.
         # Calculate the number of output shared features.
@@ -38,7 +37,7 @@ class specificModelWeights(nn.Module):
                 # Neural architecture
                 nn.Linear(self.numSharedTempFeatures, self.numSharedTempFeatures, bias=True),
                 nn.SELU(),
-                
+
                 nn.Linear(self.numSharedTempFeatures, self.numTempBins, bias=True),
                 nn.Softmax(dim=-1),  # Softmax activation along the feature dimension
 
@@ -60,14 +59,16 @@ class specificModelWeights(nn.Module):
         # For each coefficient module.
         for stateModuleInd in range(self.numParameters):
             self.stateModules.append(nn.Sequential(
-                nn.Linear(self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True), # 6 to 22
-                #nn.SELU(),
-                nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True), # 22 to 22
-                #nn.SELU(),
-                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True), # 22 to 11
-                #nn.SELU(),
-                nn.Linear(self.numSharedLossFeatures, 1, bias=True), # 11 to 1
-                #nn.Tanh(),
+                nn.Linear(self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),  # 6 to 22
+                nn.SELU(),
+
+                nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),  # 22 to 22
+                nn.SELU(),
+
+                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True),  # 22 to 11
+                nn.SELU(),
+
+                nn.Linear(self.numSharedLossFeatures, out_features=1, bias=True),  # 11 to 1
             ))
 
     def predictNextTemperature(self, inputData):

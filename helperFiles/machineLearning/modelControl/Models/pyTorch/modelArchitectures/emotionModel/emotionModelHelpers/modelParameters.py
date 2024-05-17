@@ -41,7 +41,7 @@ class modelParameters:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.01)
+            addingNoiseRange = (0, 0.001)
         elif submodel == "autoencoder":
             addingNoiseRange = (0, 0.01)
         elif submodel == "emotionPrediction":

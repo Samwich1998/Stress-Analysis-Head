@@ -97,6 +97,7 @@ class emotionModelHead(globalModel):
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             maxNumSignals=self.maxNumSignals,
+            useParamsHPC=self.useParamsHPC,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
         )

@@ -46,7 +46,7 @@ class signalEncoderBase(signalEncoderHelpers):
         layerLoss = self.calculateEncodingLoss(originalData, encodedData)
 
         # If the loss is significant, add it to the total loss.
-        if 0.05 < layerLoss.mean().item(): layerLoss = 1.25 * layerLoss
+        if 0.1 < layerLoss.mean().item(): layerLoss = 1.25 * layerLoss
         if 0.001 < layerLoss.mean().item(): signalEncodingLayerLoss = 1.5*signalEncodingLayerLoss + layerLoss
 
         return signalEncodingLayerLoss

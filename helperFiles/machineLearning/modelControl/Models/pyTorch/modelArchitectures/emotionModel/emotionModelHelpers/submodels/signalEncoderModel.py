@@ -185,7 +185,7 @@ class signalEncoderModel(globalModel):
             if 0.001 < varReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
 
-            if self.plotEncoding and random.random() < 0.01:
+            if self.plotEncoding and random.random() < 0.015:
                 self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
             if trainingFlag:

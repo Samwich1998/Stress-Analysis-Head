@@ -34,7 +34,7 @@ class trainingSignalEncoder:
             # Randomly change the direction sometimes.
             compressingSignalFlag = not compressingSignalFlag
             forwardDirection = not forwardDirection
-        if random.random() < 0.25:
+        if random.random() < 0.5:
             # Randomly compress/expand more.
             numEncodings = numEncodings + 1
 

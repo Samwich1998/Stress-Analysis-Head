@@ -46,15 +46,15 @@ class optimizerMethods:
             # Observations on properties:
             #     Momentum is not good (Used value of 0.9)
             # Observations on encoding:
-            #     No encoding structure: SGD, Adamax, RAdam, NAdam
-            #     No-Noisy encoding structure: Adam, Rprop
-            #     Noisy encoding structure: RMSprop
-            #     Okay encoding structure: AdamW, ASGD, Adadelta
+            #     No encoding structure: SGD, Adamax, RAdam
+            #     No-Noisy encoding structure: Adadelta, SGD, Adamax, AdamW, ASGD, Rprop
+            #     Noisy encoding structure: Adam, RAdam, RMSprop
+            #     Okay encoding structure: AdamW, NAdam
             # Observations on reconstruction:
-            #     No reconstruction: Adadelta
-            #     No-Noisy reconstruction: ASGD
-            #     Noisy reconstruction: RAdam, Adamax, Rprop, SGD
-            #     Okay reconstruction: AdamW, Adam, NAdam, RMSprop
+            #     No reconstruction: Adadelta, SGD, Adamax, AdamW, ASGD
+            #     No-Noisy reconstruction: RAdam
+            #     Noisy reconstruction: RAdam, Rprop, NAdam, RMSprop
+            #     Okay reconstruction: Adam, NAdam, Rprop
             return self.getOptimizer(optimizerType=optimizerType, params=params, lr=lr, weight_decay=weight_decay, momentum=0.2)
         elif submodel == "autoencoder":
             return optim.AdamW(params, lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=weight_decay, amsgrad=False, maximize=False)

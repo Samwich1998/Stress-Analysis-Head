@@ -5,7 +5,7 @@ numLiftedChannelsStep=-16
 numLiftedChannelsEnd=16     # Memory limited from 48-96.
 # Total: 5
 
-numExpandedSignalsStart=4   # Minimum 4; Maximum 6
+numExpandedSignalsStart=2   # Minimum 4; Maximum 6
 numExpandedSignalsStep=-2
 numExpandedSignalsEnd=2     # Minimum: 2
 # Total: 2

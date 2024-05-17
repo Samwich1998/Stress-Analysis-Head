@@ -16,7 +16,7 @@ class signalEncoderModel(globalModel):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
-        self.plotEncoding = False  # Whether to plot the encoding process. Type: bool
+        self.plotEncoding = True  # Whether to plot the encoding process. Type: bool
 
         # Signal encoder parameters.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
@@ -172,13 +172,13 @@ class signalEncoderModel(globalModel):
 
             # Add up all the losses together.
             if 0.001 < potentialVarReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + 0.1*potentialVarReconstructionStateLoss
+                signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss
             if 0.001 < encodingReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionStateLoss
             if 0.001 < encodingReconstructionLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + 0.1*encodingReconstructionLoss
+                signalEncodingLoss = signalEncodingLoss + encodingReconstructionLoss
             if 0.001 < positionReconstructionLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + 0.1*positionReconstructionLoss
+                signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
             if 0.001 < finalReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
             if 0.001 < signalEncodingLayerLoss.mean():

@@ -14,7 +14,7 @@ class trainingSignalEncoder:
         # Specify the training parameters.
         self.maxKeepNumEncodingBuffer = 5
         self.keepNumEncodingBuffer = 0
-        self.numEncodings = 1  # The number of compressions/expansions possible for this dataset.
+        self.numEncodings = 4  # The number of compressions/expansions possible for this dataset.
 
         # Gradient accumulation parameters.
         self.numAccumulatedPoints = 0  # The number of points accumulated.

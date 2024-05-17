@@ -40,12 +40,12 @@ if __name__ == "__main__":
 
     # Protocol switches: only the first true variable executes.
     readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    streamData = True  # Stream in Data from the Board and Analyze.
-    trainModel = False  # Train Model with ALL Data in 'trainingFolder'.
+    streamData = False  # Stream in Data from the Board and Analyze.
+    trainModel = True  # Train Model with ALL Data in 'trainingFolder'.
     metaTrainModel = False
 
     # User options during the run: any number can be true.
-    plotStreamedData = True  # Graph the Data to Show Incoming Signals + Analysis.
+    plotStreamedData = False  # Graph the Data to Show Incoming Signals + Analysis.
     useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.
 
     # ---------------------------------------------------------------------- #
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     # Specify biomarker information.
     streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in.
-    extractFeaturesFrom = []  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
+    extractFeaturesFrom = ["eog", "eeg", "eda", "temp"]  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
     allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
     # Compile feature names
@@ -190,6 +190,7 @@ if __name__ == "__main__":
 
     # Take Preprocessed (Saved) Features from Excel Sheet
     elif trainModel:
+        # Initializing the training class.
         trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerOrder, len(streamingOrder), trainingFolder, readData)
 
         checkFeatureWindow_EEG = False

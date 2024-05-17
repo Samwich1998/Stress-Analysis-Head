@@ -9,6 +9,7 @@ import random
 from .generalProtocol import generalProtocol
 from .nnHelpers.heatTherapyModel import heatTherapyModel
 from .nnHelpers.modelHelpers.lossCalculations import lossCalculations
+from .nnHelpers.heatTherapyModelUpdate import heatTherapyModelUpdate
 
 
 
@@ -30,7 +31,8 @@ class nnProtocol(generalProtocol):
 
 
         # Model parameters.
-        self.model = heatTherapyModel(numTemperatures=self.numTemperatures, numLosses=self.numLosses, numTempBins=self.numTempBins, numLossBins=self.numLossBins)  # The model for the therapy.
+        #self.model = heatTherapyModel(numTemperatures=self.numTemperatures, numLosses=self.numLosses, numTempBins=self.numTempBins, numLossBins=self.numLossBins)  # The model for the therapy.
+        self.model = heatTherapyModelUpdate(numTemperatures=self.numTemperatures, numLosses=self.numLosses, numTempBins=self.numTempBins, numLossBins=self.numLossBins)  # The model for the therapy.
         self.setupModelHelpers()
         self.setupModelScheduler()
 
@@ -50,10 +52,10 @@ class nnProtocol(generalProtocol):
         # Define the optimizer.
         self.optimizer = optim.AdamW([
             # Specify the model parameters for the signal mapping.
-            {'params': self.model.sharedModelWeights.parameters(), 'weight_decay': 1E-10, 'lr': 1E-3},
+            {'params': self.model.sharedModelWeights.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
 
             # Specify the model parameters for the feature extraction.
-            {'params': self.model.specificModelWeights.parameters(), 'weight_decay': 1E-10, 'lr': 1E-3},
+            {'params': self.model.specificModelWeights.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4},
         ])
 
     def setupModelScheduler(self):
@@ -66,17 +68,18 @@ class nnProtocol(generalProtocol):
         # currentUserState dimensions: [numInputFeatures=4]. Values: [temperature, PA, NA, SA]
         if not self.onlineTraining:
             # Unpack the current user state path distribution.
-            temperature, PA_distribution_array, NA_distribution_array, SA_distribution_array = self.userFullStatePathDistribution[-1]
-
-            #TODO: torch.multinomial
-            import numpy as np
-            # Randomly select one element from each distribution based on its probability
-            PA_distribution = np.random.choice(PA_distribution_array)
-            NA_distribution = np.random.choice(NA_distribution_array)
-            SA_distribution = np.random.choice(SA_distribution_array)
+            # temperature, PA_distribution_array, NA_distribution_array, SA_distribution_array = self.userFullStatePathDistribution[-1]
+            #
+            # #TODO: torch.multinomial
+            # import numpy as np
+            # # Randomly select one element from each distribution based on its probability
+            # PA_distribution = np.random.choice(PA_distribution_array)
+            # NA_distribution = np.random.choice(NA_distribution_array)
+            # SA_distribution = np.random.choice(SA_distribution_array)
+            temperature, PA, NA, SA = self.userFullStatePath[-1]
 
             # Update currentUserState with randomly chosen values
-            currentUserState = torch.tensor([temperature, PA_distribution, NA_distribution, SA_distribution], dtype=torch.float32)  # dim: tensor[T, PA, NA, SA]
+            currentUserState = torch.tensor([temperature, PA, NA, SA], dtype=torch.float32)  # dim: tensor[T, PA, NA, SA]
         else:
             currentUserState = torch.tensor(self.userFullStatePath[-1], dtype=torch.float32)
 
@@ -85,10 +88,10 @@ class nnProtocol(generalProtocol):
 
 
         # Forward pass through the model.
-        finalTemperaturePredictions, finalLossPredictions = self.model(currentUserState)
+        finalStatePredictions = self.model(currentUserState)
         # finalTemperaturePrediction dimensions: [numTemperatures=1, batchSize=1, numTempBins=11].
         # finalLossPrediction dimensions: [numLosses=3, batchSize=1, numLossBins=11].
-        return (finalTemperaturePredictions, finalLossPredictions), None
+        return finalStatePredictions, None
 
 
     # ------------------------ exploration for nnProtocol simulation ------------------------ #
@@ -100,35 +103,47 @@ class nnProtocol(generalProtocol):
         else:
             return predicted_temp_prob.argmax(dim=2)[0][0].item()
 
+    def large_temperature_exploration(self, predicted_delta_temp, threshold):
+        if predicted_delta_temp > threshold:
+            return threshold
+        else:
+            return predicted_delta_temp
+
     def getNextState(self, therapyState):
         """ Overwrite the general getNextState method to include the neural network. """
         # Unpack the final temperature predictions.
         finalTemperaturePredictions = therapyState[0] # dim: torch.size([1, 1, 11])
-
-        # print("1",finalTemperaturePredictions)
+        finalTemperaturePredictions = finalTemperaturePredictions.unsqueeze(0).expand(self.numTemperatures, 1, self.numTempBins)
         # print("2",finalTemperaturePredictions.size())
         # print('3',finalTemperaturePredictions.argmax(dim=2))
         # print('4', finalTemperaturePredictions.argmax(dim=2)[0])
         # print('5', finalTemperaturePredictions.argmax(dim=2)[0][0])
         # print('6', finalTemperaturePredictions.argmax(dim=2)[0][0].item())
         # print('7', range(len(finalTemperaturePredictions[0][0])))
+        # print('8', finalTemperaturePredictions[0][0][0].item())
+        # exit()
 
         # Get the new temperature to be compatible with the general protocol method.
         assert finalTemperaturePredictions.size() == (self.numTemperatures, 1, self.numTempBins), f"Expected 1 temperature and batch for training, but got {finalTemperaturePredictions.size()}"
 
         # epsilon-greedy exploration
-        newUserTemp_bin = self.explore_temperature(finalTemperaturePredictions, 0.1)
+        #newUserTemp_bin = self.explore_temperature(finalTemperaturePredictions, 0.1)
         #newUserTemp_bin = finalTemperaturePredictions.argmax(dim=2)[0][0].item()  # Assumption on input dimension
         # newUserTemp dimensions: single value (probability)
 
         # For online training only (not much difference between bins, so take the middle point of each bin as the next temperature adjustments)
         if self.onlineTraining:
-            newUserTemp = self.temp_bins[newUserTemp_bin] + 0.5  # mid temp
+            newUserTemp = self.userStatePath[-1][0] + self.large_temperature_exploration(finalTemperaturePredictions[0][0][0].item(), 3)
         else:
-            newUserTemp = self.temp_bins[newUserTemp_bin]  # mid temp
-            #newUserTemp = torch.FloatTensor(1,).uniform_(self.temperatureBounds[0], self.temperatureBounds[1])[0] # random temperature with uniform sampling
-        newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = super().getNextState(newUserTemp)
+            newUserTemp = self.userStatePath[-1][0] + self.large_temperature_exploration(finalTemperaturePredictions[0][0][0].item(), 3)
+            print('finalTemperaturePredictions: ', finalTemperaturePredictions[0][0][0].item())
+            print('newUserTemp: ', newUserTemp)
+            print('#$%#$%#$%#')
 
+
+        print('pass 3')
+        newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = super().getNextState(newUserTemp)
+        print('pass 4')
         self.userFullStatePathDistribution.append([newUserTemp, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated])
         self.userStatePath_simulated.append([newUserTemp, newUserLoss_simulated])
 
@@ -167,13 +182,12 @@ class nnProtocol(generalProtocol):
         #TODO: check
         total_error = lossPredictionLoss #+ 0.5*minimizeLossBias
         print('total_error: ', total_error)
+
         # Backpropagation.
+        print(f"total_error dtype: {total_error.dtype}")
         total_error.backward()  # Calculate the gradients.
         self.optimizer.step()   # Update the weights.
         self.optimizer.zero_grad()  # Zero the gradients.
         #self.scheduler.step()
         # print the learning rate changes after scheduler
         #print('learning rate: ', self.optimizer.param_groups[0]['lr'])
-
-
-

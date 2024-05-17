@@ -25,6 +25,7 @@ class generalProtocol(abc.ABC):
         self.finishedTherapy = False        # Whether the therapy has finished.
         self.userFullStatePath = []         # The path of the user state. Order: (T, PA, NA, SA)
         self.userStatePath = []             # The path of the user state. Order: (T, Loss)
+        self.optimalLoss = [1, 0, 0]
 
         self.userFullStatePathDistribution = [] # The path of the user state with loss distribution. Tailored for simulation nnProtocol (T, PA_distribution, NA_distribution, SA_distribution)
         self.userStatePath_simulated = [] # The path of the user state with simulated loss. Tailored for simulation nnProtocol (T, Loss)
@@ -71,6 +72,9 @@ class generalProtocol(abc.ABC):
         plt.imshow(self.simulationProtocols.PA_map_simulated)
         plt.show()
         # exit()
+
+        # plotting
+        self.fig, self.ax = plt.subplots()
 
     # ------------------------ Track User States ------------------------ #
 
@@ -187,7 +191,9 @@ class generalProtocol(abc.ABC):
         return initialData
 
     def getNextState(self, newUserTemp):
+        print('IN $$$$$$')
         if self.simulateTherapy:
+            print('IN 2 %%%%')
             # Simulate a new time.
             lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
             timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
@@ -196,7 +202,11 @@ class generalProtocol(abc.ABC):
             newUserLoss, PA, NA, SA, _, _, _ = self.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
             newUserLoss_simulated, newUserLoss_PA_simulated, newUserLoss_NA_simulated, newUserLoss_SA_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.getSimulatedLoss(self.userStatePath_simulated[-1], newUserTemp)
             # User state update
+            tempIndex = self.getBinIndex(self.temp_bins, newUserTemp)
             self.userStatePath_simulated.append([newUserTemp, newUserLoss_simulated])
+            self.temperatureTimepoints.append((timePoint, tempIndex))
+            self.userFullStatePath.append([newUserTemp, PA, NA, SA])
+            self.userStatePath.append([newUserTemp, newUserLoss])
             return newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated
         else:
             # TODO: Implement a method to get the next user state.
@@ -209,7 +219,6 @@ class generalProtocol(abc.ABC):
 
         # Get the bin index for the new temperature.
         tempIndex = self.getBinIndex(self.temp_bins, newUserTemp)
-
         # Update the user state.
         self.temperatureTimepoints.append((timePoint, tempIndex))
         self.userFullStatePath.append([newUserTemp, PA, NA, SA])
@@ -454,6 +463,37 @@ class generalProtocol(abc.ABC):
 
         plt.tight_layout()
         plt.show()
+
+    def plot_delta_loss_comparison(self, epoch_list, deltaListPA, deltaLossNA, deltaLossSA, predictedLossPA, predictedLossNA, predictedLossSA):
+        # deltaLossValues (list) = [deltaPA, deltaNA, deltaSA]
+        # flattened_therapyState_loss (tensor) = [PA, NA, SA]
+
+        plt.style.use('seaborn-v0_8-pastel')
+        plt.figure(figsize=(10, 6))
+        plt.plot(epoch_list, deltaListPA, label='delta PA', marker='o', linestyle='-', color='darkblue', linewidth=2, markersize=8)
+        plt.plot(epoch_list, deltaLossNA, label='delta NA', marker='x', linestyle='-', color='firebrick', linewidth=2, markersize=8)
+        plt.plot(epoch_list, deltaLossSA, label='delta SA', marker='s', linestyle='-', color='forestgreen', linewidth=2, markersize=8)
+        plt.plot(epoch_list, predictedLossPA, label='predicted PA', marker='o', linestyle='--', color='pink', linewidth=2, markersize=8)
+        plt.plot(epoch_list, predictedLossNA, label='predicted NA', marker='x', linestyle='--', color='brown', linewidth=2, markersize=8)
+        plt.plot(epoch_list, predictedLossSA, label='predicted SA', marker='s', linestyle='--', color='olive', linewidth=2, markersize=8)
+        plt.xlabel('Epoch', fontsize=14)
+        plt.ylabel('Loss', fontsize=14)
+        plt.title('Therapy Results per Epoch', fontsize=16)
+        plt.legend(frameon=True, loc='best', fontsize=12)
+        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+        plt.show()
+
+    def plot_temp(self, epoch_list, temp_list):
+        plt.style.use('seaborn-v0_8-pastel')
+        plt.figure(figsize=(10, 6))
+        plt.plot(epoch_list, temp_list, label='delta PA', marker='o', linestyle='-', color='darkblue', linewidth=2, markersize=8)
+        plt.xlabel('Epoch', fontsize=14)
+        plt.ylabel('temp change', fontsize=14)
+        plt.title('Therapy Results per Epoch', fontsize=16)
+        plt.legend(frameon=True, loc='best', fontsize=12)
+        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+        plt.show()
+
 
 
     # ------------------------ Child Class Contract ------------------------ #

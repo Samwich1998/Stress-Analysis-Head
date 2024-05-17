@@ -15,6 +15,7 @@ class lossCalculations:
         # Model parameters.
         self.classificationLoss = nn.CrossEntropyLoss(weight=None, reduction='none', label_smoothing=0.0)
         self.divergenceLoss = nn.KLDivLoss(reduction='batchmean', log_target=False)
+        self.MSELoss = nn.MSELoss(reduction='mean')
 
         # Initialize the optimal final loss.
         self.optimalLoss = [1, 0, 0]  # The optimal final loss bin index. [PA, NA, SA].
@@ -49,10 +50,11 @@ class lossCalculations:
 
         return lossPredictionLoss, minimizeLossBias
 
-    def scoreModel_offline(self, therapyState, trueLossValues):
+    def scoreModel_offline(self, therapyState, deltaLossValues):
         """ Score the model based on the final loss. """
         # Unpack the final loss predictions.
-        finalTemperaturePredictions, finalLossPredictions = therapyState
+        finalTemperaturePredictions = therapyState[0]
+        finalLossPredictions = therapyState[1:]
         # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
         # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
         # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
@@ -60,10 +62,10 @@ class lossCalculations:
         # Unpack the loss predictions.
         numLosses, batchSize, numLossBins = finalLossPredictions.size()
         assert numLosses == self.numLosses, "The number of losses must match the expected number of losses."
-        assert numLossBins == len(self.loss_bins), "The number of loss bins must match the expected number of loss bins."
-        assert len(trueLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
-        assert len(trueLossValues[0]) == numLossBins, "The true loss values must have the correct batch size."
-        trueLossValues = torch.tensor(trueLossValues).unsqueeze(1)
+        #assert numLossBins == len(self.loss_bins), "The number of loss bins must match the expected number of loss bins."
+        assert len(deltaLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
+        #assert len(deltaLossValues[0]) == numLossBins, "The true loss values must have the correct batch size."
+        trueLossValues = torch.tensor(deltaLossValues).unsqueeze(1)
 
         # Prepare the final loss predictions.
         lossPredictionLoss = 0
@@ -71,13 +73,15 @@ class lossCalculations:
         # Bias the model to predict the next loss.
         for lossInd in range(self.numLosses):
             # KL divergence loss
-            lossPredictionLoss = lossPredictionLoss + self.divergenceLoss(F.log_softmax(finalLossPredictions[lossInd], dim=-1), trueLossValues[lossInd])
+            #lossPredictionLoss = lossPredictionLoss + self.divergenceLoss(F.log_softmax(finalLossPredictions[lossInd], dim=-1), trueLossValues[lossInd])
             # cross entropy loss
             #lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd].argmax(dim=-1)).mean()
+            # MSE loss
+            lossPredictionLoss = lossPredictionLoss + self.MSELoss(finalLossPredictions[lossInd], trueLossValues[lossInd])
         minimizeLossBias = 0
         # Bias the model to minimize the loss.
         for lossInd in range(self.numLosses):
             expectedLoss = self.optimalFinalLossBinIndex[lossInd].expand(batchSize)  # expectedLoss dimensions: [batchSize].
-            minimizeLossBias = minimizeLossBias + self.classificationLoss(finalLossPredictions[lossInd], expectedLoss).mean()
-
+            #minimizeLossBias = minimizeLossBias + self.classificationLoss(finalLossPredictions[lossInd], expectedLoss).mean()
+            minimizeLossBias = minimizeLossBias + self.MSELoss(finalLossPredictions[lossInd], expectedLoss)
         return lossPredictionLoss, minimizeLossBias

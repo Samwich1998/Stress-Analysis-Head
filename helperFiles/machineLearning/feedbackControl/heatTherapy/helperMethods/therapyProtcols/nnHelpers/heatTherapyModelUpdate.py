@@ -44,8 +44,6 @@ class heatTherapyModelUpdate(nn.Module):
 
     def forward(self, initialPatientStates):
         print('initialPatientStates: ', initialPatientStates)
-        print('number of temperature bins: ', self.numTempBins)
-        print('number of loss bins: ', self.numLossBins)
 
         # Add a batch dimension
         if initialPatientStates.dim() == 1:
@@ -58,15 +56,16 @@ class heatTherapyModelUpdate(nn.Module):
         # Extract the dimensions of the input data.
         batchSize, numInitialFeatures = initialPatientStates.size()
         # initialPatientStates dimensions: [batchSize, numInputFeatures=4].
+        print('(batchSize, numInitialFeatures): ', (batchSize, numInitialFeatures))
 
         # Predict the next States for the patient.
-        finalStatePrediction = self.predictNextTotalState(initialPatientStates)
+        deltafinalStatePrediction = self.predictNextTotalState(initialPatientStates)
         # finalTemperaturePrediction dimensions: [numParameters, batchSize, 1].
-        return finalStatePrediction
+        return deltafinalStatePrediction
 
     def predictNextTotalState(self, patientStates):
         # predict temperature, delta PA, delta NA, delta SA
         sharedStateFeatures = self.sharedModelWeights.sharedFeatureExtractionTotal(patientStates)
-        finalStatePredictions = self.specificModelWeights.predictingStates(sharedStateFeatures)
+        deltafinalStatePredictions = self.specificModelWeights.predictingStates(sharedStateFeatures)
 
-        return finalStatePredictions
+        return deltafinalStatePredictions

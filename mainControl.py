@@ -42,7 +42,7 @@ if __name__ == "__main__":
     readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     streamData = False  # Stream in Data from the Board and Analyze.
     trainModel = True  # Train Model with ALL Data in 'trainingFolder'.
-
+    metaTrainModel = False
     # User options during the run: any number can be true.
     plotStreamedData = False  # Graph the Data to Show Incoming Signals + Analysis.
     useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.

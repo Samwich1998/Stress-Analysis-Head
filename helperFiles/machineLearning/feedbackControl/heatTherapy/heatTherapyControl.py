@@ -52,20 +52,28 @@ class heatTherapyControl:
         loss_bias = []
         current_user_loss = []
         epoch_list = []
+        deltaLossList_PA = []
+        deltaLossList_NA = []
+        deltaLossList_SA = []
+        predictedDeltaLossList_PA = []
+        predictedDeltaLossList_NA = []
+        predictedDeltaLossList_SA = []
+        tempList = []
         # ----------------------------------------------------------------------------------------
 
         # Until the therapy converges.
         while not self.therapyProtocol.finishedTherapy:
             # Get the next states for the therapy.
             therapyState, allMaps = self.therapyProtocol.updateTherapyState()
+            print(therapyState)
             if self.therapyMethod == "nnProtocol":
                 if self.therapyProtocol.onlineTraining:
                     print('------Online training started-------')
                     # Calculate the final loss.
                     self.therapyProtocol.getNextState(therapyState)
-
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
-                    lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, trueLossValues) # losspredictionloss is from the model
+                    deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
+                    lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, deltaLossValues) # losspredictionloss is from the model
                     self.latestLoss = lossPredictionLoss.item()
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
                     currentUserLoss = self.therapyProtocol.userStatePath[-1][1]
@@ -78,9 +86,14 @@ class heatTherapyControl:
                         self.therapyProtocol.plotTherapyResults_nn(epoch_list, loss_prediction_loss, loss_bias, current_user_loss)
                 elif not self.therapyProtocol.onlineTraining:
                     print('------simulation (offline) training started-------')
+                    #trueLossValues = self.therapyProtocol.userFullStatePathDistribution[-1][1:]  # from simulation data
+                    trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
+                    print('*******trueLossValues datatype: ', type(trueLossValues))
+                    print('*******trueLossValues: ', trueLossValues)
+                    deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
+                    deltaLossValues = torch.tensor(deltaLossValues, dtype=torch.float32)
+                    lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel_offline(therapyState, deltaLossValues) #losspredictionloss is from the model
                     self.therapyProtocol.getNextState(therapyState)
-                    trueLossValues = self.therapyProtocol.userFullStatePathDistribution[-1][1:]  # from simulation data
-                    lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel_offline(therapyState, trueLossValues) #losspredictionloss is from the model
                     self.latestLoss = lossPredictionLoss.item()
                     print('****** latestLoss: ', self.latestLoss)
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
@@ -90,15 +103,15 @@ class heatTherapyControl:
                     # -------------------------------------- data arrangement for plotting purposes-----------------------------------
                     # predicted map
                     # predicted loss distributions
-                    currentPA_pred = torch.softmax(therapyState[1][0].squeeze(), dim=-1).detach().numpy()
-                    currentNA_pred = torch.softmax(therapyState[1][1].squeeze(), dim=-1).detach().numpy()
-                    currentSA_pred = torch.softmax(therapyState[1][2].squeeze(), dim=-1).detach().numpy()
+                    # currentPA_pred = torch.softmax(therapyState[1][0].squeeze(), dim=-1).detach().numpy()
+                    # currentNA_pred = torch.softmax(therapyState[1][1].squeeze(), dim=-1).detach().numpy()
+                    # currentSA_pred = torch.softmax(therapyState[1][2].squeeze(), dim=-1).detach().numpy()
 
                     # Extract the temperature and three loss values from the userFullStatePathDistribution
-                    currentTemp = self.therapyProtocol.userFullStatePathDistribution[-1][0]
-                    currentPA = self.therapyProtocol.userFullStatePathDistribution[-1][1]
-                    currentNA = self.therapyProtocol.userFullStatePathDistribution[-1][2]
-                    currentSA = self.therapyProtocol.userFullStatePathDistribution[-1][3]
+                    currentTemp = self.therapyProtocol.userFullStatePath[-1][0]
+                    currentPA = self.therapyProtocol.userFullStatePath[-1][1]
+                    currentNA = self.therapyProtocol.userFullStatePath[-1][2]
+                    currentSA = self.therapyProtocol.userFullStatePath[-1][3]
 
                     loss_prediction_loss.append(lossPredictionLoss.item())
                     loss_bias.append(minimizeLossBias.item())
@@ -106,12 +119,25 @@ class heatTherapyControl:
                     iteration += 1
                     epoch_list.append(iteration)
 
+                    flattened_therapyState = therapyState[1:].view(-1).tolist()
+                    deltaPA, deltaNA, deltaSA = deltaLossValues
+                    PA, NA, SA = flattened_therapyState
+                    deltaLossList_PA.append(deltaPA)
+                    deltaLossList_NA.append(deltaNA)
+                    deltaLossList_SA.append(deltaSA)
+                    predictedDeltaLossList_PA.append(PA)
+                    predictedDeltaLossList_NA.append(NA)
+                    predictedDeltaLossList_SA.append(SA)
+                    tempList.append(currentTemp)
+
                     # ----------------------------------------------------------------------------------------------------------------
 
                     if self.plotResults:
                         self.therapyProtocol.plotTherapyResults_nn(epoch_list, loss_prediction_loss, loss_bias, current_user_loss)
-                        self.therapyProtocol.plot_loss_comparison(trueLossValues, therapyState)
-                        self.therapyProtocol.plot_heatmaps(currentPA, currentNA, currentSA, currentPA_pred, currentNA_pred, currentSA_pred, currentTemp)
+                        # self.therapyProtocol.plot_loss_comparison(deltaLossValues, therapyState)
+                        # self.therapyProtocol.plot_heatmaps(currentPA, currentNA, currentSA, currentPA_pred, currentNA_pred, currentSA_pred, currentTemp)
+                        self.therapyProtocol.plot_delta_loss_comparison(epoch_list, deltaLossList_PA, deltaLossList_NA, deltaLossList_SA, predictedDeltaLossList_PA, predictedDeltaLossList_NA, predictedDeltaLossList_SA)
+                        self.therapyProtocol.plot_temp(epoch_list, tempList)
             if self.plotResults:
                 if self.therapyMethod == "aStarProtocol":
                     self.therapyProtocol.plotTherapyResults(allMaps)

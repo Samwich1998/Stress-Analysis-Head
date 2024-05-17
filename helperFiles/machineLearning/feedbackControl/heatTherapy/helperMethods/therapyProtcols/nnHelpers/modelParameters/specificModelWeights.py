@@ -60,13 +60,14 @@ class specificModelWeights(nn.Module):
         # For each coefficient module.
         for stateModuleInd in range(self.numParameters):
             self.stateModules.append(nn.Sequential(
-                nn.Linear(self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),
-                nn.SELU(),
-                nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),
-                nn.SELU(),
-                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True),
-                nn.SELU(),
-                nn.Linear(self.numSharedLossFeatures, 1, bias=True),
+                nn.Linear(self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True), # 6 to 22
+                #nn.SELU(),
+                nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True), # 22 to 22
+                #nn.SELU(),
+                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True), # 22 to 11
+                #nn.SELU(),
+                nn.Linear(self.numSharedLossFeatures, 1, bias=True), # 11 to 1
+                #nn.Tanh(),
             ))
 
     def predictNextTemperature(self, inputData):
@@ -99,9 +100,9 @@ class specificModelWeights(nn.Module):
         batchSize, numInputFeatures = inputData.size()
 
         # Initialize a holder for the loss predictions.
-        finalStatePredictions = torch.zeros(self.numParameters, batchSize, 1)
+        deltafinalStatePredictions = torch.zeros(self.numParameters, batchSize, 1)
         # For each loss module.
         for stateModuleInd in range(self.numParameters):
-            finalStatePredictions[stateModuleInd] = self.stateModules[stateModuleInd](inputData)
+            deltafinalStatePredictions[stateModuleInd] = self.stateModules[stateModuleInd](inputData)
 
-        return finalStatePredictions
+        return deltafinalStatePredictions

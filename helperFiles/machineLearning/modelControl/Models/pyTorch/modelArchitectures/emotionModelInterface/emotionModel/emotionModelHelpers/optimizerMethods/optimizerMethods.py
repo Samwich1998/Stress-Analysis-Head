@@ -46,7 +46,7 @@ class optimizerMethods:
         constrainedModelParams = [{'params': model.parameters()}]
 
         # Set the optimizer.
-        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-4, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
+        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-3, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
         optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.

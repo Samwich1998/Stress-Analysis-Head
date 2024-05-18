@@ -197,7 +197,7 @@ if __name__ == "__main__":
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)
 
     # Store the initial loss information.
-    trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=False)
+    trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=True)
 
     # For each training epoch
     for epoch in range(1, numEpochs + 1):

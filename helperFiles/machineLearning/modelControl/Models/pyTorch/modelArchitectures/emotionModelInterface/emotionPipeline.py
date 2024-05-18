@@ -14,8 +14,8 @@ class emotionPipeline(emotionPipelineHelpers):
         super().__init__(accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength,
                          numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
         # General parameters.
-        self.addingNoiseFlag = True
         self.maxBatchSignals = maxNumSignals
+        self.addingNoiseFlag = True
 
         # Finish setting up the model.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
@@ -44,6 +44,9 @@ class emotionPipeline(emotionPipelineHelpers):
         assert allLabels.shape == allTrainingMasks.shape, "We should specify the training indices for each label"
         assert allLabels.shape == allTestingMasks.shape, "We should specify the testing indices for each label"
         assert numEpochs == 1, f"numEpochs: {numEpochs}"
+
+        if constrainedTraining:
+            self.modelHelpers.switchActivationLayers(self.model, switchState=False)
 
         # For each training epoch.
         for epoch in range(numEpochs):
@@ -146,8 +149,11 @@ class emotionPipeline(emotionPipelineHelpers):
                             finalLoss = finalLoss + 0.25 * signalEncodingTrainingLayerLoss
                         if (finalLoss < 0.1 and 0.25 < encodedSignalMeanLoss) or 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
+
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
+                        if constrainedTraining:
+                            finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * signalEncodingLayerLoss
 
                         # Update the user.
                         self.accelerator.print(finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
@@ -244,6 +250,9 @@ class emotionPipeline(emotionPipelineHelpers):
 
             # Prepare the model/data for evaluation.
             self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.
+
+        if constrainedTraining:
+            self.modelHelpers.switchActivationLayers(self.model, switchState=True)
 
         # Prepare the model/data for evaluation.
         self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.

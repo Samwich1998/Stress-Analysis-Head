@@ -7,6 +7,7 @@ from pytorch_wavelets import DWT1DForward, DWT1DInverse
 # Import machine learning files
 from ..signalEncoderModules import signalEncoderModules
 
+
 # Notes:
 # - The wavelet neural operator layer is a custom module that applies a wavelet decomposition and reconstruction to the input data.
 # - The wavelet neural operator layer is used to learn the encoding of the input data.
@@ -76,7 +77,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         # Initialize wavelet neural operator parameters.
         self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
         self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.
-        self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)   # Skip connection model for the Fourier neural operator.
+        self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)  # Skip connection model for the Fourier neural operator.
         self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.activationFunction = self.neuralOperatorActivation(useSwitchActivation=True)  # Activation function for the Fourier neural operator.
 

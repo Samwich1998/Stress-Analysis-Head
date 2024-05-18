@@ -15,6 +15,7 @@ class emotionPipeline(emotionPipelineHelpers):
                          numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
         # General parameters.
         self.maxBatchSignals = maxNumSignals
+        self.calculateFullLoss = True
         self.addingNoiseFlag = True
 
         # Finish setting up the model.
@@ -89,6 +90,7 @@ class emotionPipeline(emotionPipelineHelpers):
 
                     # Randomly choose to add noise to the model.
                     if self.accelerator.sync_gradients:
+                        self.calculateFullLoss = random.random() < 0.75 and not constrainedTraining
                         self.addingNoiseFlag = random.random() < 0.5
 
                     # Randomly choose to add noise to the model.
@@ -116,9 +118,8 @@ class emotionPipeline(emotionPipelineHelpers):
                         initialSignalData, augmentedSignalData = self.dataInterface.changeSignalLength(model.timeWindows[0], signalDatas=(initialSignalData, augmentedSignalData))
                         print("Input size:", augmentedSignalData.size())
 
-                        # with self.accelerator.autocast():
                         # Perform the forward pass through the model.
-                        encodedData, reconstructedData, signalEncodingLayerLoss = model.signalEncoding(augmentedSignalData, initialSignalData, decodeSignals=True, calculateLoss=True, trainingFlag=True)
+                        encodedData, reconstructedData, signalEncodingLayerLoss = model.signalEncoding(augmentedSignalData, initialSignalData, decodeSignals=True, calculateLoss=self.calculateFullLoss, trainingFlag=True)
                         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
                         # reconstructedData dimension: batchSize, numSignals, sequenceLength
                         # signalEncodingLayerLoss dimension: batchSize
@@ -143,11 +144,11 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if (finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss) or 0.9 < encodedSignalStandardDeviationLoss:
+                        if finalLoss < 0.1 and 0.3 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
-                        if 0.001 < signalEncodingTrainingLayerLoss:
+                        if 0.1 < finalLoss and 0.01 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.25 * signalEncodingTrainingLayerLoss
-                        if (finalLoss < 0.1 and 0.25 < encodedSignalMeanLoss) or 0.2 < encodedSignalMeanLoss:
+                        if 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
 
                         # Account for the current training state when calculating the loss.

@@ -37,7 +37,7 @@ class signalEncoderModel(globalModel):
         )
 
         # Initialize helper classes.
-        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor, accelerator)
+        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor)
 
         # Initialize loss holders.
         self.trainingLosses_timeReconstructionOptimalAnalysis = None
@@ -79,10 +79,6 @@ class signalEncoderModel(globalModel):
         self.trainingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
 
-        # Keep track of gradient accumulation.
-        self.trainingMethods.numAccumulations = 0
-        self.trainingMethods.accumulatedLoss = 0
-
     def setDebuggingResults(self, debuggingResults):
         self.encodeSignals.channelEncodingInterface.debuggingResults = debuggingResults
         self.encodeSignals.positionalEncodingInterface.debuggingResults = debuggingResults
@@ -116,13 +112,16 @@ class signalEncoderModel(globalModel):
 
         # Initialize augmentation parameters
         numEncodedSignals = self.numEncodedSignals
-        forwardDirection = None
-        totalNumEncodings = 0
 
         if trainingFlag:
+            if self.accelerator.sync_gradients:
+                print("SYNCED!")
+                # Randomly change encoding directions.
+                self.trainingMethods.randomlyChangeDirections()
+
             # Set up the training parameters
             assert decodeSignals and calculateLoss, f"Training requires decoding and loss calculations. decodeSignals: {decodeSignals}, calculateLoss: {calculateLoss}"
-            numEncodedSignals, totalNumEncodings, forwardDirection = self.trainingMethods.augmentFinalTarget(numSignals)
+            numEncodedSignals = self.trainingMethods.augmentFinalTarget(numSignals)\
 
         # ------------------- Learned Signal Compression ------------------- #
 
@@ -191,9 +190,6 @@ class signalEncoderModel(globalModel):
 
             if self.plotEncoding and random.random() < 0.015:
                 self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
-
-            if trainingFlag:
-                self.trainingMethods.adjustNumEncodings(totalNumEncodings, finalDenoisedReconstructionStateLoss, forwardDirection)
 
         return encodedData, denoisedReconstructedData, signalEncodingLoss
 

@@ -14,8 +14,8 @@ class emotionPipeline(emotionPipelineHelpers):
         super().__init__(accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength,
                          numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
         # General parameters.
-        self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
-        print("Current switch state:", self.currentSwitchState)
+        self.addingNoiseFlag = True
+        self.maxNumSignals = 96
 
         # Finish setting up the model.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
@@ -82,12 +82,15 @@ class emotionPipeline(emotionPipelineHelpers):
                     # subjectInds dimension: batchSize, numSubjectIdentifiers
 
                     # Randomly choose to add noise to the model.
+                    if self.accelerator.sync_gradients:
+                        self.addingNoiseFlag = random.random() < 0.5
+
+                    # Randomly choose to add noise to the model.
                     augmentedSignalData = signalData.clone()
-                    addingNoiseFlag = random.random() < 0.5
                     addingNoiseRange = [0, 1]
                     addingNoiseSTD = 0
 
-                    if addingNoiseFlag:
+                    if self.addingNoiseFlag:
                         # Augment the data to add some noise to the model.
                         addingNoiseSTD, addingNoiseRange = self.modelParameters.getAugmentationDeviation(submodel)
                         augmentedSignalData = self.dataInterface.addNoise(augmentedSignalData, trainingFlag=True, noiseSTD=addingNoiseSTD)
@@ -97,12 +100,13 @@ class emotionPipeline(emotionPipelineHelpers):
 
                     # Train the signal encoder
                     if submodel == "signalEncoder":
-                        # Randomly choose to use an inflated number of signals.
-                        maxNumSignals = 96 if self.datasetName in ["case"] else max(model.maxNumSignals, 256)
-                        maxNumSignals = random.choices(population=[model.maxNumSignals, maxNumSignals], weights=[0.8, 0.2], k=1)[0]
+                        if self.accelerator.sync_gradients:
+                            # Randomly choose to use an inflated number of signals.
+                            self.maxNumSignals = 96 if self.datasetName in ["case"] else max(model.maxNumSignals, 256)
+                            self.maxNumSignals = random.choices(population=[model.maxNumSignals, self.maxNumSignals], weights=[0.8, 0.2], k=1)[0]
 
                         # Augment the signals to train an arbitrary sequence length and order.
-                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=maxNumSignals, alteredDim=1)
+                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=self.maxNumSignals, alteredDim=1)
                         initialSignalData, augmentedSignalData = self.dataInterface.changeSignalLength(model.timeWindows[0], signalDatas=(initialSignalData, augmentedSignalData))
                         print("Input size:", augmentedSignalData.size())
 

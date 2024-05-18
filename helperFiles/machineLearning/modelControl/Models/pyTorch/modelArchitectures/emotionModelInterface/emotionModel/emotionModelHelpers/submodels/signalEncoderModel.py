@@ -115,7 +115,6 @@ class signalEncoderModel(globalModel):
 
         if trainingFlag:
             if self.accelerator.sync_gradients:
-                print("SYNCED!")
                 # Randomly change encoding directions.
                 self.trainingMethods.randomlyChangeDirections()
 

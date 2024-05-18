@@ -60,11 +60,11 @@ class modelParameters:
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
 
         if submodel == "signalEncoder":
-            totalMinBatchSize = 16
+            totalMinBatchSize = 32
         elif submodel == "autoencoder":
-            totalMinBatchSize = 16
+            totalMinBatchSize = 32
         elif submodel == "emotionPrediction":
-            totalMinBatchSize = 16
+            totalMinBatchSize = 32
         else:
             raise Exception()
 
@@ -102,8 +102,8 @@ class modelParameters:
         if submodel == "signalEncoder":
             minimumBatchSize = 16 if 80 <= self.userInputParams['numLiftedChannels'] else 32
             if 6 <= self.userInputParams['numEncodingLayers'] and 64 <= self.userInputParams['numLiftedChannels']: minimumBatchSize = 16
-            if self.userInputParams['numEncodingLayers'] <= 2: minimumBatchSize = 32
-            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 64
+            if self.userInputParams['numEncodingLayers'] <= 2: minimumBatchSize = 64
+            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 96
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":

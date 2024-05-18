@@ -15,7 +15,7 @@ class emotionPipeline(emotionPipelineHelpers):
                          numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
         # General parameters.
         self.addingNoiseFlag = True
-        self.maxNumSignals = 96
+        self.maxBatchSignals = maxNumSignals
 
         # Finish setting up the model.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
@@ -73,7 +73,10 @@ class emotionPipeline(emotionPipelineHelpers):
                         batchTrainingMask = batchTrainingMask[trainingColumn]
                         trueBatchLabels = trueBatchLabels[trainingColumn]
                         batchData = batchData[trainingColumn]
-                        if batchData.size(0) == 0: continue  # We are not training on any points
+                        if batchData.size(0) == 0:
+                            if self.accelerator.sync_gradients:
+                                self.backpropogateModel(constrainedTraining)
+                            continue  # We are not training on any points (or need to refresh training)
 
                     # Separate the data into signal, demographic, and subject identifier information.
                     signalData, demographicData, subjectIdentifiers = self.dataInterface.separateData(batchData, self.sequenceLength, self.numSubjectIdentifiers, self.demographicLength)
@@ -102,11 +105,11 @@ class emotionPipeline(emotionPipelineHelpers):
                     if submodel == "signalEncoder":
                         if self.accelerator.sync_gradients:
                             # Randomly choose to use an inflated number of signals.
-                            self.maxNumSignals = 96 if self.datasetName in ["case"] else max(model.maxNumSignals, 256)
-                            self.maxNumSignals = random.choices(population=[model.maxNumSignals, self.maxNumSignals], weights=[0.8, 0.2], k=1)[0]
+                            self.maxBatchSignals = 96 if self.datasetName in ["case"] else max(model.maxNumSignals, 256)
+                            self.maxBatchSignals = random.choices(population=[model.maxNumSignals, self.maxBatchSignals], weights=[0.8, 0.2], k=1)[0]
 
                         # Augment the signals to train an arbitrary sequence length and order.
-                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=self.maxNumSignals, alteredDim=1)
+                        initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=self.maxBatchSignals, alteredDim=1)
                         initialSignalData, augmentedSignalData = self.dataInterface.changeSignalLength(model.timeWindows[0], signalDatas=(initialSignalData, augmentedSignalData))
                         print("Input size:", augmentedSignalData.size())
 
@@ -229,19 +232,8 @@ class emotionPipeline(emotionPipelineHelpers):
                     t1 = time.time()
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
-                    t2 = time.time()
-                    self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
-                    if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 10)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
-
-                    if constrainedTraining:
-                        self.constrainedOptimizer.step()
-                        self.constrainedOptimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
-                        self.accelerator.print("LR:", self.constrainedScheduler.get_last_lr())
-                    else:
-                        # Backpropagation the gradient.
-                        self.optimizer.step()  # Adjust the weights.
-                        self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
-                        self.accelerator.print("LR:", self.scheduler.get_last_lr())
+                    self.backpropogateModel(constrainedTraining)
+                    t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
             # Finalize all the parameters.
             if not constrainedTraining:
                 self.scheduler.step()  # Update the learning rate.
@@ -256,3 +248,18 @@ class emotionPipeline(emotionPipelineHelpers):
         # Prepare the model/data for evaluation.
         self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.
         self.accelerator.wait_for_everyone()  # Wait before continuing.
+
+    def backpropogateModel(self, constrainedTraining):
+        # Clip the gradients if they are too large.
+        if self.accelerator.sync_gradients:
+            self.accelerator.clip_grad_norm_(self.model.parameters(), 20)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
+
+        if constrainedTraining:
+            self.constrainedOptimizer.step()
+            self.constrainedOptimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
+            self.accelerator.print("LR:", self.constrainedScheduler.get_last_lr())
+        else:
+            # Backpropagation the gradient.
+            self.optimizer.step()  # Adjust the weights.
+            self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
+            self.accelerator.print("LR:", self.scheduler.get_last_lr())

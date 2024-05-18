@@ -195,6 +195,7 @@ if __name__ == "__main__":
 
     # Unify all the fixed weights in the models
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)
+    unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=True)
     unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)
 
     # Store the initial loss information.

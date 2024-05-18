@@ -25,7 +25,7 @@ class boundedS(nn.Module):
         # Update the coefficient clamp.
         a = self.coefficients[0].clamp(min=1 - self.initialValue, max=2*self.initialValue) + self.initialValue
 
-        return x / (1 + torch.pow(x, 2) / a)
+        return x / (1 + (torch.pow(x, 2) / a))
 
 class learnableBoundedS(nn.Module):
     def __init__(self):

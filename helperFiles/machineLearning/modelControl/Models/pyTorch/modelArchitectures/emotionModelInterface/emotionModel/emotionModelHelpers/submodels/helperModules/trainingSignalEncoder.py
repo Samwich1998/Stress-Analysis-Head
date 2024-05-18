@@ -48,6 +48,6 @@ class trainingSignalEncoder:
         # Adjust the number of encodings.
         if numEncodedSignals == numSignals: numEncodedSignals = numEncodedSignals + 1  # It's not useful to train on nothing.
         numEncodedSignals = max(numEncodedSignals, self.numEncodedSignals)   # Ensure that we are not over-training.
-        print(f"\tTraining Augmentation Stage (totalNumEncodings): {'' if forwardDirection else '-'} {totalNumEncodings}")
+        print(f"\tTraining Augmentation Stage (totalNumEncodings): {'' if forwardDirection else '-'}{totalNumEncodings}")
 
         return numEncodedSignals

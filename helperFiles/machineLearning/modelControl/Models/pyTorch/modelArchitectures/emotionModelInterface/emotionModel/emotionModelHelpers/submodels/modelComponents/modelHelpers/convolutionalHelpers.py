@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import LearnableTanhshrink, switchActivation
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import learnableTanhshrink, switchActivation, powerSeriesActivation, \
+    sinh
 # Import files.
 from .abnormalConvolutions import abnormalConvolutions
 
@@ -144,9 +145,15 @@ class convolutionalHelpers(abnormalConvolutions):
             if activationType == 'selu':
                 activationFunction = nn.SELU()
 
+            elif activationType == 'sinh':
+                activationFunction = sinh()
+
+            elif activationType == 'powerSeriesActivation':
+                activationFunction = powerSeriesActivation(numCoeffs=3, stabilityConstant=3.0, maxGrad=1, seriesType='odd')
+
             # LearnableTanhshrink activation function
             elif activationType == 'LearnableTanhshrink':
-                activationFunction = LearnableTanhshrink()
+                activationFunction = learnableTanhshrink()
 
             # PReLU activation function
             elif activationType == 'PReLU':

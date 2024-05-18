@@ -1,7 +1,6 @@
 # General
 import torch.optim as optim
 import transformers
-import math
 
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.modelParameters import modelParameters
 
@@ -89,7 +88,7 @@ class optimizerMethods:
 
         if constrainedFlag:
             # Get the number of constrained epochs.
-            numConstrainedEpochs = math.floor(modelParameters.getNumEpochs(submodel)[1] / 2)
+            numConstrainedEpochs = modelParameters.getNumEpochs(submodel)[1]
             return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=numConstrainedEpochs, eta_min=1e-4, last_epoch=-1, verbose=False)
 
         # Train the autoencoder

@@ -87,7 +87,7 @@ class optimizerMethods:
 
         if linearFlag:
             # Get the number of linear epochs.
-            numLinearEpochs = modelParameters.getNumLinearEpochs(submodel)
+            numLinearEpochs = modelParameters.getNumEpochs(submodel)[1]
             return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=numLinearEpochs, eta_min=1e-4, last_epoch=-1, verbose=False)
 
         # Train the autoencoder

@@ -119,13 +119,13 @@ class modelParameters:
         return maxBatchSize
 
     @staticmethod
-    def getNumLinearEpochs(submodel):
+    def getNumEpochs(submodel):
         if submodel == "signalEncoder":
-            return 5
+            return 500, 5  # numEpoch, numLinearEpochs
         elif submodel == "autoencoder":
-            return 5
+            return 500, 5  # numEpoch, numLinearEpochs
         elif submodel == "emotionPrediction":
-            return 5
+            return 500, 5  # numEpoch, numLinearEpochs
         else:
             raise Exception()
 

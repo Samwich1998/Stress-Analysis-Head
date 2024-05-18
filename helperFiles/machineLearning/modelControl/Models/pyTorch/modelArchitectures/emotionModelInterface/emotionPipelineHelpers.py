@@ -115,11 +115,11 @@ class emotionPipelineHelpers:
         trainingInformation, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel = self.getDistributedModels()
 
         if submodel == "signalEncoder":
-            return len(signalEncoderModel.trainingLosses_timeReconstructionAnalysis[self.generalTimeWindowInd])
+            return max(0, len(signalEncoderModel.trainingLosses_timeReconstructionAnalysis[self.generalTimeWindowInd]) - 1)
         elif submodel == "autoencoder":
-            return len(autoencoderModel.trainingLosses_timeReconstructionAnalysis[self.generalTimeWindowInd])
+            return max(0, len(autoencoderModel.trainingLosses_timeReconstructionAnalysis[self.generalTimeWindowInd]) - 1)
         elif submodel == "emotionPrediction":
-            return len(specificEmotionModel.trainingLosses_signalReconstruction)
+            return max(0, len(specificEmotionModel.trainingLosses_signalReconstruction) - 1)
         else:
             raise Exception()
 

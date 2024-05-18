@@ -52,13 +52,13 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-05-15 std075 m02 Num3"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-05-17 test"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
     plotTrainingSteps = True  # If you want to plot any results from training.
-    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel)
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
     submodelsSaving = modelParameters.getSubmodelsSaving(submodel)
-    numLinearEpochs = modelParameters.getNumLinearEpochs(submodel)
+    numEpochs, numLinearEpochs = modelParameters.getNumEpochs(submodel)
 
     # Initialize helper classes
     trainingProtocols = trainingProtocolHelpers(accelerator, sharedModelWeights, submodelsSaving)
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=True)
 
     # For each training epoch
-    for epoch in range(2, 1000):
+    for epoch in range(1, numEpochs + 1):
         print(f"\nEpoch: {epoch}", flush=True)
         plotSteps = plotTrainingSteps and epoch % numEpoch_toPlot == 0
         saveFullModel = epoch % numEpoch_toSaveFull == 0

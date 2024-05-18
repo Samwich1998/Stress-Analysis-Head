@@ -20,7 +20,6 @@ helperFiles/machineLearning/modelControl/_finalModels/storedModels/
 helperFiles/machineLearning/modelControl/_finalModels/emotionModel/
 helperFiles/machineLearning/modelControl/Models/pyTorch/modelArchitectures/emotionModelInterface/dataAnalysis/trainingFigures/
 
-
 # Feedback control files and folders
 helperFiles/machineLearning/feedbackControl/musicTherapy/Organized Sounds/GTZAN/*
 helperFiles/machineLearning/feedbackControl/musicTherapy/Organized Sounds/MTG-Jamendo/a*

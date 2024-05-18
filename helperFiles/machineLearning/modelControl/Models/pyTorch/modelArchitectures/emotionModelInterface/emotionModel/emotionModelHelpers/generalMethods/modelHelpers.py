@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.nn.utils import spectral_norm
+from torch.nn import utils
 
 # Import helper classes.
 from ..optimizerMethods.activationFunctions import switchActivation
@@ -147,18 +147,18 @@ class modelHelpers:
             else:
                 self.remove_spectral_norm(module)
 
-    @staticmethod
-    def hookSpectralNormalization(model, n_power_iterations=5, addingSN=False):
+    def hookSpectralNormalization(self, model, n_power_iterations=5, addingSN=False):
         for name, module in model.named_children():
             # Apply recursively to submodules
-            modelHelpers.hookSpectralNormalization(module, n_power_iterations=n_power_iterations)
+            self.hookSpectralNormalization(module, n_power_iterations=n_power_iterations, addingSN=addingSN)
 
             if isinstance(module, (nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.Linear)):
                 if addingSN:
-                    spectrally_normalized_module = torch.nn.utils.spectral_norm(module, n_power_iterations=n_power_iterations)
+                    spectrally_normalized_module = utils.spectral_norm(module, n_power_iterations=n_power_iterations)
                     setattr(model, name, spectrally_normalized_module)
                 else:
-                    setattr(model, name, torch.nn.utils.remove_spectral_norm(module))
+                    normalized_module = utils.remove_spectral_norm(module)
+                    setattr(model, name, normalized_module)
 
         return model
 

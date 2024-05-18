@@ -3,6 +3,7 @@ import torch
 import time
 
 # Helper classes.
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
 from helperFiles.machineLearning.modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
 
 
@@ -16,6 +17,27 @@ class trainingProtocolHelpers:
 
         # Helper classes.
         self.modelMigration = modelMigration(accelerator)
+        self.modelHelpers = modelHelpers()
+
+    def editSpectralNormalization(self, allMetaModels, allModels, unifiedLayerData, addingSN):
+        # Unify all the model weights.
+        self.modelMigration.unifyModelWeights(allModels=allMetaModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
+        self.modelMigration.unifyModelWeights(allModels=allModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
+
+        # For each meta-training model.
+        for modelPipeline in allMetaModels:
+            self.modelHelpers.hookSpectralNormalization(modelPipeline.model, n_power_iterations=5, addingSN=addingSN)
+
+        # For each training model.
+        for modelPipeline in allModels:
+            self.modelHelpers.hookSpectralNormalization(modelPipeline.model, n_power_iterations=5, addingSN=addingSN)
+
+        # Unify all the model weights.
+        unifiedLayerData = self.modelMigration.copyModelWeights(allMetaModels[0], self.sharedModelWeights)
+        self.modelMigration.unifyModelWeights(allModels=allMetaModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
+        self.modelMigration.unifyModelWeights(allModels=allModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
+
+        return unifiedLayerData
 
     def trainEpoch(self, submodel, allMetaDataLoaders, allMetaModels, allModels, unifiedLayerData, linearTraining=False):
         # For each meta-training model.

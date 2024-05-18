@@ -82,7 +82,7 @@ class pytorchPipeline:
         
         # Create folders to the save the data in.
         self.saveDataFolder = saveDataFolder + ("metatraining/" if metaTraining else "training/")
-        self.saveModelFolder = os.path.join(os.path.dirname(__file__), r"../../../_finalModels/")
+        self.saveModelFolder = os.path.join(os.path.dirname(__file__), r"../../_finalModels/")
         # Create the folders if they do not exist.
         os.makedirs(self.saveDataFolder, exist_ok=True)
         os.makedirs(self.saveModelFolder, exist_ok=True)

@@ -47,12 +47,11 @@ class emotionPipeline(emotionPipelineHelpers):
         if linearTraining:
             # Set the activation switch state.
             self.modelHelpers.switchActivationLayers(model, switchState=False)
-            self.modelHelpers.hookSpectralNormalization(model, n_power_iterations=5, addingSN=True)
             self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
         if not self.currentSwitchState and not linearTraining:
             # Set the activation switch state.
             self.modelHelpers.switchActivationLayers(model, switchState=True)
-            self.modelHelpers.hookSpectralNormalization(model, n_power_iterations=5, addingSN=False)
+            self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
         print("linearTraining", linearTraining, self.modelHelpers.getCurrentSwitchActivationLayers(self.model))
 
         # For each training epoch.

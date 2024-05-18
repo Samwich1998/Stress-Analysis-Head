@@ -197,6 +197,7 @@ if __name__ == "__main__":
 
     # Unify all the fixed weights in the models
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)
+    unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=True)
 
     # For each training epoch.
     for epoch in range(1, numLinearEpochs + 1):
@@ -214,6 +215,9 @@ if __name__ == "__main__":
         endEpochTime = time.time()
 
         print("Total epoch time:", endEpochTime - startEpochTime)
+
+    # Unify all the fixed weights in the models
+    unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)
 
     # Save the model on the main device.
     if accelerator.is_local_main_process:

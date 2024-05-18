@@ -8,7 +8,7 @@ class modelMigration:
 
     def __init__(self, accelerator=None, debugFlag=False):
         # Create folders to save the data in.
-        self.saveModelFolder = os.path.normpath(os.path.dirname(__file__) + "/../../../../_finalModels/") + "/"
+        self.saveModelFolder = os.path.normpath(os.path.dirname(__file__) + "/../../../_finalModels/") + "/"
         self.saveModelFolder = os.path.relpath(os.path.normpath(self.saveModelFolder), os.getcwd()) + "/"
         os.makedirs(self.saveModelFolder, exist_ok=True)  # Create the folders if they do not exist.
 
@@ -65,7 +65,7 @@ class modelMigration:
 
                 # If the layer should be saved.
                 if currentSubmodel in sharedModelWeights:
-                    assert layerName in layerInfo, print(layerName, layerInfo)
+                    assert layerName in layerInfo, layerName
                     layerParams.data = layerInfo[layerName].clone()
 
     def changeGradTracking(self, allModels, sharedModelWeights, requires_grad=False):

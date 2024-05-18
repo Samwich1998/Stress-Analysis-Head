@@ -14,6 +14,16 @@ class switchActivation(nn.Module):
         else:
             return x
 
+
+class boundedExp(nn.Module):
+    def __init__(self):
+        super(boundedExp, self).__init__()
+
+    @staticmethod
+    def forward(x):
+        return x * torch.exp(x / (1 + torch.pow(x, 2)))
+
+
 class boundedS(nn.Module):
     def __init__(self, boundedValue=1):
         super(boundedS, self).__init__()
@@ -25,7 +35,8 @@ class boundedS(nn.Module):
         # Update the coefficient clamp.
         a = self.coefficients[0].clamp(min=0.01, max=0.5)
 
-        return x / (1 + torch.pow(x, 2)) + a*x
+        return (x / (1 + torch.pow(x, 2))) + a * x
+
 
 class learnableBoundedS(nn.Module):
     def __init__(self):
@@ -37,7 +48,8 @@ class learnableBoundedS(nn.Module):
         # Update the coefficient clamp.
         a = self.coefficients[0].clamp(min=1, max=100) + 25
 
-        return a*x / (25 + torch.pow(x, 2))
+        return a * x / (25 + torch.pow(x, 2))
+
 
 class sinh(nn.Module):
     def __init__(self, clampCoeff=[0.5, 0.75]):
@@ -50,7 +62,8 @@ class sinh(nn.Module):
         # Update the coefficient clamp.
         coefficients = self.coefficients.clamp(min=self.clampCoeff[0], max=self.clampCoeff[1])
 
-        return torch.sinh(coefficients*x)
+        return torch.sinh(coefficients * x)
+
 
 class powerSeriesActivation(nn.Module):
     def __init__(self, numCoeffs=3, stabilityConstant=3.0, maxGrad=1, seriesType='full'):
@@ -80,9 +93,9 @@ class powerSeriesActivation(nn.Module):
             if self.seriesType == 'full':
                 functionPower = functionPower  # Full series: f(x) = a_0*x + a_1*x^2 + ... + a_n*x^n
             elif self.seriesType == 'even':
-                functionPower = 2*functionPower  # Even series: f(x) = a_0*x^2 + a_1*x^4 + ... + a_n*x^(2n)
+                functionPower = 2 * functionPower  # Even series: f(x) = a_0*x^2 + a_1*x^4 + ... + a_n*x^(2n)
             elif self.seriesType == 'odd':
-                functionPower = 2*functionPower - 1  # Odd series: f(x) = a_0*x + a_1*x^3 + ... + a_n*x^(2n+1)
+                functionPower = 2 * functionPower - 1  # Odd series: f(x) = a_0*x + a_1*x^3 + ... + a_n*x^(2n+1)
             else:
                 raise NotImplementedError
 
@@ -90,6 +103,7 @@ class powerSeriesActivation(nn.Module):
             output += torch.exp(self.stabilityConstant) * torch.pow(x, functionPower) * self.coefficients[coeffInd]
 
         return output
+
 
 class powerActivation(nn.Module):
     def __init__(self, initial_exponent=2.0, min_exponent=0.1, max_exponent=5.0):

@@ -195,8 +195,6 @@ if __name__ == "__main__":
 
     # Unify all the fixed weights in the models
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)
-    unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=True)
-    unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)
 
     # Store the initial loss information.
     trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=False)
@@ -216,9 +214,6 @@ if __name__ == "__main__":
         # Store the initial loss information and plot.
         if storeLoss: trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=False)
         if plotSteps: trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, fastPass=fastPass)
-
-        if epoch == numConstrainedEpochs:
-            unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)
 
         # Save the model sometimes (only on the main device).
         if saveFullModel and accelerator.is_local_main_process:

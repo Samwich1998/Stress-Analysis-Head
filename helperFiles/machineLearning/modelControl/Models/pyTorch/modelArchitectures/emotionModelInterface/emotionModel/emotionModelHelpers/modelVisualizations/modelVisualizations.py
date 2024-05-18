@@ -39,7 +39,7 @@ class modelVisualizations(globalPlottingProtocols):
 
     def setSavingFolder(self, modelSubfolder):
         # Compile and shorten the name of the model visualization folder.
-        saveDataFolder = os.path.normpath(os.path.dirname(__file__) + f"/../../dataAnalysis/{modelSubfolder}") + "/"
+        saveDataFolder = os.path.normpath(os.path.dirname(__file__) + f"/../../../dataAnalysis/{modelSubfolder}") + "/"
         self.saveDataFolder = os.path.relpath(os.path.normpath(saveDataFolder), os.getcwd()) + "/"
         # Make the folder to save the data.
         os.makedirs(self.saveDataFolder, exist_ok=True)

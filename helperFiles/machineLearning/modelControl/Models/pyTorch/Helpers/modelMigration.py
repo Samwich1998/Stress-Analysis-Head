@@ -8,7 +8,7 @@ class modelMigration:
 
     def __init__(self, accelerator=None, debugFlag=False):
         # Create folders to save the data in.
-        self.saveModelFolder = os.path.normpath(os.path.dirname(__file__) + "/../../../_finalModels/") + "/"
+        self.saveModelFolder = os.path.normpath(os.path.dirname(__file__) + "/../../../../_finalModels/") + "/"
         self.saveModelFolder = os.path.relpath(os.path.normpath(self.saveModelFolder), os.getcwd()) + "/"
         os.makedirs(self.saveModelFolder, exist_ok=True)  # Create the folders if they do not exist.
 

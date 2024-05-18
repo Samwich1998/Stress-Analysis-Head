@@ -15,8 +15,21 @@ class switchActivation(nn.Module):
             return x
 
 class boundedS(nn.Module):
-    def __init__(self):
+    def __init__(self, initialValue=500):
         super(boundedS, self).__init__()
+        # Initialize coefficients with a starting value.
+        self.coefficients = nn.Parameter(torch.tensor([1.0000]))
+        self.initialValue = initialValue
+
+    def forward(self, x):
+        # Update the coefficient clamp.
+        a = self.coefficients[0].clamp(min=1 - self.initialValue, max=2*self.initialValue) + self.initialValue
+
+        return x / (1 + torch.pow(x, 2) / a)
+
+class learnableBoundedS(nn.Module):
+    def __init__(self):
+        super(learnableBoundedS, self).__init__()
         # Initialize coefficients with a starting value.
         self.coefficients = nn.Parameter(torch.tensor([1.0000]))
 

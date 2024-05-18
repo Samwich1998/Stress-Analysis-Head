@@ -80,7 +80,7 @@ class trainingProtocolHelpers:
         t2 = time.time()
         self.accelerator.print("Total loss calculation time:", t2 - t1)
 
-    def plotModelState(self, epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, constrainedTraining=False, fastPass=True):
+    def plotModelState(self, epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, fastPass=True):
         # Unify all the model weights.
         self.modelMigration.unifyModelWeights(allModels=allMetaModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
         self.modelMigration.unifyModelWeights(allModels=allModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
@@ -93,8 +93,8 @@ class trainingProtocolHelpers:
 
             with torch.no_grad():
                 numEpochs = modelPipeline.getTrainingEpoch(submodel) or epoch
-                modelPipeline.modelVisualization.plotAllTrainingEvents(submodel, modelPipeline, lossDataLoader, trainingDate, numEpochs, constrainedTraining, fastPass)
-        allMetaModels[0].modelVisualization.plotDatasetComparison(submodel, allMetaModels + allModels, trainingDate, constrainedTraining, fastPass)
+                modelPipeline.modelVisualization.plotAllTrainingEvents(submodel, modelPipeline, lossDataLoader, trainingDate, numEpochs, fastPass)
+        allMetaModels[0].modelVisualization.plotDatasetComparison(submodel, allMetaModels + allModels, trainingDate, fastPass)
         t2 = time.time()
         self.accelerator.print("Total plotting time:", t2 - t1)
 

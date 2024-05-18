@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
         # Store the initial loss information and plot.
         if storeLoss: trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=False)
-        if plotSteps: trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, constrainedTraining=constrainedTraining, fastPass=fastPass)
+        if plotSteps: trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, fastPass=fastPass)
 
         if epoch == numConstrainedEpochs:
             unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)

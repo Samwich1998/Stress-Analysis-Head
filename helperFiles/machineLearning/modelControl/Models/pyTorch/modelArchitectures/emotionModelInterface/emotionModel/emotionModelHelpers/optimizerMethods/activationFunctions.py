@@ -15,17 +15,17 @@ class switchActivation(nn.Module):
             return x
 
 class sinh(nn.Module):
-    def __init__(self, clampCoeff=[-0.2, 0.2]):
+    def __init__(self, clampCoeff=[0.1, 0.25]):
         super(sinh, self).__init__()
         # Initialize coefficients with a starting value.
-        self.coefficients = nn.Parameter(torch.tensor([0.3]))
+        self.coefficients = nn.Parameter(torch.randn(1))
         self.clampCoeff = clampCoeff
 
     def forward(self, x):
         # Update the coefficient clamp.
-        self.coefficients = self.coefficients.clamp(min=self.clampCoeff[0], max=self.clampCoeff[1])
+        coefficients = self.coefficients.clamp(min=self.clampCoeff[0], max=self.clampCoeff[1])
 
-        return torch.sinh(self.coefficients*x)
+        return torch.sinh(coefficients*x)
 
 class powerSeriesActivation(nn.Module):
     def __init__(self, numCoeffs=3, stabilityConstant=3.0, maxGrad=1, seriesType='full'):

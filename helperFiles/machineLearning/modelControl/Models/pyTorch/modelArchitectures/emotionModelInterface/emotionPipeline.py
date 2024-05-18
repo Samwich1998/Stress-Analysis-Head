@@ -153,7 +153,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
                         if constrainedTraining:
-                            finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * signalEncodingLayerLoss
+                            finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * signalReconstructedLoss
 
                         # Update the user.
                         self.accelerator.print(finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")

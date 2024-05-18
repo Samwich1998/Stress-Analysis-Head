@@ -136,7 +136,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         if (finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss) or 0.9 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.5 * signalEncodingTrainingLayerLoss
+                            finalLoss = finalLoss + 0.25 * signalEncodingTrainingLayerLoss
                         if (finalLoss < 0.1 and 0.25 < encodedSignalMeanLoss) or 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.

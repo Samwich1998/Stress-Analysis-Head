@@ -44,12 +44,15 @@ class emotionPipeline(emotionPipelineHelpers):
         assert allLabels.shape == allTestingMasks.shape, "We should specify the testing indices for each label"
         assert numEpochs == 1, f"numEpochs: {numEpochs}"
 
-        if self.currentSwitchState and linearTraining:
+        if linearTraining:
             # Set the activation switch state.
             self.modelHelpers.switchActivationLayers(model, switchState=False)
+            self.modelHelpers.hookSpectralNormalization(model, n_power_iterations=5, addingSN=True)
+            self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
         if not self.currentSwitchState and not linearTraining:
             # Set the activation switch state.
             self.modelHelpers.switchActivationLayers(model, switchState=True)
+            self.modelHelpers.hookSpectralNormalization(model, n_power_iterations=5, addingSN=False)
         print("linearTraining", linearTraining, self.modelHelpers.getCurrentSwitchActivationLayers(self.model))
 
         # For each training epoch.
@@ -144,7 +147,7 @@ class emotionPipeline(emotionPipelineHelpers):
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.75 * signalEncodingTrainingLayerLoss
-                        if (finalLoss < 0.25 < encodedSignalMeanLoss) or 0.2 < encodedSignalMeanLoss:
+                        if (finalLoss < 0.1 and 0.25 < encodedSignalMeanLoss) or 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss

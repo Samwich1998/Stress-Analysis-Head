@@ -133,17 +133,32 @@ class modelHelpers:
 
         return sigma.item()
 
+    def add_spectral_norm(self, model):
+        for name, module in model.named_children():
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                setattr(model, name, torch.nn.utils.spectral_norm(module))
+            else:
+                self.add_spectral_norm(module)
+
+    def remove_spectral_norm(self, model):
+        for name, module in model.named_children():
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                setattr(model, name, torch.nn.utils.remove_spectral_norm(module))
+            else:
+                self.remove_spectral_norm(module)
+
     @staticmethod
-    def addSpectralNormalization(model, n_power_iterations=5):
+    def hookSpectralNormalization(model, n_power_iterations=5, addingSN=False):
         for name, module in model.named_children():
             # Apply recursively to submodules
-            modelHelpers.addSpectralNormalization(module, n_power_iterations=n_power_iterations)
+            modelHelpers.hookSpectralNormalization(module, n_power_iterations=n_power_iterations)
 
-            # Check if it's an instance of the modules we want to normalize
             if isinstance(module, (nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.Linear)):
-                # Apply spectral normalization
-                spectrally_normalized_module = spectral_norm(module, n_power_iterations=n_power_iterations)
-                setattr(model, name, spectrally_normalized_module)
+                if addingSN:
+                    spectrally_normalized_module = torch.nn.utils.spectral_norm(module, n_power_iterations=n_power_iterations)
+                    setattr(model, name, spectrally_normalized_module)
+                else:
+                    setattr(model, name, torch.nn.utils.remove_spectral_norm(module))
 
         return model
 

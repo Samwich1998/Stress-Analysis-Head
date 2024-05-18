@@ -178,7 +178,7 @@ class signalEncoderModel(globalModel):
             if 0.001 < encodingReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionLoss
             if 0.001 < positionReconstructionLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
+                signalEncodingLoss = signalEncodingLoss + 2*positionReconstructionLoss
             if 0.001 < finalReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
             if 0.001 < signalEncodingLayerLoss.mean():

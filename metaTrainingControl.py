@@ -47,7 +47,7 @@ if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=4,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
@@ -57,7 +57,6 @@ if __name__ == "__main__":
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    plotTrainingSteps = True  # If you want to plot any results from training.
     useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
@@ -141,7 +140,7 @@ if __name__ == "__main__":
     numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel)
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
     submodelsSaving = modelParameters.getSubmodelsSaving(submodel)
-    numEpochs, numLinearEpochs = modelParameters.getNumEpochs(submodel)
+    numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)
 
     # Initialize helper classes
     trainingProtocols = trainingProtocolHelpers(accelerator, sharedModelWeights, submodelsSaving)
@@ -199,47 +198,27 @@ if __name__ == "__main__":
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)
     unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=True)
 
-    # For each training epoch.
-    for epoch in range(1, numLinearEpochs + 1):
-        print(f"\nEpoch: {epoch}", flush=True)
-        startEpochTime = time.time()
-
-        # Train the model for a single epoch without any activation functions.
-        unifiedLayerData = trainingProtocols.trainEpoch(submodel, allMetaDataLoaders, allMetaModels, allModels, unifiedLayerData, linearTraining=True)
-
-        # Plot the model state.
-        trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, linearTraining=True, fastPass=fastPass)
-
-        # Finalize the epoch parameters.
-        accelerator.wait_for_everyone()  # Wait before continuing
-        endEpochTime = time.time()
-
-        print("Total epoch time:", endEpochTime - startEpochTime)
-
-    # Unify all the fixed weights in the models
-    unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)
-
-    # Save the model on the main device.
-    if accelerator.is_local_main_process:
-        trainingProtocols.saveModelState(numLinearEpochs, unifiedLayerData, allMetaModels, allModels, submodel, modelName, allDatasetNames, trainingDate)
-
     # Store the initial loss information.
-    trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=True)
+    trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=False)
 
     # For each training epoch
     for epoch in range(1, numEpochs + 1):
         print(f"\nEpoch: {epoch}", flush=True)
-        plotSteps = plotTrainingSteps and epoch % numEpoch_toPlot == 0
-        saveFullModel = epoch % numEpoch_toSaveFull == 0
         startEpochTime = time.time()
 
+        # Get the saving information.
+        saveFullModel, plotSteps = modelParameters.getSavingInformation(epoch, numConstrainedEpochs, numEpoch_toSaveFull, numEpoch_toPlot)
+        constrainedTraining = epoch <= numConstrainedEpochs
+
         # Train the model for a single epoch.
-        unifiedLayerData = trainingProtocols.trainEpoch(submodel, allMetaDataLoaders, allMetaModels, allModels, unifiedLayerData, linearTraining=False)
+        unifiedLayerData = trainingProtocols.trainEpoch(submodel, allMetaDataLoaders, allMetaModels, allModels, unifiedLayerData, constrainedTraining=constrainedTraining)
 
-        # Store the initial loss information.
+        # Store the initial loss information and plot.
         if storeLoss: trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=False)
+        if plotSteps: trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, constrainedTraining=constrainedTraining, fastPass=fastPass)
 
-        if plotSteps: trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, linearTraining=False, fastPass=fastPass)
+        if epoch == numConstrainedEpochs:
+            unifiedLayerData = trainingProtocols.editSpectralNormalization(allMetaModels, allModels, unifiedLayerData, addingSN=False)
 
         # Save the model sometimes (only on the main device).
         if saveFullModel and accelerator.is_local_main_process:

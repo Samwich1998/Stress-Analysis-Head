@@ -23,10 +23,6 @@ class modelVisualizations(globalPlottingProtocols):
         self.accelerator = accelerator
         self.saveDataFolder = None
 
-        # Set folder names.
-        self.nonLinearityFolder = "nonLinearTraining"
-        self.linearityFolder = "linearTraining"
-
         # Initialize helper classes.
         self.dataInterface = emotionDataInterface()
 
@@ -49,18 +45,14 @@ class modelVisualizations(globalPlottingProtocols):
         self.autoencoderViz.setSavingFolder(self.saveDataFolder)
         self.signalEncoderViz.setSavingFolder(self.saveDataFolder)
 
-    def getLinearityFolderName(self, linearTraining):
-        return self.linearityFolder if linearTraining else self.nonLinearityFolder
-
     # ---------------------------------------------------------------------- #
 
-    def plotDatasetComparison(self, submodel, allModelPipelines, trainingDate, linearTraining, fastPass):
+    def plotDatasetComparison(self, submodel, allModelPipelines, trainingDate, fastPass):
         self.accelerator.print(f"\nCalculating loss for model comparison", flush=True)
-        linearityFolder = self.getLinearityFolderName(linearTraining)
         fastPass = True
 
         # Prepare the model/data for evaluation.
-        self.setSavingFolder(f"trainingFigures/{submodel}/{trainingDate}/{linearityFolder}/modelComparison/")  # Label the correct folder to save this analysis.
+        self.setSavingFolder(f"trainingFigures/{submodel}/{trainingDate}/modelComparison/")  # Label the correct folder to save this analysis.
         timeWindows = allModelPipelines[0].model.timeWindows
 
         # Plot the loss on the primary GPU.
@@ -113,9 +105,8 @@ class modelVisualizations(globalPlottingProtocols):
                                                        lossLabels=[f"{modelPipeline.model.datasetName} Autoencoder Path Buffer" for modelPipeline in allModelPipelines],
                                                        plotTitle="trainingLosses/All Signal Encoder Path Buffer", logY=False)
 
-    def plotAllTrainingEvents(self, submodel, modelPipeline, lossDataLoader, trainingDate, currentEpoch, linearTraining, fastPass):
+    def plotAllTrainingEvents(self, submodel, modelPipeline, lossDataLoader, trainingDate, currentEpoch, fastPass):
         self.accelerator.print(f"\nCalculating loss for {modelPipeline.model.datasetName} model", flush=True)
-        linearityFolder = self.getLinearityFolderName(linearTraining)
         fastPass = True
 
         # Prepare the model/data for evaluation.
@@ -140,12 +131,12 @@ class modelVisualizations(globalPlottingProtocols):
                 if fastPass and timeWindow != model.timeWindows[5]: continue
 
                 # Go through all the plots at this specific time window.
-                self.plotTrainingEvent(model, currentEpoch, allSignalData, allSubjectIdentifiers, allTrainingMasks, allTestingMasks, reconstructionIndex, submodel, trainingDate, timeWindow, model.datasetName, linearTraining)
+                self.plotTrainingEvent(model, currentEpoch, allSignalData, allSubjectIdentifiers, allTrainingMasks, allTestingMasks, reconstructionIndex, submodel, trainingDate, timeWindow, model.datasetName)
 
             # ---------------------- Time-Agnostic Plots ----------------------- #
 
             # Prepare the model/data for evaluation.
-            self.setSavingFolder(f"trainingFigures/{submodel}/{trainingDate}/{linearityFolder}/{model.datasetName}/")  # Label the correct folder to save this analysis.
+            self.setSavingFolder(f"trainingFigures/{submodel}/{trainingDate}/{model.datasetName}/")  # Label the correct folder to save this analysis.
 
             # Plot the loss on the primary GPU.
             if self.accelerator.is_local_main_process:
@@ -185,10 +176,9 @@ class modelVisualizations(globalPlottingProtocols):
 
         # ------------------------------------------------------------------ #
 
-    def plotTrainingEvent(self, model, currentEpoch, allSignalData, allSubjectIdentifiers, allTrainingMasks, allTestingMasks, reconstructionIndex, submodel, trainingDate, timeWindow, datasetName, linearTraining):
+    def plotTrainingEvent(self, model, currentEpoch, allSignalData, allSubjectIdentifiers, allTrainingMasks, allTestingMasks, reconstructionIndex, submodel, trainingDate, timeWindow, datasetName):
         # Prepare the model/data for evaluation.
-        linearityFolder = self.getLinearityFolderName(linearTraining)
-        self.setSavingFolder(f"trainingFigures/{submodel}/{trainingDate}/{linearityFolder}/{datasetName}/{timeWindow}/")  # Label the correct folder to save this analysis.
+        self.setSavingFolder(f"trainingFigures/{submodel}/{trainingDate}/{datasetName}/{timeWindow}/")  # Label the correct folder to save this analysis.
         model.eval()
 
         # General plotting parameters.
@@ -263,8 +253,8 @@ class modelVisualizations(globalPlottingProtocols):
                 # Reconstruct the initial data.
                 with torch.no_grad():
                     numSignalForwardPath = model.signalEncoderModel.encodeSignals.simulateSignalPath(numSignals, targetNumSignals=model.numEncodedSignals)[0]
-                    _, _, _, propagatedReconstructedTestingData, _ = model.signalEncoderModel.reconstructEncodedData(testingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False)
-                    _, _, _, propagatedReconstructedTrainingData, _ = model.signalEncoderModel.reconstructEncodedData(trainingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False)
+                    _, _, _, propagatedReconstructedTestingData, _ = model.signalEncoderModel.reconstructEncodedData(testingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)
+                    _, _, _, propagatedReconstructedTrainingData, _ = model.signalEncoderModel.reconstructEncodedData(trainingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)
 
                 # Check the autoencoder propagated error.
                 self.autoencoderViz.plotAutoencoder(testingSignalData.detach().cpu(), propagatedReconstructedTestingData.detach().cpu(), epoch=currentEpoch,
@@ -346,8 +336,8 @@ class modelVisualizations(globalPlottingProtocols):
             #     emotionName = self.emotionNames[validEmotionInd]
 
             #     # # Organize the emotion's training/testing information.
-            #     trainingEmotionLabels = self.dataInterface.getEmotionlabels(validEmotionInd, allLabels, allTrainingMasks)
-            #     testingEmotionLabels = self.dataInterface.getEmotionlabels(validEmotionInd, allLabels, allTestingMasks)
+            #     trainingEmotionLabels = self.dataInterface.getEmotionLabels(validEmotionInd, allLabels, allTrainingMasks)
+            #     testingEmotionLabels = self.dataInterface.getEmotionLabels(validEmotionInd, allLabels, allTestingMasks)
 
             #     # Get the predicted and true emotion distributions.
             #     predictedTrainingEmotions, trueTrainingEmotions = self.dataInterface.getEmotionDistributions(validEmotionInd, allFinalEmotionDistributions, allLabels, allTrainingMasks)

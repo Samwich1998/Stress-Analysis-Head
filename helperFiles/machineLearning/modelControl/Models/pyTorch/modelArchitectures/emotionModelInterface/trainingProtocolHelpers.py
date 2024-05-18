@@ -39,7 +39,7 @@ class trainingProtocolHelpers:
 
         return unifiedLayerData
 
-    def trainEpoch(self, submodel, allMetaDataLoaders, allMetaModels, allModels, unifiedLayerData, linearTraining=False):
+    def trainEpoch(self, submodel, allMetaDataLoaders, allMetaModels, allModels, unifiedLayerData, constrainedTraining=False):
         # For each meta-training model.
         for modelInd in range(len(allMetaDataLoaders)):
             dataLoader = allMetaDataLoaders[modelInd]
@@ -49,7 +49,7 @@ class trainingProtocolHelpers:
             self.modelMigration.unifyModelWeights(allModels=[modelPipeline], sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
 
             # Train the model numTrainingSteps times and store training parameters.
-            modelPipeline.trainModel(dataLoader, submodel, numEpochs=1, linearTraining=linearTraining)
+            modelPipeline.trainModel(dataLoader, submodel, numEpochs=1, constrainedTraining=constrainedTraining)
             self.accelerator.wait_for_everyone()  # Wait for every device to reach this point before continuing.
 
             # Save and store the new model with its meta-trained weights.
@@ -80,7 +80,7 @@ class trainingProtocolHelpers:
         t2 = time.time()
         self.accelerator.print("Total loss calculation time:", t2 - t1)
 
-    def plotModelState(self, epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, linearTraining=False, fastPass=True):
+    def plotModelState(self, epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, constrainedTraining=False, fastPass=True):
         # Unify all the model weights.
         self.modelMigration.unifyModelWeights(allModels=allMetaModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
         self.modelMigration.unifyModelWeights(allModels=allModels, sharedModelWeights=self.sharedModelWeights, layerInfo=unifiedLayerData)
@@ -93,8 +93,8 @@ class trainingProtocolHelpers:
 
             with torch.no_grad():
                 numEpochs = modelPipeline.getTrainingEpoch(submodel) or epoch
-                modelPipeline.modelVisualization.plotAllTrainingEvents(submodel, modelPipeline, lossDataLoader, trainingDate, numEpochs, linearTraining, fastPass)
-        allMetaModels[0].modelVisualization.plotDatasetComparison(submodel, allMetaModels + allModels, trainingDate, linearTraining, fastPass)
+                modelPipeline.modelVisualization.plotAllTrainingEvents(submodel, modelPipeline, lossDataLoader, trainingDate, numEpochs, constrainedTraining, fastPass)
+        allMetaModels[0].modelVisualization.plotDatasetComparison(submodel, allMetaModels + allModels, trainingDate, constrainedTraining, fastPass)
         t2 = time.time()
         self.accelerator.print("Total plotting time:", t2 - t1)
 

@@ -162,17 +162,17 @@ class compileModelDataHelpers:
             numSignals, sequenceLength = data.shape
             assert self.minSeqLength <= sequenceLength, f"Expected {self.minSeqLength}, but received {data.shape[1]} "
 
-            # Standardize the signals
-            if self.standardizeSignals:
-                standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
-                data = standardizeClass.standardize(data)
-
             # Add buffer if needed.
             if sequenceLength < self.maxSeqLength + self.numSecondsShift:
                 prependedBuffer = np.ones((numSignals, self.maxSeqLength + self.numSecondsShift - sequenceLength)) * data[:, 0:1]
                 data = np.hstack((prependedBuffer, data))
             elif self.maxSeqLength + self.numSecondsShift < sequenceLength:
                 data = data[:, -self.maxSeqLength - self.numSecondsShift:]
+
+            # Standardize the signals
+            if self.standardizeSignals:
+                standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
+                data = standardizeClass.standardize(data)
 
             # This is good data
             featureData.append(data.tolist())

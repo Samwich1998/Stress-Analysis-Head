@@ -144,7 +144,10 @@ class signalEncoderModel(globalModel):
         if decodeSignals:
             # Perform the reverse operation.
             initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData, signalEncodingLayerLoss = \
-                self.reconstructEncodedData(encodedData, numSignalForwardPath, signalEncodingLayerLoss=signalEncodingLayerLoss, calculateLoss=calculateLoss, trainingFlag=trainingFlag)
+                self.reconstructEncodedData(encodedData, numSignalForwardPath, signalEncodingLayerLoss=signalEncodingLayerLoss, calculateLoss=calculateLoss)
+
+            # Normalize each encoding loss.
+            signalEncodingLayerLoss = signalEncodingLayerLoss / len(numSignalForwardPath)
 
         # ------------------------ Loss Calculations ----------------------- #
 
@@ -210,7 +213,7 @@ class signalEncoderModel(globalModel):
 
         return decodedData, reversePath, signalEncodingLayerLoss
 
-    def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False, trainingFlag=False):
+    def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False):
         # Undo what was done in the initial adjustment.
         initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(encodedData)
 

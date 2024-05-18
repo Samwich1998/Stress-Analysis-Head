@@ -15,12 +15,13 @@ class emotionPipeline(emotionPipelineHelpers):
                          numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
         # General parameters.
         self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
+        print("Current switch state:", self.currentSwitchState)
 
         # Finish setting up the model.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
         self.compileOptimizer(submodel)  # Initialize the optimizer (for back propagation)
 
-    def trainModel(self, dataLoader, submodel, numEpochs=500, linearTraining=False):
+    def trainModel(self, dataLoader, submodel, numEpochs=500, constrainedTraining=False):
         """
         Stored items in the dataLoader.dataset:
             allData: The standardized testing and training data. numExperiments, numSignals, signalInfoLength
@@ -43,16 +44,6 @@ class emotionPipeline(emotionPipelineHelpers):
         assert allLabels.shape == allTrainingMasks.shape, "We should specify the training indices for each label"
         assert allLabels.shape == allTestingMasks.shape, "We should specify the testing indices for each label"
         assert numEpochs == 1, f"numEpochs: {numEpochs}"
-
-        if linearTraining:
-            # Set the activation switch state.
-            self.modelHelpers.switchActivationLayers(model, switchState=False)
-            self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
-        if not self.currentSwitchState and not linearTraining:
-            # Set the activation switch state.
-            self.modelHelpers.switchActivationLayers(model, switchState=True)
-            self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
-        assert linearTraining != self.currentSwitchState, f"Linear training: {linearTraining}, current switch state: {self.currentSwitchState}"
 
         # For each training epoch.
         for epoch in range(numEpochs):
@@ -145,7 +136,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         if (finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss) or 0.9 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.75 * signalEncodingTrainingLayerLoss
+                            finalLoss = finalLoss + 0.5 * signalEncodingTrainingLayerLoss
                         if (finalLoss < 0.1 and 0.25 < encodedSignalMeanLoss) or 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
@@ -238,20 +229,20 @@ class emotionPipeline(emotionPipelineHelpers):
                     self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
                     if self.accelerator.sync_gradients: self.accelerator.clip_grad_norm_(self.model.parameters(), 10)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
 
-                    if linearTraining:
-                        self.linearOptimizer.step()
-                        self.linearOptimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
-                        self.accelerator.print("LR:", self.linearScheduler.get_last_lr())
+                    if constrainedTraining:
+                        self.constrainedOptimizer.step()
+                        self.constrainedOptimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
+                        self.accelerator.print("LR:", self.constrainedScheduler.get_last_lr())
                     else:
                         # Backpropagation the gradient.
                         self.optimizer.step()  # Adjust the weights.
                         self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                         self.accelerator.print("LR:", self.scheduler.get_last_lr())
             # Finalize all the parameters.
-            if not linearTraining:
+            if not constrainedTraining:
                 self.scheduler.step()  # Update the learning rate.
             else:
-                self.linearScheduler.step()  # Update the learning rate.
+                self.constrainedScheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 
 

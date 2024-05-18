@@ -52,7 +52,7 @@ class emotionPipeline(emotionPipelineHelpers):
             # Set the activation switch state.
             self.modelHelpers.switchActivationLayers(model, switchState=True)
             self.currentSwitchState = self.modelHelpers.getCurrentSwitchActivationLayers(self.model)
-        print("linearTraining", linearTraining, self.modelHelpers.getCurrentSwitchActivationLayers(self.model))
+        assert linearTraining != self.currentSwitchState, f"Linear training: {linearTraining}, current switch state: {self.currentSwitchState}"
 
         # For each training epoch.
         for epoch in range(numEpochs):
@@ -142,7 +142,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if (finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss) or 0.75 < encodedSignalStandardDeviationLoss:
+                        if (finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss) or 0.9 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.001 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.75 * signalEncodingTrainingLayerLoss

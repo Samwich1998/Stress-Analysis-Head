@@ -239,13 +239,17 @@ class emotionPipeline(emotionPipelineHelpers):
                     if linearTraining:
                         self.linearOptimizer.step()
                         self.linearOptimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
+                        self.accelerator.print("LR:", self.linearScheduler.get_last_lr())
                     else:
                         # Backpropagation the gradient.
                         self.optimizer.step()  # Adjust the weights.
                         self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
                         self.accelerator.print("LR:", self.scheduler.get_last_lr())
             # Finalize all the parameters.
-            if not linearTraining: self.scheduler.step()  # Update the learning rate.
+            if not linearTraining:
+                self.scheduler.step()  # Update the learning rate.
+            else:
+                self.linearScheduler.step()  # Update the learning rate.
 
             # ----------------- Evaluate Model Performance  ---------------- # 
 

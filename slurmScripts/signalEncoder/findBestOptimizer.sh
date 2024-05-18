@@ -1,7 +1,7 @@
 #!/bin/bash
 
 optimizers=('Adadelta' 'Adam' 'AdamW' 'NAdam' 'RAdam' 'Adamax' 'ASGD' 'RMSprop' 'Rprop' 'SGD')
-numLiftedChannels=64
+numLiftedChannels=32
 numExpandedSignals=2
 numEncodingLayers=2
 

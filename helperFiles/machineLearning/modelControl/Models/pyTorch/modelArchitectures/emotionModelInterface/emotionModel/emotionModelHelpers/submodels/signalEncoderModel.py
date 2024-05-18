@@ -119,8 +119,7 @@ class signalEncoderModel(globalModel):
                 self.trainingMethods.randomlyChangeDirections()
 
             # Set up the training parameters
-            assert decodeSignals and calculateLoss, f"Training requires decoding and loss calculations. decodeSignals: {decodeSignals}, calculateLoss: {calculateLoss}"
-            numEncodedSignals = self.trainingMethods.augmentFinalTarget(numSignals)\
+            numEncodedSignals = self.trainingMethods.augmentFinalTarget(numSignals)
 
         # ------------------- Learned Signal Compression ------------------- #
 

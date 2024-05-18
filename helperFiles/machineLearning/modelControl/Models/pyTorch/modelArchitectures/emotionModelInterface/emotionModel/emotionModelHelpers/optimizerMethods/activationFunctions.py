@@ -14,6 +14,18 @@ class switchActivation(nn.Module):
         else:
             return x
 
+class boundedS(nn.Module):
+    def __init__(self):
+        super(boundedS, self).__init__()
+        # Initialize coefficients with a starting value.
+        self.coefficients = nn.Parameter(torch.tensor([50]))
+
+    def forward(self, x):
+        # Update the coefficient clamp.
+        a = self.coefficients[0].clamp(min=1, max=100)
+
+        return a*x / (25 + torch.pow(x, 2))
+
 class sinh(nn.Module):
     def __init__(self, clampCoeff=[0.5, 0.75]):
         super(sinh, self).__init__()

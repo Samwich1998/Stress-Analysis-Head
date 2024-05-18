@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import learnableTanhshrink, switchActivation, powerSeriesActivation, \
-    sinh
+    sinh, boundedS
 # Import files.
 from .abnormalConvolutions import abnormalConvolutions
 
@@ -144,6 +144,9 @@ class convolutionalHelpers(abnormalConvolutions):
             # Selu activation function
             if activationType == 'selu':
                 activationFunction = nn.SELU()
+
+            elif activationType == 'boundedS':
+                activationFunction = boundedS()
 
             elif activationType == 'sinh':
                 activationFunction = sinh()

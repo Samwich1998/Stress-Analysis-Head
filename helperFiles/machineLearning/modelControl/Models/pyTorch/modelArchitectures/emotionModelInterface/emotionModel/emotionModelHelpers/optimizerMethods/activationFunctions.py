@@ -15,10 +15,10 @@ class switchActivation(nn.Module):
             return x
 
 class sinh(nn.Module):
-    def __init__(self, clampCoeff=[0.1, 0.25]):
+    def __init__(self, clampCoeff=[0.5, 0.75]):
         super(sinh, self).__init__()
         # Initialize coefficients with a starting value.
-        self.coefficients = nn.Parameter(torch.randn(1))
+        self.coefficients = nn.Parameter(torch.tensor(0.5))
         self.clampCoeff = clampCoeff
 
     def forward(self, x):

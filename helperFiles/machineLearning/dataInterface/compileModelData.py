@@ -6,7 +6,7 @@ import copy
 import os
 
 # Import files for training and testing the model
-from ..modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionPipeline import emotionPipeline
+from ..modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionPipeline import emotionPipeline
 from ..modelControl.modelSpecifications.compileModelInfo import compileModelInfo  # Functions with model information
 from .compileModelDataHelpers import compileModelDataHelpers
 

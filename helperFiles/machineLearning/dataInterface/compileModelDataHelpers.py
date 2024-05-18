@@ -7,8 +7,8 @@ import gzip
 import os
 
 # Import helper files.
-from ..modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.emotionDataInterface import emotionDataInterface
-from ..modelControl.Models.pyTorch.modelArchitectures.emotionModel.emotionModelHelpers.modelParameters import modelParameters
+from ..modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.emotionDataInterface import emotionDataInterface
+from ..modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.modelParameters import modelParameters
 from ..modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
 from .dataPreparation import standardizeData
 

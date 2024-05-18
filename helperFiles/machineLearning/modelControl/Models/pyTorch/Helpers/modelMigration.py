@@ -1,23 +1,13 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General
-import os
-import pickle
-
-import dill
-# PyTorch
-import torch
 import torch.nn as nn
+import torch
+import os
 
-
-# -------------------------------------------------------------------------- #
-# -------------------------- Model Migration Class ------------------------- #
 
 class modelMigration:
 
     def __init__(self, accelerator=None, debugFlag=False):
-        # Create folders to the save the data in.
+        # Create folders to save the data in.
         self.saveModelFolder = os.path.normpath(os.path.dirname(__file__) + "/../../../_finalModels/") + "/"
         self.saveModelFolder = os.path.relpath(os.path.normpath(self.saveModelFolder), os.getcwd()) + "/"
         os.makedirs(self.saveModelFolder, exist_ok=True)  # Create the folders if they do not exist.
@@ -235,7 +225,7 @@ class modelMigration:
         # For each model, save the shared and specific weights
         for datasetInd, (modelPipeline, datasetName) in enumerate(zip(modelPipelines, datasetNames)):
             # Update the specific model information to save.
-            trainingInformation = modelPipeline.getDistributedModels(model=None, submodel="trainingInformation")
+            trainingInformation = modelPipeline.getDistributedModels(model=modelPipeline.model, submodel="trainingInformation")
             trainingInformation.storeOptimizer(modelPipeline.optimizer, storeOptimizer)
             trainingInformation.storeScheduler(modelPipeline.scheduler, storeOptimizer)
 
@@ -305,7 +295,7 @@ class modelMigration:
 
             if loadModelWeights:
                 # Load in the specific model information.
-                trainingInformation = modelPipeline.getDistributedModels(model=None, submodel="trainingInformation")
+                trainingInformation = modelPipeline.getDistributedModels(model=modelPipeline.model, submodel="trainingInformation")
                 trainingInformation.setSubmodelInfo(modelPipeline, submodel)
 
     def _loadModel(self, model, modelName, datasetName, submodel, trainingDate, numEpochs, metaTraining, loadModelAttributes=True, loadModelWeights=True):

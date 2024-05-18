@@ -18,7 +18,7 @@ class boundedS(nn.Module):
     def __init__(self):
         super(boundedS, self).__init__()
         # Initialize coefficients with a starting value.
-        self.coefficients = nn.Parameter(torch.tensor([50]))
+        self.coefficients = nn.Parameter(torch.tensor([50.0000]))
 
     def forward(self, x):
         # Update the coefficient clamp.

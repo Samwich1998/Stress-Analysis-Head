@@ -3,7 +3,7 @@
 optimizers=('Adadelta' 'Adam' 'AdamW' 'NAdam' 'RAdam' 'Adamax' 'ASGD' 'RMSprop' 'Rprop' 'SGD')
 numLiftedChannels=32
 numExpandedSignals=2
-numEncodingLayers=4
+numEncodingLayers=2
 
 
 for optimizer in "${optimizers[@]}"

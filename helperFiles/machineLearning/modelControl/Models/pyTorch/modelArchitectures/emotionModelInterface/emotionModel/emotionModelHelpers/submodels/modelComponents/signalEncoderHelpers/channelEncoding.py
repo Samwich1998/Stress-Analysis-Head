@@ -55,7 +55,13 @@ class channelEncoding(signalEncoderModules):
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numCompressedSignals)
         self.projectingExpansionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numExpandedSignals)
 
-        self.gaussian_kernel = nn.Parameter(torch.tensor([1., 2., 1.]).reshape(1, 1, 3) / 4, requires_grad=False)
+        # Initialize Gaussian weights
+        gaussian_weights = torch.tensor([1., 2., 1.]) / 4
+        # Reshape and expand to (num_channels, num_channels, 3)
+        self.gaussian_kernel = nn.Parameter(
+            gaussian_weights.view(1, 1, 3).expand(self.numLiftedChannels, self.numLiftedChannels, 3),
+            requires_grad=False
+        )
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Signal Encoding Methods ---------------------- #

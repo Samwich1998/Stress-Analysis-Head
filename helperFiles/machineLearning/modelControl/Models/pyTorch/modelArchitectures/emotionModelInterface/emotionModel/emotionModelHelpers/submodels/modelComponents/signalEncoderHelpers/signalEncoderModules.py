@@ -49,7 +49,7 @@ class signalEncoderModules(convolutionalHelpers):
             ), numCycles=1),
 
             # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=inChannel, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
@@ -100,10 +100,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def signalPostProcessing(self, inChannel=2):
         return nn.Sequential(
-            # ResNet(module=nn.Sequential(
-            #     # Convolution architecture: feature engineering.
-            #     self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None),
-            # ), numCycles=1),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):

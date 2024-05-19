@@ -121,11 +121,11 @@ class modelParameters:
     @staticmethod
     def getNumEpochs(submodel):
         if submodel == "signalEncoder":
-            return 500, 1  # numEpoch, numConstrainedEpochs
+            return 500, 2  # numEpoch, numConstrainedEpochs
         elif submodel == "autoencoder":
-            return 500, 1  # numEpoch, numConstrainedEpochs
+            return 500, 2  # numEpoch, numConstrainedEpochs
         elif submodel == "emotionPrediction":
-            return 500, 1  # numEpoch, numConstrainedEpochs
+            return 500, 2  # numEpoch, numConstrainedEpochs
         else:
             raise Exception()
 

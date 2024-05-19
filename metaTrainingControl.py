@@ -70,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument('--optimizerType', type=str, default='AdamW', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=16, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument('--numLiftedChannels', type=int, default=48, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
     parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder

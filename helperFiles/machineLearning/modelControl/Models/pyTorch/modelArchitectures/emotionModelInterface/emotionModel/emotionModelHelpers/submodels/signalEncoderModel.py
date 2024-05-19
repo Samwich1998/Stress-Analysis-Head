@@ -180,7 +180,7 @@ class signalEncoderModel(globalModel):
             if 0.01 < positionReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
             if 0.01 < finalReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
+                signalEncodingLoss = signalEncodingLoss + 0.25*finalReconstructionStateLoss
             if 0.01 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
             if 0.01 < varReconstructionStateLoss.mean():

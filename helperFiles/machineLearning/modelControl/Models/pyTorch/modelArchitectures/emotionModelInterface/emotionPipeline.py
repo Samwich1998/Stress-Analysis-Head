@@ -138,8 +138,6 @@ class emotionPipeline(emotionPipelineHelpers):
                         if signalReconstructedLoss.item() == 0: self.accelerator.print("Not useful\n\n\n\n\n\n"); continue
 
                         # Initialize basic core loss value.
-                        futureCompressionsFactor = augmentedSignalData.size(1) / self.model.numEncodedSignals  # Increase the learning rate if compressing more signals.
-                        sequenceLengthFactor = max(0.75, augmentedSignalData.size(2) / self.sequenceLength)  # Increase the learning rate for longer sequences.
                         compressionFactor = augmentedSignalData.size(1) / encodedData.size(1)  # Increase the learning rate for larger compressions.
                         noiseFactor = 1 - (addingNoiseSTD / addingNoiseRange[1]) + 0.5  # Lower the learning rate for high noise levels.
                         finalLoss = compressionFactor * signalReconstructedLoss
@@ -152,7 +150,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         if 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
-                        finalLoss = noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
+                        finalLoss = noiseFactor * finalLoss
 
                         # Update the user.
                         self.accelerator.print(finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
@@ -232,7 +230,7 @@ class emotionPipeline(emotionPipelineHelpers):
                     # ------------------- Update the Model  -------------------- #
 
                     # Prevent too high losses from randomizing weights.
-                    while 100 < finalLoss: finalLoss = finalLoss / 10
+                    while 10 < finalLoss: finalLoss = finalLoss / 10
 
                     t1 = time.time()
                     # Calculate the gradients.

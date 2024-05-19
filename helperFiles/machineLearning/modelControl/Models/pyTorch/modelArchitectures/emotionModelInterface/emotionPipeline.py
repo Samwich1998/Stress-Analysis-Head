@@ -15,8 +15,8 @@ class emotionPipeline(emotionPipelineHelpers):
                          numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
         # General parameters.
         self.maxBatchSignals = maxNumSignals
-        self.calculateFullLoss = True
-        self.addingNoiseFlag = True
+        self.calculateFullLoss = False
+        self.addingNoiseFlag = False
 
         # Finish setting up the model.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
@@ -91,7 +91,7 @@ class emotionPipeline(emotionPipelineHelpers):
                     # Randomly choose to add noise to the model.
                     if self.accelerator.sync_gradients:
                         self.calculateFullLoss = random.random() < 0.75 and not constrainedTraining
-                        self.addingNoiseFlag = random.random() < 0.5
+                        self.addingNoiseFlag = random.random() < 0.5 and not constrainedTraining
 
                     # Randomly choose to add noise to the model.
                     augmentedSignalData = signalData.clone()

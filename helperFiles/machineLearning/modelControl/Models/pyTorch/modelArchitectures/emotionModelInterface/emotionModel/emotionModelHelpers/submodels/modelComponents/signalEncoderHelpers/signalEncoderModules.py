@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import switchActivation, boundedExp, boundedExp
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import switchActivation, boundedExp
 # Import files for machine learning
 from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, ResNet
 

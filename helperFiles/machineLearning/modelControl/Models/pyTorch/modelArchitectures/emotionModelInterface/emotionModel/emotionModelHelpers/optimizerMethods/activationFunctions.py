@@ -23,7 +23,7 @@ class boundedExp(nn.Module):
         assert 0 <= self.topExponent, "The exponent in the numerator and denominator must be greater than 0 to be continuous."
 
     def forward(self, x):
-        return x * torch.exp(torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
+        return 2*x * torch.exp(-torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
 
 
 class boundedS(nn.Module):

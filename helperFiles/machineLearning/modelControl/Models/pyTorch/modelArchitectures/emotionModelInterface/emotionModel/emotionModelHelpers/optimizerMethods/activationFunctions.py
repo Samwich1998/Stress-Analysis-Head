@@ -25,6 +25,16 @@ class boundedExp(nn.Module):
     def forward(self, x):
         return 2*x * torch.exp(-torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
 
+class boundedDecayedExp(nn.Module):
+    def __init__(self, topExponent=2):
+        super(boundedDecayedExp, self).__init__()
+        self.topExponent = topExponent
+        assert self.topExponent % 2 == 0, "The exponent in the numerator and denominator must be even."
+        assert 0 <= self.topExponent, "The exponent in the numerator and denominator must be greater than 0 to be continuous."
+
+    def forward(self, x):
+        return x * torch.exp(torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
+
 
 class boundedS(nn.Module):
     def __init__(self, boundedValue=1):

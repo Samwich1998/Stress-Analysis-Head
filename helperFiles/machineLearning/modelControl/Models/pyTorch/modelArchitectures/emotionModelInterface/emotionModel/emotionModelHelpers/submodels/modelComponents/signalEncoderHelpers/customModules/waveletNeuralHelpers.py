@@ -80,6 +80,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)  # Skip connection model for the Fourier neural operator.
         self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.activationFunction = self.neuralOperatorActivation(useSwitchActivation=True)  # Activation function for the Fourier neural operator.
+        self.dropoutFunction = self.neuralDropout(p=0.01)
 
     def getSkipConnectionProtocol(self, skipConnectionProtocol):
         # Decide on the skip connection protocol.

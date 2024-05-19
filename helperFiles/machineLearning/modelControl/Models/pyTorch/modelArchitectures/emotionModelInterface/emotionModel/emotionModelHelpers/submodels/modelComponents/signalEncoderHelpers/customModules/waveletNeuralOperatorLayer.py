@@ -45,6 +45,10 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
         # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
 
+        # Perform a very small dropout to prevent complex differences.
+        highFrequencies = self.dropoutFunction(highFrequencies)
+        lowFrequency = self.dropoutFunction(lowFrequency)
+
         # Perform wavelet reconstruction.
         reconstructedData = self.idwt((lowFrequency, highFrequencies))
         # reconstructedData dimension: batchSize, numOutputSignals, sequenceLength

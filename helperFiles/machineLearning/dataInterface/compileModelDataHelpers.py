@@ -10,7 +10,7 @@ import os
 from ..modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.emotionDataInterface import emotionDataInterface
 from ..modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.modelParameters import modelParameters
 from ..modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
-from .dataPreparation import standardizeData
+from .dataPreparation import standardizeData, minMaxScale_noInverse
 
 
 class compileModelDataHelpers:
@@ -171,8 +171,9 @@ class compileModelDataHelpers:
 
             # Standardize the signals
             if self.standardizeSignals:
-                standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
-                data = standardizeClass.standardize(data)
+                # standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
+                # data = standardizeClass.standardize(data)
+                data = minMaxScale_noInverse(data, scale=3)
 
             # This is good data
             featureData.append(data.tolist())

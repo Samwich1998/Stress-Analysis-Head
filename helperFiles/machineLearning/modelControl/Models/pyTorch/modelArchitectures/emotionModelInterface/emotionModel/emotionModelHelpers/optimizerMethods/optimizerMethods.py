@@ -16,7 +16,7 @@ class optimizerMethods:
     def getModelParams(submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 0, 'lr': 1E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 5E-5 < lr < 5E-4
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 5E-5 < lr < 5E-4
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
@@ -46,7 +46,7 @@ class optimizerMethods:
         constrainedModelParams = [{'params': model.parameters()}]
 
         # Set the optimizer.
-        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-4, weight_decay=0, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
+        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-3, weight_decay=1E-4, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
         optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.

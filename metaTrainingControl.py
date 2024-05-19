@@ -11,8 +11,7 @@ from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.
 # Set specific environmental parameters.
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow logging (1 = INFO, 2 = WARNING and ERROR, 3 = ERROR only)
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging (1 = INFO, 2 = WARNING and ERROR, 3 = ERROR only)
 
 # Hugging Face
 import accelerate

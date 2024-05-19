@@ -21,6 +21,7 @@ class emotionPipeline(emotionPipelineHelpers):
         # Finish setting up the model.
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
         self.compileOptimizer(submodel)  # Initialize the optimizer (for back propagation)
+        self.modelHelpers.switchActivationLayers(self.model, switchState=True)
 
     def trainModel(self, dataLoader, submodel, numEpochs=500, constrainedTraining=False):
         """
@@ -46,8 +47,8 @@ class emotionPipeline(emotionPipelineHelpers):
         assert allLabels.shape == allTestingMasks.shape, "We should specify the testing indices for each label"
         assert numEpochs == 1, f"numEpochs: {numEpochs}"
 
-        if constrainedTraining:
-            self.modelHelpers.switchActivationLayers(self.model, switchState=False)
+        # if constrainedTraining:
+        #     self.modelHelpers.switchActivationLayers(self.model, switchState=False)
 
         # For each training epoch.
         for epoch in range(numEpochs):
@@ -249,8 +250,8 @@ class emotionPipeline(emotionPipelineHelpers):
             # Prepare the model/data for evaluation.
             self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.
 
-        if constrainedTraining:
-            self.modelHelpers.switchActivationLayers(self.model, switchState=True)
+        # if constrainedTraining:
+        #     self.modelHelpers.switchActivationLayers(self.model, switchState=True)
 
         # Prepare the model/data for evaluation.
         self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.

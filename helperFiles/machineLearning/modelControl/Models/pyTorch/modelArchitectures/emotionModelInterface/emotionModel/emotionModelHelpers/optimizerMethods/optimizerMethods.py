@@ -46,7 +46,7 @@ class optimizerMethods:
         constrainedModelParams = [{'params': model.parameters()}]
 
         # Set the optimizer.
-        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-5, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
+        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-4, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
         optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.
@@ -87,7 +87,8 @@ class optimizerMethods:
         # torch.optim.lr_scheduler.constrainedLR(optimizer, start_factor=0.3333333333333333, end_factor=1.0, total_iters=5, last_epoch=-1)
 
         if constrainedFlag:
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=0 if self.useParamsHPC else 0)
+            numConstrainedEpochs = modelParameters.getNumEpochs(submodel)[1]
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=numConstrainedEpochs)
 
         # Train the autoencoder
         if submodel == "signalEncoder":

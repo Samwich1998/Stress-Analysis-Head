@@ -14,6 +14,11 @@ class weightInitialization:
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
+        elif activationMethod == 'boundedExp':
+            if layerType == 'conv':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
+            elif layerType == 'fc':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         else:
             modelParam.reset_parameters()
 

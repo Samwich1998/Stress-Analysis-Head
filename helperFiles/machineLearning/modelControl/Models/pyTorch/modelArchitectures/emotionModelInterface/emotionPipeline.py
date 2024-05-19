@@ -144,17 +144,14 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if finalLoss < 0.1 and 0.5 < encodedSignalStandardDeviationLoss:
+                        if finalLoss < 0.1 and 0.5 < encodedSignalStandardDeviationLoss or 1 <= encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.1 < finalLoss and 0.01 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.25 * signalEncodingTrainingLayerLoss
                         if 0.2 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalMeanLoss
-
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * sequenceLengthFactor * futureCompressionsFactor * finalLoss
-                        if constrainedTraining:
-                            finalLoss = compressionFactor * noiseFactor * sequenceLengthFactor * futureCompressionsFactor * signalReconstructedLoss
 
                         # Update the user.
                         self.accelerator.print(finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")

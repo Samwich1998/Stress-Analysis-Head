@@ -16,12 +16,14 @@ class switchActivation(nn.Module):
 
 
 class boundedExp(nn.Module):
-    def __init__(self):
+    def __init__(self, topExponent=0):
         super(boundedExp, self).__init__()
+        self.topExponent = topExponent
+        assert self.topExponent % 2 == 0, "The exponent in the numerator and denominator must be even."
+        assert 0 <= self.topExponent, "The exponent in the numerator and denominator must be greater than 0 to be continuous."
 
-    @staticmethod
-    def forward(x):
-        return x * torch.exp(x / (1 + torch.pow(x, 2)))
+    def forward(self, x):
+        return x * torch.exp(torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
 
 
 class boundedS(nn.Module):

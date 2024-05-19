@@ -101,9 +101,6 @@ class organizeTrainingLosses(lossCalculations):
                     self.storeLossInformation(encodedStandardDeviationTrainingLoss, encodedStandardDeviationTestingLoss, model.signalEncoderModel.trainingLosses_timeSTDAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeSTDAnalysis[timeWindowInd])
                     self.storeLossInformation(signalEncodingTrainingLayerLoss, signalEncodingTestingLayerLoss, model.signalEncoderModel.trainingLosses_timeLayerAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeLayerAnalysis[timeWindowInd])
                     self.storeLossInformation(encodedMeanTrainingLoss, encodedMeanTestingLoss, model.signalEncoderModel.trainingLosses_timeMeanAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeMeanAnalysis[timeWindowInd])
-                    # Store information about the training process.
-                    model.signalEncoderModel.numEncodingsBufferPath_timeAnalysis[timeWindowInd].append(model.signalEncoderModel.trainingMethods.keepNumEncodingBuffer)
-                    model.signalEncoderModel.numEncodingsPath_timeAnalysis[timeWindowInd].append(model.signalEncoderModel.trainingMethods.numEncodings)
                     # Calculate and Store the optimal loss only once.
                     if len(model.signalEncoderModel.trainingLosses_timeReconstructionOptimalAnalysis[timeWindowInd]) == 0:
                         optimalTrainingLoss = self.getOptimalLoss(model.signalEncoderModel.calculateOptimalLoss, segmentedSignalData, allTrainingMasks, reconstructionIndex)
@@ -126,9 +123,6 @@ class organizeTrainingLosses(lossCalculations):
                     self.storeLossInformation(compressedStandardDeviationTrainingLoss, compressedStandardDeviationTestingLoss, model.autoencoderModel.trainingLosses_timeSTDAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeSTDAnalysis[timeWindowInd])
                     self.storeLossInformation(autoencoderTrainingLayerLoss, autoencoderTestingLayerLoss, model.autoencoderModel.trainingLosses_timeLayerAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeLayerAnalysis[timeWindowInd])
                     self.storeLossInformation(compressedMeanTrainingLoss, compressedMeanTestingLoss, model.autoencoderModel.trainingLosses_timeMeanAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeMeanAnalysis[timeWindowInd])
-                    # Store information about the training process.
-                    model.autoencoderModel.numEncodingsBufferPath_timeAnalysis[timeWindowInd].append(model.autoencoderModel.trainingMethods.keepNumEncodingBuffer)
-                    model.autoencoderModel.numEncodingsPath_timeAnalysis[timeWindowInd].append(model.autoencoderModel.trainingMethods.numEncodings)
 
                     # Inform the user about the final loss.
                     print(f"\tAutoencoder {timeWindow} second losses:", reconstructedEncodedTrainingLoss.item(), reconstructedEncodedTestingLoss.item())

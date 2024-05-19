@@ -78,7 +78,8 @@ class optimizerMethods:
         else:
             assert False, "No optimizer initialized"
 
-    def getLearningRateScheduler(self, submodel, optimizer, constrainedFlag=False):
+    @staticmethod
+    def getLearningRateScheduler(submodel, optimizer, constrainedFlag=False):
         # Options:
         # Slow ramp up: transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=30)
         # Cosine waveform: optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=20, eta_min=1e-8, last_epoch=-1, verbose=False)
@@ -87,7 +88,7 @@ class optimizerMethods:
         # torch.optim.lr_scheduler.constrainedLR(optimizer, start_factor=0.3333333333333333, end_factor=1.0, total_iters=5, last_epoch=-1)
 
         if constrainedFlag:
-            numConstrainedEpochs = modelParameters.getNumEpochs(submodel)[1]
+            numConstrainedEpochs = min(5, modelParameters.getNumEpochs(submodel)[1])
             return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=numConstrainedEpochs)
 
         # Train the autoencoder

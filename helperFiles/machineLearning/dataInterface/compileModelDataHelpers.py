@@ -173,7 +173,7 @@ class compileModelDataHelpers:
             if self.standardizeSignals:
                 # standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
                 # data = standardizeClass.standardize(data)
-                data = minMaxScale_noInverse(data, scale=3)
+                data = minMaxScale_noInverse(data, scale=1)
 
             # This is good data
             featureData.append(data.tolist())

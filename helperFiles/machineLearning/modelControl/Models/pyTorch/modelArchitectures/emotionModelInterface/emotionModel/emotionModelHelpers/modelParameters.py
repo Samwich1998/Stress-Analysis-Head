@@ -41,7 +41,7 @@ class modelParameters:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.001)
+            addingNoiseRange = (0, 0.01)
         elif submodel == "autoencoder":
             addingNoiseRange = (0, 0.01)
         elif submodel == "emotionPrediction":
@@ -103,7 +103,7 @@ class modelParameters:
             minimumBatchSize = 16 if 80 <= self.userInputParams['numLiftedChannels'] else 32
             if 6 <= self.userInputParams['numEncodingLayers'] and 64 <= self.userInputParams['numLiftedChannels']: minimumBatchSize = 16
             if self.userInputParams['numEncodingLayers'] <= 2: minimumBatchSize = 32
-            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 48
+            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 32
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":
@@ -121,11 +121,11 @@ class modelParameters:
     @staticmethod
     def getNumEpochs(submodel):
         if submodel == "signalEncoder":
-            return 500, 20  # numEpoch, numConstrainedEpochs
+            return 500, 1  # numEpoch, numConstrainedEpochs
         elif submodel == "autoencoder":
-            return 500, 10  # numEpoch, numConstrainedEpochs
+            return 500, 1  # numEpoch, numConstrainedEpochs
         elif submodel == "emotionPrediction":
-            return 500, 10  # numEpoch, numConstrainedEpochs
+            return 500, 1  # numEpoch, numConstrainedEpochs
         else:
             raise Exception()
 

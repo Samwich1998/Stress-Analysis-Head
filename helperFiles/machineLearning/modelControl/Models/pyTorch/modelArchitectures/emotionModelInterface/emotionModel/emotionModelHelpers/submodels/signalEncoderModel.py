@@ -152,7 +152,6 @@ class signalEncoderModel(globalModel):
             # Prepare for loss calculations.
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Calculate the immediately reconstructed data.
-            # Undo the signal encoding.
             halfReconstructedPositionEncodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=initialEncodedData, calculateLoss=False)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
@@ -170,21 +169,23 @@ class signalEncoderModel(globalModel):
             potentialVarReconstructionStateLoss = (signalData - potentialSignalData).pow(2).mean(dim=2).mean(dim=1)
             if self.debuggingResults: print("Path Losses (P-E-V2-S):", positionReconstructionLoss.detach().mean().item(), encodingReconstructionLoss.detach().mean().item(), potentialVarReconstructionStateLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
 
-            # Add up all the losses together.
-            if 0.01 < potentialVarReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss
-            if 0.01 < encodingReconstructionStateLoss.mean():
+            # Add up all the state losses together.
+            if 0.1 < encodingReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionStateLoss
-            if 0.01 < encodingReconstructionLoss.mean():
+            if 0.1 < finalReconstructionStateLoss.mean():
+                signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
+            if 0.1 < varReconstructionStateLoss.mean():
+                signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
+            # Add up all the path losses together.
+            if 0.001 < potentialVarReconstructionStateLoss.mean():
+                signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss
+            if 0.001 < encodingReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionLoss
-            if 0.01 < positionReconstructionLoss.mean():
+            if 0.001 < positionReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
-            if 0.01 < finalReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + 0.25*finalReconstructionStateLoss
+            # Add up all the layer losses together.
             if 0.01 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
-            if 0.01 < varReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
 
             if self.plotEncoding and random.random() < 0.015:
                 self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)

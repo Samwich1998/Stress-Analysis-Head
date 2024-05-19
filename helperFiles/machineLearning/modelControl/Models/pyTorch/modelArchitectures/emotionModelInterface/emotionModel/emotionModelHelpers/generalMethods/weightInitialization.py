@@ -11,16 +11,17 @@ class weightInitialization:
 
         if activationMethod == 'selu':
             if layerType == 'conv':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         elif activationMethod == 'boundedExp':
             if layerType == 'conv':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         else:
             modelParam.reset_parameters()
+        modelParam.reset_parameters()
 
         return modelParam
 

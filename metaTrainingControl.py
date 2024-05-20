@@ -38,9 +38,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU.")
 
 # Configure cuDNN and PyTorch's global settings.
-torch.backends.cudnn.deterministic = True  # Allow non-deterministic algorithms in cuDNN, which can enhance performance but reduce reproducibility.
+torch.backends.cudnn.deterministic = True  # If False: allow non-deterministic algorithms in cuDNN, which can enhance performance but reduce reproducibility.
 torch.set_default_dtype(torch.float32)  # Set the default data type to float32, which is typical for neural network computations.
-torch.backends.cudnn.benchmark = False  # Enable cuDNN's auto-tuner to find the most efficient algorithm for the current configuration, potentially improving performance.
+torch.backends.cudnn.benchmark = False  # If True: Enable cuDNN's auto-tuner to find the most efficient algorithm for the current configuration, potentially improving performance if fixed input size.
 
 if __name__ == "__main__":
     # Define the accelerator parameters.

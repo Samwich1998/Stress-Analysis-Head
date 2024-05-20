@@ -16,7 +16,7 @@ class switchActivation(nn.Module):
 
 
 class boundedExp(nn.Module):
-    def __init__(self, topExponent=2):
+    def __init__(self, topExponent=0):
         super(boundedExp, self).__init__()
         self.topExponent = topExponent
         assert self.topExponent % 2 == 0, "The exponent in the numerator and denominator must be even."

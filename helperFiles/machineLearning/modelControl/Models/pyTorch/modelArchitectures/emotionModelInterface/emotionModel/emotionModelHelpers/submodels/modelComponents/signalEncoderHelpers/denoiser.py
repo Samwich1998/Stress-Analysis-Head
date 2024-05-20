@@ -15,11 +15,10 @@ class denoiser(signalEncoderModules):
         self.gausKernel = self.averageDenoiserModel(inChannel=1)
         self.denoiseSignals = self.denoiserModel(inChannel=1)
 
-    def smoothingFunc(self, inputData):
-        return F.conv1d(inputData, self.gausKernel, bias=None, stride=1, padding=1, dilation=1, groups=1)
-
     def applySmoothing(self, inputData):
-        return self.encodingInterface(inputData, self.smoothingFunc)
+        kernelWeights = self.gausKernel.expand(inputData.size(1), 1, 3)  # Note: Output channels are set to 1 for sharing
+
+        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1, dilation=1, groups=inputData.size(1))
 
     def applyDenoiser(self, inputData):
         return self.encodingInterface(inputData, self.denoiseSignals)

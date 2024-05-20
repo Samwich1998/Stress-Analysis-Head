@@ -32,7 +32,7 @@ class denoiser(signalEncoderModules):
 
         kernelWeights = self.gausKernel_forVar.expand(numSignals, 1,  kernelSize)  # Note: Output channels are set to 1 for sharing
 
-        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1, dilation=1, groups=numSignals)
+        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=2, dilation=1, groups=numSignals)
 
     def applyDenoiser(self, inputData):
         return self.encodingInterface(inputData, self.denoiseSignals)

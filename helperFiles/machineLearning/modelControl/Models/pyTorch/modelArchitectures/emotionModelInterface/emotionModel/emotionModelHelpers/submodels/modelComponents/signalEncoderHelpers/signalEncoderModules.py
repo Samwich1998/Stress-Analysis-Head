@@ -14,10 +14,27 @@ class signalEncoderModules(convolutionalHelpers):
 
     # ------------------- Positional Encoding Architectures ------------------- #
 
+    def liftingOperator_forPosEnc(self, outChannels=4):
+        return nn.Sequential(
+            # Convolution architecture: lifting operator.
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, outChannels], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+        )
+
+    def projectionOperator_forPosEnc(self, inChannels=1):
+        return nn.Sequential(
+            # Convolution architecture: lifting operator.
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannels, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+        )
+
     def learnEncodingStampCNN(self):
         return nn.Sequential(
             # Convolution architecture: lifting operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+
+            ResNet(module=nn.Sequential(
+                # Convolution architecture: feature engineering
+                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            ), numCycles=1),
 
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering

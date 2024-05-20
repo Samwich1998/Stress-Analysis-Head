@@ -22,8 +22,10 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Neural operator parameters.
         self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
-        self.wavelet = 'bior3.7'       # Wavelet type for the wavelet transform: bior3.7, db3, dmey
+        self.wavelet = 'db3'       # Wavelet type for the wavelet transform: bior3.7, db3, dmey
         self.mode = 'zero'             # Mode for the wavelet transform.
+        self.numLiftedChannels = 4
+        self.numLayers = 4
 
         # Initialize the neural operator layer.
         self.learnNeuralOperatorLayers = nn.ModuleList([])
@@ -32,8 +34,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numOperatorLayers):
             # Create the spectral convolution layers.
-            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', skipConnectionProtocol='CNN'))
-            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', skipConnectionProtocol='CNN'))
+            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=self.numLayers, encodeLowFrequencyProtocol='allFreqs', encodeHighFrequencyProtocol='allFreqs', skipConnectionProtocol='CNN'))
+            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=self.numLayers, encodeLowFrequencyProtocol='allFreqs', encodeHighFrequencyProtocol='allFreqs', skipConnectionProtocol='CNN'))
         self.lowFrequencyShape = self.learnNeuralOperatorLayers[0].lowFrequencyShape
 
         # A list of parameters to encode each signal.
@@ -59,6 +61,10 @@ class channelPositionalEncoding(signalEncoderModules):
         # Initialize the encoding parameters.
         self.learnStampEncodingFNN = self.learnEncodingStampFNN(numFeatures=self.lowFrequencyShape)
         self.unlearnStampEncodingFNN = self.learnEncodingStampFNN(numFeatures=self.lowFrequencyShape)
+
+        # Lifting and projection operators.
+        self.liftingModel = self.liftingOperator_forPosEnc(outChannels=self.numLiftedChannels)
+        self.projectionModel = self.projectionOperator_forPosEnc(inChannels=self.numLiftedChannels)
 
         # Initialize helper classes.
         self.dataInterface = emotionDataInterface
@@ -95,12 +101,16 @@ class channelPositionalEncoding(signalEncoderModules):
         # positionEncodedData dimension: batchSize*numSignals, 1, signalDimension
         # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
 
+        positionEncodedData = self.liftingModel(positionEncodedData)
+
         # For each neural operator layer.
         for modelInd in range(self.numOperatorLayers):
             # Apply the neural operator and the skip connection.
             positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
             finalStamp = None  # Only add the stamp encoding to the first layer.
             # positionEncodedData dimension: batchSize*numSignals, 1, signalDimension
+
+        positionEncodedData = self.projectionModel(positionEncodedData)
 
         # Reshape the data back into the original format.
         positionEncodedData = positionEncodedData.view(batchSize, numSignals, signalDimension)

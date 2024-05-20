@@ -127,6 +127,9 @@ class signalEncoderModel(globalModel):
         positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
 
+        # Smooth over the encoding space.
+        positionEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forPosEnc(positionEncodedData)
+
         # Compress the signal space into numEncodedSignals.
         initialEncodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss)
         # initialEncodedData dimension: batchSize, numEncodedSignals, sequenceLength
@@ -136,7 +139,7 @@ class signalEncoderModel(globalModel):
         # adjustedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # Smooth over the encoding space.
-        encodedData = self.encodeSignals.denoiseSignals.applySmoothing(encodedData)
+        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)
 
         # ---------------------- Signal Reconstruction --------------------- #
         if self.debuggingResults: print("Signal Encoding Downward Path:", numSignals, numSignalForwardPath, numEncodedSignals)
@@ -158,7 +161,7 @@ class signalEncoderModel(globalModel):
             halfReconstructedPositionEncodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=initialEncodedData, calculateLoss=False)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing(potentialEncodedData)
+            potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(potentialEncodedData)
             potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(potentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.

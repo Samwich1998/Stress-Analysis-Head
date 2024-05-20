@@ -12,11 +12,17 @@ class denoiser(signalEncoderModules):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
 
         # Allow the final signals to denoise at the end.
-        self.gausKernel = self.averageDenoiserModel(inChannel=1)
+        self.gausKernel_forPosEnc = self.averageDenoiserModel(inChannel=1)
+        self.gausKernel_forVar = self.averageDenoiserModel(inChannel=1)
         self.denoiseSignals = self.denoiserModel(inChannel=1)
 
-    def applySmoothing(self, inputData):
-        kernelWeights = self.gausKernel.expand(inputData.size(1), 1, 3)  # Note: Output channels are set to 1 for sharing
+    def applySmoothing_forPosEnc(self, inputData):
+        kernelWeights = self.gausKernel_forPosEnc.expand(inputData.size(1), 1, 3)  # Note: Output channels are set to 1 for sharing
+
+        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1, dilation=1, groups=inputData.size(1))
+
+    def applySmoothing_forVar(self, inputData):
+        kernelWeights = self.gausKernel_forPosEnc.expand(inputData.size(1), 1, 3)  # Note: Output channels are set to 1 for sharing
 
         return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1, dilation=1, groups=inputData.size(1))
 

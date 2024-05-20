@@ -18,14 +18,13 @@ class channelPositionalEncoding(signalEncoderModules):
         # Positional encoding parameters.
         self.numConvolutionalLayers = 2  # The number of convolutional layers to learn the encoding.
         self.numEncodingStamps = 10  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings).
-        self.numOperatorLayers = 1  # The number of layers to learn the encoding.
+        self.numOperatorLayers = 4  # The number of layers to learn the encoding.
+        self.numLiftedChannels = 4
 
         # Neural operator parameters.
         self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
         self.wavelet = 'db3'       # Wavelet type for the wavelet transform: bior3.7, db3, dmey
         self.mode = 'zero'             # Mode for the wavelet transform.
-        self.numLiftedChannels = 4
-        self.numLayers = 4
 
         # Initialize the neural operator layer.
         self.learnNeuralOperatorLayers = nn.ModuleList([])
@@ -34,8 +33,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numOperatorLayers):
             # Create the spectral convolution layers.
-            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=self.numLayers, encodeLowFrequencyProtocol='allFreqs', encodeHighFrequencyProtocol='allFreqs', skipConnectionProtocol='CNN'))
-            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=self.numLayers, encodeLowFrequencyProtocol='allFreqs', encodeHighFrequencyProtocol='allFreqs', skipConnectionProtocol='CNN'))
+            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='allFreqs', encodeHighFrequencyProtocol='allFreqs', skipConnectionProtocol='CNN'))
+            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='allFreqs', encodeHighFrequencyProtocol='allFreqs', skipConnectionProtocol='CNN'))
         self.lowFrequencyShape = self.learnNeuralOperatorLayers[0].lowFrequencyShape
 
         # A list of parameters to encode each signal.

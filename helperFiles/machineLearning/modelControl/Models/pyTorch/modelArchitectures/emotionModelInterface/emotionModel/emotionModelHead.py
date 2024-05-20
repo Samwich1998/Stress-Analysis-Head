@@ -40,9 +40,12 @@ class emotionModelHead(globalModel):
         self.datasetName = datasetName  # The name of the dataset the model is training on.
 
         # Signal encoder parameters.
-        self.numExpandedSignals = userInputParams['numExpandedSignals']     # The number of signals to group when you begin compression or finish expansion.
-        self.numEncodingLayers = userInputParams['numEncodingLayers']       # The number of transformer layers during signal encoding.
-        self.numLiftedChannels = userInputParams['numLiftedChannels']       # The number of channels to lift the signal to.
+        self.numPosLiftedChannels = userInputParams['numPosLiftedChannels']     # The number of channels to lift to during positional encoding.
+        self.numSigLiftedChannels = userInputParams['numSigLiftedChannels']     # The number of channels to lift to during signal encoding.
+        self.numPosEncodingLayers = userInputParams['numPosEncodingLayers']     # The number of transformer layers during signal encoding.
+        self.numSigEncodingLayers = userInputParams['numSigEncodingLayers']     # The number of transformer layers during signal encoding.
+        self.numExpandedSignals = userInputParams['numExpandedSignals']         # The number of signals to group when you begin compression or finish expansion.
+
         # Autoencoder parameters.
         self.compressionFactor = userInputParams['compressionFactor']       # The expansion factor of the autoencoder
         self.expansionFactor = userInputParams['expansionFactor']           # The expansion factor of the autoencoder
@@ -90,14 +93,16 @@ class emotionModelHead(globalModel):
 
         # The signal encoder model to find a common feature vector across all signals.
         self.signalEncoderModel = signalEncoderModel(
+            numPosLiftedChannels=self.numPosLiftedChannels,
+            numSigLiftedChannels=self.numSigLiftedChannels,
+            numPosEncodingLayers=self.numPosEncodingLayers,
+            numSigEncodingLayers=self.numSigEncodingLayers,
             numExpandedSignals=self.numExpandedSignals,
             numEncodedSignals=self.numEncodedSignals,
-            numEncodingLayers=self.numEncodingLayers,
-            numLiftedChannels=self.numLiftedChannels,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
+            plotDataFlow=not self.useParamsHPC,
             maxNumSignals=self.maxNumSignals,
-            useParamsHPC=self.useParamsHPC,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
         )
@@ -110,6 +115,7 @@ class emotionModelHead(globalModel):
             compressedLength=self.compressedLength,
             debuggingResults=self.debuggingResults,
             expansionFactor=self.expansionFactor,
+            plotDataFlow=not self.useParamsHPC,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
         )

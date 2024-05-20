@@ -10,12 +10,13 @@ from .customModules.waveletNeuralOperatorLayer import waveletNeuralOperatorLayer
 
 class channelEncoding(signalEncoderModules):
 
-    def __init__(self, numCompressedSignals, numExpandedSignals, expansionFactor, numEncoderLayers, sequenceBounds, numLiftedChannels, debuggingResults=False):
+    def __init__(self, numCompressedSignals, numExpandedSignals, expansionFactor, numSigEncodingLayers, sequenceBounds, numSigLiftedChannels, debuggingResults=False):
         super(channelEncoding, self).__init__()
         # General parameters
+        self.numSigLiftedChannels = numSigLiftedChannels  # The number of channels to lift to during signal encoding.
+        self.numSigEncodingLayers = numSigEncodingLayers    # The number of operator layers during signal encoding.
         self.numCompressedSignals = numCompressedSignals    # Number of compressed signals.
         self.numExpandedSignals = numExpandedSignals        # Number of expanded signals.
-        self.numEncoderLayers = numEncoderLayers            # Number of encoder layers.
         self.debuggingResults = debuggingResults            # Whether to print debugging results. Type: bool
         self.expansionFactor = expansionFactor              # Expansion factor for the model.
         self.sequenceBounds = sequenceBounds                # The minimum and maximum sequence length.
@@ -25,12 +26,9 @@ class channelEncoding(signalEncoderModules):
         self.wavelet = 'db3'           # Wavelet type for the wavelet transform: bior3.7, db3, dmey
         self.mode = 'zero'             # Mode for the wavelet transform.
 
-        # Neural operator parameters.
-        self.numLiftedChannels = numLiftedChannels  # Number of channels to lift the signal to.
-
         # Initialize initial lifting models.
-        self.liftingCompressionModel = self.liftingOperator(inChannel=self.numExpandedSignals, outChannel=self.numLiftedChannels)
-        self.liftingExpansionModel = self.liftingOperator(inChannel=self.numCompressedSignals, outChannel=self.numLiftedChannels)
+        self.liftingCompressionModel = self.liftingOperator(inChannel=self.numExpandedSignals, outChannel=self.numSigLiftedChannels)
+        self.liftingExpansionModel = self.liftingOperator(inChannel=self.numCompressedSignals, outChannel=self.numSigLiftedChannels)
 
         # Initialize the neural operator layer.
         self.compressedNeuralOperatorLayers = nn.ModuleList([])
@@ -41,18 +39,18 @@ class channelEncoding(signalEncoderModules):
         self.expandedProcessingLayers = nn.ModuleList([])
 
         # For each encoder model.
-        for modelInd in range(self.numEncoderLayers):
+        for modelInd in range(self.numSigEncodingLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
+            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
+            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
 
             # Create the processing layers.
-            self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numLiftedChannels))
-            self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numLiftedChannels))
+            self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
+            self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
 
         # Initialize final models.
-        self.projectingCompressionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numCompressedSignals)
-        self.projectingExpansionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numExpandedSignals)
+        self.projectingCompressionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numCompressedSignals)
+        self.projectingExpansionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numExpandedSignals)
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Signal Encoding Methods ---------------------- #
@@ -60,21 +58,21 @@ class channelEncoding(signalEncoderModules):
     def compressionAlgorithm(self, inputData):
         # Learn the initial signal.
         processedData = self.liftingCompressionModel(inputData)
-        # processedData dimension: batchSize, numLiftedChannels, signalDimension
+        # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
-        for modelInd in range(self.numEncoderLayers):
+        for modelInd in range(self.numSigEncodingLayers):
             # Keep attention to the initial signal.
             processedData = torch.cat(tensors=(inputData, processedData), dim=1)
-            # processedData dimension: batchSize, numLiftedChannels + numExpandedSignals, signalDimension
+            # processedData dimension: batchSize, numSigLiftedChannels + numExpandedSignals, signalDimension
 
             # Apply the neural operator and the skip connection.
             processedData = checkpoint(self.compressedNeuralOperatorLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numLiftedChannels, signalDimension
+            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
             processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numLiftedChannels, signalDimension
+            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.
         processedData = self.projectingCompressionModel(processedData)
@@ -85,21 +83,21 @@ class channelEncoding(signalEncoderModules):
     def expansionAlgorithm(self, inputData):
         # Learn the initial signal.
         processedData = self.liftingExpansionModel(inputData)
-        # processedData dimension: batchSize, numLiftedChannels, signalDimension
+        # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
-        for modelInd in range(self.numEncoderLayers):
+        for modelInd in range(self.numSigEncodingLayers):
             # Keep attention to the initial signal.
             processedData = torch.cat(tensors=(inputData, processedData), dim=1)
-            # processedData dimension: batchSize, numLiftedChannels + numCompressedSignals, signalDimension
+            # processedData dimension: batchSize, numSigLiftedChannels + numCompressedSignals, signalDimension
 
             # Apply the neural operator and the skip connection.
             processedData = checkpoint(self.expandedNeuralOperatorLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numLiftedChannels, signalDimension
+            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
             processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numLiftedChannels, signalDimension
+            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.
         processedData = self.projectingExpansionModel(processedData)

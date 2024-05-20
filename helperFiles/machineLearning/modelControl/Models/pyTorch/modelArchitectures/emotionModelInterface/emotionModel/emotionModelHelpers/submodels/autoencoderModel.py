@@ -8,10 +8,11 @@ from ....._globalPytorchModel import globalModel
 
 
 class autoencoderModel(globalModel):
-    def __init__(self, compressedLength, timeWindows, compressionFactor, expansionFactor, accelerator, debuggingResults=False):
+    def __init__(self, compressedLength, timeWindows, compressionFactor, expansionFactor, accelerator, plotDataFlow=False, debuggingResults=False):
         super(autoencoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
+        self.plotDataFlow = plotDataFlow  # Whether to plot the encoding process. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding. Type: list
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.plotEncoding = True  # Whether to plot the encoding process. Type: bool
@@ -20,10 +21,6 @@ class autoencoderModel(globalModel):
         self.compressionFactor = compressionFactor  # The expansion factor of the autoencoder. Type: float
         self.compressedLength = compressedLength  # The final length of the compressed signal after the autoencoder. Type: int
         self.expansionFactor = expansionFactor  # The expansion factor of the autoencoder. Type: float
-
-        # Gradient accumulation parameters.
-        self.numAccumulations = 0   # The number of gradient accumulations.
-        self.accumulatedLoss = 0    # The accumulated loss for gradient accumulation.
 
         # Method to reconstruct the original signal.
         self.generalAutoencoder = generalAutoencoder(accelerator, compressionFactor, expansionFactor)
@@ -73,10 +70,6 @@ class autoencoderModel(globalModel):
         # Autoencoder optimal reconstruction loss holders
         self.trainingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
-
-        # Keep track of gradient accumulation.
-        self.numAccumulations = 0
-        self.accumulatedLoss = 0
 
     def forward(self, encodedData, reconstructSignals=False, calculateLoss=False, trainingFlag=False):
         """ The shape of inputData: (batchSize, numSignals, sequenceLength) """

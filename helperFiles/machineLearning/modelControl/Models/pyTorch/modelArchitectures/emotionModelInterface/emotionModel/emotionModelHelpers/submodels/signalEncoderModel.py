@@ -11,27 +11,31 @@ from ....._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numEncodingLayers, numLiftedChannels, timeWindows, accelerator, useParamsHPC=False, debuggingResults=False):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numPosEncodingLayers, numSigEncodingLayers, numPosLiftedChannels, numSigLiftedChannels, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
-        self.plotEncoding = not useParamsHPC  # Whether to plot the encoding process. Type: bool
+        self.plotDataFlow = plotDataFlow  # Whether to plot the encoding process. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
 
         # Signal encoder parameters.
+        self.numPosLiftedChannels = numPosLiftedChannels  # The number of channels to lift to during positional encoding.
+        self.numSigLiftedChannels = numSigLiftedChannels  # The number of channels to lift to during signal encoding.
+        self.numPosEncodingLayers = numPosEncodingLayers  # The number of operator layers during positional encoding.
+        self.numSigEncodingLayers = numSigEncodingLayers  # The number of operator layers during signal encoding.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
-        self.numEncodingLayers = numEncodingLayers  # The number of transformer layers during signal encoding.
-        self.numLiftedChannels = numLiftedChannels  # The number of channels to lift the signal to.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence lengths to consider.
         self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider.
 
         # Method to converge to the final number of signals.
         self.encodeSignals = generalSignalEncoding(
+            numPosEncodingLayers=self.numPosEncodingLayers,
+            numSigEncodingLayers=self.numSigEncodingLayers,
+            numPosLiftedChannels=self.numPosLiftedChannels,
+            numSigLiftedChannels=self.numSigLiftedChannels,
             numExpandedSignals=self.numExpandedSignals,
-            numEncodingLayers=self.numEncodingLayers,
-            numLiftedChannels=self.numLiftedChannels,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
         )
@@ -194,8 +198,8 @@ class signalEncoderModel(globalModel):
             if 0.01 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
 
-            if self.plotEncoding and random.random() < 0.015:
-                self.plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
+            if self.plotDataFlow and random.random() < 0.015:
+                self.plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
         return encodedData, denoisedReconstructedData, signalEncodingLoss
 
@@ -251,7 +255,7 @@ class signalEncoderModel(globalModel):
             return pcaReconstructionLoss
 
     @staticmethod
-    def plotEncodingDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
+    def plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
         plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
         plt.show()

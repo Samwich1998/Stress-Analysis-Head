@@ -305,7 +305,7 @@ class compileModelData(compileModelDataHelpers):
 
     def onlyPreloadModelAttributes(self, modelName, datasetNames, loadSubmodel, loadSubmodelDate, loadSubmodelEpochs, allDummyModelPipelines=[]):
         # Initialize relevant holders.
-        userInputParams = {'deviceListed': "cpu", 'submodel': 'emotionPrediction', 'numExpandedSignals': 2, 'numEncodingLayers': 4, 'numLiftedChannels': 4,
+        userInputParams = {'deviceListed': "cpu", 'submodel': 'emotionPrediction', 'numExpandedSignals': 2, 'numPosEncodingLayers': 4, 'numSigEncodingLayers': 4, 'numPosLiftedChannels': 4, 'numSigLiftedChannels': 4,
                            'compressionFactor': 1.5, 'expansionFactor': 1.5, 'numInterpreterHeads': 4, 'numBasicEmotions': 8, 'sequenceLength': 240}
 
         # Overwrite the location of the saved models.

@@ -72,8 +72,10 @@ if __name__ == "__main__":
     parser.add_argument('--optimizerType', type=str, default='NAdam', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=64, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
-    parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
+    parser.add_argument('--numPosLiftedChannels', type=int, default=4, help='The number of channels to lift to during positional encoding. Range: (1, 4, 1)')
+    parser.add_argument('--numSigLiftedChannels', type=int, default=16, help='The number of channels to lift to during signal encoding. Range: (16, 64, 16)')
+    parser.add_argument('--numPosEncodingLayers', type=int, default=2, help='The number of operator layers during positional encoding. Range: (0, 4, 1)')
+    parser.add_argument('--numSigEncodingLayers', type=int, default=2, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
@@ -92,9 +94,11 @@ if __name__ == "__main__":
         'deviceListed': args.deviceListed,  # The device we are running the platform on.
         'submodel': args.submodel,  # The component of the model we are training.
         # Assign signal encoder parameters
+        'numPosLiftedChannels': args.numPosLiftedChannels,  # The number of channels to lift to during positional encoding.
+        'numSigLiftedChannels': args.numSigLiftedChannels,  # The number of channels to lift to during signa; encoding.
+        'numPosEncodingLayers': args.numPosEncodingLayers,  # The number of operator layers during positional encoding.
+        'numSigEncodingLayers': args.numSigEncodingLayers,  # The number of operator layers during signal encoding.
         'numExpandedSignals': args.numExpandedSignals,  # The number of signals to group when you begin compression or finish expansion.
-        'numEncodingLayers': args.numEncodingLayers,  # The number of transformer layers during signal encoding.
-        'numLiftedChannels': args.numLiftedChannels,  # The number of channels to lift before the fourier neural operator.
         # Assign autoencoder parameters
         'compressionFactor': args.compressionFactor,  # The compression factor of the autoencoder.
         'expansionFactor': args.expansionFactor,  # The expansion factor of the autoencoder.

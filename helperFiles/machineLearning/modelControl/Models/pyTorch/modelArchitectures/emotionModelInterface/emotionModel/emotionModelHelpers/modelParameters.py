@@ -26,7 +26,7 @@ class modelParameters:
 
         if submodel == "autoencoder":
             # Model loading information.
-            loadSubmodelDate = f"2024-04-06 Final signalEncoder on cuda at numExpandedSignals 4 at numEncodingLayers 4"  # The date the model was trained.
+            loadSubmodelDate = f"2024-04-06 Final signalEncoder on cuda at numExpandedSignals 4 at numSigEncodingLayers 4"  # The date the model was trained.
             loadSubmodel = "signalEncoder"  # The model's component we are loading.
             loadSubmodelEpochs = -1  # The number of epochs the loading model was trained.
 
@@ -100,10 +100,10 @@ class modelParameters:
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals. 1.2677 times smaller than the largest signals.
 
         if submodel == "signalEncoder":
-            minimumBatchSize = 16 if 80 <= self.userInputParams['numLiftedChannels'] else 32
-            if self.userInputParams['numEncodingLayers'] <= 2 and self.userInputParams['numLiftedChannels'] <= 48: minimumBatchSize = 32
-            if 6 <= self.userInputParams['numEncodingLayers']: minimumBatchSize = 16
-            if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 32
+            minimumBatchSize = 16 if 80 <= self.userInputParams['numSigLiftedChannels'] else 32
+            if self.userInputParams['numSigEncodingLayers'] <= 2 and self.userInputParams['numSigLiftedChannels'] <= 48: minimumBatchSize = 32
+            if 6 <= self.userInputParams['numSigEncodingLayers']: minimumBatchSize = 16
+            if self.userInputParams['numSigEncodingLayers'] <= 1: minimumBatchSize = 32
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":

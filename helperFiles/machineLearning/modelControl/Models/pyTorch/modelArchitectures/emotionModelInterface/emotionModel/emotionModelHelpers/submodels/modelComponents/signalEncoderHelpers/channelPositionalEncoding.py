@@ -3,23 +3,22 @@ import torch
 import torch.nn as nn
 
 # Import machine learning files
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.emotionDataInterface import emotionDataInterface
 from .customModules.waveletNeuralOperatorLayer import waveletNeuralOperatorLayer
 from .signalEncoderModules import signalEncoderModules
 
 
 class channelPositionalEncoding(signalEncoderModules):
-    def __init__(self, sequenceBounds=(90, 300), debuggingResults=False):
+    def __init__(self, sequenceBounds=(90, 300), numPosEncodingLayers=2, numPosLiftedChannels=4, debuggingResults=False):
         super(channelPositionalEncoding, self).__init__()
         # General parameters.
+        self.numPosEncodingLayers = numPosEncodingLayers  # The number of operator layers during positional encoding.
+        self.numPosLiftedChannels = numPosLiftedChannels  # The number of channels to lift to during positional encoding.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
 
         # Positional encoding parameters.
         self.numConvolutionalLayers = 2  # The number of convolutional layers to learn the encoding.
         self.numEncodingStamps = 10  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings).
-        self.numOperatorLayers = 4  # The number of layers to learn the encoding.
-        self.numLiftedChannels = 2
 
         # Neural operator parameters.
         self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
@@ -31,10 +30,10 @@ class channelPositionalEncoding(signalEncoderModules):
         self.unlearnNeuralOperatorLayers = nn.ModuleList([])
 
         # For each encoder model.
-        for modelInd in range(self.numOperatorLayers):
+        for modelInd in range(self.numPosEncodingLayers):
             # Create the spectral convolution layers.
-            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
-            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numLiftedChannels, numOutputSignals=self.numLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
+            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
+            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='CNN'))
         self.lowFrequencyShape = self.learnNeuralOperatorLayers[0].lowFrequencyShape
 
         # A list of parameters to encode each signal.
@@ -62,11 +61,8 @@ class channelPositionalEncoding(signalEncoderModules):
         self.unlearnStampEncodingFNN = self.learnEncodingStampFNN(numFeatures=self.lowFrequencyShape)
 
         # Lifting and projection operators.
-        self.liftingModel = self.liftingOperator_forPosEnc(outChannels=self.numLiftedChannels)
-        self.projectionModel = self.projectionOperator_forPosEnc(inChannels=self.numLiftedChannels)
-
-        # Initialize helper classes.
-        self.dataInterface = emotionDataInterface
+        self.liftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
+        self.projectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
 
     # ---------------------------------------------------------------------- #
     # -------------------- Learned Positional Encoding --------------------- #
@@ -105,7 +101,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # positionEncodedData dimension: batchSize*numSignals, numLiftedChannels, signalDimension
 
         # For each neural operator layer.
-        for modelInd in range(self.numOperatorLayers):
+        for modelInd in range(self.numPosEncodingLayers):
             # Apply the neural operator and the skip connection.
             positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
             finalStamp = None  # Only add the stamp encoding to the first layer.

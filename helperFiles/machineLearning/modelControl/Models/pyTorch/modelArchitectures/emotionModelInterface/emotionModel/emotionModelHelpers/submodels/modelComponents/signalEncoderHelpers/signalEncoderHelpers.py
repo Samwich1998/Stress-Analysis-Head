@@ -15,14 +15,15 @@ from .denoiser import denoiser
 
 
 class signalEncoderHelpers(nn.Module):
-    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numEncodingLayers=5, numLiftedChannels=48, debuggingResults=False):
+    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numPosEncodingLayers=2, numSigEncodingLayers=5, numPosLiftedChannels=4, numSigLiftedChannels=48, debuggingResults=False):
         super(signalEncoderHelpers, self).__init__()
         # General
+        self.numPosEncodingLayers = numPosEncodingLayers          # The number of layers to encode the signals.
+        self.numSigEncodingLayers = numSigEncodingLayers          # The number of layers to encode the signals.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
 
         # Compression/Expansion parameters.
         self.sequenceBounds = sequenceBounds                # The minimum and maximum number of signals in any expansion/compression.
-        self.numEncodingLayers = numEncodingLayers          # The number of layers to encode the signals.
         self.numExpandedSignals = numExpandedSignals        # The final number of signals in any expansion
         self.numCompressedSignals = numExpandedSignals - 1  # The final number of signals in any compression.
         self.expansionFactor = Fraction(self.numExpandedSignals, self.numCompressedSignals)  # The percent expansion.
@@ -30,8 +31,8 @@ class signalEncoderHelpers(nn.Module):
         assert self.numExpandedSignals - self.numCompressedSignals == 1, "You should only gain 1 channel when expanding or else you may overshoot."
 
         # Initialize signal encoder helper classes.
-        self.channelEncodingInterface = channelEncoding(self.numCompressedSignals, self.numExpandedSignals, self.expansionFactor, numEncodingLayers, self.sequenceBounds, numLiftedChannels, debuggingResults=debuggingResults)
-        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, debuggingResults=debuggingResults)
+        self.channelEncodingInterface = channelEncoding(numCompressedSignals=self.numCompressedSignals, numExpandedSignals=self.numExpandedSignals, expansionFactor=self.expansionFactor, numSigEncodingLayers=numSigEncodingLayers, sequenceBounds=self.sequenceBounds, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
+        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, numPosLiftedChannels=numPosLiftedChannels, numPosEncodingLayers=numPosEncodingLayers, debuggingResults=debuggingResults)
         self.finalVarianceInterface = changeVariance(debuggingResults=debuggingResults)
         self.denoiseSignals = denoiser(debuggingResults=debuggingResults)
         self.dataInterface = emotionDataInterface
@@ -73,12 +74,6 @@ class signalEncoderHelpers(nn.Module):
             else: assert targetNumSignals <= numSignals, f"{targetNumSignals}, {numSignals}"
 
         return numSignalsPath, int(numUnchangedSignals)
-
-    def getMaxActiveSignals_Expansion(self, numSignals):
-        return numSignals - (numSignals % self.numCompressedSignals)
-
-    def getMaxActiveSignals_Compression(self, numSignals):
-        return numSignals - (numSignals % self.numExpandedSignals)
 
     def getNumActiveSignals(self, numSignals, targetNumSignals):
         # If we are upsampling the signals as much as I can.
@@ -125,37 +120,6 @@ class signalEncoderHelpers(nn.Module):
         # Only the last rows of signals are frozen.
 
         return activeData, frozenData, numActiveSignals
-
-    # -------------------- Track Compressions/Expansions ------------------- #
-
-    @staticmethod
-    def updateCompressionMap(numActiveCompressionsMap, numFinalSignals):
-        # Keep track of the compressions/expansions.
-        numActiveCompressionsMap = numActiveCompressionsMap.sum(dim=1, keepdim=True) / numFinalSignals
-        numActiveCompressionsMap = numActiveCompressionsMap.expand(numActiveCompressionsMap.size(0), numFinalSignals).contiguous()
-
-        return numActiveCompressionsMap
-
-    @staticmethod
-    def segmentCompressionMap(numCompressionsMap, numActiveSignals, numPairs):
-        if numCompressionsMap is None: return None, None
-        assert numActiveSignals <= numCompressionsMap.size(0), f"{numActiveSignals}, {numCompressionsMap.size()}"
-
-        # Find the number of active signals we are working with.
-        numActiveCompressionsMap = numCompressionsMap[0:numActiveSignals]
-        numFrozenCompressionsMap = numCompressionsMap[numActiveSignals:]
-        # Shape the active compression map into the correct shape.
-        numActiveCompressionsMap = numActiveCompressionsMap.view(int(numActiveSignals / numPairs), numPairs)
-
-        return numActiveCompressionsMap, numFrozenCompressionsMap
-
-    @staticmethod
-    def recombineCompressionMap(numActiveCompressionsMap, numFrozenCompressionsMap):
-        # Keep track of the compressions/expansions.
-        numActiveCompressionsMap = numActiveCompressionsMap.view(-1)
-        numCompressionsMap = torch.cat((numActiveCompressionsMap, numFrozenCompressionsMap), dim=0).contiguous()
-
-        return numCompressionsMap
 
     # ---------------------- Data Structure Interface ---------------------- #
 

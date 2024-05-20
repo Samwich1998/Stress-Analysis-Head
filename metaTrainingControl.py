@@ -37,8 +37,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Suppress specific PyTorch warnings about MPS fallback
 warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU.")
 
-# Use the same initialization every time.
-torch.set_default_dtype(torch.float32)
+# Initialize pytorch parameters.
+torch.backends.cudnn.deterministic = False  # Force CUDNN to perform deterministic convolutions.
+torch.set_default_dtype(torch.float32)  # Use float32 for pytorch (default).
+torch.backends.cudnn.benchmark = True  # Force CUDNN to perform deterministic algorithms.
 
 if __name__ == "__main__":
     # Define the accelerator parameters.

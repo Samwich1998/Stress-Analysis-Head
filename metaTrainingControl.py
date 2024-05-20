@@ -111,8 +111,8 @@ if __name__ == "__main__":
     # Self-check the hpc parameters.
     if userInputParams['deviceListed'].startswith("HPC") and useParamsHPC:
         accelerator.gradient_accumulation_steps = 16
-        # storeLoss = True  # Turn on loss storage for HPC.
-        # fastPass = False  # Turn off fast pass for HPC.
+        storeLoss = True  # Turn on loss storage for HPC.
+        fastPass = False  # Turn off fast pass for HPC.
 
         if args.submodel == "signalEncoder":
             if args.numLiftedChannels <= 32 and args.numEncodingLayers <= 4:

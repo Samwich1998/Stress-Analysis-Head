@@ -37,17 +37,17 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Suppress specific PyTorch warnings about MPS fallback
 warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU.")
 
-# Initialize pytorch parameters.
-torch.backends.cudnn.deterministic = False  # Force CUDNN to perform deterministic convolutions.
-torch.set_default_dtype(torch.float32)  # Use float32 for pytorch (default).
-torch.backends.cudnn.benchmark = True  # Force CUDNN to perform deterministic algorithms.
+# Configure cuDNN and PyTorch's global settings.
+torch.backends.cudnn.deterministic = True  # Allow non-deterministic algorithms in cuDNN, which can enhance performance but reduce reproducibility.
+torch.set_default_dtype(torch.float32)  # Set the default data type to float32, which is typical for neural network computations.
+torch.backends.cudnn.benchmark = False  # Enable cuDNN's auto-tuner to find the most efficient algorithm for the current configuration, potentially improving performance.
 
 if __name__ == "__main__":
     # Define the accelerator parameters.
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=16,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     parser.add_argument('--optimizerType', type=str, default='AdamW', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numLiftedChannels', type=int, default=64, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
+    parser.add_argument('--numLiftedChannels', type=int, default=16, help='The number of channels to lift before the fourier neural operator. Range: (16, 80, 16)')
     parser.add_argument('--numEncodingLayers', type=int, default=2, help='The number of layers in the transformer encoder. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder

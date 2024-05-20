@@ -101,8 +101,8 @@ class modelParameters:
 
         if submodel == "signalEncoder":
             minimumBatchSize = 16 if 80 <= self.userInputParams['numLiftedChannels'] else 32
-            if 6 <= self.userInputParams['numEncodingLayers'] and 64 <= self.userInputParams['numLiftedChannels']: minimumBatchSize = 16
-            if self.userInputParams['numEncodingLayers'] <= 2: minimumBatchSize = 32
+            if self.userInputParams['numEncodingLayers'] <= 2 and self.userInputParams['numLiftedChannels'] <= 48: minimumBatchSize = 32
+            if 6 <= self.userInputParams['numEncodingLayers']: minimumBatchSize = 16
             if self.userInputParams['numEncodingLayers'] <= 1: minimumBatchSize = 32
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32

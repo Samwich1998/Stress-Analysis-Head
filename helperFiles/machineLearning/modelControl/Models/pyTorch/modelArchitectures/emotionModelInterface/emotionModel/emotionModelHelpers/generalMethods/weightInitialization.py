@@ -21,7 +21,6 @@ class weightInitialization:
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         else:
             modelParam.reset_parameters()
-        modelParam.reset_parameters()
 
         return modelParam
 

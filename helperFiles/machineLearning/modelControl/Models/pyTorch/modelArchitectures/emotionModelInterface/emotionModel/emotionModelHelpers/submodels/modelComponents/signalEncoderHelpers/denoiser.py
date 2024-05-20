@@ -12,8 +12,8 @@ class denoiser(signalEncoderModules):
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
 
         # Allow the final signals to denoise at the end.
+        self.gausKernel = self.averageDenoiserModel(inChannel=1)
         self.denoiseSignals = self.denoiserModel(inChannel=1)
-        self.gausKernel = self.encodingDenoiserModel(inChannel=1)
 
     def smoothingFunc(self, inputData):
         return F.conv1d(inputData, self.gausKernel, bias=None, stride=1, padding=1, dilation=1, groups=1)

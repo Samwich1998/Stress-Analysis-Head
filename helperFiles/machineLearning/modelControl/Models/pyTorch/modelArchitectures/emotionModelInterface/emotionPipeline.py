@@ -22,6 +22,7 @@ class emotionPipeline(emotionPipelineHelpers):
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
         self.compileOptimizer(submodel)  # Initialize the optimizer (for back propagation)
         self.modelHelpers.switchActivationLayers(self.model, switchState=True)
+        self.resetModel()
 
     def trainModel(self, dataLoader, submodel, numEpochs=500, constrainedTraining=False):
         """
@@ -47,8 +48,8 @@ class emotionPipeline(emotionPipelineHelpers):
         assert allLabels.shape == allTestingMasks.shape, "We should specify the testing indices for each label"
         assert numEpochs == 1, f"numEpochs: {numEpochs}"
 
-        # if constrainedTraining:
-        #     self.modelHelpers.switchActivationLayers(self.model, switchState=False)
+        # Prepare the model for training.
+        self.setupTraining(submodel)
 
         # For each training epoch.
         for epoch in range(numEpochs):
@@ -67,7 +68,6 @@ class emotionPipeline(emotionPipelineHelpers):
 
                     # Set the model intro the training mode.
                     numPointsAnalyzed += batchData.size(0)
-                    self.setupTraining(submodel)
 
                     # Only analyze data that can produce meaningful training results.
                     if submodel in ["signalEncoder", "autoencoder"]:
@@ -91,7 +91,7 @@ class emotionPipeline(emotionPipelineHelpers):
 
                     # Randomly choose to add noise to the model.
                     if self.accelerator.sync_gradients:
-                        self.calculateFullLoss = random.random() < 0.75 and not constrainedTraining
+                        self.calculateFullLoss = random.random() < 0.8 and not constrainedTraining
                         self.addingNoiseFlag = random.random() < 0.5 and not constrainedTraining
 
                     # Randomly choose to add noise to the model.
@@ -112,7 +112,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         if self.accelerator.sync_gradients:
                             # Randomly choose to use an inflated number of signals.
                             self.maxBatchSignals = 96 if self.datasetName in ["case"] else max(model.maxNumSignals, 256)
-                            self.maxBatchSignals = random.choices(population=[model.maxNumSignals, self.maxBatchSignals], weights=[0.8, 0.2], k=1)[0]
+                            self.maxBatchSignals = random.choices(population=[model.maxNumSignals, self.maxBatchSignals], weights=[0.6, 0.4], k=1)[0]
 
                         # Augment the signals to train an arbitrary sequence length and order.
                         initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=self.maxBatchSignals, alteredDim=1)
@@ -143,7 +143,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if finalLoss < 0.1 and 0.25 < encodedSignalStandardDeviationLoss:
+                        if finalLoss < 0.1 and 0.5 < encodedSignalStandardDeviationLoss:
                             finalLoss = finalLoss + 0.1 * encodedSignalStandardDeviationLoss
                         if 0.01 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.25 * signalEncodingTrainingLayerLoss
@@ -242,14 +242,6 @@ class emotionPipeline(emotionPipelineHelpers):
                 self.scheduler.step()  # Update the learning rate.
             else:
                 self.constrainedScheduler.step()  # Update the learning rate.
-
-            # ----------------- Evaluate Model Performance  ---------------- # 
-
-            # Prepare the model/data for evaluation.
-            self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.
-
-        # if constrainedTraining:
-        #     self.modelHelpers.switchActivationLayers(self.model, switchState=True)
 
         # Prepare the model/data for evaluation.
         self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.

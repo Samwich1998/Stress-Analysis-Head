@@ -54,11 +54,6 @@ class signalEncoderModules(convolutionalHelpers):
                 self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
             ), numCycles=1),
 
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
-
             # Convolution architecture: lifting operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
         )
@@ -66,14 +61,14 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, secondDimension)))
-        parameter = self.weightInitialization.heNormalInit(parameter, fan_in=inChannel*secondDimension)
+        parameter = self.weightInitialization.xavierNormalInit(parameter, fan_in=inChannel*secondDimension, fan_out=outChannel*secondDimension)
 
         return parameter
 
     def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((finalFrequencyDim, initialFrequencyDim, inChannel)))
-        parameter = self.weightInitialization.heNormalInit(parameter, fan_in=inChannel*initialFrequencyDim)
+        parameter = self.weightInitialization.xavierNormalInit(parameter, fan_in=inChannel*initialFrequencyDim, fan_out=inChannel*finalFrequencyDim)
 
         return parameter
 
@@ -82,12 +77,6 @@ class signalEncoderModules(convolutionalHelpers):
         parameter = nn.Parameter(torch.zeros((1, numChannels, 1)))
 
         return parameter
-
-    @staticmethod
-    def neuralDropout(p):
-        return nn.Sequential(
-            nn.Dropout(p=p)
-        )
 
     @staticmethod
     def neuralOperatorActivation(useSwitchActivation):
@@ -101,12 +90,12 @@ class signalEncoderModules(convolutionalHelpers):
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def signalPostProcessing(self, inChannel=2):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
@@ -125,14 +114,7 @@ class signalEncoderModules(convolutionalHelpers):
 
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None,
-                                                useSwitchActivation=True),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None,
-                                                useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
             ), numCycles=1),
         )
 
@@ -153,7 +135,20 @@ class signalEncoderModules(convolutionalHelpers):
     # ----------------------- Denoiser Architectures ----------------------- #
 
     @staticmethod
-    def encodingDenoiserModel(inChannel=1):
+    def averageDenoiserModel(inChannel=1):
+        # Initialize Gaussian weights
+        gaussian_weights = torch.tensor([1., 1., 1.]) / 3
+
+        # Reshape and expand to (num_channels, num_channels, 3)
+        gaussian_kernel = nn.Parameter(
+            gaussian_weights.view(1, 1, 3).expand(inChannel, inChannel, 3),
+            requires_grad=False
+        )
+
+        return gaussian_kernel
+
+    @staticmethod
+    def gausDenoiserModel(inChannel=1):
         # Initialize Gaussian weights
         gaussian_weights = torch.tensor([1., 2., 1.]) / 4
 

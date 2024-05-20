@@ -84,9 +84,9 @@ class waveletNeuralHelpers(signalEncoderModules):
     def getSkipConnectionProtocol(self, skipConnectionProtocol):
         # Decide on the skip connection protocol.
         if skipConnectionProtocol == 'none':
-            skipConnectionModel = lambda x: 0
+            skipConnectionModel = self.zero
         elif skipConnectionProtocol == 'identity':
-            skipConnectionModel = lambda x: x
+            skipConnectionModel = self.identity
         elif skipConnectionProtocol == 'CNN':
             skipConnectionModel = self.skipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         else:
@@ -104,7 +104,7 @@ class waveletNeuralHelpers(signalEncoderModules):
                 highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
                 # highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters_highFreq(inChannel=self.numInputSignals, outChannel=self.numOutputSignals))
 
-                # For each subsequent layer.
+                # For each layer.
                 for layerInd in range(self.numLayers - 1):
                     # Learn a new set of wavelet coefficients to transform the data.
                     highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
@@ -120,7 +120,7 @@ class waveletNeuralHelpers(signalEncoderModules):
                 # Initialize the frequency weights to learn how to change the channels.
                 fullHighFrequencyWeights[highFrequenciesInd].append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd],
                                                                                                            finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
-                # For each subsequent layer.
+                # For each layer.
                 for layerInd in range(self.numLayers - 1):
                     # Learn a new set of wavelet coefficients to transform the data.
                     fullHighFrequencyWeights[highFrequenciesInd].append(
@@ -137,7 +137,7 @@ class waveletNeuralHelpers(signalEncoderModules):
             # Initialize the low-frequency weights to learn how to change the channels.
             lowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, secondDimension=self.lowFrequencyShape))
 
-            # For each subsequent layer.
+            # For each layer.
             for layerInd in range(self.numLayers - 1):
                 # Learn a new set of wavelet coefficients to transform the data.
                 lowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, secondDimension=self.lowFrequencyShape))
@@ -151,7 +151,7 @@ class waveletNeuralHelpers(signalEncoderModules):
             # Initialize the frequency weights to learn how to change the channels.
             fullLowFrequencyWeights.append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + sum(self.highFrequenciesShapes), finalFrequencyDim=self.lowFrequencyShape))
 
-            # For each subsequent layer.
+            # For each layer.
             for layerInd in range(self.numLayers - 1):
                 # Learn a new set of wavelet coefficients to transform the data.
                 fullLowFrequencyWeights.append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape, finalFrequencyDim=self.lowFrequencyShape))
@@ -159,3 +159,11 @@ class waveletNeuralHelpers(signalEncoderModules):
             fullLowFrequencyWeights = None
 
         return lowFrequencyWeights, fullLowFrequencyWeights
+
+    @staticmethod
+    def identity(x):
+        return x
+
+    @staticmethod
+    def zero(x):
+        return 0

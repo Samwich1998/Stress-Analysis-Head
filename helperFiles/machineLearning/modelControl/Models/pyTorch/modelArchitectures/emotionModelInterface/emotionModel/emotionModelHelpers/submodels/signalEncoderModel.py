@@ -135,6 +135,9 @@ class signalEncoderModel(globalModel):
         encodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(initialEncodedData)
         # adjustedData dimension: batchSize, numEncodedSignals, sequenceLength
 
+        # Smooth over the encoding space.
+        encodedData = self.encodeSignals.denoiseSignals.applySmoothing(encodedData)
+
         # ---------------------- Signal Reconstruction --------------------- #
         if self.debuggingResults: print("Signal Encoding Downward Path:", numSignals, numSignalForwardPath, numEncodedSignals)
 
@@ -155,6 +158,7 @@ class signalEncoderModel(globalModel):
             halfReconstructedPositionEncodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=initialEncodedData, calculateLoss=False)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
+            potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing(potentialEncodedData)
             potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(potentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.

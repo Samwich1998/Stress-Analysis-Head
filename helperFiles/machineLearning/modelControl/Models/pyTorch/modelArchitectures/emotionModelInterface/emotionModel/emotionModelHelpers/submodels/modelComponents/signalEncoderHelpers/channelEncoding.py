@@ -1,7 +1,6 @@
 # PyTorch
 import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 # Import machine learning files
@@ -55,14 +54,6 @@ class channelEncoding(signalEncoderModules):
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numCompressedSignals)
         self.projectingExpansionModel = self.projectionOperator(inChannel=self.numLiftedChannels, outChannel=self.numExpandedSignals)
 
-        # Initialize Gaussian weights
-        gaussian_weights = torch.tensor([1., 2., 1.]) / 4
-        # Reshape and expand to (num_channels, num_channels, 3)
-        self.gaussian_kernel = nn.Parameter(
-            gaussian_weights.view(1, 1, 3).expand(self.numLiftedChannels, self.numLiftedChannels, 3),
-            requires_grad=False
-        )
-
     # ---------------------------------------------------------------------- #
     # ----------------------- Signal Encoding Methods ---------------------- #
 
@@ -84,8 +75,6 @@ class channelEncoding(signalEncoderModules):
             # Apply non-linearity to the processed data.
             processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numLiftedChannels, signalDimension
-
-            processedData = F.conv1d(processedData, self.gaussian_kernel, padding=1)
 
         # Learn the final signal.
         processedData = self.projectingCompressionModel(processedData)
@@ -117,17 +106,3 @@ class channelEncoding(signalEncoderModules):
         # processedData dimension: batchSize, numExpandedSignals, signalDimension
 
         return processedData
-
-
-class Smoothing1DCNN(nn.Module):
-    def __init__(self):
-        super(Smoothing1DCNN, self).__init__()
-        # Define a 1D Gaussian filter
-        self.gaussian_kernel = nn.Parameter(torch.tensor([1., 2., 1.]).reshape(1, 1, 3) / 4, requires_grad=False)
-
-    def forward(self, x):
-        # Apply average filter
-        x_avg = F.conv1d(x, self.average_kernel, padding=1)
-        # Apply Gaussian filter
-        x_gauss = F.conv1d(x, self.gaussian_kernel, padding=1)
-        return x_avg, x_gauss

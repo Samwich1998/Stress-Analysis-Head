@@ -41,11 +41,11 @@ class modelParameters:
     def getAugmentationDeviation(self, submodel):
         # Get the submodels to save
         if submodel == "signalEncoder":
-            addingNoiseRange = (0, 0.01)
+            addingNoiseRange = (0, 0.001)
         elif submodel == "autoencoder":
-            addingNoiseRange = (0, 0.01)
+            addingNoiseRange = (0, 0.001)
         elif submodel == "emotionPrediction":
-            addingNoiseRange = (0, 0.01)
+            addingNoiseRange = (0, 0.001)
         else:
             assert False, "No model initialized"
 
@@ -121,11 +121,11 @@ class modelParameters:
     @staticmethod
     def getNumEpochs(submodel):
         if submodel == "signalEncoder":
-            return 500, 2  # numEpoch, numConstrainedEpochs
+            return 1000, 5  # numEpoch, numConstrainedEpochs
         elif submodel == "autoencoder":
-            return 500, 2  # numEpoch, numConstrainedEpochs
+            return 1000, 5  # numEpoch, numConstrainedEpochs
         elif submodel == "emotionPrediction":
-            return 500, 2  # numEpoch, numConstrainedEpochs
+            return 1000, 5  # numEpoch, numConstrainedEpochs
         else:
             raise Exception()
 

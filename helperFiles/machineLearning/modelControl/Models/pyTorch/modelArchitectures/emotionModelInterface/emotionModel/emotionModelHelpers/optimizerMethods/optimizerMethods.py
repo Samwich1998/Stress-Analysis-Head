@@ -16,11 +16,11 @@ class optimizerMethods:
     def getModelParams(submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):
         modelParams = [
             # Specify the model parameters for the signal encoding.
-            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4}]  # Empirically: 1E-10 < weight_decay < 1E-6; 5E-5 < lr < 5E-4
+            {'params': signalEncoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-5}]  # Empirically: 1E-10 < weight_decay < 1E-6; 5E-5 < lr < 5E-4
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
-                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 1E-4})
+                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-5})
         if submodel == "emotionPrediction":
             modelParams.extend([
                 # Specify the model parameters for the signal mapping.
@@ -47,7 +47,7 @@ class optimizerMethods:
 
         # Set the optimizer.
         constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=5E-5, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
-        optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
+        optimizer = self.setOptimizer(modelParams, lr=5E-5, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.
         constrainedScheduler = self.getLearningRateScheduler(submodel, constrainedOptimizer, constrainedFlag=True)
@@ -93,11 +93,11 @@ class optimizerMethods:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=4)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=5)
         elif submodel == "autoencoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=4)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=5)
         elif submodel == "emotionPrediction":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=4)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=5)
         else:
             assert False, "No model initialized"
 

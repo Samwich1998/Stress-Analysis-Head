@@ -36,11 +36,6 @@ class signalEncoderModules(convolutionalHelpers):
                 self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
             ), numCycles=1),
 
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
-
             self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
 
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
@@ -159,13 +154,13 @@ class signalEncoderModules(convolutionalHelpers):
     # ----------------------- Denoiser Architectures ----------------------- #
 
     @staticmethod
-    def averageDenoiserModel(inChannel=1):
+    def averageDenoiserModel(inChannel=1, kernelSize=3):
         # Initialize Gaussian weights
-        gaussian_weights = torch.tensor([1., 1., 1.]) / 3
+        gaussian_weights = torch.ones([kernelSize], dtype=torch.float32) / kernelSize
 
         # Reshape and expand to (num_channels, num_channels, 3)
         gaussian_kernel = nn.Parameter(
-            gaussian_weights.view(1, 1, 3).expand(inChannel, inChannel, 3),
+            gaussian_weights.view(1, 1, kernelSize).expand(inChannel, inChannel, kernelSize),
             requires_grad=False
         )
 

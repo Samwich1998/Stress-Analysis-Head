@@ -19,7 +19,7 @@ class channelPositionalEncoding(signalEncoderModules):
         self.numConvolutionalLayers = 2  # The number of convolutional layers to learn the encoding.
         self.numEncodingStamps = 10  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings).
         self.numOperatorLayers = 4  # The number of layers to learn the encoding.
-        self.numLiftedChannels = 4
+        self.numLiftedChannels = 2
 
         # Neural operator parameters.
         self.numDecompositions = 2     # Number of decompositions for the wavelet transform.

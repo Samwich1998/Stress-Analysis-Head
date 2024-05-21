@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import torch
 
+from helperFiles.globalPlottingProtocols import globalPlottingProtocols
 # Import files for machine learning
 from .modelComponents.generalSignalEncoder import generalSignalEncoding  # Framework for encoding/decoding of all signals.
 from .helperModules.trainingSignalEncoder import trainingSignalEncoder
@@ -146,6 +147,7 @@ class signalEncoderModel(globalModel):
         encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)
 
         # ---------------------- Signal Reconstruction --------------------- #
+
         if self.debuggingResults: print("Signal Encoding Downward Path:", numSignals, numSignalForwardPath, numEncodedSignals)
 
         if decodeSignals:
@@ -280,3 +282,6 @@ class signalEncoderModel(globalModel):
         plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
         plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
         plt.show()
+
+        # Clear the figure
+        globalPlottingProtocols.clearFigure()

@@ -88,7 +88,7 @@ class optimizerMethods:
         # torch.optim.lr_scheduler.constrainedLR(optimizer, start_factor=0.3333333333333333, end_factor=1.0, total_iters=5, last_epoch=-1)
 
         if constrainedFlag:
-            numConstrainedEpochs = min(5, modelParameters.getNumEpochs(submodel)[1])
+            numConstrainedEpochs = modelParameters.getNumEpochs(submodel)[1]
             return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=numConstrainedEpochs)
 
         # Train the autoencoder

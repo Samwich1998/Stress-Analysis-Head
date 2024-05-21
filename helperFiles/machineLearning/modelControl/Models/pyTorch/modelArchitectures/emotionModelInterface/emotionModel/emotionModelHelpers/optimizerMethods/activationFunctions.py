@@ -16,24 +16,26 @@ class switchActivation(nn.Module):
 
 
 class boundedExp(nn.Module):
-    def __init__(self, topExponent=2):
+    def __init__(self, topExponent=0, infiniteBound=1.0):
         super(boundedExp, self).__init__()
-        self.topExponent = topExponent
+        # General parameters.
+        self.infiniteBound = infiniteBound  # This controls how the activation converges at +/- infinity. The convergence is equal to inputValue*infiniteBound.
+        self.topExponent = topExponent  # This controls the non-linearity of the data close to 0. Larger values make the activation more linear.
+
+        # Assert the validity of the inputs.
         assert self.topExponent % 2 == 0, "The exponent in the numerator and denominator must be even."
         assert 0 <= self.topExponent, "The exponent in the numerator and denominator must be greater than 0 to be continuous."
 
     def forward(self, x):
-        return 2*x * torch.exp(-torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
+        # Calculate the exponential activation function.
+        exponentialNumerator = -torch.pow(x, self.topExponent)
+        exponentialDenominator = 1 + torch.pow(x, self.topExponent + 2)
+        exponentialTerm = torch.exp(exponentialNumerator / exponentialDenominator)
 
-class boundedDecayedExp(nn.Module):
-    def __init__(self, topExponent=2):
-        super(boundedDecayedExp, self).__init__()
-        self.topExponent = topExponent
-        assert self.topExponent % 2 == 0, "The exponent in the numerator and denominator must be even."
-        assert 0 <= self.topExponent, "The exponent in the numerator and denominator must be greater than 0 to be continuous."
+        # Calculate the linear term.
+        linearTerm = self.infiniteBound * x
 
-    def forward(self, x):
-        return x * torch.exp(torch.pow(x, self.topExponent) / (1 + torch.pow(x, self.topExponent+2)))
+        return linearTerm * exponentialTerm
 
 
 class boundedS(nn.Module):

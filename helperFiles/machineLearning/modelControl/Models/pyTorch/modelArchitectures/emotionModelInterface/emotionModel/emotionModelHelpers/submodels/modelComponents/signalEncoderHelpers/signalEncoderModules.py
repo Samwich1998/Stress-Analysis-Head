@@ -1,9 +1,8 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 # Import files for machine learning
-from ....optimizerMethods.activationFunctions import switchActivation, boundedDecayedExp
+from ....optimizerMethods.activationFunctions import switchActivation, boundedExp
 from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, ResNet
 
 
@@ -17,28 +16,28 @@ class signalEncoderModules(convolutionalHelpers):
     def liftingOperator_forPosEnc(self, outChannels=4):
         return nn.Sequential(
             # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, outChannels], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, outChannels], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def projectionOperator_forPosEnc(self, inChannels=1):
         return nn.Sequential(
             # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannels, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannels, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def learnEncodingStampCNN(self):
         return nn.Sequential(
             # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+        )
 
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
-
-            self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+    def skipConnectionEncoding_complexCNN(self, inChannel=2, outChannel=1):
+        return nn.Sequential(
+            # Convolution architecture: feature engineering
+            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def positionalEncodingStamp(self, stampLength=1):
@@ -50,8 +49,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedDecayedExp', layerType='fc'),
-            switchActivation(boundedDecayedExp(), switchState=True),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -60,21 +58,14 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
             ), numCycles=1),
 
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
+            # Convolution architecture: residual connection, feature engineering
+            self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=inChannel, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
             # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
@@ -99,7 +90,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     @staticmethod
     def neuralOperatorActivation(useSwitchActivation):
-        activationFunction = boundedDecayedExp()
+        activationFunction = boundedExp()
 
         if useSwitchActivation:
             activationFunction = switchActivation(activationFunction, switchState=True)
@@ -109,32 +100,20 @@ class signalEncoderModules(convolutionalHelpers):
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def signalPostProcessing(self, inChannel=2):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
-
-            ResNet(module=nn.Sequential(
-                # Convolution architecture: feature engineering.
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-            ), numCycles=1),
+            # Convolution architecture: residual connection, feature engineering
+            self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=outChannel, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     # ------------------- Final Statistics Architectures ------------------- #
@@ -145,9 +124,9 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
             ), numCycles=1),
         )
 
@@ -156,28 +135,15 @@ class signalEncoderModules(convolutionalHelpers):
     @staticmethod
     def averageDenoiserModel(inChannel=1, kernelSize=3):
         # Initialize Gaussian weights
-        gaussian_weights = torch.ones([kernelSize], dtype=torch.float32) / kernelSize
+        averageWeights = torch.ones([kernelSize], dtype=torch.float32) / kernelSize  # Uniform weights/average.
 
         # Reshape and expand to (num_channels, num_channels, 3)
-        gaussian_kernel = nn.Parameter(
-            gaussian_weights.view(1, 1, kernelSize).expand(inChannel, inChannel, kernelSize),
-            requires_grad=False
+        averageKernel = nn.Parameter(
+            averageWeights.view(1, 1, kernelSize).expand(inChannel, inChannel, kernelSize),
+            requires_grad=False,  # Do not learn/change these weights.
         )
 
-        return gaussian_kernel
-
-    @staticmethod
-    def gausDenoiserModel(inChannel=1):
-        # Initialize Gaussian weights
-        gaussian_weights = torch.tensor([1., 2., 1.]) / 4
-
-        # Reshape and expand to (num_channels, num_channels, 3)
-        gaussian_kernel = nn.Parameter(
-            gaussian_weights.view(1, 1, 3).expand(inChannel, inChannel, 3),
-            requires_grad=False
-        )
-
-        return gaussian_kernel
+        return averageKernel
 
     def denoiserModel(self, inChannel=1):
         assert inChannel == 1, "The input channel must be 1."
@@ -185,8 +151,8 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             ResNet(module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-                self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedDecayedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
             ), numCycles=1),
         )

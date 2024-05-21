@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import learnableTanhshrink, switchActivation, powerSeriesActivation, \
-    sinh, boundedS, boundedExp, boundedDecayedExp
+    sinh, boundedS, boundedExp
 # Import files.
 from .abnormalConvolutions import abnormalConvolutions
 
@@ -17,7 +17,7 @@ class convolutionalHelpers(abnormalConvolutions):
     # ------------------------ General Architectures ----------------------- #
 
     @staticmethod
-    def encodingInterface(signalData, transformation, useCheckpoint=False):
+    def encodingInterfaceReshape(signalData, transformation, useCheckpoint=False):
         # Extract the incoming data's dimension.
         batchSize, numSignals, signalDimension = signalData.size()
 
@@ -34,6 +34,21 @@ class convolutionalHelpers(abnormalConvolutions):
         signalData = signalData.view(batchSize, numSignals, signalDimension)
 
         return signalData
+
+    @staticmethod
+    def encodingInterface_forEach(signalData, transformation, useCheckpoint=False):
+        # Initialize the processed data.
+        processedData = torch.zeros_like(signalData, device=signalData.device)
+
+        # For each input channel.
+        for signalInd in range(signalData.size(1)):
+            # Apply a CNN network.
+            if useCheckpoint:
+                processedData[:, signalInd:signalInd+1, :] = checkpoint(transformation, signalData[:, signalInd:signalInd+1, :], use_reentrant=False)
+            else:
+                processedData[:, signalInd:signalInd+1, :] = transformation(signalData[:, signalInd:signalInd+1, :])
+
+        return processedData
 
     @staticmethod
     def restNet(module, numCycles=1):
@@ -64,7 +79,7 @@ class convolutionalHelpers(abnormalConvolutions):
 
         return nn.Sequential(*layers)
 
-    def convolutionalFilters_resNetBlocks(self, numResNets, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None):
+    def convolutionalFilters_resNetBlocks(self, numResNets, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, useSwitchActivation=False):
         if not isinstance(numChannels, list):
             assert numLayers is not None
         else:
@@ -73,8 +88,8 @@ class convolutionalHelpers(abnormalConvolutions):
         layers = []
         for i in range(numResNets):
             layers.append(ResNet(module=nn.Sequential(
-                self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations,
-                                                groups=groups, strides=strides, convType=convType, activationType=activationType, numLayers=numLayers),
+                self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations, groups=groups, strides=strides,
+                                                convType=convType, activationType=activationType, numLayers=numLayers, useSwitchActivation=useSwitchActivation),
             ), numCycles=1))
 
         return nn.Sequential(*layers)
@@ -142,51 +157,18 @@ class convolutionalHelpers(abnormalConvolutions):
             layers.append(layer)
 
             # Selu activation function
-            if activationType == 'selu':
-                activationFunction = nn.SELU()
-
-            elif activationType == 'boundedDecayedExp':
-                activationFunction = boundedDecayedExp()
-
-            elif activationType == 'boundedExp':
-                activationFunction = boundedExp()
-
-            elif activationType == 'boundedS':
-                activationFunction = boundedS()
-
-            elif activationType == 'sinh':
-                activationFunction = sinh()
-
-            elif activationType == 'powerSeriesActivation':
-                activationFunction = powerSeriesActivation(numCoeffs=3, stabilityConstant=3.0, maxGrad=1, seriesType='odd')
-
-            # LearnableTanhshrink activation function
-            elif activationType == 'LearnableTanhshrink':
-                activationFunction = learnableTanhshrink()
-
-            # PReLU activation function
-            elif activationType == 'PReLU':
-                activationFunction = nn.PReLU()
-
-            # Tanhshrink activation function
-            elif activationType == 'Tanhshrink':
-                activationFunction = nn.Tanhshrink()
-
-            # GELU activation function
-            elif activationType == 'gelu':
-                activationFunction = nn.GELU()
-
-            # ReLU activation function
-            elif activationType == 'relu':
-                activationFunction = nn.ReLU()
-
-            # If no activation function is needed.
-            elif activationType == 'none':
-                activationFunction = nn.Identity()
-
-            else:
-                # If the activation function is not recognized.
-                raise ValueError("Activation type must be in ['selu', 'gelu', 'relu', 'LearnableTanhshrink' 'PReLU', 'Tanhshrink', 'none']")
+            if activationType == 'powerSeriesActivation': activationFunction = powerSeriesActivation(numCoeffs=3, stabilityConstant=3.0, maxGrad=1, seriesType='odd')
+            elif activationType == 'LearnableTanhshrink': activationFunction = learnableTanhshrink()
+            elif activationType == 'Tanhshrink': activationFunction = nn.Tanhshrink()
+            elif activationType == 'boundedExp': activationFunction = boundedExp()
+            elif activationType == 'boundedS': activationFunction = boundedS()
+            elif activationType == 'none': activationFunction = nn.Identity()
+            elif activationType == 'PReLU': activationFunction = nn.PReLU()
+            elif activationType == 'selu': activationFunction = nn.SELU()
+            elif activationType == 'gelu': activationFunction = nn.GELU()
+            elif activationType == 'relu': activationFunction = nn.ReLU()
+            elif activationType == 'sinh': activationFunction = sinh()
+            else: raise ValueError("Activation type must be in ['selu', 'gelu', 'relu', 'LearnableTanhshrink' 'PReLU', 'Tanhshrink', 'none']")
 
             if useSwitchActivation:
                 activationFunction = switchActivation(activationFunction, switchState=True)

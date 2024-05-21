@@ -49,7 +49,7 @@ class signalMappingHead(signalInfoMappingModules):
         # binary_encoding dim: numSignals, numEncodingStamps
 
         # If we are removing the encoding, learn how to remove the encoding.
-        if addingData == -1: positionEncodedData = self.encodingInterface(positionEncodedData, learningModule, useCheckpoint=False)
+        if addingData == -1: positionEncodedData = self.encodingInterface_forEach(positionEncodedData, learningModule, useCheckpoint=False)
 
         # For each stamp encoding
         for stampInd in range(self.numEncodingStamps):
@@ -62,6 +62,6 @@ class signalMappingHead(signalInfoMappingModules):
             positionEncodedData = positionEncodedData + (stampInd % 2 == 0) * addingData * encodingVector.unsqueeze(0) / 10
 
         # If we are encoding the data, learn how to apply the encoding.
-        if addingData == 1: positionEncodedData = self.encodingInterface(positionEncodedData, learningModule, useCheckpoint=False)
+        if addingData == 1: positionEncodedData = self.encodingInterface_forEach(positionEncodedData, learningModule, useCheckpoint=False)
 
         return positionEncodedData

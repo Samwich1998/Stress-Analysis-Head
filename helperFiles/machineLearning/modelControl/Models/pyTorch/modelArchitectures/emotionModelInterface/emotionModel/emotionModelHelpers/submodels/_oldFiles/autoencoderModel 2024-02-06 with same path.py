@@ -65,7 +65,7 @@ class autoencoderModel(_globalPytorchModel.globalModel):
         initialCompressedData, numSignalPath, encoderLoss = self.generalAutoencoder(signalData, targetSequenceLength = self.compressedLength, autoencoderLayerLoss = 0, calculateLoss = calculateLoss)
         # compressedData dimension: batchSize, numSignals, compressedLength
         
-        compressedData = self.generalAutoencoder.encodingInterface(initialCompressedData.clone(), self.generalAutoencoder.initialTransformation)
+        compressedData = self.generalAutoencoder.encodingInterface_forEach(initialCompressedData.clone(), self.generalAutoencoder.initialTransformation)
         
         # -------------------- Signal Reconstruction ------------------- #  
             
@@ -78,7 +78,7 @@ class autoencoderModel(_globalPytorchModel.globalModel):
             # If we are training, add noise to the final state to ensure continuity of the latent space.
             noisyCompressedData = compressedData.clone() + torch.randn_like(compressedData, device=compressedData.device) * 0.05 if trainingFlag else compressedData.clone()
             
-            finalCompressedData = self.generalAutoencoder.encodingInterface(noisyCompressedData.clone(), self.generalAutoencoder.finalTransformation)
+            finalCompressedData = self.generalAutoencoder.encodingInterface_forEach(noisyCompressedData.clone(), self.generalAutoencoder.finalTransformation)
 
             decoderLoss = 0  
             reconstructedData = finalCompressedData.clone()

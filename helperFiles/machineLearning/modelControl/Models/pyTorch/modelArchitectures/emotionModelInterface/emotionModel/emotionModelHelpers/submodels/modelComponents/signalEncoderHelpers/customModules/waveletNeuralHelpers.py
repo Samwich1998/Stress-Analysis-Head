@@ -89,6 +89,8 @@ class waveletNeuralHelpers(signalEncoderModules):
             skipConnectionModel = self.identity
         elif skipConnectionProtocol == 'CNN':
             skipConnectionModel = self.skipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
+        elif skipConnectionProtocol == 'complexCNN':
+            skipConnectionModel = self.skipConnectionEncoding_complexCNN(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         else:
             raise ValueError("The skip connection protocol must be in ['none', 'identity', 'CNN'].")
 

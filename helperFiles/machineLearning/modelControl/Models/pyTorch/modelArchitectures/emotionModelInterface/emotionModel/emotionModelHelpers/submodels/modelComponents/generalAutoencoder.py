@@ -37,10 +37,10 @@ class generalAutoencoderBase(autoencoderModules):
         self.denoiseSignals = self.denoiserModel()
 
     def applyDenoiserLast(self, inputData):
-        return self.encodingInterface(inputData, self.denoiseSignalsLast)
+        return self.encodingInterface_forEach(inputData, self.denoiseSignalsLast)
 
     def applyAutoencoderDenoiser(self, inputData):
-        return self.encodingInterface(inputData, self.denoiseSignals)
+        return self.encodingInterface_forEach(inputData, self.denoiseSignals)
 
     # --------------------------- Encoder Methods -------------------------- #
 
@@ -93,10 +93,10 @@ class generalAutoencoderBase(autoencoderModules):
         return processedData
 
     def adjustSignalVariance(self, inputData):
-        return self.encodingInterface(inputData, self.addVarianceAdjustment)
+        return self.encodingInterface_forEach(inputData, self.addVarianceAdjustment)
 
     def unAdjustSignalVariance(self, inputData):
-        return self.encodingInterface(inputData, self.removeVarianceAdjustment)
+        return self.encodingInterface_forEach(inputData, self.removeVarianceAdjustment)
 
     # ---------------------------- Loss Methods ---------------------------- #   
 

@@ -32,8 +32,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numPosEncodingLayers):
             # Create the spectral convolution layers.
-            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', skipConnectionProtocol='CNN'))
-            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', skipConnectionProtocol='CNN'))
+            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='complexCNN'))
+            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='complexCNN'))
         self.lowFrequencyShape = self.learnNeuralOperatorLayers[0].lowFrequencyShape
 
         # A list of parameters to encode each signal.
@@ -75,14 +75,14 @@ class channelPositionalEncoding(signalEncoderModules):
 
     def positionalEncoding(self, inputData, encodingStamp, learnNeuralOperatorLayers, learnStampEncodingCNN, learnStampEncodingFNN):
         # Apply a small network to learn the encoding.
-        positionEncodedData = self.encodingInterface(inputData, learnStampEncodingCNN[0], useCheckpoint=False) + inputData
+        positionEncodedData = self.encodingInterface_forEach(inputData, learnStampEncodingCNN[0], useCheckpoint=False) + inputData
 
         # Initialize and learn an encoded stamp for each signal index.
         finalStamp = self.compileStampEncoding(inputData, encodingStamp, learnStampEncodingFNN)
         positionEncodedData = self.applyNeuralOperator(positionEncodedData, finalStamp, learnNeuralOperatorLayers)
 
         # Apply a small network to learn the encoding.
-        positionEncodedData = self.encodingInterface(positionEncodedData, learnStampEncodingCNN[1], useCheckpoint=False) + inputData
+        positionEncodedData = self.encodingInterface_forEach(positionEncodedData, learnStampEncodingCNN[1], useCheckpoint=False) + positionEncodedData
 
         return positionEncodedData
 
@@ -90,31 +90,37 @@ class channelPositionalEncoding(signalEncoderModules):
         # Set up the variables for signal encoding.
         batchSize, numSignals, signalDimension = positionEncodedData.size()
 
-        # Reshape the data and add stamp encoding to process each signal separately.
-        positionEncodedData = positionEncodedData.view(batchSize * numSignals, 1, signalDimension)
-        finalStamp = finalStamp.view(batchSize * numSignals, 1, self.lowFrequencyShape)
-        # positionEncodedData dimension: batchSize*numSignals, 1, signalDimension
-        # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
+        # Initialize the output parameter.
+        positionEncodedOutput = torch.zeros_like(positionEncodedData, device=positionEncodedData.device)
+        # positionEncodedOutput dimension: batchSize, numSignals, signalDimension
 
-        # Lifting operators to expand signal information.
-        positionEncodedData = self.liftingModel(positionEncodedData)
-        # positionEncodedData dimension: batchSize*numSignals, numLiftedChannels, signalDimension
+        # For each channel in the signal.
+        for channelInd in range(numSignals):
+            channelData = positionEncodedData[:, channelInd:channelInd+1, :]
+            finalChannelStamp = finalStamp[:, channelInd:channelInd+1, :]
+            # finalChannelStamp dimension: batchSize, 1, signalDimension
+            # channelData dimension: batchSize, 1, signalDimension
 
-        # For each neural operator layer.
-        for modelInd in range(self.numPosEncodingLayers):
-            # Apply the neural operator and the skip connection.
-            positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
-            finalStamp = None  # Only add the stamp encoding to the first layer.
-            # positionEncodedData dimension: batchSize*numSignals, numLiftedChannels, signalDimension
+            # Lifting operators to expand signal information.
+            finalChannelStamp = finalChannelStamp.expand(batchSize, self.numPosLiftedChannels, signalDimension)
+            channelData = self.liftingModel(channelData)
+            # finalChannelStamp dimension: batchSize, numLiftedChannels, signalDimension
+            # channelData dimension: batchSize, numLiftedChannels, signalDimension
 
-        # Projection operators to compress signal information.
-        positionEncodedData = self.projectionModel(positionEncodedData)
-        # positionEncodedData dimension: batchSize*numSignals, numLiftedChannels, signalDimension
+            # For each neural operator layer.
+            for modelInd in range(self.numPosEncodingLayers):
+                # Apply the neural operator to the channel.
+                channelData = learnNeuralOperatorLayers[modelInd](channelData, lowFrequencyTerms=finalChannelStamp, highFrequencyTerms=None)
+                # channelData dimension: batchSize, numLiftedChannels, signalDimension
 
-        # Reshape the data back into the original format.
-        positionEncodedData = positionEncodedData.view(batchSize, numSignals, signalDimension)
+            # Projection operators to compress signal information.
+            channelData = self.projectionModel(channelData)
+            # channelData dimension: batchSize, 1, signalDimension
 
-        return positionEncodedData
+            # Store the final position encoded results.
+            positionEncodedOutput[:, channelInd:channelInd+1, :] = channelData
+
+        return positionEncodedOutput
 
     def compileStampEncoding(self, inputData, encodingStamp, learnStampEncodingFNN):
         # Set up the variables for signal encoding.

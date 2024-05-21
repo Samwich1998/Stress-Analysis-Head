@@ -35,4 +35,4 @@ class denoiser(signalEncoderModules):
         return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=2, dilation=1, groups=numSignals)
 
     def applyDenoiser(self, inputData):
-        return self.encodingInterface(inputData, self.denoiseSignals)
+        return self.encodingInterface_forEach(inputData, self.denoiseSignals)

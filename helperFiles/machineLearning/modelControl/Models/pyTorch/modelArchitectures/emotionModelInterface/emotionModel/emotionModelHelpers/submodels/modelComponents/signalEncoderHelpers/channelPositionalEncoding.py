@@ -102,9 +102,7 @@ class channelPositionalEncoding(signalEncoderModules):
             # channelData dimension: batchSize, 1, signalDimension
 
             # Lifting operators to expand signal information.
-            # finalChannelStamp = finalChannelStamp.expand(batchSize, self.numPosLiftedChannels, signalDimension)
             channelData = self.liftingModel(channelData)
-            # finalChannelStamp dimension: batchSize, numLiftedChannels, signalDimension
             # channelData dimension: batchSize, numLiftedChannels, signalDimension
 
             # For each neural operator layer.

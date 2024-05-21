@@ -74,15 +74,30 @@ class channelPositionalEncoding(signalEncoderModules):
         return self.positionalEncoding(inputData, self.decodingStamp, self.unlearnNeuralOperatorLayers, self.unlearnStampEncodingCNN, self.unlearnStampEncodingFNN)
 
     def positionalEncoding(self, inputData, encodingStamp, learnNeuralOperatorLayers, learnStampEncodingCNN, learnStampEncodingFNN):
+        import time
+        t1 = time.time()
+
         # Apply a small network to learn the encoding.
         positionEncodedData = self.encodingInterface_forEach(inputData, learnStampEncodingCNN[0], useCheckpoint=False) + inputData
+
+        t2 = time.time()
+        print(0, t2-t1)
+        t1 = time.time()
 
         # Initialize and learn an encoded stamp for each signal index.
         finalStamp = self.compileStampEncoding(inputData, encodingStamp, learnStampEncodingFNN)
         positionEncodedData = self.applyNeuralOperator(positionEncodedData, finalStamp, learnNeuralOperatorLayers)
 
+        t2 = time.time()
+        print(1, t2-t1)
+        t1 = time.time()
+
         # Apply a small network to learn the encoding.
         positionEncodedData = self.encodingInterface_forEach(positionEncodedData, learnStampEncodingCNN[1], useCheckpoint=False) + positionEncodedData
+
+        t2 = time.time()
+        print(2, t2-t1)
+        t1 = time.time()
 
         return positionEncodedData
 

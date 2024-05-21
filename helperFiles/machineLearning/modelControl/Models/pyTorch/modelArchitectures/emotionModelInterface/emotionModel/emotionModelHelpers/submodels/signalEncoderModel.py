@@ -164,7 +164,8 @@ class signalEncoderModel(globalModel):
             # Prepare for loss calculations.
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Calculate the immediately reconstructed data.
-            halfReconstructedPositionEncodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=initialEncodedData, calculateLoss=False)
+            potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False)
+            potentialDecodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=potentialEncodedData, calculateLoss=False)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
             potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(potentialEncodedData)
@@ -178,17 +179,18 @@ class signalEncoderModel(globalModel):
             if self.debuggingResults: print("State Losses (VEF-D):", varReconstructionStateLoss.detach().mean().item(), encodingReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
             # Calculate the loss from taking other routes
             positionReconstructionLoss = (signalData - removedStampEncoding).pow(2).mean(dim=2).mean(dim=1)
-            encodingReconstructionLoss = (positionEncodedData - halfReconstructedPositionEncodedData).pow(2).mean(dim=2).mean(dim=1)
+            encodingReconstructionLoss = (signalData - potentialDecodedData).pow(2).mean(dim=2).mean(dim=1)
             potentialVarReconstructionStateLoss = (signalData - potentialSignalData).pow(2).mean(dim=2).mean(dim=1)
             if self.debuggingResults: print("Path Losses (P-E-V2-S):", positionReconstructionLoss.detach().mean().item(), encodingReconstructionLoss.detach().mean().item(), potentialVarReconstructionStateLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
+
+            # Always add the final reconstruction loss (not denoised).
+            signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
 
             # Add up all the state losses together.
             if (positionReconstructionLoss.mean() < 0.1 and potentialVarReconstructionStateLoss.mean() < 0.1) and 0.1 < encodingReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionStateLoss
             if (positionReconstructionLoss.mean() < 0.1 and encodingReconstructionStateLoss.mean() < 0.1) and 0.1 < varReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
-            if 0.1 < finalReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
             # Add up all the path losses together.
             if 0.001 < potentialVarReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss

@@ -33,8 +33,8 @@ class denoiser(signalEncoderModules):
         numSignals = inputData.size(1)
 
         # Reshape the weights for smoothing.
-        kernelWeights5 = self.gausKernel_forVar.expand(numSignals, 1,  kernelSize5)  # Note: Output channels are set to 1 for sharing
-        kernelWeights3 = self.gausKernel_forVar.expand(numSignals, 1,  kernelSize3)  # Note: Output channels are set to 1 for sharing
+        kernelWeights5 = self.gausKernel_forVar5.expand(numSignals, 1,  kernelSize5)  # Note: Output channels are set to 1 for sharing
+        kernelWeights3 = self.gausKernel_forVar3.expand(numSignals, 1,  kernelSize3)  # Note: Output channels are set to 1 for sharing
 
         # Smooth the data.
         inputData = F.conv1d(inputData, kernelWeights5, bias=None, stride=1, padding=2, dilation=1, groups=numSignals)

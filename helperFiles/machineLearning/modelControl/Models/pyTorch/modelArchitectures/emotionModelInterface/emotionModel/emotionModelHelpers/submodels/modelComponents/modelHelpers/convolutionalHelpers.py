@@ -17,7 +17,7 @@ class convolutionalHelpers(abnormalConvolutions):
     # ------------------------ General Architectures ----------------------- #
 
     @staticmethod
-    def encodingInterface_forEach(signalData, transformation, useCheckpoint=False):
+    def encodingInterface_reshapeMethod(signalData, transformation, useCheckpoint=False):
         # Extract the incoming data's dimension.
         batchSize, numSignals, signalDimension = signalData.size()
 
@@ -36,7 +36,7 @@ class convolutionalHelpers(abnormalConvolutions):
         return signalData
 
     @staticmethod
-    def encodingInterface_forEach2(signalData, transformation, useCheckpoint=False):
+    def encodingInterface_forEach(signalData, transformation, useCheckpoint=False):
         # Initialize the processed data.
         processedData = torch.zeros_like(signalData, device=signalData.device)
 

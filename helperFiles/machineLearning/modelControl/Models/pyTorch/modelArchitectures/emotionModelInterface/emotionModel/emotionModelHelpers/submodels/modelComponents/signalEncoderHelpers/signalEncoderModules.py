@@ -49,6 +49,10 @@ class signalEncoderModules(convolutionalHelpers):
     def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
+            boundedExp(),
+
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
+            boundedExp(),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #

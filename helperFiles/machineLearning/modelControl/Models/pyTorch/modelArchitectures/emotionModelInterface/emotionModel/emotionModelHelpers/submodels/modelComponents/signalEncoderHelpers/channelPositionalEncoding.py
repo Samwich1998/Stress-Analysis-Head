@@ -82,7 +82,7 @@ class channelPositionalEncoding(signalEncoderModules):
         positionEncodedData = self.applyNeuralOperator(positionEncodedData, finalStamp, learnNeuralOperatorLayers)
 
         # Apply a small network to learn the encoding.
-        positionEncodedData = self.encodingInterface_reshapeMethod(positionEncodedData, learnStampEncodingCNN[1], useCheckpoint=False) + positionEncodedData
+        positionEncodedData = self.encodingInterface_reshapeMethod(positionEncodedData, learnStampEncodingCNN[1], useCheckpoint=False) + inputData
 
         return positionEncodedData
 

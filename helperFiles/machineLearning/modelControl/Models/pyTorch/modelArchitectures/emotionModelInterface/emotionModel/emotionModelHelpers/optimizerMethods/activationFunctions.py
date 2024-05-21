@@ -16,7 +16,7 @@ class switchActivation(nn.Module):
 
 
 class boundedExp(nn.Module):
-    def __init__(self, topExponent=0, infiniteBound=1.0):
+    def __init__(self, topExponent=0, infiniteBound=0.66667):
         super(boundedExp, self).__init__()
         # General parameters.
         self.infiniteBound = infiniteBound  # This controls how the activation converges at +/- infinity. The convergence is equal to inputValue*infiniteBound.
@@ -28,7 +28,7 @@ class boundedExp(nn.Module):
 
     def forward(self, x):
         # Calculate the exponential activation function.
-        exponentialNumerator = -torch.pow(x, self.topExponent)
+        exponentialNumerator = torch.pow(x, self.topExponent)
         exponentialDenominator = 1 + torch.pow(x, self.topExponent + 2)
         exponentialTerm = torch.exp(exponentialNumerator / exponentialDenominator)
 

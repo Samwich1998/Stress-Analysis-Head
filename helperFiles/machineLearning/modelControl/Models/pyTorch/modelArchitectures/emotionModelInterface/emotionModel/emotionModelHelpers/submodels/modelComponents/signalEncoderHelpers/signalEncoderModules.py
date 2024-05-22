@@ -141,9 +141,10 @@ class signalEncoderModules(convolutionalHelpers):
         kernelSize = kernelWeights.size(-1)
         numSignals = inputData.size(1)
 
+        # Expand the kernel weights to match the channels.
         kernelWeights = kernelWeights.expand(numSignals, 1, kernelSize)  # Note: Output channels are set to 1 for sharing
 
-        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1, dilation=1, groups=numSignals)
+        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1 * (kernelSize - 1) // 2, dilation=1, groups=numSignals)
 
     def denoiserModel(self, inChannel=1):
         assert inChannel == 1, "The input channel must be 1."

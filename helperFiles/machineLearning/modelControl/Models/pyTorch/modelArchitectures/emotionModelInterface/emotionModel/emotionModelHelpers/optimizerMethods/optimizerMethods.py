@@ -93,11 +93,11 @@ class optimizerMethods:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=25)
         elif submodel == "autoencoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=25)
         elif submodel == "emotionPrediction":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=25)
         else:
             assert False, "No model initialized"
 

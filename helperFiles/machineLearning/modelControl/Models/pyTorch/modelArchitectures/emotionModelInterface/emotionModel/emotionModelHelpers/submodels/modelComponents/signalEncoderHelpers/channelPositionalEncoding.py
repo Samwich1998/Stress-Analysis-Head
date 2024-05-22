@@ -58,15 +58,15 @@ class channelPositionalEncoding(signalEncoderModules):
         self.unlearnStampEncodingFNN = self.learnEncodingStampFNN(numFeatures=self.lowFrequencyShape)
 
         # Initialize the lifting operators.
-        self.learnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels + 1)
-        self.unlearnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels + 1)
+        self.learnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
+        self.unlearnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
 
         # Initialize the projection operators.
-        self.learnedProjectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels + 1)
-        self.unlearnedProjectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels + 1)
+        self.learnedProjectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
+        self.unlearnedProjectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
 
         # Smoothing kernels.
-        self.gausKernel_forPosStamp = self.smoothingKernel(kernelSize=9)
+        self.gausKernel_forPosStamp = self.smoothingKernel(kernelSize=3)
 
     # ---------------------------------------------------------------------- #
     # -------------------- Learned Positional Encoding --------------------- #

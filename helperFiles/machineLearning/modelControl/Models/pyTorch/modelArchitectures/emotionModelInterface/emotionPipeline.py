@@ -57,7 +57,7 @@ class emotionPipeline(emotionPipelineHelpers):
             numPointsAnalyzed = 0
 
             # Smooth the weights every time you train.
-            self.weightInitialization.moothWeights(model, kernelSize=3)
+            # self.weightInitialization.smoothWeights(model, kernelSize=3)
 
             # For each minibatch.
             for dataInd, data in enumerate(dataLoader):

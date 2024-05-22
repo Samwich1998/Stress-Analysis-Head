@@ -38,7 +38,7 @@ class weightInitialization:
 
         for param in model.parameters():
             if param.requires_grad:
-                param.data = smoothingKernel(param.data)
+                param.data = signalEncoderModules.applySmoothing(param.data, smoothingKernel)
 
     # -------------------------- Layer Weights -------------------------- #
 

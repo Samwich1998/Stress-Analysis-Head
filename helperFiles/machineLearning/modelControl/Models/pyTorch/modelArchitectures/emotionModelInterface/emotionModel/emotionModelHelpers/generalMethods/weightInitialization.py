@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch
 import math
 
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.submodels.modelComponents.signalEncoderHelpers.signalEncoderModules import signalEncoderModules
-
 
 class weightInitialization:
 
@@ -35,6 +33,7 @@ class weightInitialization:
 
     @staticmethod
     def smoothWeights(model, kernelSize=3):
+        from ..submodels.modelComponents.signalEncoderHelpers.signalEncoderModules import signalEncoderModules
         smoothingKernel = signalEncoderModules.smoothingKernel(kernelSize=kernelSize)
 
         for param in model.parameters():

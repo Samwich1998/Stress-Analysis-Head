@@ -59,6 +59,7 @@ class emotionPipelineHelpers:
         self.modelVisualization = modelVisualizations(accelerator, self.generalTimeWindow, modelSubfolder="trainingFigures/")
         self.modelParameters = modelParameters(userInputParams=userInputParams, accelerator=accelerator)
         self.optimizerMethods = optimizerMethods(userInputParams, useParamsHPC)
+        self.weightInitialization = weightInitialization()
         self.modelMigration = modelMigration(accelerator)
         self.dataInterface = emotionDataInterface()
         self.generalMethods = generalMethods()
@@ -77,7 +78,7 @@ class emotionPipelineHelpers:
 
     def resetModel(self):
         # Reset the model's parameters (to python default values).
-        weightInitialization.reset_weights(self.model)
+        self.weightInitialization.reset_weights(self.model)
 
     def compileOptimizer(self, submodel):
         # Get the models, while considering whether they are distributed or not.

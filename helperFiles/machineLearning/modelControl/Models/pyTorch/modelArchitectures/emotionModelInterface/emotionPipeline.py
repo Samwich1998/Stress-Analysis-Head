@@ -56,6 +56,9 @@ class emotionPipeline(emotionPipelineHelpers):
             if 5 < numEpochs: self.accelerator.print(f"\tRound: {epoch}", flush=True)
             numPointsAnalyzed = 0
 
+            # Smooth the weights every time you train.
+            self.weightInitialization.moothWeights(model, kernelSize=3)
+
             # For each minibatch.
             for dataInd, data in enumerate(dataLoader):
                 # Accumulate gradients.

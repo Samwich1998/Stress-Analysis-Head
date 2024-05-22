@@ -134,7 +134,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each stamp encoding
         for stampInd in range(self.numEncodingStamps):
             # Smooth the encoding stamp.
-            currentStamp = self.applySmoothing(encodingStamp[stampInd], self.gausKernel_forPosStamp)
+            currentStamp = self.applySmoothing(encodingStamp[stampInd].unsqueeze(0).unsqueeze(0), kernelWeights=self.gausKernel_forPosStamp).squeeze(0).squeeze(0)
 
             # Check each signal if it is using this specific encoding.
             usingStampEncoding = binary_encoding[:, stampInd:stampInd + 1]

@@ -64,6 +64,9 @@ class channelPositionalEncoding(signalEncoderModules):
         self.liftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
         self.projectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
 
+        # Smoothing kernels.
+        self.gausKernel_forPosStamp = self.smoothingKernel(kernelSize=9)
+
     # ---------------------------------------------------------------------- #
     # -------------------- Learned Positional Encoding --------------------- #
 
@@ -127,6 +130,9 @@ class channelPositionalEncoding(signalEncoderModules):
         # Generate the binary encoding of signalInds in a batched manner
         binary_encoding = signalInds[:, None].bitwise_and(2 ** bitInds).bool()
         # binary_encoding dim: numSignals, numEncodingStamps
+
+        # Smooth the encoding stamp.
+        encodingStamp = self.applySmoothing(encodingStamp, self.gausKernel_forPosStamp)
 
         # For each stamp encoding
         for stampInd in range(self.numEncodingStamps):

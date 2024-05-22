@@ -130,21 +130,18 @@ class signalEncoderModel(globalModel):
 
         # Learn how to add positional encoding to each signal's position.
         positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
+        positionEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forPosEnc(positionEncodedData)  # Smooth over the encoding space.
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
-
-        # Smooth over the encoding space.
-        positionEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forPosEnc(positionEncodedData)
 
         # Compress the signal space into numEncodedSignals.
         initialEncodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss)
+        initialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forSigEnc(initialEncodedData)  # Smooth over the encoding space.
         # initialEncodedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # Allow the model to adjust the incoming signals
         encodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(initialEncodedData)
+        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)  # Smooth over the encoding space.
         # adjustedData dimension: batchSize, numEncodedSignals, sequenceLength
-
-        # Smooth over the encoding space.
-        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)
 
         # ---------------------- Signal Reconstruction --------------------- #
 
@@ -165,6 +162,7 @@ class signalEncoderModel(globalModel):
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Calculate the immediately reconstructed data.
             potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False)
+            potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forSigEnc(potentialEncodedData)  # Smooth over the encoding space.
             potentialDecodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=potentialEncodedData, calculateLoss=False)
             # Prepare for loss calculations.
             potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)

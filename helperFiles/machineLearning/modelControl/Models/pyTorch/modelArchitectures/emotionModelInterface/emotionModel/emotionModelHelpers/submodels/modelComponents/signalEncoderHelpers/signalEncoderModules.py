@@ -1,5 +1,6 @@
-import torch
+import torch.nn.functional as F
 from torch import nn
+import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import switchActivation, boundedExp
@@ -44,9 +45,6 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
-
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
-            boundedExp(),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -54,10 +52,10 @@ class signalEncoderModules(convolutionalHelpers):
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: residual connection, feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFilters_resNetBlocks(numResNets=4, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
             # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, secondDimension=46):
@@ -97,15 +95,15 @@ class signalEncoderModules(convolutionalHelpers):
 
     def signalPostProcessing(self, inChannel=2):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
             # Convolution architecture: residual connection, feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFilters_resNetBlocks(numResNets=4, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     # ------------------- Final Statistics Architectures ------------------- #
@@ -125,17 +123,27 @@ class signalEncoderModules(convolutionalHelpers):
     # ----------------------- Denoiser Architectures ----------------------- #
 
     @staticmethod
-    def averageDenoiserModel(inChannel=1, kernelSize=3):
-        # Initialize Gaussian weights
+    def smoothingKernel(kernelSize=3):
+        # Initialize kernel weights.
         averageWeights = torch.ones([kernelSize], dtype=torch.float32) / kernelSize  # Uniform weights/average.
 
-        # Reshape and expand to (num_channels, num_channels, 3)
+        # Set the parameter weights
         averageKernel = nn.Parameter(
-            averageWeights.view(1, 1, kernelSize).expand(inChannel, inChannel, kernelSize),
+            averageWeights.view(1, 1, kernelSize),
             requires_grad=False,  # Do not learn/change these weights.
         )
 
         return averageKernel
+
+    @staticmethod
+    def applySmoothing(inputData, kernelWeights):
+        # Specify the inputs.
+        kernelSize = kernelWeights.size(-1)
+        numSignals = inputData.size(1)
+
+        kernelWeights = kernelWeights.expand(numSignals, 1, kernelSize)  # Note: Output channels are set to 1 for sharing
+
+        return F.conv1d(inputData, kernelWeights, bias=None, stride=1, padding=1, dilation=1, groups=numSignals)
 
     def denoiserModel(self, inChannel=1):
         assert inChannel == 1, "The input channel must be 1."

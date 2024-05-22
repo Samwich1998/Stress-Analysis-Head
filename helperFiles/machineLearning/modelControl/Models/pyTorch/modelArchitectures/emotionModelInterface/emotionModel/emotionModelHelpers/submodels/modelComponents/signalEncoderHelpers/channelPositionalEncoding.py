@@ -131,14 +131,14 @@ class channelPositionalEncoding(signalEncoderModules):
         binary_encoding = signalInds[:, None].bitwise_and(2 ** bitInds).bool()
         # binary_encoding dim: numSignals, numEncodingStamps
 
-        # Smooth the encoding stamp.
-        encodingStamp = self.applySmoothing(encodingStamp, self.gausKernel_forPosStamp)
-
         # For each stamp encoding
         for stampInd in range(self.numEncodingStamps):
+            # Smooth the encoding stamp.
+            currentStamp = self.applySmoothing(encodingStamp[stampInd], self.gausKernel_forPosStamp)
+
             # Check each signal if it is using this specific encoding.
             usingStampEncoding = binary_encoding[:, stampInd:stampInd + 1]
-            encodingVector = usingStampEncoding.float() * encodingStamp[stampInd]
+            encodingVector = usingStampEncoding.float() * currentStamp
             # encodingVector dim: numSignals, lowFrequencyShape
 
             # Add the stamp encoding to all the signals in all the batches.

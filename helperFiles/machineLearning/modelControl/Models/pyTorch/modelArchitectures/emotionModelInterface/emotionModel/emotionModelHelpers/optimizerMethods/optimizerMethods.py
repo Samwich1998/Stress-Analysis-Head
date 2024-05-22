@@ -46,7 +46,7 @@ class optimizerMethods:
         constrainedModelParams = [{'params': model.parameters()}]
 
         # Set the optimizer.
-        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
+        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-5, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
         optimizer = self.setOptimizer(modelParams, lr=5E-5, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.
@@ -93,11 +93,11 @@ class optimizerMethods:
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
         elif submodel == "autoencoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
         elif submodel == "emotionPrediction":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10)
+            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
         else:
             assert False, "No model initialized"
 

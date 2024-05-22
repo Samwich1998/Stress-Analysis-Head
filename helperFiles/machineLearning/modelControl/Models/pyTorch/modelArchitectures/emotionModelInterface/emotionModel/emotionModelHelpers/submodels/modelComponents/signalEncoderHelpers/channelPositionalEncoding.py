@@ -95,7 +95,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
 
         # Lifting operators to expand signal information.
-        positionEncodedData = learnedLiftingModel(inputData) + inputData
+        positionEncodedData = learnedLiftingModel(inputData) #+ inputData
         # positionEncodedData dimension: batchSize*numSignals, numPosLiftedChannels, signalDimension
 
         # For each neural operator layer.

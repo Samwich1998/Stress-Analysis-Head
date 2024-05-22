@@ -77,14 +77,14 @@ class channelPositionalEncoding(signalEncoderModules):
     def removePositionalEncoding(self, inputData):
         return self.positionalEncoding(inputData, self.decodingStamp, self.unlearnStampEncodingFNN, self.unlearnedLiftingModel, self.unlearnNeuralOperatorLayers, self.unlearnPostProcessingLayers, self.unlearnedProjectionModel)
 
-    def positionalEncoding(self, inputData, encodingStamp, learnStampEncodingFNN, learnedLiftingModel, learnNeuralOperatorLayers, learnPostProcessingLayers, projectionModel):
+    def positionalEncoding(self, inputData, encodingStamp, learnStampEncodingFNN, learnedLiftingModel, learnNeuralOperatorLayers, learnPostProcessingLayers, learnedProjectionModel):
         # Initialize and learn an encoded stamp for each signal index.
         finalStamp = self.compileStampEncoding(inputData, encodingStamp, learnStampEncodingFNN)
-        positionEncodedData = self.applyNeuralOperator(inputData, finalStamp, learnedLiftingModel, learnNeuralOperatorLayers, learnPostProcessingLayers, projectionModel)
+        positionEncodedData = self.applyNeuralOperator(inputData, finalStamp, learnedLiftingModel, learnNeuralOperatorLayers, learnPostProcessingLayers, learnedProjectionModel)
         
         return positionEncodedData
 
-    def applyNeuralOperator(self, inputData, finalStamp, learnedLiftingModel, learnNeuralOperatorLayers, learnPostProcessingLayers, projectionModel):
+    def applyNeuralOperator(self, inputData, finalStamp, learnedLiftingModel, learnNeuralOperatorLayers, learnPostProcessingLayers, learnedProjectionModel):
         # Set up the variables for signal encoding.
         batchSize, numSignals, signalDimension = inputData.size()
 
@@ -95,7 +95,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
 
         # Lifting operators to expand signal information.
-        positionEncodedData = learnedLiftingModel(inputData)
+        positionEncodedData = learnedLiftingModel(inputData) + inputData
         # positionEncodedData dimension: batchSize*numSignals, numPosLiftedChannels, signalDimension
 
         # For each neural operator layer.
@@ -113,7 +113,7 @@ class channelPositionalEncoding(signalEncoderModules):
             # positionEncodedData dimension: batchSize*numSignals, numPosLiftedChannels, signalDimension
 
         # Projection operators to compress signal information.
-        positionEncodedData = projectionModel(positionEncodedData)
+        positionEncodedData = learnedProjectionModel(positionEncodedData) + inputData
         # positionEncodedData dimension: batchSize*numSignals, 1, signalDimension
 
         # Reshape the data back into the original format.

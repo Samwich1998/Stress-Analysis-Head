@@ -58,8 +58,8 @@ class channelPositionalEncoding(signalEncoderModules):
         self.unlearnStampEncodingFNN = self.learnEncodingStampFNN(numFeatures=self.lowFrequencyShape)
 
         # Initialize the lifting operators.
-        self.learnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
-        self.unlearnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
+        self.learnedLiftingModel = self.liftingOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
+        self.unlearnedLiftingModel = self.liftingOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
 
         # Initialize the projection operators.
         self.learnedProjectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
@@ -107,9 +107,10 @@ class channelPositionalEncoding(signalEncoderModules):
             # Apply the neural operator and the skip connection.
             positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
             # positionEncodedData dimension: batchSize*numSignals, numPosLiftedChannels, signalDimension
+            finalStamp = None
 
             # Apply non-linearity to the processed data.
-            positionEncodedData = learnPostProcessingLayers[modelInd](positionEncodedData)
+            # positionEncodedData = learnPostProcessingLayers[modelInd](positionEncodedData)
             # positionEncodedData dimension: batchSize*numSignals, numPosLiftedChannels, signalDimension
 
         # Projection operators to compress signal information.
@@ -137,7 +138,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each stamp encoding
         for stampInd in range(self.numEncodingStamps):
             # Smooth the encoding stamp.
-            currentStamp = self.applySmoothing(encodingStamp[stampInd].unsqueeze(0).unsqueeze(0), kernelWeights=self.gausKernel_forPosStamp).squeeze(0).squeeze(0)
+            # currentStamp = self.applySmoothing(encodingStamp[stampInd].unsqueeze(0).unsqueeze(0), kernelWeights=self.gausKernel_forPosStamp).squeeze(0).squeeze(0)
+            currentStamp = encodingStamp[stampInd]
 
             # Check each signal if it is using this specific encoding.
             usingStampEncoding = binary_encoding[:, stampInd:stampInd + 1]

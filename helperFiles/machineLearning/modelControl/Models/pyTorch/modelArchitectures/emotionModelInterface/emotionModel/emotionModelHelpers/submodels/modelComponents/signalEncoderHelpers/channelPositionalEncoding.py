@@ -58,8 +58,8 @@ class channelPositionalEncoding(signalEncoderModules):
         self.unlearnStampEncodingFNN = self.learnEncodingStampFNN(numFeatures=self.lowFrequencyShape)
 
         # Initialize the lifting operators.
-        self.learnedLiftingModel = self.liftingOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
-        self.unlearnedLiftingModel = self.liftingOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
+        self.learnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
+        self.unlearnedLiftingModel = self.liftingOperator_forPosEnc(outChannels=self.numPosLiftedChannels)
 
         # Initialize the projection operators.
         self.learnedProjectionModel = self.projectionOperator_forPosEnc(inChannels=self.numPosLiftedChannels)
@@ -95,7 +95,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
 
         # Lifting operators to expand signal information.
-        positionEncodedData = learnedLiftingModel(inputData) #+ inputData
+        positionEncodedData = learnedLiftingModel(inputData)
         # positionEncodedData dimension: batchSize*numSignals, numPosLiftedChannels, signalDimension
 
         # For each neural operator layer.

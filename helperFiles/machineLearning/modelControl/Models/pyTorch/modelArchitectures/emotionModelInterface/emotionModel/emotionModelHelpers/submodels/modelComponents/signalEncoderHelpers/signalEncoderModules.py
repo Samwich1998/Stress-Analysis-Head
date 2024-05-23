@@ -28,7 +28,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def signalPostProcessing_forPosEnc(self, inChannel=2):
         return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            # self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def positionalEncodingStamp(self, stampLength=1):

@@ -22,7 +22,7 @@ class channelPositionalEncoding(signalEncoderModules):
         self.maxNumEncodedSignals = 2 ** self.numEncodingStamps  # The maximum number of signals that can be encoded.
 
         # Neural operator parameters.
-        self.activationMethods = self.getActivationMethod_posEncoder()
+        self.activationMethod = self.getActivationMethod_posEncoder()
         self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
         self.wavelet = 'bior3.7'       # Wavelet type for the wavelet transform: bior3.7, db3, dmey
         self.mode = 'zero'             # Mode for the wavelet transform.

@@ -17,7 +17,7 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Positional encoding parameters.
         self.numEncodingStamps = 8  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings). Max: 256 signals -> 2**8.
-        self.numPosEncodingLayers = 1  # The number of operator layers during positional encoding.
+        self.numPosEncodingLayers = 2  # The number of operator layers during positional encoding.
         self.maxNumEncodedSignals = 2 ** self.numEncodingStamps  # The maximum number of signals that can be encoded.
 
         # Neural operator parameters.
@@ -33,8 +33,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numPosEncodingLayers):
             # Create the spectral convolution layers.
-            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='none'))
-            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='none'))
+            self.unlearnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='singleCNN'))
+            self.learnNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='singleCNN'))
         self.lowFrequencyShape = self.learnNeuralOperatorLayers[0].lowFrequencyShape
 
         # A list of parameters to encode each signal.
@@ -56,7 +56,8 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt_indexPredictor = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)
-        self.posIndexPredictor = self.predictedPosEncodingIndex(numFeatures=self.lowFrequencyShape, numClasses=self.maxNumEncodedSignals)
+        self.posIndexPredictor_highInfo = self.predictedPosEncodingIndex_highInfo(numFeatures=self.lowFrequencyShape, numClasses=self.maxNumEncodedSignals)
+        self.posIndexPredictor_lowInfo = self.predictedPosEncodingIndex_lowInfo(numFeatures=self.lowFrequencyShape, numClasses=self.maxNumEncodedSignals)
 
     # ---------------------------------------------------------------------- #
     # -------------------- Learned Positional Encoding --------------------- #
@@ -92,11 +93,11 @@ class channelPositionalEncoding(signalEncoderModules):
             positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
             # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
+            # Residual connection to inject signal information back in.
+            positionEncodedData = positionEncodedData + inputData
+
             # Remove the stamp.
             finalStamp = None
-
-        # Residual connection.
-        positionEncodedData = positionEncodedData + inputData
 
         return positionEncodedData
 
@@ -146,7 +147,11 @@ class channelPositionalEncoding(signalEncoderModules):
         # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
 
         # Predict the signal index.
-        predictedIndexProbabilities = self.posIndexPredictor(lowFrequency)
+        predictedIndexProbabilities_highInfo = self.posIndexPredictor_highInfo(lowFrequency)
+        predictedIndexProbabilities_lowInfo = self.posIndexPredictor_lowInfo(lowFrequency)
         # predictedIndexProbabilities dimension: batchSize, numInputSignals, maxNumEncodingSignals
+
+        # Remove baseline data from predictedIndexProbabilities.
+        predictedIndexProbabilities = predictedIndexProbabilities_highInfo - predictedIndexProbabilities_lowInfo
 
         return predictedIndexProbabilities

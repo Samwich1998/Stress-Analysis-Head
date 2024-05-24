@@ -63,7 +63,7 @@ class signalEncoderModules(convolutionalHelpers):
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='none', layerType='fc'),
         )
 
-    def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
+    def predictedPosEncodingIndex_highInfo(self, numFeatures=2, numClasses=1):
         return nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
@@ -77,6 +77,12 @@ class signalEncoderModules(convolutionalHelpers):
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
 
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
+            boundedExp(),
+        )
+
+    def predictedPosEncodingIndex_lowInfo(self, numFeatures=2, numClasses=1):
+        return nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
         )
 

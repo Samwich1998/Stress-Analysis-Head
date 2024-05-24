@@ -91,7 +91,7 @@ class lossCalculations:
         # Positional encoding loss.
         numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
         predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
-        targetClasses = torch.arange(0, numSignals, device=signalData.device).long().repeat(numExperiments)
+        targetClasses = torch.arange(numSignals, device=signalData.device).long().repeat(numExperiments, 1).view(-1)
         positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
 
         # Assert that nothing is wrong with the loss calculations.

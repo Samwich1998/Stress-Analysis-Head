@@ -89,7 +89,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each neural operator layer.
         for modelInd in range(self.numPosEncodingLayers):
             # Apply the neural operator and the skip connection.
-            positionEncodedData = learnNeuralOperatorLayers(positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
+            positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
             # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
             # Remove the stamp.

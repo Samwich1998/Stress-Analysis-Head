@@ -121,7 +121,6 @@ class signalEncoderModel(globalModel):
 
         # Learn how to add positional encoding to each signal's position.
         positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
-        positionEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forPosEnc(positionEncodedData)  # Smooth over the encoding space.
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
 
         # Predict the positional encoding index.
@@ -255,28 +254,25 @@ class signalEncoderModel(globalModel):
     def plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
         plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-        plt.show()
+        globalPlottingProtocols.clearFigure()
 
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-        plt.show()
+        globalPlottingProtocols.clearFigure()
 
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
         plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2)
-        plt.show()
+        globalPlottingProtocols.clearFigure()
 
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
         plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5)
-        plt.show()
+        globalPlottingProtocols.clearFigure()
 
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
         plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5)
-        plt.show()
+        globalPlottingProtocols.clearFigure()
 
         plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
         plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
         plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
-        plt.show()
-
-        # Clear the figure
         globalPlottingProtocols.clearFigure()

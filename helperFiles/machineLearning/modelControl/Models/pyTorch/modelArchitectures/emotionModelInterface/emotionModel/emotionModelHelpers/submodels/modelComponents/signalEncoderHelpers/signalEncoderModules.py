@@ -4,7 +4,7 @@ import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import boundedExp
-from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN
+from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, addModules, ResNet
 
 
 class signalEncoderModules(convolutionalHelpers):
@@ -16,20 +16,25 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralWeightIndependentModel(self, numInputFeatures=1, numOutputFeatures=1):
         return nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
+            addModules(
+                firstModule=ResNet(module=self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'), numCycles=1),
+                secondModule=self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
+                secondModuleScale=-1,
+                scalingFactor=1,
+            ),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, finalFrequencyDim=46):
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((outChannel, inChannel, finalFrequencyDim)))
-        parameter = self.weightInitialization.xavierNormalInit(parameter, fan_in=inChannel*finalFrequencyDim, fan_out=outChannel*finalFrequencyDim)
+        parameter = self.weightInitialization.xavierNormalInit(parameter, fan_in=inChannel * finalFrequencyDim, fan_out=outChannel * finalFrequencyDim)
 
         return parameter
 
     def neuralCombinationWeightParameters(self, inChannel=1, initialFrequencyDim=2, finalFrequencyDim=1):
         # Initialize the weights with a normal distribution.
         parameter = nn.Parameter(torch.randn((finalFrequencyDim, initialFrequencyDim, inChannel)))
-        parameter = self.weightInitialization.xavierNormalInit(parameter, fan_in=inChannel*initialFrequencyDim, fan_out=inChannel*finalFrequencyDim)
+        parameter = self.weightInitialization.xavierNormalInit(parameter, fan_in=inChannel * initialFrequencyDim, fan_out=inChannel * finalFrequencyDim)
 
         return parameter
 
@@ -46,12 +51,14 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     def independentSkipConnectionEncoding(self, inChannel=2, outChannel=1):
+        assert inChannel == outChannel == 1, "The number of input and output signals must be 1."
+
         return nn.Sequential(
             independentModelCNN(
                 useCheckpoint=False,
                 module=nn.Sequential(
                     # Convolution architecture: feature engineering
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True)
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True)
                 ),
             ),
         )
@@ -74,17 +81,8 @@ class signalEncoderModules(convolutionalHelpers):
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='none', layerType='fc'),
         )
 
-    def predictedPosEncodingIndex_highInfo(self, numFeatures=2, numClasses=1):
-        return nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
-            boundedExp(),
-
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
-            boundedExp(),
-
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
-            boundedExp(),
-
+    def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
+        firstModule = nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
 
@@ -92,9 +90,28 @@ class signalEncoderModules(convolutionalHelpers):
             boundedExp(),
         )
 
-    def predictedPosEncodingIndex_lowInfo(self, numFeatures=2, numClasses=1):
-        return nn.Sequential(
+        secondModule = nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
+        )
+
+        return nn.Sequential(
+            addModules(
+                firstModule=firstModule,
+                secondModule=secondModule,
+                secondModuleScale=-1,
+                scalingFactor=1,
+            ),
+        )
+
+    def independentPostProcessingEncoding(self):
+        return nn.Sequential(
+            independentModelCNN(
+                useCheckpoint=False,
+                module=nn.Sequential(
+                    # Convolution architecture: feature engineering
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True)
+                ),
+            ),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -102,7 +119,8 @@ class signalEncoderModules(convolutionalHelpers):
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: residual connection, feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None,
+                                                   useSwitchActivation=True),
 
             # Convolution architecture: lifting operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
@@ -124,7 +142,8 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
             # Convolution architecture: residual connection, feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None,
+                                                   useSwitchActivation=True),
         )
 
     # ------------------- Final Statistics Architectures ------------------- #

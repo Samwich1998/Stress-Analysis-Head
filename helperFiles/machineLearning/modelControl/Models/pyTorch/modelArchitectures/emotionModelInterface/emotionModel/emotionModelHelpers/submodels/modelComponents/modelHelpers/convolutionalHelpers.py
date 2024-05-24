@@ -43,9 +43,9 @@ class convolutionalHelpers(abnormalConvolutions):
         for signalInd in range(signalData.size(1)):
             # Apply a CNN network.
             if useCheckpoint:
-                processedData[:, signalInd:signalInd+1, :] = checkpoint(transformation, signalData[:, signalInd:signalInd+1, :], use_reentrant=False)
+                processedData[:, signalInd:signalInd + 1, :] = checkpoint(transformation, signalData[:, signalInd:signalInd + 1, :], use_reentrant=False)
             else:
-                processedData[:, signalInd:signalInd+1, :] = transformation(signalData[:, signalInd:signalInd+1, :])
+                processedData[:, signalInd:signalInd + 1, :] = transformation(signalData[:, signalInd:signalInd + 1, :])
 
         return processedData
 
@@ -129,7 +129,8 @@ class convolutionalHelpers(abnormalConvolutions):
 
         layers = []
         for i in range(numBlocks):
-            layers.append(self.convolutionalFilters(numChannels=numChannels, kernel_sizes=kernel_sizes[i], dilations=dilations[i], groups=groups[i], strides=strides[i], convType=convType, activationType=activationType, numLayers=numLayers, useSwitchActivation=useSwitchActivation))
+            layers.append(self.convolutionalFilters(numChannels=numChannels, kernel_sizes=kernel_sizes[i], dilations=dilations[i], groups=groups[i], strides=strides[i], convType=convType, activationType=activationType, numLayers=numLayers,
+                                                    useSwitchActivation=useSwitchActivation))
 
         return nn.Sequential(*layers)
 
@@ -220,16 +221,17 @@ class splitPoolingHead(nn.Module):
 # -------------------------------------------------------------------------- #
 
 class addModules(torch.nn.Module):
-    def __init__(self, firstModule, secondModule, scalingFactor=1):
+    def __init__(self, firstModule, secondModule, scalingFactor=1, secondModuleScale=1):
         super().__init__()
         # General helpers.
+        self.secondModuleScale = secondModuleScale
         self.scalingFactor = scalingFactor
         self.secondModule = secondModule
         self.firstModule = firstModule
 
     def forward(self, inputs):
         # Return them outputs of the models added together.
-        return (self.firstModule(inputs) + self.secondModule(inputs)) / self.scalingFactor
+        return (self.firstModule(inputs) + self.secondModuleScale * self.secondModule(inputs)) / self.scalingFactor
 
 
 class ResNet(torch.nn.Module):
@@ -252,6 +254,7 @@ class ResNet(torch.nn.Module):
         return inputs + initialInput
 
     # -------------------------------------------------------------------------- #
+
 
 class independentModelCNN(torch.nn.Module):
     def __init__(self, module, useCheckpoint=False):
@@ -277,6 +280,7 @@ class independentModelCNN(torch.nn.Module):
         signalData = signalData.view(batchSize, numSignals, signalDimension)
 
         return signalData
+
 
 # -------------------------------------------------------------------------- #
 

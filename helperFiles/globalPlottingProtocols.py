@@ -31,8 +31,7 @@ class globalPlottingProtocols:
 
     @staticmethod
     def clearFigure(fig=None, legend=None):
-        # Show the plot.
-        plt.show()
+        plt.show()  # Show the plot.
 
         # Clear the figure
         if legend is not None: legend.remove()

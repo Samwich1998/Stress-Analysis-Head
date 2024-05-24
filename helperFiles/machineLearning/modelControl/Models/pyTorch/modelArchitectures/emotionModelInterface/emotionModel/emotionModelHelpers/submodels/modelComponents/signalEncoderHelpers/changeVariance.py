@@ -24,8 +24,8 @@ class changeVariance(signalEncoderModules):
 
     def adjustSignalVariance(self, inputData):
         # Apply the neural operator and the skip connection.
-        return self.forwardNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)
+        return self.forwardNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None) + inputData
 
     def unAdjustSignalVariance(self, inputData):
         # Apply the neural operator and the skip connection.
-        return self.reverseNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)
+        return self.reverseNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None) + inputData

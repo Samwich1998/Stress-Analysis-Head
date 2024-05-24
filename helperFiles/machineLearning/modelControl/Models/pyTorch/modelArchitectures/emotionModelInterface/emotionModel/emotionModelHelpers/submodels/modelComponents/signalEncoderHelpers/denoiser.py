@@ -37,4 +37,4 @@ class denoiser(signalEncoderModules):
 
     def applyDenoiser(self, inputData):
         # Apply the neural operator and the skip connection.
-        return self.denoiserNeuralOperator(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)
+        return self.denoiserNeuralOperator(inputData, lowFrequencyTerms=None, highFrequencyTerms=None) + inputData

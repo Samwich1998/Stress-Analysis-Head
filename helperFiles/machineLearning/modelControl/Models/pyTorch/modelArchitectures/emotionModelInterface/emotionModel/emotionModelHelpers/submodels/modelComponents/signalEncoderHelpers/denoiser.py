@@ -25,7 +25,6 @@ class denoiser(signalEncoderModules):
         self.gausKernel_forPosEnc = self.smoothingKernel(kernelSize=3)
         self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=5)
         self.gausKernel_forVar = self.smoothingKernel(kernelSize=7)
-        self.denoiseSignals = self.denoiserModel(inChannel=1)
 
     def applySmoothing_forSigEnc(self, inputData):
         return self.applySmoothing(inputData, self.gausKernel_forSigEnc)

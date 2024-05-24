@@ -61,10 +61,9 @@ class lossCalculations:
 
         # Unpack the loss predictions.
         numLosses, batchSize, numLossBins = finalLossPredictions.size()
+        finalLossPredictions = finalLossPredictions.squeeze(dim=2)
         assert numLosses == self.numLosses, "The number of losses must match the expected number of losses."
-        #assert numLossBins == len(self.loss_bins), "The number of loss bins must match the expected number of loss bins."
         assert len(deltaLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
-        #assert len(deltaLossValues[0]) == numLossBins, "The true loss values must have the correct batch size."
         trueLossValues = deltaLossValues.unsqueeze(1)
 
         # Prepare the final loss predictions.

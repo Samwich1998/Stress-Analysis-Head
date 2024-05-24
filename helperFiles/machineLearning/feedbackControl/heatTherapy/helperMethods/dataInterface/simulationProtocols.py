@@ -1,6 +1,6 @@
 # General
 import numpy as np
-
+import torch
 
 class simulationProtocols:
     def __init__(self, temp_bins, loss_bins, lossBinWidth, temperatureBounds, lossBounds, simulationParameters):
@@ -24,6 +24,10 @@ class simulationProtocols:
         self.NA_map_simulated = None
         self.SA_map_simulated = None
 
+        # Gumbel-Softmax parameters
+        self.initial_temperature = 5
+        self.temperature_decay = 0.99
+
     # ------------------------ Simulation Interface ------------------------ #
 
     def getSimulatedTime(self, lastTimePoint=None):
@@ -32,89 +36,102 @@ class simulationProtocols:
 
 
 
+    def gumbel_softmax_sample(self, logits):
+        gumbels = -torch.empty_like(logits).exponential_().log()  # Sample from Gumbel(0, 1)
+        gumbels = (logits + gumbels) / self.initial_temperature  # Add gumbels and divide by temperature
+        return torch.nn.functional.softmax(gumbels, dim=-1)
+
+    def update_temperature(self):
+        self.initial_temperature *= self.temperature_decay
+
     def sampleNewLoss(self, currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0):
-        if newTempBinIndex != currentTempBinIndex:
+        simulatedMap = torch.tensor(self.simulatedMap, dtype=torch.float32)
+        PA_map_simulated = torch.tensor(self.PA_map_simulated, dtype=torch.float32)
+        NA_map_simulated = torch.tensor(self.NA_map_simulated, dtype=torch.float32)
+        SA_map_simulated = torch.tensor(self.SA_map_simulated, dtype=torch.float32)
+        loss_bins = torch.tensor(self.loss_bins, dtype=torch.float32)
+
+        # Standard deviation for the Gaussian boost
+        std = 0.1
+
+        # Calculate new loss probabilities and Gaussian boost
+        newLossProbabilities = simulatedMap[newTempBinIndex] / torch.sum(simulatedMap[newTempBinIndex])
+        gaussian_boost = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities), dtype=torch.float32) - currentLossIndex) / std) ** 2)
+        gaussian_boost = gaussian_boost / torch.sum(gaussian_boost)
+
+        # Combine the two distributions and normalize
+        newLossProbabilities = newLossProbabilities + gaussian_boost
+        newLossProbabilities = newLossProbabilities / torch.sum(newLossProbabilities)
+
+        # Use Gumbel-Softmax for differentiable sampling
+        soft_sample = self.gumbel_softmax_sample(newLossProbabilities)
+
+        # Sample distribution of loss at a certain temperature for PA, NA, SA
+        newLossProbabilities_PA = PA_map_simulated[newTempBinIndex] / torch.sum(PA_map_simulated[newTempBinIndex])
+        gaussian_boost_PA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_PA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
+        gaussian_boost_PA = gaussian_boost_PA / torch.sum(gaussian_boost_PA)
+
+        newLossProbabilities_PA = newLossProbabilities_PA / torch.sum(newLossProbabilities_PA)
+        newLossProbabilities_PA = newLossProbabilities_PA.clone().detach().requires_grad_(True)
+        soft_sample_PA = self.gumbel_softmax_sample(newLossProbabilities_PA)
+        newUserLoss_PA = torch.sum(soft_sample_PA * loss_bins)
+        print('newUserLoss_PA: ', newUserLoss_PA)
+        print('soft_sample_PA: ', soft_sample_PA)
+        print(f"Gradient tracking enabled: {soft_sample_PA.requires_grad}")
+        loss_distribution_perTemp_PA = newLossProbabilities_PA.clone().detach().requires_grad_(True)
+
+        newLossProbabilities_NA = NA_map_simulated[newTempBinIndex] / torch.sum(NA_map_simulated[newTempBinIndex])
+        gaussian_boost_NA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_NA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
+        gaussian_boost_NA = gaussian_boost_NA / torch.sum(gaussian_boost_NA)
+
+        newLossProbabilities_NA = newLossProbabilities_NA / torch.sum(newLossProbabilities_NA)
+        newLossProbabilities_NA = newLossProbabilities_NA.clone().detach().requires_grad_(True)
+        soft_sample_NA = self.gumbel_softmax_sample(newLossProbabilities_NA)
+        newUserLoss_NA = torch.sum(soft_sample_NA * loss_bins)
+        print('newUserLoss_NA: ', newUserLoss_NA)
+        print('soft_sample_NA: ', soft_sample_NA)
+        print(f"Gradient tracking enabled: {soft_sample_NA.requires_grad}")
+        loss_distribution_perTemp_NA = newLossProbabilities_NA.clone().detach().requires_grad_(True)
+
+        newLossProbabilities_SA = SA_map_simulated[newTempBinIndex] / torch.sum(SA_map_simulated[newTempBinIndex])
+        gaussian_boost_SA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_SA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
+        gaussian_boost_SA = gaussian_boost_SA / torch.sum(gaussian_boost_SA)
+
+        newLossProbabilities_SA = newLossProbabilities_SA / torch.sum(newLossProbabilities_SA)
+        newLossProbabilities_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
+        soft_sample_SA = self.gumbel_softmax_sample(newLossProbabilities_SA)
+        newUserLoss_SA = torch.sum(soft_sample_SA * loss_bins)
+        print('newUserLoss_SA: ', newUserLoss_SA)
+        print('soft_sample_SA: ', soft_sample_SA)
+        print(f"Gradient tracking enabled: {soft_sample_SA.requires_grad}")
+        loss_distribution_perTemp_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
+
+
+        # Update the temperature for annealing
+        self.update_temperature()
+        print('initial_temperature: ', self.initial_temperature)
+
+        return newUserLoss_PA, newUserLoss_NA, newUserLoss_SA, loss_distribution_perTemp_PA, loss_distribution_perTemp_NA, loss_distribution_perTemp_SA
+
+    def sampleNewLoss_HMM(self, currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.01):
+        # if we changed the temperature.
+        if newTempBinIndex != currentTempBinIndex or np.random.rand() < 0.1:
             # Sample a new loss from the distribution.
-            std = 0.1
             newLossProbabilities = self.simulatedMap[newTempBinIndex] / np.sum(self.simulatedMap[newTempBinIndex])
-            gaussian_boost = np.exp(-0.5 * ((np.arange(len(newLossProbabilities)) - currentLossIndex) / std) ** 2)
+            gaussian_boost = np.exp(-0.5 * ((np.arange(len(newLossProbabilities)) - currentLossIndex) / 0.1) ** 2)
             gaussian_boost = gaussian_boost / np.sum(gaussian_boost)
-
-            # Sample a new loss from the distribution.
-            newLossBinIndex_PA = np.random.choice(a=len(newLossProbabilities))
-            newUserLoss_PA = self.loss_bins[newLossBinIndex_PA]
-            newLossBinIndex_NA = np.random.choice(a=len(newLossProbabilities))
-            newUserLoss_NA = self.loss_bins[newLossBinIndex_NA]
-            newLossBinIndex_SA = np.random.choice(a=len(newLossProbabilities))
-            newUserLoss_SA = self.loss_bins[newLossBinIndex_SA]
-
-            # sample distribution of loss at a certain temperature for PA, NA, SA (nn simulation purposes) random distribution based on the map
-            newLossProbabilities_PA = self.PA_map_simulated[newTempBinIndex] / np.sum(self.PA_map_simulated[newTempBinIndex])
-            gaussian_boost_PA = np.exp(-0.5 * ((np.arange(len(newLossProbabilities_PA)) - newLossBinIndex_PA) / std) ** 2)
-            gaussian_boost_PA = gaussian_boost_PA / np.sum(gaussian_boost_PA)
-
-            newLossProbabilities_NA = self.NA_map_simulated[newTempBinIndex] / np.sum(self.NA_map_simulated[newTempBinIndex])
-            gaussian_boost_NA = np.exp(-0.5 * ((np.arange(len(newLossProbabilities_NA)) - newLossBinIndex_NA) / std) ** 2)
-            gaussian_boost_NA = gaussian_boost_NA / np.sum(gaussian_boost_NA)
-
-            newLossProbabilities_SA = self.SA_map_simulated[newTempBinIndex] / np.sum(self.SA_map_simulated[newTempBinIndex])
-            gaussian_boost_SA = np.exp(-0.5 * ((np.arange(len(newLossProbabilities_SA)) - newLossBinIndex_SA) / std) ** 2)
-            gaussian_boost_SA = gaussian_boost_SA / np.sum(gaussian_boost_SA)
 
             # Combine the two distributions.
             newLossProbabilities = newLossProbabilities + gaussian_boost
             newLossProbabilities = newLossProbabilities / np.sum(newLossProbabilities)
 
-            # get the distribution of loss at a certain temperature for PA, NA, SA (nn simulation purposes) different gaussian boost
-            newLossProbabilities_PA = newLossProbabilities_PA / np.sum(newLossProbabilities_PA)
-            loss_distribution_perTemp_PA = newLossProbabilities_PA.copy()
-
-            newLossProbabilities_NA = newLossProbabilities_NA / np.sum(newLossProbabilities_NA)
-            loss_distribution_perTemp_NA = newLossProbabilities_NA.copy()
-
-            newLossProbabilities_SA = newLossProbabilities_SA / np.sum(newLossProbabilities_SA)
-            loss_distribution_perTemp_SA = newLossProbabilities_SA.copy()
+            # Sample a new loss from the distribution.
+            newLossBinIndex = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
+            newUserLoss = self.loss_bins[newLossBinIndex]
         else:
-            newUserLoss_PA = currentUserLoss #+ np.random.normal(loc=0, scale=0.01)
-            newUserLoss_NA = currentUserLoss #+ np.random.normal(loc=0, scale=0.01)
-            newUserLoss_SA = currentUserLoss #+ np.random.normal(loc=0, scale=0.01)
-            newLossProbabilities = self.simulatedMap[newTempBinIndex] / np.sum(self.simulatedMap[newTempBinIndex])
-            noise = np.random.normal(loc=0, scale=0.01, size=newLossProbabilities.shape)
-            newLossProbabilities = newLossProbabilities + noise
-            # Ensure no negative probabilities
-            newLossProbabilities = np.clip(newLossProbabilities, 0, None)
-            newLossProbabilities = newLossProbabilities / np.sum(newLossProbabilities)
+            newUserLoss = currentUserLoss + np.random.normal(loc=0, scale=0.01)
 
-            newLossProbabilities_PA = self.PA_map_simulated[newTempBinIndex] / np.sum(self.PA_map_simulated[newTempBinIndex])
-            noise_PA = np.random.normal(loc=0, scale=0.01, size=newLossProbabilities_PA.shape)
-            # newLossProbabilities_PA = newLossProbabilities_PA + noise_PA
-            # Ensure no negative probabilities
-            newLossProbabilities_PA = np.clip(newLossProbabilities_PA, 0, None)
-            newLossProbabilities_PA = newLossProbabilities_PA / np.sum(newLossProbabilities_PA)
-
-            newLossProbabilities_NA = self.NA_map_simulated[newTempBinIndex] / np.sum(self.NA_map_simulated[newTempBinIndex])
-            noise_NA = np.random.normal(loc=0, scale=0.01, size=newLossProbabilities_NA.shape)
-            # newLossProbabilities_NA = newLossProbabilities_NA + noise_NA
-            # Ensure no negative probabilities
-            newLossProbabilities_NA = np.clip(newLossProbabilities_NA, 0, None)
-            newLossProbabilities_NA = newLossProbabilities_NA / np.sum(newLossProbabilities_NA)
-
-            newLossProbabilities_SA = self.SA_map_simulated[newTempBinIndex] / np.sum(self.SA_map_simulated[newTempBinIndex])
-            noise_SA = np.random.normal(loc=0, scale=0.01, size=newLossProbabilities_SA.shape)
-            # newLossProbabilities_SA = newLossProbabilities_SA + noise_SA
-            # Ensure no negative probabilities
-            newLossProbabilities_SA = np.clip(newLossProbabilities_SA, 0, None)
-            newLossProbabilities_SA = newLossProbabilities_SA / np.sum(newLossProbabilities_SA)
-
-            loss_distribution_perTemp_PA = newLossProbabilities_PA.copy()
-            loss_distribution_perTemp_NA = newLossProbabilities_NA.copy()
-            loss_distribution_perTemp_SA = newLossProbabilities_SA.copy()
-
-        return (max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss_PA)),
-                max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss_NA)),
-                max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss_SA)),
-                loss_distribution_perTemp_PA, loss_distribution_perTemp_NA, loss_distribution_perTemp_SA)
-
+        return max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss))
 
     def getFirstPoint(self):
         return self.startingPoint  # (T, PA, NA, SA)

@@ -62,10 +62,10 @@ class sharedModelWeights(nn.Module):
             nn.SELU(),
 
             # Neural architecture
-            nn.Linear(in_features=2*self.numInputLossFeatures, out_features=self.numInputLossFeatures, bias=True), # numsharedLossFeaturer = 6 (30 to 15)
+            nn.Linear(in_features=2*self.numInputLossFeatures, out_features=2*self.numInputLossFeatures, bias=True), # numsharedLossFeaturer = 6 (30 to 15)
             nn.SELU(),
 
-            nn.Linear(in_features=self.numInputLossFeatures, out_features=self.numSharedLossFeatures, bias=True),  # 15 to 6
+            nn.Linear(in_features=2*self.numInputLossFeatures, out_features=self.numSharedLossFeatures, bias=True),  # 15 to 6
             nn.SELU(),
         )
 

@@ -65,11 +65,9 @@ class generalProtocol(abc.ABC):
             # TODO: Delete this line
             self.simulationProtocols = simulationProtocols(self.temp_bins, self.loss_bins, self.lossBinWidth, self.temperatureBounds, self.lossBounds, simulationParameters)
 
-
         # Initialize the user maps.
         self.initializeSimulatedMaps()
-        
-        plt.imshow(self.simulationProtocols.PA_map_simulated)
+        plt.imshow(self.simulationProtocols.simulatedMap)
         plt.show()
         # exit()
 
@@ -92,7 +90,7 @@ class generalProtocol(abc.ABC):
             self.simulationProtocols.SA_map_simulated = self.getProbabilityMatrix(initialSimulatedData, noise=0.1)
             # say that state anxiety has a slightly higher weight
             self.simulationProtocols.simulatedMap = 0.3 * self.simulationProtocols.PA_map_simulated + 0.3 * self.simulationProtocols.NA_map_simulated + 0.4 * self.simulationProtocols.SA_map_simulated
-
+            print('####simulatedMap: ', self.simulationProtocols.simulatedMap)
         else:
             # real data points
             initialSimulatedStates = self.empatchProtocols.getTherapyData()
@@ -157,13 +155,57 @@ class generalProtocol(abc.ABC):
         self.temperatureTimepoints.append((timePoint, tempIndex))  # temperatureTimepoints: (numEpochs, 2=(time, tempIndex))
         self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(T, PA, NA, SA))
 
-        # ------------------------ For neural network simulation only ------------------------ #
+        # ------------------------ For neural network distribution simulation only ------------------------ #
         # initialize to the current state
         newUserLoss_simulated, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss(self.userStatePath[-1], userState[0])  # userState[0] # _dist shape = (11.) probability distribution
         # assume initial distribution
         self.userFullStatePathDistribution = [[userState[0], PA_dist, NA_dist, SA_dist]]
         self.userStatePath_simulated = self.userStatePath.copy()
         # ---------------------------------------------------------------------------------------- #
+
+    # ------------------------ For HMM ------------------------ #
+    def initializeUserState_HMM(self):
+        # Get the user information.
+        timePoint, userState = self.getCurrentState()  # userState: (T, PA, NA, SA)
+        tempIndex = self.getBinIndex(self.temp_bins, userState[0])
+        # Track the user state and time delay.
+        self.userStatePath.append(self.compileLossStates(np.asarray([userState]))[0])  # userStatePath: (numEpochs, 2=(T, Loss))
+        self.temperatureTimepoints.append((timePoint, tempIndex))  # temperatureTimepoints: (numEpochs, 2=(time, tempIndex))
+        self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(T, PA, NA, SA))
+
+    def initializeStartingProbabilityMatrix_HMM(self):
+        initial_probs = np.full(self.numTempBins, 1 / self.numTempBins)
+        return initial_probs
+
+    def initializeTransitionMatrix_HMM(self):
+        transition_matrix = np.full((self.numTempBins, self.numTempBins), 1 / self.numTempBins)
+        return transition_matrix
+
+    def initializeMeans_HMM(self):
+        # initialize means based on each temperature bin associated loss values from simulated map (get the mean of the loss values in this temperature bin)
+        means = np.zeros(self.numTempBins)
+        for i in range(self.numTempBins):
+            means[i] = np.mean(self.simulationProtocols.simulatedMap[i])
+        return means
+
+    def initializeVariances_HMM(self):
+        # initialize variance based on each tempearture bin associated loss values from simulated map (get the variance of the loss values in this temperature bin)
+        variances = np.zeros(self.numTempBins)
+        for i in range(self.numTempBins):
+            variances[i] = np.var(self.simulationProtocols.simulatedMap[i])
+        return variances
+
+    def randomSampleTempLossPairs(self, numSamples):
+        # randomly sample temperature-loss pairs from the simulated map
+        tempLossPairs = []
+        loss = []
+        for i in range(numSamples):
+            tempIndex = np.random.choice(self.numTempBins)
+            lossIndex = np.random.choice(self.numLossBins)
+            tempLossPairs.append([self.temp_bins[tempIndex], self.loss_bins[lossIndex]])
+            loss.append(self.loss_bins[lossIndex])
+        return tempLossPairs, loss
+    # --------------------------------------------------------- #
 
     def getCurrentState(self):
         if self.simulateTherapy:
@@ -191,9 +233,7 @@ class generalProtocol(abc.ABC):
         return initialData
 
     def getNextState(self, newUserTemp):
-        print('IN $$$$$$')
         if self.simulateTherapy:
-            print('IN 2 %%%%')
             # Simulate a new time.
             lastTimePoint = self.temperatureTimepoints[-1][0] if len(self.temperatureTimepoints) != 0 else 0
             timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
@@ -215,8 +255,6 @@ class generalProtocol(abc.ABC):
             timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
             # Sample the new loss form a pre-simulated map.
             newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
-            # PA, NA, SA = None, None, None
-
         # Get the bin index for the new temperature.
         tempIndex = self.getBinIndex(self.temp_bins, newUserTemp)
         # Update the user state.
@@ -254,8 +292,26 @@ class generalProtocol(abc.ABC):
 
         # Simulate a new user loss.
         PA, NA, SA, PA_dist, NA_dist, SA_dist = self.simulationProtocols.sampleNewLoss(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.00)
-        newUserLoss = self.calculateLoss(np.asarray([[PA, NA, SA]]))[0]
+        PA_np = PA.detach().numpy()
+        NA_np = NA.detach().numpy()
+        SA_np = SA.detach().numpy()
+
+        newUserLoss = self.calculateLoss(np.asarray([[PA_np, NA_np, SA_np]]))[0]
         return newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist
+
+    def getSimulatedLoss_HMM(self, currentUserState, newUserTemp):
+        # Unpack the current user state.
+        currentUserTemp, currentUserLoss = currentUserState
+
+        # Calculate the bin indices for the current and new user states.
+        currentTempBinIndex = self.getBinIndex(self.temp_bins, currentUserTemp)
+        currentLossIndex = self.getBinIndex(self.loss_bins, currentUserLoss)
+        newTempBinIndex = self.getBinIndex(self.temp_bins, newUserTemp)
+
+        # Simulate a new user loss.
+        newUserLoss = self.simulationProtocols.sampleNewLoss_HMM(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.00)
+
+        return newUserLoss
 
     # ------------------------ initial Heuristic map for NN adaptive training ------------------------ #
     def createGaussianMap_nn(self, gausMean, gausSTD):
@@ -476,14 +532,14 @@ class generalProtocol(abc.ABC):
 
         plt.style.use('seaborn-v0_8-pastel')
         plt.figure(figsize=(10, 6))
-        plt.plot(epoch_list, deltaListPA, label='delta PA', marker='o', linestyle='-', color='darkblue', linewidth=2, markersize=8)
-        plt.plot(epoch_list, deltaLossNA, label='delta NA', marker='x', linestyle='-', color='firebrick', linewidth=2, markersize=8)
-        plt.plot(epoch_list, deltaLossSA, label='delta SA', marker='s', linestyle='-', color='forestgreen', linewidth=2, markersize=8)
-        plt.plot(epoch_list, predictedLossPA, label='predicted PA', marker='o', linestyle='--', color='pink', linewidth=2, markersize=8)
-        plt.plot(epoch_list, predictedLossNA, label='predicted NA', marker='x', linestyle='--', color='brown', linewidth=2, markersize=8)
-        plt.plot(epoch_list, predictedLossSA, label='predicted SA', marker='s', linestyle='--', color='olive', linewidth=2, markersize=8)
+        plt.plot(epoch_list, deltaListPA, label='delta PA', linestyle='-', color='darkblue', linewidth=2, markersize=8)
+        plt.plot(epoch_list, deltaLossNA, label='delta NA', linestyle='-', color='firebrick', linewidth=2, markersize=8)
+        plt.plot(epoch_list, deltaLossSA, label='delta SA', linestyle='-', color='forestgreen', linewidth=2, markersize=8)
+        plt.plot(epoch_list, predictedLossPA, label='predicted PA', linestyle='--', color='pink', linewidth=2, markersize=8)
+        plt.plot(epoch_list, predictedLossNA, label='predicted NA', linestyle='--', color='brown', linewidth=2, markersize=8)
+        plt.plot(epoch_list, predictedLossSA, label='predicted SA', linestyle='--', color='olive', linewidth=2, markersize=8)
         plt.xlabel('Epoch', fontsize=14)
-        plt.ylabel('Loss', fontsize=14)
+        plt.ylabel('Loss changes', fontsize=14)
         plt.title('Therapy Results per Epoch', fontsize=16)
         plt.legend(frameon=True, loc='best', fontsize=12)
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)
@@ -494,7 +550,7 @@ class generalProtocol(abc.ABC):
         plt.figure(figsize=(10, 6))
         plt.plot(epoch_list, temp_list, label='delta PA', marker='o', linestyle='-', color='darkblue', linewidth=2, markersize=8)
         plt.xlabel('Epoch', fontsize=14)
-        plt.ylabel('temp change', fontsize=14)
+        plt.ylabel('temp', fontsize=14)
         plt.title('Therapy Results per Epoch', fontsize=16)
         plt.legend(frameon=True, loc='best', fontsize=12)
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)

@@ -56,7 +56,6 @@ class heatTherapyModelUpdate(nn.Module):
         # Extract the dimensions of the input data.
         batchSize, numInitialFeatures = initialPatientStates.size()
         # initialPatientStates dimensions: [batchSize, numInputFeatures=4].
-        print('(batchSize, numInitialFeatures): ', (batchSize, numInitialFeatures))
 
         # Predict the next States for the patient.
         deltafinalStatePrediction = self.predictNextTotalState(initialPatientStates)

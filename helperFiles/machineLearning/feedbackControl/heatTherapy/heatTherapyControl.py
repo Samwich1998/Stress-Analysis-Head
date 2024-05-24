@@ -3,6 +3,7 @@
 import time
 import torch
 import sys
+import numpy as np
 sys.path.append("./../../../../")
 import helperFiles
 
@@ -10,6 +11,7 @@ import helperFiles
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.aStarProtocol import aStarProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.basicProtocol import basicProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.HMMProtocol import HMMProtocol
 
 
 class heatTherapyControl:
@@ -32,15 +34,28 @@ class heatTherapyControl:
     def setupTherapyProtocols(self, therapyMethod):
         # Change the therapy method.
         self.therapyMethod = therapyMethod
-
         if self.therapyMethod == "aStarProtocol":
             self.therapyProtocol = aStarProtocol(self.temperatureBounds, self.tempBinWidth, self.simulationParameters, learningRate=2)
         elif self.therapyMethod == "basicProtocol":
             self.therapyProtocol = basicProtocol(self.temperatureBounds, self.tempBinWidth, self.simulationParameters)
         elif self.therapyMethod == "nnProtocol":
             self.therapyProtocol = nnProtocol(self.temperatureBounds, self.tempBinWidth, self.simulationParameters, modelName="2024-04-12 heatTherapyModel", onlineTraining=False)
+        elif self.therapyMethod == "HMMProtocol":
+            self.therapyProtocol = HMMProtocol(self.temperatureBounds, self.tempBinWidth, self.simulationParameters)
         else:
             raise ValueError("Invalid therapy method provided.")
+
+
+    def runHMMProtocol(self):
+        # train HMM model
+        self.therapyProtocol.train()
+        # predict the optimal state
+        # update the user state path
+        self.therapyProtocol.updateTherapyState()
+        # print out the optimal temperature and loss
+        print('Optimal temperature and loss:', self.therapyProtocol.userStatePath[-1])
+
+
 
     def runTherapyProtocol(self, maxIterations=None):
         # Initialize holder parameters.
@@ -65,14 +80,13 @@ class heatTherapyControl:
         while not self.therapyProtocol.finishedTherapy:
             # Get the next states for the therapy.
             therapyState, allMaps = self.therapyProtocol.updateTherapyState()
-            print(therapyState)
             if self.therapyMethod == "nnProtocol":
                 if self.therapyProtocol.onlineTraining:
                     print('------Online training started-------')
                     # Calculate the final loss.
                     self.therapyProtocol.getNextState(therapyState)
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
-                    deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
+                    deltaLossValues = [true - last for true, last in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]
                     lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, deltaLossValues) # losspredictionloss is from the model
                     self.latestLoss = lossPredictionLoss.item()
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
@@ -86,18 +100,17 @@ class heatTherapyControl:
                         self.therapyProtocol.plotTherapyResults_nn(epoch_list, loss_prediction_loss, loss_bias, current_user_loss)
                 elif not self.therapyProtocol.onlineTraining:
                     print('------simulation (offline) training started-------')
-                    #trueLossValues = self.therapyProtocol.userFullStatePathDistribution[-1][1:]  # from simulation data
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
-                    print('*******trueLossValues datatype: ', type(trueLossValues))
-                    print('*******trueLossValues: ', trueLossValues)
-                    deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
+                    deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues,[0,0,0] )]# self.therapyProtocol.optimalLoss
                     deltaLossValues = torch.tensor(deltaLossValues, dtype=torch.float32)
                     lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel_offline(therapyState, deltaLossValues) #losspredictionloss is from the model
                     self.therapyProtocol.getNextState(therapyState)
                     self.latestLoss = lossPredictionLoss.item()
                     print('****** latestLoss: ', self.latestLoss)
+                    print('therapy State: ', therapyState)
+                    print('^^^^^^ NA loss', self.therapyProtocol.optimalLoss[1] + therapyState[2])
+
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
-                    # self.therapyProtocol.getNextState(therapyState)
                     currentUserLoss = self.therapyProtocol.userStatePath_simulated[-1][1]
 
                     # -------------------------------------- data arrangement for plotting purposes-----------------------------------
@@ -109,9 +122,9 @@ class heatTherapyControl:
 
                     # Extract the temperature and three loss values from the userFullStatePathDistribution
                     currentTemp = self.therapyProtocol.userFullStatePath[-1][0]
-                    currentPA = self.therapyProtocol.userFullStatePath[-1][1]
-                    currentNA = self.therapyProtocol.userFullStatePath[-1][2]
-                    currentSA = self.therapyProtocol.userFullStatePath[-1][3]
+                    # currentPA = self.therapyProtocol.userFullStatePath[-1][1]
+                    # currentNA = self.therapyProtocol.userFullStatePath[-1][2]
+                    # currentSA = self.therapyProtocol.userFullStatePath[-1][3]
 
                     loss_prediction_loss.append(lossPredictionLoss.item())
                     loss_bias.append(minimizeLossBias.item())
@@ -121,6 +134,10 @@ class heatTherapyControl:
 
                     flattened_therapyState = therapyState[1:].view(-1).tolist()
                     deltaPA, deltaNA, deltaSA = deltaLossValues
+                    print('temperature', flattened_therapyState[0])
+                    print('delta Loss Values: ', deltaLossValues)
+                    print('trueLossValues: ', trueLossValues)
+                    print('predictedLossValues: ', flattened_therapyState)
                     PA, NA, SA = flattened_therapyState
                     deltaLossList_PA.append(deltaPA)
                     deltaLossList_NA.append(deltaNA)
@@ -169,7 +186,8 @@ if __name__ == "__main__":
     therapyProtocol = heatTherapyControl(userTemperatureBounds, userTempBinWidth, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
 
     # Run the therapy protocol.
-    therapyProtocol.runTherapyProtocol(maxIterations=500)
+    #therapyProtocol.runTherapyProtocol(maxIterations=500)
+    therapyProtocol.runHMMProtocol()
 
     # TODO: lost per epoch  (optimal, predicted, actual loss) (lossPredictionLoss, minimizeLossBias, currentUserLoss) (checked)
     # TODO: change the architecture

@@ -65,10 +65,10 @@ class specificModelWeights(nn.Module):
                 nn.Linear(2 * self.numSharedLossFeatures, 2 * self.numSharedLossFeatures, bias=True),  # 22 to 22
                 nn.SELU(),
 
-                nn.Linear(2 * self.numSharedLossFeatures, self.numSharedLossFeatures, bias=True),  # 22 to 11
+                nn.Linear(2 * self.numSharedLossFeatures, 2*self.numSharedLossFeatures, bias=True),  # 22 to 11
                 nn.SELU(),
 
-                nn.Linear(self.numSharedLossFeatures, out_features=1, bias=True),  # 11 to 1
+                nn.Linear(2*self.numSharedLossFeatures, out_features=1, bias=True),  # 11 to 1
             ))
 
     def predictNextTemperature(self, inputData):

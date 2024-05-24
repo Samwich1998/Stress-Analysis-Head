@@ -64,8 +64,8 @@ class waveletNeuralHelpers(signalEncoderModules):
 
         # Assert the validity of the parameters under independent channels.
         if self.independentChannels:
-            assert self.numOutputSignals == -1, "The number of output channel is irrelevant. Please use -1."
-            assert self.numInputSignals == -1, "The number of input channel is irrelevant. Please use -1."
+            assert self.numOutputSignals == -1, "The number of output channel is irrelevant. Please use 1."
+            assert self.numInputSignals == -1, "The number of input channel is irrelevant. Please use 1."
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)

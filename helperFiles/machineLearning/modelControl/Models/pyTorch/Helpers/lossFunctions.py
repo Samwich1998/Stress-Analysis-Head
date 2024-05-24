@@ -21,7 +21,7 @@ def weightLoss(allLosses, class_weights, targets):
         classMask = targets == classInd
         classCounts = classMask.sum()
 
-        # If the class if present.
+        # If the class is present.
         if classCounts != 0:
             # This will average each class index's loss (once we sum at the end)
             allLosses[classMask] *= classWeight / classCounts
@@ -49,9 +49,9 @@ class pytorchLossMethods:
         if lossType == "NLLLoss":
             self.loss_fn = torch.nn.NLLLoss(weight=class_weights, reduction="none")
 
-        # Cross Entropy: Compares true vs predicted probability distributions (similar to NLL los). 
+        # Cross Entropy: Compares true vs. predicted probability distributions (similar to NLL loss).
         #               The true labels should be class indices OR 1-hot encoded.
-        #               Should apply softmax at last layer (not required).
+        #               Should NOT apply softmax at last layer (done internally in pytorch).
         #               Can handle class imbalances through class_weights.
         #               Similar to NLLLoss if you apply log_softmax.
         elif lossType == "CrossEntropyLoss":
@@ -68,7 +68,7 @@ class pytorchLossMethods:
 
         # ----------------- Compile Regression Loss Methods ---------------- #
 
-        # Mean Squared Error: Minimizes the sqaured difference between predicted and true values.
+        # Mean Squared Error: Minimizes the squared difference between predicted and true values.
         elif lossType == "MeanSquaredError":
             self.loss_fn = torch.nn.MSELoss(reduction='none')
 
@@ -189,7 +189,7 @@ class customLossMethods(nn.Module):
         # Calculate the dice loss
         intersection = (predictedDist * trueDist).sum(dim=1)  # Intersection of probability distribution
         union = (predictedDist + trueDist).sum(dim=1)  # Total squared area
-        # Minimize the loss instead of maximize.
+        # Minimize the loss instead of maximizing.
         diceLosses = 1 - (2 * intersection + smooth) / (union + smooth)  # Add epsilon for numerical stability
 
         # If class weights are provided.
@@ -238,7 +238,7 @@ class customLossMethods(nn.Module):
         class_weights : An array of class weights. I currently am expecting a 1D array of length numClasses.
         """
         # Assert the integrity of the expected data.
-        # assert error.shape == targets.shape, "Shapes of predictions and targets must match"
+        # Assert error.shape == targets.shape, "Shapes of predictions and targets must match"
 
         # Calculate the weighted squared error
         smoothnessLoss = predictedDist.diff(n=1, dim=-1).var(dim=-1)
@@ -272,7 +272,7 @@ class customLossMethods(nn.Module):
         return finalLoss
 
     @staticmethod
-    def LogCoshLoss(predictedVals, targetVals, class_weights):
+    def LogCoshLoss(predictedVals, targetVals):
         # Compute the element-wise log cosh loss
         loss = (predictedVals - targetVals).cosh().log().mean()
         # from torchmetrics.regression import LogCoshError
@@ -284,7 +284,7 @@ class customLossMethods(nn.Module):
 class FocalLoss(nn.Module):
     """ 
     Implemented from: https://github.com/clcarwin/focal_loss_pytorch/tree/master 
-    gamma = 0 makes it the same as cross entropy loss
+    gamma = 0 makes it the same as cross-entropy loss
     """
 
     def __init__(self, gamma=0.0, alpha=None, size_average=True):

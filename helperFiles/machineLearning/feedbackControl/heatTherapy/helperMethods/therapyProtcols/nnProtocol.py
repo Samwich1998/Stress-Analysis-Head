@@ -62,7 +62,7 @@ class nnProtocol(generalProtocol):
     # ------------------------ nnProtocol ------------------------ #
 
     def updateTherapyState(self):
-        # currentUserState dimensions: [numInputFeatures=4]. Values: [temperature, PA, NA, SA]
+        """ currentUserState dimensions: [temperature, PA, NA, SA] """
         if not self.onlineTraining:
             # offline training: extract the most recent state and starndardize the temperature
             temperature, PA, NA, SA = self.userFullStatePath[-1]

@@ -15,7 +15,9 @@ class lossCalculations:
         # Model parameters.
         self.classificationLoss = nn.CrossEntropyLoss(weight=None, reduction='none', label_smoothing=0.0)
         self.divergenceLoss = nn.KLDivLoss(reduction='batchmean', log_target=False)
-        self.MSELoss = nn.MSELoss(reduction='mean')
+        self.MSELoss = nn.MSELoss(reduction='none')
+        self.predictionLossType = "MSE"  # The type of loss to use for the model.
+        self.optimalLossType = "MSE"  # The type of loss to use for the model.
 
         # Initialize the optimal final loss.
         self.optimalLoss = [1, 0, 0]  # The optimal final loss bin index. [PA, NA, SA].
@@ -27,60 +29,54 @@ class lossCalculations:
         """ Score the model based on the final loss. """
         # Unpack the final loss predictions.
         finalTemperaturePredictions, finalLossPredictions = therapyState
-        # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
-        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
-        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
-
-        # Prepare the final loss predictions.
-        batchSize = finalTemperaturePredictions.size(1)  # Extract the batch size.
-        trueLossValues = list(map(lambda loss: generalProtocol.getBinIndex(self.loss_bins, loss), trueLossValues))
-        trueLossValues = torch.tensor(data=trueLossValues, dtype=torch.long)  # Convert the true loss values to a tensor.
-        trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, batchSize)  # trueLossValues dimensions: [numLosses, batchSize].
-
-        lossPredictionLoss = 0
-        # Bias the model to predict the next loss.
-        for lossInd in range(self.numLosses):
-            lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues).mean()
-
-        minimizeLossBias = 0
-        # Bias the model to minimize the loss.
-        for lossInd in range(self.numLosses):
-            expectedLoss = self.optimalFinalLossBinIndex[lossInd].expand(batchSize)  # expectedLoss dimensions: [batchSize].
-            minimizeLossBias = minimizeLossBias + self.classificationLoss(finalLossPredictions[lossInd], expectedLoss).mean()
-
-        return lossPredictionLoss, minimizeLossBias
-
-    def scoreModel_offline(self, therapyState, deltaLossValues):
-        """ Score the model based on the final loss. """
-        # Unpack the final loss predictions.
-        finalTemperaturePredictions = therapyState[0]
-        finalLossPredictions = therapyState[1:]
-        # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
-        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
-        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
-
-        # Unpack the loss predictions.
         numLosses, batchSize, numLossBins = finalLossPredictions.size()
-        finalLossPredictions = finalLossPredictions.squeeze(dim=2)
+        # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
+        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
+        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
+
+        # Assert the validity of the parameters.
         assert numLosses == self.numLosses, "The number of losses must match the expected number of losses."
-        assert len(deltaLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
-        trueLossValues = deltaLossValues.unsqueeze(1)
+        assert len(trueLossValues) == self.numLosses, "The number of true loss values must match the expected number of losses."
 
-        # Prepare the final loss predictions.
+        # Preset the loss values.
         lossPredictionLoss = 0
-
-        # Bias the model to predict the next loss.
-        for lossInd in range(self.numLosses):
-            # KL divergence loss
-            #lossPredictionLoss = lossPredictionLoss + self.divergenceLoss(F.log_softmax(finalLossPredictions[lossInd], dim=-1), trueLossValues[lossInd])
-            # cross entropy loss
-            #lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd].argmax(dim=-1)).mean()
-            # MSE loss
-            lossPredictionLoss = lossPredictionLoss + self.MSELoss(finalLossPredictions[lossInd], trueLossValues[lossInd])
         minimizeLossBias = 0
-        # Bias the model to minimize the loss.
+
+        # For each mental state score.
         for lossInd in range(self.numLosses):
-            expectedLoss = self.optimalFinalLossBinIndex[lossInd].expand(batchSize)  # expectedLoss dimensions: [batchSize].
-            #minimizeLossBias = minimizeLossBias + self.classificationLoss(finalLossPredictions[lossInd], expectedLoss).mean()
-            minimizeLossBias = minimizeLossBias + self.MSELoss(finalLossPredictions[lossInd], expectedLoss)
+            # Bias the model to predict the next loss.
+            self.lossCalculation(lossPredictionLoss, finalLossPredictions, trueLossValues, lossInd, lossType=self.predictionLossType)
+
+            # Bias the model to minimize the loss.
+            expectedLoss = self.optimalFinalLossBinIndex.expand(self.numLosses, batchSize)  # expectedLoss dimensions: [self.numLosses, batchSize].
+            self.lossCalculation(minimizeLossBias, finalLossPredictions, expectedLoss, lossInd, lossType=self.optimalLossType)
+
         return lossPredictionLoss, minimizeLossBias
+
+    def lossCalculation(self, lossPredictionLoss, finalLossPredictions, trueLossValues, lossInd, lossType):
+        # KL divergence loss
+        if lossType == "KL":
+            # Add the loss value.
+            lossPredictionLoss = lossPredictionLoss + self.divergenceLoss(F.log_softmax(finalLossPredictions[lossInd], dim=-1), trueLossValues[lossInd])
+
+        # Cross-entropy loss
+        elif lossType == "CE":
+            # Prepare the final loss predictions for classification.
+            trueLossValues = list(map(lambda loss: generalProtocol.getBinIndex(self.loss_bins, loss), trueLossValues))
+            trueLossValues = torch.tensor(data=trueLossValues, dtype=torch.long)  # Convert the true loss values to a tensor.
+            trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numLosses, batchSize].
+
+            # Add the loss value.
+            lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd].argmax(dim=-1)).mean()
+
+        # MSE loss
+        elif lossType == "MSE":
+            # Prepare the final loss predictions for MSE.
+            trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numLosses, batchSize].
+
+            # Add the loss value.
+            lossPredictionLoss = lossPredictionLoss + self.MSELoss(finalLossPredictions[lossInd], trueLossValues[lossInd]).mean()
+        else:
+            raise ValueError("The loss type is not recognized.")
+
+        return lossPredictionLoss

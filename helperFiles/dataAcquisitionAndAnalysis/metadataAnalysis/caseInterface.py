@@ -258,7 +258,7 @@ class caseInterface(globalMetaAnalysis):
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
         givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenFilteringOrders = self.getStreamingInfo()
-        featureNames, givenBiomarkerFeatureNames, givenBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(biomarkerOrder)
+        featureNames, givenBiomarkerFeatureNames, givenBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(givenBiomarkerOrder)
 
         return givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenBiomarkerFeatureNames
 

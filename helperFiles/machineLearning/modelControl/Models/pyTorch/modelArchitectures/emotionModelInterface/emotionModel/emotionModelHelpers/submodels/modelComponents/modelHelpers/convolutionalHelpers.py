@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import learnableTanhshrink, switchActivation, powerSeriesActivation, \
-    sinh, boundedS, boundedExp
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import switchActivation, sinh, boundedS, boundedExp
 # Import files.
 from .abnormalConvolutions import abnormalConvolutions
 
@@ -53,6 +52,34 @@ class convolutionalHelpers(abnormalConvolutions):
     @staticmethod
     def restNet(module, numCycles=1):
         return ResNet(module=module, numCycles=numCycles)
+
+    @staticmethod
+    def getActivationMethod(activationType, useSwitchActivation=True):
+        if activationType == 'Tanhshrink':
+            activationFunction = nn.Tanhshrink()
+        elif activationType == 'none':
+            activationFunction = nn.Identity()
+        elif activationType == 'boundedExp':
+            activationFunction = boundedExp()
+        elif activationType == 'boundedS':
+            activationFunction = boundedS()
+        elif activationType == 'PReLU':
+            activationFunction = nn.PReLU()
+        elif activationType == 'selu':
+            activationFunction = nn.SELU()
+        elif activationType == 'gelu':
+            activationFunction = nn.GELU()
+        elif activationType == 'relu':
+            activationFunction = nn.ReLU()
+        elif activationType == 'sinh':
+            activationFunction = sinh()
+        else:
+            raise ValueError("Activation type must be in ['Tanhshrink', 'none', 'boundedExp', 'boundedS' 'PReLU', 'selu', 'gelu', 'relu', 'sinh']")
+
+        if useSwitchActivation:
+            activationFunction = switchActivation(activationFunction, switchState=True)
+
+        return activationFunction
 
     # --------------- Standard Convolutional Architectures --------------- #
 
@@ -156,22 +183,9 @@ class convolutionalHelpers(abnormalConvolutions):
             layer = self.weightInitialization.initialize_weights(layer, activationMethod=activationType, layerType='conv')
             layers.append(layer)
 
-            # Selu activation function
-            if activationType == 'powerSeriesActivation': activationFunction = powerSeriesActivation(numCoeffs=3, stabilityConstant=3.0, maxGrad=1, seriesType='odd')
-            elif activationType == 'LearnableTanhshrink': activationFunction = learnableTanhshrink()
-            elif activationType == 'Tanhshrink': activationFunction = nn.Tanhshrink()
-            elif activationType == 'boundedExp': activationFunction = boundedExp()
-            elif activationType == 'boundedS': activationFunction = boundedS()
-            elif activationType == 'none': activationFunction = nn.Identity()
-            elif activationType == 'PReLU': activationFunction = nn.PReLU()
-            elif activationType == 'selu': activationFunction = nn.SELU()
-            elif activationType == 'gelu': activationFunction = nn.GELU()
-            elif activationType == 'relu': activationFunction = nn.ReLU()
-            elif activationType == 'sinh': activationFunction = sinh()
-            else: raise ValueError("Activation type must be in ['selu', 'gelu', 'relu', 'LearnableTanhshrink' 'PReLU', 'Tanhshrink', 'none']")
+            # Get the activation method.
+            activationFunction = self.getActivationMethod(activationType, useSwitchActivation)
 
-            if useSwitchActivation:
-                activationFunction = switchActivation(activationFunction, switchState=True)
             # Add the activation layer.
             layers.append(activationFunction)
 

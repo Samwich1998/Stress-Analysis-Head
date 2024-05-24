@@ -32,8 +32,8 @@ class signalEncoderHelpers(nn.Module):
         # Initialize signal encoder helper classes.
         self.channelEncodingInterface = channelEncoding(numCompressedSignals=self.numCompressedSignals, numExpandedSignals=self.numExpandedSignals, expansionFactor=self.expansionFactor, numSigEncodingLayers=numSigEncodingLayers, sequenceBounds=self.sequenceBounds, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
         self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, debuggingResults=debuggingResults)
-        self.finalVarianceInterface = changeVariance(debuggingResults=debuggingResults)
-        self.denoiseSignals = denoiser(debuggingResults=debuggingResults)
+        self.finalVarianceInterface = changeVariance(sequenceBounds=sequenceBounds, debuggingResults=debuggingResults)
+        self.denoiseSignals = denoiser(sequenceBounds=sequenceBounds, debuggingResults=debuggingResults)
         self.dataInterface = emotionDataInterface
 
     # ----------------------- Signal Pairing Methods ----------------------- #

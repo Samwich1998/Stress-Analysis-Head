@@ -89,16 +89,6 @@ class modelVisualizations(globalPlottingProtocols):
                     #                                    lossLabels=[f"{modelPipeline.model.datasetName} Signal Encoding STD Loss"[timeWindowInd] for modelPipeline in allModelPipelines],
                     #                                    plotTitle="trainingLosses/All Signal Encoder STD Losses")
 
-                    # Plot path loss.
-                    self.generalViz.plotTrainingLosses([specificModel.numEncodingsPath_timeAnalysis[timeWindowInd] for specificModel in specificModels], None,
-                                                       lossLabels=[f"{modelPipeline.model.datasetName} Autoencoder Path" for modelPipeline in allModelPipelines],
-                                                       plotTitle="trainingLosses/All Signal Encoder Path", logY=False)
-
-                    # Plot buffer loss.
-                    self.generalViz.plotTrainingLosses([specificModel.numEncodingsBufferPath_timeAnalysis[timeWindowInd] for specificModel in specificModels], None,
-                                                       lossLabels=[f"{modelPipeline.model.datasetName} Autoencoder Path Buffer" for modelPipeline in allModelPipelines],
-                                                       plotTitle="trainingLosses/All Signal Encoder Path Buffer", logY=False)
-
     def plotAllTrainingEvents(self, submodel, modelPipeline, lossDataLoader, trainingDate, currentEpoch, fastPass):
         self.accelerator.print(f"\nCalculating loss for {modelPipeline.model.datasetName} model", flush=True)
         fastPass = True
@@ -195,7 +185,7 @@ class modelVisualizations(globalPlottingProtocols):
             trainingMappedSignalData, trainingReconstructedCompressedData, trainingFeatureData, trainingActivityDistributions, trainingBasicEmotionDistributions, trainingFinalEmotionDistributions = emotionModelTrainingOutputs
 
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
-            signalEncodingTestingOutputs, autoencodingTestingOutputs, emotionModelTestingOutputs = model(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, TestingFlag=False)
+            signalEncodingTestingOutputs, autoencodingTestingOutputs, emotionModelTestingOutputs = model(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
 
             # Unpack all the data.
             testingEncodedData, testingReconstructedData, testingPredictedIndexProbabilities, testingSignalEncodingLayerLoss = signalEncodingTestingOutputs

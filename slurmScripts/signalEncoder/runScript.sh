@@ -5,10 +5,10 @@ numLiftedChannelsStep=-16
 numLiftedChannelsEnd=16     # Memory limited from 48-96.
 # Total: 4
 
-numExpandedSignalsStart=5   # Minimum 4; Maximum 6
+numExpandedSignalsStart=6   # Minimum 4; Maximum 6
 numExpandedSignalsStep=-1
 numExpandedSignalsEnd=2     # Minimum: 2
-# Total: 4
+# Total: 5
 
 numEncodingLayersStart=8    # Absolute minimum is 0.
 numEncodingLayersStep=-1
@@ -24,9 +24,9 @@ do
           echo "Submitting job with $numLiftedChannels numLiftedChannels and $numExpandedSignals numExpandedSignals and $numEncodingLayers numEncodingLayers on $1
 
           if [ "$1" == "CPU" ]; then
-              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_CPU.sh "$numLiftedChannels" "$numExpandedSignals" "$numEncodingLayers" "$1" "$5"
+              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_CPU.sh "$numLiftedChannels" "$numEncodingLayers" "$numExpandedSignals" "$1"
           elif [ "$1" == "GPU" ]; then
-              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_GPU.sh "$numLiftedChannels" "$numExpandedSignals" "$numEncodingLayers" "$1" "$5"
+              sbatch -J "signalEncoder_numLift_${numLiftedChannels}_numExp${numExpandedSignals}_numEnc${numEncodingLayers}_$1" submitSignalEncoder_GPU.sh "$numLiftedChannels" "$numEncodingLayers" "$numExpandedSignals" "$1"
           else
               echo "No known device listed: $1"
           fi

@@ -7,8 +7,8 @@ from .waveletNeuralHelpers import waveletNeuralHelpers
 
 class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1, encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, skipConnectionProtocol='CNN'):
-        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, wavelet, mode, numLayers, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, skipConnectionProtocol)
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
+        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, wavelet, mode, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, independentChannels, skipConnectionProtocol)
 
     def forward(self, inputData, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.
@@ -70,7 +70,6 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             for highFrequencyInd in range(len(highFrequencies)):
                 # Learn a new set of wavelet coefficients to transform the data.
                 highFrequencies[highFrequencyInd] = self.applyEncoding(equationString, highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
-                # highFrequencies[highFrequencyInd] = self.applyEncoding_highFreq(highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
                 # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
 
         if self.encodeLowFrequency:
@@ -118,30 +117,12 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             frequencies = frequencies + frequencyTerms
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
-        for layerInd in range(self.numLayers):
-            # Apply the activation function if we already applied a linear transformation.
-            if layerInd != 0: frequencies = self.activationFunction(frequencies)
+        if self.independentChannels:
+            frequencies = weights(frequencies)  # Learn a new set of wavelet coefficients to transform the data.
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
-
+        else:
             # Learn a new set of wavelet coefficients to transform the data.
-            frequencies = torch.einsum(equationString, weights[layerInd], frequencies)
-            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
-
-        return frequencies
-
-    def applyEncoding_highFreq(self, frequencies, weights, frequencyTerms=None):
-        if frequencyTerms is not None:
-            # Apply the learned wavelet coefficients.
-            frequencies = frequencies + frequencyTerms
-            # frequencies dimension: batchSize, numInputSignals, frequencyDimension
-
-        for layerInd in range(self.numLayers):
-            # Apply the activation function if we already applied a linear transformation.
-            if layerInd != 0: frequencies = self.activationFunction(frequencies)
-            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
-
-            # Learn a new set of wavelet coefficients to transform the data.
-            frequencies = weights[layerInd](frequencies.permute(0, 2, 1)).permute(0, 2, 1)
+            frequencies = torch.einsum(equationString, weights, frequencies)
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
         return frequencies

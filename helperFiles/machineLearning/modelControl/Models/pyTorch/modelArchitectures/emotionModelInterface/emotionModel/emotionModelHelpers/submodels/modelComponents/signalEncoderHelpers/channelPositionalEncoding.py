@@ -27,8 +27,8 @@ class channelPositionalEncoding(signalEncoderModules):
         self.mode = 'zero'             # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.
-        self.unlearnNeuralOperatorLayer = waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='singleCNN')
-        self.learnNeuralOperatorLayer = waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, numLayers=1, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', skipConnectionProtocol='singleCNN')
+        self.unlearnNeuralOperatorLayer = waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='none')
+        self.learnNeuralOperatorLayer = waveletNeuralOperatorLayer(numInputSignals=self.numPosLiftedChannels, numOutputSignals=self.numPosLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='none')
         self.lowFrequencyShape = self.learnNeuralOperatorLayer.lowFrequencyShape
 
         # Create the post-processing layers.
@@ -79,26 +79,22 @@ class channelPositionalEncoding(signalEncoderModules):
         # Assert the validity of the input parameters.
         assert numSignals <= self.maxNumEncodedSignals, "The number of signals exceeds the maximum encoding limit."
 
-        # Reshape the data and add stamp encoding to process each signal separately.
-        inputData = inputData.view(batchSize * numSignals, 1, signalDimension)
-        finalStamp = finalStamp.view(batchSize * numSignals, 1, self.lowFrequencyShape)
-        # positionEncodedData dimension: batchSize*numSignals, 1, signalDimension
-        # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
-
         # Smoothen out the stamp.
         finalStamp = self.applySmoothing(finalStamp, kernelWeights=self.gausKernel_forPosStamp)
-        # finalStamp dimension: batchSize*numSignals, 1, lowFrequencyShape
+        # finalStamp dimension: batchSize, numSignals, lowFrequencyShape
 
         # Apply the neural operator and the skip connection.
         positionEncodedData = learnNeuralOperatorLayer(inputData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
         # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
         # Projection operators to compress signal information.
-        positionEncodedData = learnPostProcessingLayer(positionEncodedData) + inputData
+        positionEncodedData = positionEncodedData.view(batchSize * numSignals, 1, signalDimension)
+        positionEncodedData = learnPostProcessingLayer(positionEncodedData)
         # positionEncodedData dimension: batchSize*numSignals, 1, signalDimension
 
         # Reshape the data back into the original format.
-        positionEncodedData = positionEncodedData.view(batchSize, numSignals, signalDimension)
+        positionEncodedData = positionEncodedData.view(batchSize, numSignals, signalDimension) + inputData
+        # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
         return positionEncodedData
 

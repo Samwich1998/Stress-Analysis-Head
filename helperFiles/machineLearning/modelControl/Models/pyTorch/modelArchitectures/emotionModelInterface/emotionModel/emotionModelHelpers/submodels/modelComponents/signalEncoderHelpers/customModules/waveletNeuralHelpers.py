@@ -36,15 +36,15 @@ from ..signalEncoderModules import signalEncoderModules
 
 class waveletNeuralHelpers(signalEncoderModules):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', numLayers=1, encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, skipConnectionProtocol='CNN'):
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
         self.skipConnectionProtocol = skipConnectionProtocol  # The skip connection protocol to use.
+        self.independentChannels = independentChannels  # Whether to treat each channel independently.
         self.numDecompositions = numDecompositions  # Maximum number of decompositions to apply.
         self.numOutputSignals = numOutputSignals  # Number of output signals.
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
-        self.numLayers = numLayers  # The number of layers to learn the encoding. I think this should be 1.
         self.wavelet = wavelet  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
 
@@ -60,10 +60,6 @@ class waveletNeuralHelpers(signalEncoderModules):
         # Verify that the number of decomposition layers is appropriate.
         maximumNumDecompositions = math.floor(math.log(sequenceBounds[0]) / math.log(2))  # The sequence length can be up to 2**numDecompositions.
         assert self.numDecompositions < maximumNumDecompositions, f'The number of decompositions must be less than {maximumNumDecompositions}.'
-
-        # Verify that the number of layers is appropriate.
-        if numLayers > 1: print("Warning: If the number of layers != 1 ... we have to apply a non-linearity in the wavelet domain. This is NOT recommended for autoencoders.")
-        assert numLayers != 0, "The number of layers must be greater than 0."
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)
@@ -98,33 +94,24 @@ class waveletNeuralHelpers(signalEncoderModules):
         if self.encodeHighFrequencies:
             highFrequenciesWeights = nn.ParameterList()
             for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
-                highFrequenciesWeights.append(nn.ParameterList())
-
-                # Initialize the high-frequency weights to learn how to change the channels.
-                highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
-                # highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters_highFreq(inChannel=self.numInputSignals, outChannel=self.numOutputSignals))
-
-                # For each layer.
-                for layerInd in range(self.numLayers - 1):
-                    # Learn a new set of wavelet coefficients to transform the data.
-                    highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, secondDimension=self.highFrequenciesShapes[highFrequenciesInd]))
-                    # highFrequenciesWeights[highFrequenciesInd].append(self.neuralWeightParameters_highFreq(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals))
+                if self.independentChannels:
+                    # Initialize the high-frequency weights to learn how to change.
+                    highFrequenciesWeights.append(self.neuralWeightIndependentModel(numInputFeatures=self.highFrequenciesShapes[highFrequenciesInd], numOutputFeatures=self.highFrequenciesShapes[highFrequenciesInd]))
+                else:
+                    # Initialize the high-frequency weights to learn how to change the channels.
+                    highFrequenciesWeights.append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
         else:
             highFrequenciesWeights = None
 
         if self.encodeHighFrequencyFull:
             fullHighFrequencyWeights = nn.ParameterList()
             for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
-                fullHighFrequencyWeights.append(nn.ParameterList())
-
-                # Initialize the frequency weights to learn how to change the channels.
-                fullHighFrequencyWeights[highFrequenciesInd].append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd],
-                                                                                                           finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
-                # For each layer.
-                for layerInd in range(self.numLayers - 1):
-                    # Learn a new set of wavelet coefficients to transform the data.
-                    fullHighFrequencyWeights[highFrequenciesInd].append(
-                        self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd], finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
+                if self.independentChannels:
+                    # Initialize the high-frequency weights to learn how to change.
+                    highFrequenciesWeights.append(self.neuralWeightIndependentModel(numInputFeatures=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd], numOutputFeatures=self.highFrequenciesShapes[highFrequenciesInd]))
+                else:
+                    # Initialize the frequency weights to learn how to change the channels.
+                    fullHighFrequencyWeights.append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd], finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
         else:
             fullHighFrequencyWeights = None
 
@@ -132,29 +119,22 @@ class waveletNeuralHelpers(signalEncoderModules):
 
     def getLowFrequencyWeights(self):
         if self.encodeLowFrequency:
-            lowFrequencyWeights = nn.ParameterList()
-
-            # Initialize the low-frequency weights to learn how to change the channels.
-            lowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, secondDimension=self.lowFrequencyShape))
-
-            # For each layer.
-            for layerInd in range(self.numLayers - 1):
-                # Learn a new set of wavelet coefficients to transform the data.
-                lowFrequencyWeights.append(self.neuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, secondDimension=self.lowFrequencyShape))
+            if self.independentChannels:
+                # Initialize the low-frequency weights to learn how to change.
+                lowFrequencyWeights = self.neuralWeightIndependentModel(numInputFeatures=self.lowFrequencyShape, numOutputFeatures=self.lowFrequencyShape)
+            else:
+                # Initialize the low-frequency weights to learn how to change the channels.
+                lowFrequencyWeights = self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, finalFrequencyDim=self.lowFrequencyShape)
         else:
             lowFrequencyWeights = None
 
         if self.encodeLowFrequencyFull:
-            # Initialize the high-frequency weights to learn how to change the channels.
-            fullLowFrequencyWeights = nn.ParameterList()
-
-            # Initialize the frequency weights to learn how to change the channels.
-            fullLowFrequencyWeights.append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + sum(self.highFrequenciesShapes), finalFrequencyDim=self.lowFrequencyShape))
-
-            # For each layer.
-            for layerInd in range(self.numLayers - 1):
-                # Learn a new set of wavelet coefficients to transform the data.
-                fullLowFrequencyWeights.append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape, finalFrequencyDim=self.lowFrequencyShape))
+            if self.independentChannels:
+                # Initialize the low-frequency weights to learn how to change.
+                fullLowFrequencyWeights = self.neuralWeightIndependentModel(numInputFeatures=self.lowFrequencyShape + sum(self.highFrequenciesShapes), numOutputFeatures=self.lowFrequencyShape)
+            else:
+                # Initialize the frequency weights to learn how to change the channels.
+                fullLowFrequencyWeights = self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + sum(self.highFrequenciesShapes), finalFrequencyDim=self.lowFrequencyShape)
         else:
             fullLowFrequencyWeights = None
 

@@ -22,4 +22,4 @@ module load python/3.10.12-gcc-13.2.0-d2ofisd   # Load in the latest python vers
 module load openmpi/4.1.5-gcc-13.2.0-24q3ap2   # Load in openMPI for cross-node talk
 
 # RUN FILE
-srun signalencoderGroupAnalysis.sh "$1" "$2" "$3" "$4" "$5" "$6" "$7"
+srun signalencoderGroupAnalysis.sh "$1" "$2" "$3" "$4" "$5"

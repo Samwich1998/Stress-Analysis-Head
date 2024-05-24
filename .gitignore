@@ -68,5 +68,3 @@ _experimentalData/_metaDatasets/CASE/data/interpolated/annotations/
 _experimentalData/_metaDatasets/CASE/data/interpolated/dataAnalysis/
 _experimentalData/_metaDatasets/CASE/data/interpolated/physiological/*.csv
 _experimentalData/_metaDatasets/CASE/data/interpolated/physiological/savedFeatures/_*
-!_experimentalData/_metaDatasets/CASE/data/interpolated/physiological/savedFeatures/
-!_experimentalData/_metaDatasets/CASE/metadata/

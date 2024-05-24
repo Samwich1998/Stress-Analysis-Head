@@ -97,11 +97,11 @@ class signalEncoderModules(convolutionalHelpers):
 
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
+            # Convolution architecture: projection operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
             # Convolution architecture: residual connection, feature engineering
             self.convolutionalFilters_resNetBlocks(numResNets=2, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
-        )
 
     # ------------------- Final Statistics Architectures ------------------- #
 

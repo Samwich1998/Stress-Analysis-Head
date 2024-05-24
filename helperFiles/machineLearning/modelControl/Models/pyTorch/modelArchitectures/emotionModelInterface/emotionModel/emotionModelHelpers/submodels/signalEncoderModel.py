@@ -38,7 +38,7 @@ class signalEncoderModel(globalModel):
         )
 
         # Initialize helper classes.
-        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor)
+        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor, self.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals)
 
         # Initialize loss holders.
         self.trainingLosses_timeReconstructionOptimalAnalysis = None

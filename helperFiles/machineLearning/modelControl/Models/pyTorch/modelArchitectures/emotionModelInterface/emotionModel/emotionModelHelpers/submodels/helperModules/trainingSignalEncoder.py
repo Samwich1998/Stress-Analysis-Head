@@ -4,9 +4,10 @@ from ..modelComponents.signalEncoderHelpers.signalEncoderHelpers import signalEn
 
 
 class trainingSignalEncoder:
-    def __init__(self, numEncodedSignals, expansionFactor):
+    def __init__(self, numEncodedSignals, expansionFactor, maxNumEncodedSignals):
         super(trainingSignalEncoder, self).__init__()
         # General model parameters
+        self.maxNumEncodedSignals = maxNumEncodedSignals  # The maximum number of signals to accept, encoding all signal information.
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.expansionFactor = expansionFactor
         self.switchDirections = False
@@ -46,7 +47,7 @@ class trainingSignalEncoder:
                 break
 
         if self.switchDirections:
-            numEncodedSignals = min(numEncodedSignals, 257)
+            numEncodedSignals = min(numEncodedSignals, self.maxNumEncodedSignals + 1)
 
         # Adjust the number of encodings.
         if numEncodedSignals == numSignals: numEncodedSignals = numEncodedSignals + 1  # It's not useful to train on nothing.

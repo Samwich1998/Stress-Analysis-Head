@@ -14,22 +14,12 @@ class signalEncoderModules(convolutionalHelpers):
 
     # ------------------- Positional Encoding Architectures ------------------- #
 
-    def liftingOperator_forPosEnc(self, outChannels=4):
+    def signalPostProcessing_forPosEnc(self):
         return nn.Sequential(
-            # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, outChannels], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
-        )
-
-    def projectionOperator_forPosEnc(self, inChannels=1):
-        return nn.Sequential(
-            # Convolution architecture: lifting operator.
-            self.convolutionalFiltersBlocks(numBlocks=2, numChannels=[inChannels, inChannels], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannels, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
-        )
-
-    def signalPostProcessing_forPosEnc(self, inChannel=2):
-        return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            # Convolution architecture: feature engineering
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def positionalEncodingStamp(self, stampLength=1):
@@ -41,8 +31,19 @@ class signalEncoderModules(convolutionalHelpers):
 
     def learnEncodingStampFNN(self, numFeatures=1):
         return nn.Sequential(
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='none', layerType='fc'),
+        )
+
+    def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
+        return nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
+
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
+            boundedExp(),
+
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
+            nn.Softmax(dim=-1),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #

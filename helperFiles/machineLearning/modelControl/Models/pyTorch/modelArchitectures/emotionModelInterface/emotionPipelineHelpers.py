@@ -11,7 +11,7 @@ from .emotionModel.emotionModelHead import emotionModelHead
 from ...Helpers.modelMigration import modelMigration
 
 
-class emotionPipelineHelpers:
+class  emotionPipelineHelpers:
 
     def __init__(self, accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals,
                  numSubjectIdentifiers, demographicLength, numSubjects, userInputParams, emotionNames,

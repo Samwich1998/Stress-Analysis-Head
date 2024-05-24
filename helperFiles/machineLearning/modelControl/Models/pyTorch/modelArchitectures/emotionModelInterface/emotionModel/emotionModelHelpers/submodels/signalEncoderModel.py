@@ -12,7 +12,7 @@ from ....._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numPosEncodingLayers, numSigEncodingLayers, numPosLiftedChannels, numSigLiftedChannels, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
@@ -21,9 +21,7 @@ class signalEncoderModel(globalModel):
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
 
         # Signal encoder parameters.
-        self.numPosLiftedChannels = numPosLiftedChannels  # The number of channels to lift to during positional encoding.
         self.numSigLiftedChannels = numSigLiftedChannels  # The number of channels to lift to during signal encoding.
-        self.numPosEncodingLayers = numPosEncodingLayers  # The number of operator layers during positional encoding.
         self.numSigEncodingLayers = numSigEncodingLayers  # The number of operator layers during signal encoding.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
@@ -32,9 +30,7 @@ class signalEncoderModel(globalModel):
 
         # Method to converge to the final number of signals.
         self.encodeSignals = generalSignalEncoding(
-            numPosEncodingLayers=self.numPosEncodingLayers,
             numSigEncodingLayers=self.numSigEncodingLayers,
-            numPosLiftedChannels=self.numPosLiftedChannels,
             numSigLiftedChannels=self.numSigLiftedChannels,
             numExpandedSignals=self.numExpandedSignals,
             debuggingResults=self.debuggingResults,
@@ -49,14 +45,12 @@ class signalEncoderModel(globalModel):
         self.testingLosses_timeReconstructionOptimalAnalysis = None
         self.trainingLosses_timeReconstructionAnalysis = None
         self.testingLosses_timeReconstructionAnalysis = None
-        self.numEncodingsBufferPath_timeAnalysis = None
-        self.trainingLosses_timeLayerAnalysis = None
-        self.testingLosses_timeLayerAnalysis = None
+        self.trainingLosses_timePosEncAnalysis = None
+        self.testingLosses_timePosEncAnalysis = None
         self.trainingLosses_timeMeanAnalysis = None
         self.testingLosses_timeMeanAnalysis = None
         self.trainingLosses_timeSTDAnalysis = None
         self.testingLosses_timeSTDAnalysis = None
-        self.numEncodingsPath_timeAnalysis = None
 
         # Reset the model.
         self.resetModel()
@@ -65,9 +59,6 @@ class signalEncoderModel(globalModel):
         # Signal encoder reconstructed loss holders.
         self.trainingLosses_timeReconstructionAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeReconstructionAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
-        # Time analysis loss methods.
-        self.trainingLosses_timeLayerAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
-        self.testingLosses_timeLayerAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
 
         # Signal encoder mean loss holders.
         self.trainingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean training losses. Dim: numTimeWindows, numEpochs
@@ -76,9 +67,9 @@ class signalEncoderModel(globalModel):
         self.trainingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation testing losses. Dim: numTimeWindows, numEpochs
 
-        # Compression analysis.
-        self.numEncodingsBufferPath_timeAnalysis = [[] for _ in self.timeWindows]  # List of list of buffers at each epoch. Dim: numTimeWindows, numEpochs
-        self.numEncodingsPath_timeAnalysis = [[] for _ in self.timeWindows]  # List of list of the number of compressions at each epoch. Dim: numTimeWindows, numEpochs
+        # Positional encoding analysis.
+        self.trainingLosses_timePosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
+        self.testingLosses_timePosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
 
         # Signal encoder optimal reconstruction loss holders
         self.trainingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
@@ -132,6 +123,10 @@ class signalEncoderModel(globalModel):
         positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
         positionEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forPosEnc(positionEncodedData)  # Smooth over the encoding space.
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
+
+        # Predict the positional encoding index.
+        predictedIndexProbabilities = self.encodeSignals.positionalEncodingInterface.predictSignalIndex(positionEncodedData)
+        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
 
         # Compress the signal space into numEncodedSignals.
         initialEncodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss)
@@ -203,7 +198,7 @@ class signalEncoderModel(globalModel):
             if self.plotDataFlow and random.random() < 0.015:
                 self.plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
-        return encodedData, denoisedReconstructedData, signalEncodingLoss
+        return encodedData, denoisedReconstructedData, predictedIndexProbabilities, signalEncodingLoss
 
         # ------------------------------------------------------------------ #  
 

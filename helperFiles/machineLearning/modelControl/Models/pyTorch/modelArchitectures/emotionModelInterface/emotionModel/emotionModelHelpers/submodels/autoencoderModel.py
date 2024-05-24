@@ -34,14 +34,11 @@ class autoencoderModel(globalModel):
         self.trainingLosses_timeReconstructionAnalysis = None
         self.testingLosses_timeReconstructionAnalysis = None
         self.numEncodingsBufferPath_timeAnalysis = None
-        self.trainingLosses_timeLayerAnalysis = None
-        self.testingLosses_timeLayerAnalysis = None
         self.trainingLosses_timeMeanAnalysis = None
         self.testingLosses_timeMeanAnalysis = None
         self.trainingLosses_timeSTDAnalysis = None
         self.testingLosses_timeSTDAnalysis = None
         self.numEncodingsPath_timeAnalysis = None
-
         self.trainingLosses_timeReconstructionSVDAnalysis = None
         self.testingLosses_timeReconstructionSVDAnalysis = None
 
@@ -52,9 +49,6 @@ class autoencoderModel(globalModel):
         # Autoencoder reconstructed loss holders.
         self.trainingLosses_timeReconstructionAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeReconstructionAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
-        # Time analysis loss methods.
-        self.trainingLosses_timeLayerAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
-        self.testingLosses_timeLayerAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
 
         # Autoencoder mean loss holders.
         self.trainingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean training losses. Dim: numTimeWindows, numEpochs

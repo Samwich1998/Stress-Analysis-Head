@@ -64,7 +64,7 @@ class compileModelDataHelpers:
         assert samplingFrequency == 1, "Check your code if samplingFrequency != 1 is okay."
 
         # Embedded information for each model.
-        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numPos-SigLiftedChannels {userInputParams['numPosLiftedChannels']}-{userInputParams['numSigLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numPos-SigEncodingLayers {userInputParams['numPosEncodingLayers']}-{userInputParams['numSigEncodingLayers']}"
+        self.signalEncoderModelInfo = f"signalEncoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at numSigLiftedChannels {userInputParams['numSigLiftedChannels']} at numExpandedSignals {userInputParams['numExpandedSignals']} at numSigEncodingLayers {userInputParams['numSigEncodingLayers']}"
         self.autoencoderModelInfo = f"autoencoder on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} at compressionFactor {str(userInputParams['compressionFactor']).replace('.', '')} expansionFactor {str(userInputParams['expansionFactor']).replace('.', '')}"
         self.emotionPredictionModelInfo = f"emotionPrediction on {userInputParams['deviceListed']} with {userInputParams['optimizerType']} with seqLength {userInputParams['sequenceLength']}"
 

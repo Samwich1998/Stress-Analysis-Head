@@ -15,10 +15,9 @@ from .denoiser import denoiser
 
 
 class signalEncoderHelpers(nn.Module):
-    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numPosEncodingLayers=2, numSigEncodingLayers=5, numPosLiftedChannels=4, numSigLiftedChannels=48, debuggingResults=False):
+    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, debuggingResults=False):
         super(signalEncoderHelpers, self).__init__()
         # General
-        self.numPosEncodingLayers = numPosEncodingLayers          # The number of layers to encode the signals.
         self.numSigEncodingLayers = numSigEncodingLayers          # The number of layers to encode the signals.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
 
@@ -32,7 +31,7 @@ class signalEncoderHelpers(nn.Module):
 
         # Initialize signal encoder helper classes.
         self.channelEncodingInterface = channelEncoding(numCompressedSignals=self.numCompressedSignals, numExpandedSignals=self.numExpandedSignals, expansionFactor=self.expansionFactor, numSigEncodingLayers=numSigEncodingLayers, sequenceBounds=self.sequenceBounds, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
-        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, numPosLiftedChannels=numPosLiftedChannels, numPosEncodingLayers=numPosEncodingLayers, debuggingResults=debuggingResults)
+        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, debuggingResults=debuggingResults)
         self.finalVarianceInterface = changeVariance(debuggingResults=debuggingResults)
         self.denoiseSignals = denoiser(debuggingResults=debuggingResults)
         self.dataInterface = emotionDataInterface

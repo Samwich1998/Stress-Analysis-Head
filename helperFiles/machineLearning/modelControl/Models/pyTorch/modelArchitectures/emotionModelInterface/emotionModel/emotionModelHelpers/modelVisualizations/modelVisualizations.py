@@ -89,12 +89,6 @@ class modelVisualizations(globalPlottingProtocols):
                     #                                    lossLabels=[f"{modelPipeline.model.datasetName} Signal Encoding STD Loss"[timeWindowInd] for modelPipeline in allModelPipelines],
                     #                                    plotTitle="trainingLosses/All Signal Encoder STD Losses")
 
-                    # Plot layer loss
-                    self.generalViz.plotTrainingLosses([specificModel.trainingLosses_timeLayerAnalysis[timeWindowInd] for specificModel in specificModels],
-                                                       [specificModel.testingLosses_timeLayerAnalysis[timeWindowInd] for specificModel in specificModels],
-                                                       lossLabels=[f"{modelPipeline.model.datasetName} Signal Encoding Layer Loss"[timeWindowInd] for modelPipeline in allModelPipelines],
-                                                       plotTitle="trainingLosses/All Signal Encoder Layer Losses")
-
                     # Plot path loss.
                     self.generalViz.plotTrainingLosses([specificModel.numEncodingsPath_timeAnalysis[timeWindowInd] for specificModel in specificModels], None,
                                                        lossLabels=[f"{modelPipeline.model.datasetName} Autoencoder Path" for modelPipeline in allModelPipelines],
@@ -143,33 +137,16 @@ class modelVisualizations(globalPlottingProtocols):
 
                 if submodel == "signalEncoder":
                     # Plot autoencoder loss for each time.
-                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeReconstructionAnalysis, model.signalEncoderModel.testingLosses_timeReconstructionAnalysis, lossLabels=model.timeWindows,
-                                                       plotTitle="trainingLosses/Signal Encoder Convergence Loss")
-                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeLayerAnalysis, model.signalEncoderModel.testingLosses_timeLayerAnalysis, lossLabels=model.timeWindows,
-                                                       plotTitle="trainingLosses/Signal Encoder Layer Loss")
-                    # self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeMeanAnalysis, model.signalEncoderModel.testingLosses_timeMeanAnalysis, lossLabels=model.timeWindows,
-                    #                                    plotTitle="trainingLosses/Signal Encoder Mean Loss")
-                    # self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeSTDAnalysis, model.signalEncoderModel.testingLosses_timeSTDAnalysis, lossLabels=model.timeWindows,
-                    #                                    plotTitle="trainingLosses/Signal Encoder STD Loss")
-
-                    # Plot signal encoding path.
-                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.numEncodingsBufferPath_timeAnalysis, None, lossLabels=model.timeWindows, plotTitle="trainingLosses/Signal Encoder Buffer Path Convergence", logY=False)
-                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.numEncodingsPath_timeAnalysis, None, lossLabels=model.timeWindows, plotTitle="trainingLosses/Signal Encoder Path Convergence", logY=False)
+                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeReconstructionAnalysis, model.signalEncoderModel.testingLosses_timeReconstructionAnalysis, lossLabels=model.timeWindows, plotTitle="trainingLosses/Signal Encoder Convergence Loss")
+                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timePosEncAnalysis, model.signalEncoderModel.testingLosses_timePosEncAnalysis, lossLabels=model.timeWindows, plotTitle="trainingLosses/Positional Encoder Convergence Loss")
+                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeMeanAnalysis, model.signalEncoderModel.testingLosses_timeMeanAnalysis, lossLabels=model.timeWindows, plotTitle="trainingLosses/Signal Encoder Mean Loss")
+                    self.generalViz.plotTrainingLosses(model.signalEncoderModel.trainingLosses_timeSTDAnalysis, model.signalEncoderModel.testingLosses_timeSTDAnalysis, lossLabels=model.timeWindows,plotTitle="trainingLosses/Signal Encoder STD Loss")
 
                 if submodel == "autoencoder":
                     # Plot autoencoder loss for each time.
-                    self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeReconstructionAnalysis, model.autoencoderModel.testingLosses_timeReconstructionAnalysis, lossLabels=model.timeWindows,
-                                                       plotTitle="trainingLosses/Autoencoder Convergence Loss")
-                    self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeLayerAnalysis, model.autoencoderModel.testingLosses_timeLayerAnalysis, lossLabels=model.timeWindows,
-                                                       plotTitle="trainingLosses/Autoencoder Layer Loss")
-                    # self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeMeanAnalysis, model.autoencoderModel.testingLosses_timeMeanAnalysis, lossLabels=model.timeWindows,
-                    #                                    plotTitle="trainingLosses/Autoencoder Mean Loss")
-                    # self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeSTDAnalysis, model.autoencoderModel.testingLosses_timeSTDAnalysis, lossLabels=model.timeWindows,
-                    #                                    plotTitle="trainingLosses/Autoencoder STD Loss")
-
-                    # Plot signal encoding path.
-                    self.generalViz.plotTrainingLosses(model.autoencoderModel.numEncodingsBufferPath_timeAnalysis, testingLosses=None, lossLabels=model.timeWindows, plotTitle="trainingLosses/Autoencoder Buffer Path Convergence", logY=False)
-                    self.generalViz.plotTrainingLosses(model.autoencoderModel.numEncodingsPath_timeAnalysis, testingLosses=None, lossLabels=model.timeWindows, plotTitle="trainingLosses/Autoencoder Path Convergence", logY=False)
+                    self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeReconstructionAnalysis, model.autoencoderModel.testingLosses_timeReconstructionAnalysis, lossLabels=model.timeWindows, plotTitle="trainingLosses/Autoencoder Convergence Loss")
+                    self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeMeanAnalysis, model.autoencoderModel.testingLosses_timeMeanAnalysis, lossLabels=model.timeWindows, plotTitle="trainingLosses/Autoencoder Mean Loss")
+                    self.generalViz.plotTrainingLosses(model.autoencoderModel.trainingLosses_timeSTDAnalysis, model.autoencoderModel.testingLosses_timeSTDAnalysis, lossLabels=model.timeWindows, plotTitle="trainingLosses/Autoencoder STD Loss")
 
             # Wait before continuing.
             self.accelerator.wait_for_everyone()
@@ -210,14 +187,20 @@ class modelVisualizations(globalPlottingProtocols):
         # Stop gradient tracking
         with torch.no_grad():
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
-            trainingEncodedData, trainingReconstructedData, trainingSignalEncodingLayerLoss, trainingCompressedData, trainingReconstructedEncodedData, trainingDenoisedDoubleReconstructedData, trainingAutoencoderLayerLoss, trainingMappedSignalData, \
-                trainingReconstructedCompressedData, trainingFeatureData, trainingActivityDistributions, trainingBasicEmotionDistributions, trainingFinalEmotionDistributions \
-                = model(trainingSignalData, trainingSubjectIdentifiers, trainingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
+            signalEncodingTrainingOutputs, autoencodingTrainingOutputs, emotionModelTrainingOutputs = model(trainingSignalData, trainingSubjectIdentifiers, trainingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
+
+            # Unpack all the data.
+            trainingEncodedData, trainingReconstructedData, trainingPredictedIndexProbabilities, trainingSignalEncodingLayerLoss = signalEncodingTrainingOutputs
+            trainingCompressedData, trainingReconstructedEncodedData, trainingDenoisedDoubleReconstructedData, trainingAutoencoderLayerLoss = autoencodingTrainingOutputs
+            trainingMappedSignalData, trainingReconstructedCompressedData, trainingFeatureData, trainingActivityDistributions, trainingBasicEmotionDistributions, trainingFinalEmotionDistributions = emotionModelTrainingOutputs
 
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
-            testingEncodedData, testingReconstructedData, testingSignalEncodingLayerLoss, testingCompressedData, testingReconstructedEncodedData, testingDenoisedDoubleReconstructedData, testingAutoencoderLayerLoss, testingMappedSignalData, \
-                testingReconstructedCompressedData, testingFeatureData, testingActivityDistributions, testingBasicEmotionDistributions, testingFinalEmotionDistributions \
-                = model(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
+            signalEncodingTestingOutputs, autoencodingTestingOutputs, emotionModelTestingOutputs = model(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, TestingFlag=False)
+
+            # Unpack all the data.
+            testingEncodedData, testingReconstructedData, testingPredictedIndexProbabilities, testingSignalEncodingLayerLoss = signalEncodingTestingOutputs
+            testingCompressedData, testingReconstructedEncodedData, testingDenoisedDoubleReconstructedData, testingAutoencoderLayerLoss = autoencodingTestingOutputs
+            testingMappedSignalData, testingReconstructedCompressedData, testingFeatureData, testingActivityDistributions, testingBasicEmotionDistributions, testingFinalEmotionDistributions = emotionModelTestingOutputs
 
         # ------------------- Plot the Data on One Device ------------------ # 
 
@@ -278,8 +261,7 @@ class modelVisualizations(globalPlottingProtocols):
                         compressedDistortedSignals, reconstructedDistortedEncodedSignals, _ = model.autoencoderModel(distortedSignals.to(self.accelerator.device), reconstructSignals=True, calculateLoss=False, trainingFlag=False)
 
                     # Plot the distorted signals
-                    self.autoencoderViz.plotAllSignalComparisons(distortedSignals[0].detach().cpu(), reconstructedDistortedEncodedSignals[0].detach().cpu(), trueSignal[0][0].detach().cpu(), epoch=currentEpoch, signalInd=distortedSignalInd,
-                                                                 plotTitle="signalReconstruction/Distorted Autoencoding Training Data")
+                    self.autoencoderViz.plotAllSignalComparisons(distortedSignals[0].detach().cpu(), reconstructedDistortedEncodedSignals[0].detach().cpu(), trueSignal[0][0].detach().cpu(), epoch=currentEpoch, signalInd=distortedSignalInd, plotTitle="signalReconstruction/Distorted Autoencoding Training Data")
 
             # Plot the autoencoder results.
             self.autoencoderViz.plotAutoencoder(testingEncodedData.detach().cpu(), testingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Autoencoder Test Reconstruction", numSignalPlots=1)

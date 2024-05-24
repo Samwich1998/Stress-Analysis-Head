@@ -37,11 +37,13 @@ class organizeTrainingLosses(lossCalculations):
 
                 t1 = time.time()
                 # Pass all the data through the model and store the emotions, activity, and intermediate variables.
-                allEncodedData, allReconstructedData, allSignalEncodingLayerLoss, allCompressedData, allReconstructedEncodedData, allDenoisedDoubleReconstructedData, allAutoencoderLayerLoss, allMappedSignalData, \
-                    allReconstructedCompressedData, allFeatureData, allActivityDistributions, allBasicEmotionDistributions, allFinalEmotionDistributions \
-                    = model.fullDataPass(submodel, lossDataLoader, timeWindow=self.generalTimeWindow, reconstructSignals=False, compileVariables=False, trainingFlag=False)
-                t2 = time.time()
-                self.accelerator.print("Full Pass", t2 - t1),
+                signalEncodingOutputs, autoencodingOutputs, emotionModelOutputs = model.fullDataPass(submodel, lossDataLoader, timeWindow=self.generalTimeWindow, reconstructSignals=False, compileVariables=False, trainingFlag=False)
+                t2 = time.time(); self.accelerator.print("Full Pass", t2 - t1),
+
+                # Unpack all the data.
+                allEncodedData, allReconstructedData, allPredictedIndexProbabilities, allSignalEncodingLayerLoss = signalEncodingOutputs
+                allCompressedData, allReconstructedEncodedData, allDenoisedDoubleReconstructedData, allAutoencoderLayerLoss = autoencodingOutputs
+                allMappedSignalData, allReconstructedCompressedData, allFeatureData, allActivityDistributions, allBasicEmotionDistributions, allFinalEmotionDistributions = emotionModelOutputs
 
                 # Calculate the signal encoding loss.
                 # manifoldReconstructedTestingLoss, manifoldMeanTestingLoss, manifoldStandardDeviationTestingLoss = \
@@ -83,23 +85,25 @@ class organizeTrainingLosses(lossCalculations):
 
                 t1 = time.time()
                 # Pass all the data through the model and store the emotions, activity, and intermediate variables.
-                segmentedEncodedData, segmentedReconstructedData, segmentedSignalEncodingLayerLoss, segmentedCompressedData, segmentedReconstructedEncodedData, segmentedDenoisedDoubleReconstructedData, segmentedAutoencoderLayerLoss, \
-                    segmentedMappedSignalData, segmentedReconstructedCompressedData, segmentedFeatureData, segmentedActivityDistributions, segmentedBasicEmotionDistributions, segmentedFinalEmotionDistributions \
-                    = model.fullDataPass(submodel, lossDataLoader, timeWindow=timeWindow, reconstructSignals=True, compileVariables=False, trainingFlag=False)
-                t2 = time.time()
-                self.accelerator.print(f"{timeWindow} Second Pass", t2 - t1)
+                signalEncodingOutputs, autoencodingOutputs, emotionModelOutputs = model.fullDataPass(submodel, lossDataLoader, timeWindow=timeWindow, reconstructSignals=True, compileVariables=False, trainingFlag=False)
+                t2 = time.time(); self.accelerator.print("Full Pass", t2 - t1),
+
+                # Unpack all the data.
+                segmentedEncodedData, segmentedReconstructedData, segmentedPredictedIndexProbabilities, segmentedSignalEncodingLayerLoss = signalEncodingOutputs
+                segmentedCompressedData, segmentedReconstructedEncodedData, segmentedDenoisedDoubleReconstructedData, segmentedAutoencoderLayerLoss = autoencodingOutputs
+                segmentedMappedSignalData, segmentedReconstructedCompressedData, segmentedFeatureData, segmentedActivityDistributions, segmentedBasicEmotionDistributions, segmentedFinalEmotionDistributions = emotionModelOutputs
 
                 if submodel == "signalEncoder":
                     # Calculate the signal encoding loss.
-                    signalReconstructedTestingLoss, encodedMeanTestingLoss, encodedStandardDeviationTestingLoss, signalEncodingTestingLayerLoss = \
-                        self.calculateSignalEncodingLoss(segmentedSignalData, segmentedEncodedData, segmentedReconstructedData, segmentedSignalEncodingLayerLoss, allTestingMasks, reconstructionIndex)
-                    signalReconstructedTrainingLoss, encodedMeanTrainingLoss, encodedStandardDeviationTrainingLoss, signalEncodingTrainingLayerLoss = \
-                        self.calculateSignalEncodingLoss(segmentedSignalData, segmentedEncodedData, segmentedReconstructedData, segmentedSignalEncodingLayerLoss, allTrainingMasks, reconstructionIndex)
+                    signalReconstructedTestingLoss, encodedMeanTestingLoss, encodedStandardDeviationTestingLoss, positionalEncodingTestingLoss, signalEncodingTestingLayerLoss = \
+                        self.calculateSignalEncodingLoss(segmentedSignalData, segmentedEncodedData, segmentedReconstructedData, segmentedPredictedIndexProbabilities, segmentedSignalEncodingLayerLoss, allTestingMasks, reconstructionIndex)
+                    signalReconstructedTrainingLoss, encodedMeanTrainingLoss, encodedStandardDeviationTrainingLoss, positionalEncodingTrainingLoss, signalEncodingTrainingLayerLoss = \
+                        self.calculateSignalEncodingLoss(segmentedSignalData, segmentedEncodedData, segmentedReconstructedData, segmentedPredictedIndexProbabilities, segmentedSignalEncodingLayerLoss, allTrainingMasks, reconstructionIndex)
 
                     # Store the signal encoder loss information.
                     self.storeLossInformation(signalReconstructedTrainingLoss, signalReconstructedTestingLoss, model.signalEncoderModel.trainingLosses_timeReconstructionAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeReconstructionAnalysis[timeWindowInd])
                     self.storeLossInformation(encodedStandardDeviationTrainingLoss, encodedStandardDeviationTestingLoss, model.signalEncoderModel.trainingLosses_timeSTDAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeSTDAnalysis[timeWindowInd])
-                    self.storeLossInformation(signalEncodingTrainingLayerLoss, signalEncodingTestingLayerLoss, model.signalEncoderModel.trainingLosses_timeLayerAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeLayerAnalysis[timeWindowInd])
+                    self.storeLossInformation(positionalEncodingTrainingLoss, positionalEncodingTestingLoss, model.signalEncoderModel.trainingLosses_timePosEncAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timePosEncAnalysis[timeWindowInd])
                     self.storeLossInformation(encodedMeanTrainingLoss, encodedMeanTestingLoss, model.signalEncoderModel.trainingLosses_timeMeanAnalysis[timeWindowInd], model.signalEncoderModel.testingLosses_timeMeanAnalysis[timeWindowInd])
                     # Calculate and Store the optimal loss only once.
                     if len(model.signalEncoderModel.trainingLosses_timeReconstructionOptimalAnalysis[timeWindowInd]) == 0:
@@ -121,7 +125,6 @@ class organizeTrainingLosses(lossCalculations):
                     # Store the latent reconstruction loss.
                     self.storeLossInformation(reconstructedEncodedTrainingLoss, reconstructedEncodedTestingLoss, model.autoencoderModel.trainingLosses_timeReconstructionAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeReconstructionAnalysis[timeWindowInd])
                     self.storeLossInformation(compressedStandardDeviationTrainingLoss, compressedStandardDeviationTestingLoss, model.autoencoderModel.trainingLosses_timeSTDAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeSTDAnalysis[timeWindowInd])
-                    self.storeLossInformation(autoencoderTrainingLayerLoss, autoencoderTestingLayerLoss, model.autoencoderModel.trainingLosses_timeLayerAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeLayerAnalysis[timeWindowInd])
                     self.storeLossInformation(compressedMeanTrainingLoss, compressedMeanTestingLoss, model.autoencoderModel.trainingLosses_timeMeanAnalysis[timeWindowInd], model.autoencoderModel.testingLosses_timeMeanAnalysis[timeWindowInd])
 
                     # Inform the user about the final loss.

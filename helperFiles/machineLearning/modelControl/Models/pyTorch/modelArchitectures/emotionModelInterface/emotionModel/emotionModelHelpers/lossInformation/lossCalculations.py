@@ -35,16 +35,12 @@ class lossCalculations:
         #       Regression Options: "MeanSquaredError", "MeanAbsoluteError", "Huber", "SmoothL1Loss", "PoissonNLLLoss", "GammaNLLLoss"
         #       Custom Regression Options: "R2", "pearson", "LogCoshLoss", "weightedMSE"
         self.emotionDist_lossType = "MeanSquaredError"  # The loss enforcing correct distribution shape.
-        self.autoencoder_lossType = "MeanSquaredError"  # The loss enforcing correct signal reconstruction.
         self.activityClass_lossType = "CrossEntropyLoss"  # The loss enforcing correct activity recognition.
-        self.signalEncoding_lossType = "MeanSquaredError"  # The loss enforcing correct compressed signal reconstruction.
-        self.manifoldReconstruction_lossType = "MeanSquaredError"  # The loss enforcing correct compressed signal reconstruction.
         # Initialize the loss function WITHOUT the class weights.
         self.activityClassificationLoss = pytorchLossMethods(lossType=self.activityClass_lossType, class_weights=None).loss_fn
         self.emotionClassificationLoss = pytorchLossMethods(lossType=self.emotionDist_lossType, class_weights=None).loss_fn
-        self.manifoldReconstructionLoss = pytorchLossMethods(lossType=self.manifoldReconstruction_lossType, class_weights=None).loss_fn
-        self.signalEncodingLoss = pytorchLossMethods(lossType=self.signalEncoding_lossType, class_weights=None).loss_fn
-        self.reconstructionLoss = pytorchLossMethods(lossType=self.autoencoder_lossType, class_weights=None).loss_fn
+        self.positionalEncoderLoss = pytorchLossMethods(lossType="CrossEntropyLoss", class_weights=None).loss_fn
+        self.reconstructionLoss = pytorchLossMethods(lossType="MeanSquaredError", class_weights=None).loss_fn
 
     # ---------------------------------------------------------------------- #
     # -------------------------- Loss Calculations ------------------------- #
@@ -68,7 +64,7 @@ class lossCalculations:
         finalLoss = method(signalData).mean()
         return finalLoss
 
-    def calculateSignalEncodingLoss(self, allSignalData, allEncodedData, allReconstructedData, allSignalEncodingLayerLoss, allLabelsMask=None, reconstructionIndex=None):
+    def calculateSignalEncodingLoss(self, allSignalData, allEncodedData, allReconstructedData, allPredictedIndexProbabilities, allSignalEncodingLayerLoss, allLabelsMask=None, reconstructionIndex=None):
         # Find the boolean flags for the data involved in the loss calculation.
         reconstructionDataMask = self.getReconstructionDataMask(allLabelsMask, reconstructionIndex)
         # Isolate the signals for this loss (For example, training vs. testing).
@@ -76,10 +72,11 @@ class lossCalculations:
         encodedData = self.getData(allEncodedData, reconstructionDataMask)  # Dim: numExperiments, numCondensedSignals, compressedLength
         reconstructedData = self.getData(allReconstructedData, reconstructionDataMask)  # Dim: numExperiments, numSignals, compressedLength
         signalEncodingLayerLoss = self.getData(allSignalEncodingLayerLoss, reconstructionDataMask)  # Dim: numExperiments
+        predictedIndexProbabilities = self.getData(allPredictedIndexProbabilities, reconstructionDataMask)  # Dim: numExperiments, numSignals, maxNumEncodedSignals
         assert signalData.shape[0] != 0, "There are no signals for this loss calculation."
 
         # Calculate the error in signal reconstruction (encoding loss).
-        signalReconstructedLoss = self.signalEncodingLoss(reconstructedData, signalData)
+        signalReconstructedLoss = self.reconstructionLoss(reconstructedData, signalData)
         signalReconstructedLoss = signalReconstructedLoss.mean(dim=2).mean(dim=1).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
@@ -91,13 +88,20 @@ class lossCalculations:
         # If there is a layer loss, average the loss.
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
+        # Positional encoding loss.
+        numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
+        predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
+        targetClasses = torch.arange(0, numSignals, device=signalData.device).long().repeat(numExperiments)
+        positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
+
         # Assert that nothing is wrong with the loss calculations.
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, variableName="encoded signal mean loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(positionalEncodingLoss, variableName="positional encoding loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, variableName="encoded signal reconstructed loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(encodedSignalStandardDeviationLoss, variableName="encoded signal standard deviation loss", assertGradient=False)
         if signalEncodingLayerLoss is not None: self.modelHelpers.assertVariableIntegrity(signalEncodingLayerLoss, "encoded signal layer loss", assertGradient=False)
 
-        return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalStandardDeviationLoss, signalEncodingLayerLoss
+        return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalStandardDeviationLoss, positionalEncodingLoss, signalEncodingLayerLoss
 
     def calculateAutoencoderLoss(self, allEncodedData, allCompressedData, allReconstructedEncodedData, allAutoencoderLayerLoss, allLabelsMask, reconstructionIndex):
         # Find the boolean flags for the data involved in the loss calculation.
@@ -141,7 +145,7 @@ class lossCalculations:
         assert manifoldData.shape[0] != 0, "There are no signals for this loss calculation."
 
         # Calculate the error in signal reconstruction (autoencoder loss) and assert the integrity of the loss.
-        manifoldReconstructedLoss = self.manifoldReconstructionLoss(reconstructedEncodedData, encodedData)
+        manifoldReconstructedLoss = self.reconstructionLoss(reconstructedEncodedData, encodedData)
         manifoldReconstructedLoss = manifoldReconstructedLoss.mean(axis=2).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.

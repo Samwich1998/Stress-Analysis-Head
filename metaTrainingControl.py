@@ -12,6 +12,7 @@ from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging (1 = INFO, 2 = WARNING and ERROR, 3 = ERROR only)
+os.environ["TORCH_COMPILE_DEBUG"] = "1"
 
 # Hugging Face
 import accelerate
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
@@ -72,9 +73,7 @@ if __name__ == "__main__":
     parser.add_argument('--optimizerType', type=str, default='AdamW', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--numPosLiftedChannels', type=int, default=2, help='The number of channels to lift to during positional encoding. Range: (1, 4, 1)')
     parser.add_argument('--numSigLiftedChannels', type=int, default=32, help='The number of channels to lift to during signal encoding. Range: (16, 64, 16)')
-    parser.add_argument('--numPosEncodingLayers', type=int, default=2, help='The number of operator layers during positional encoding. Range: (0, 4, 1)')
     parser.add_argument('--numSigEncodingLayers', type=int, default=4, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
@@ -94,9 +93,7 @@ if __name__ == "__main__":
         'deviceListed': args.deviceListed,  # The device we are running the platform on.
         'submodel': args.submodel,  # The component of the model we are training.
         # Assign signal encoder parameters
-        'numPosLiftedChannels': args.numPosLiftedChannels,  # The number of channels to lift to during positional encoding.
         'numSigLiftedChannels': args.numSigLiftedChannels,  # The number of channels to lift to during signa; encoding.
-        'numPosEncodingLayers': args.numPosEncodingLayers,  # The number of operator layers during positional encoding.
         'numSigEncodingLayers': args.numSigEncodingLayers,  # The number of operator layers during signal encoding.
         'numExpandedSignals': args.numExpandedSignals,  # The number of signals to group when you begin compression or finish expansion.
         # Assign autoencoder parameters

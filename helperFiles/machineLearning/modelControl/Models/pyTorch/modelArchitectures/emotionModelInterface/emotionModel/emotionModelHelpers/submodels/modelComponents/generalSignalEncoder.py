@@ -10,9 +10,9 @@ from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
 
 
 class signalEncoderBase(signalEncoderHelpers):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numPosEncodingLayers=2, numSigEncodingLayers=5, numPosLiftedChannels=4, numSigLiftedChannels=48, debuggingResults=False):
-        super(signalEncoderBase, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numPosEncodingLayers=numPosEncodingLayers, numSigEncodingLayers=numSigEncodingLayers,
-                                                numPosLiftedChannels=numPosLiftedChannels, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, debuggingResults=False):
+        super(signalEncoderBase, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
+                                                numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
 
     # ---------------------------- Loss Methods ---------------------------- #
 
@@ -91,9 +91,9 @@ class signalEncoderBase(signalEncoderHelpers):
 # -------------------------- Encoder Architecture -------------------------- #
 
 class generalSignalEncoding(signalEncoderBase):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numPosEncodingLayers=2, numSigEncodingLayers=5, numPosLiftedChannels=4, numSigLiftedChannels=48, debuggingResults=False):
-        super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numPosEncodingLayers=numPosEncodingLayers, numSigEncodingLayers=numSigEncodingLayers,
-                                                    numPosLiftedChannels=numPosLiftedChannels, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, debuggingResults=False):
+        super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
+                                                    numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
 
     def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True):
         """ The shape of signalData: (batchSize, numSignals, compressedLength) """

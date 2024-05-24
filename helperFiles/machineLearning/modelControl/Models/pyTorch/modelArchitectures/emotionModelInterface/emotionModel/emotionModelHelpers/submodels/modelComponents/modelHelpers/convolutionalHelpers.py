@@ -251,6 +251,32 @@ class ResNet(torch.nn.Module):
         # Return the residual connection.
         return inputs + initialInput
 
+    # -------------------------------------------------------------------------- #
+
+class independentModelCNN(torch.nn.Module):
+    def __init__(self, module, useCheckpoint=False):
+        super().__init__()
+        # General helpers.
+        self.useCheckpoint = useCheckpoint
+        self.module = module
+
+    def forward(self, signalData):
+        # Extract the incoming data's dimension.
+        batchSize, numSignals, signalDimension = signalData.size()
+
+        # Reshape the data to process each signal separately.
+        signalData = signalData.view(batchSize * numSignals, 1, signalDimension)
+
+        # Apply a CNN network.
+        if self.useCheckpoint:
+            signalData = checkpoint(self.module, signalData, use_reentrant=False)
+        else:
+            signalData = self.module(signalData)
+
+        # Return to the initial dimension of the input.
+        signalData = signalData.view(batchSize, numSignals, signalDimension)
+
+        return signalData
 
 # -------------------------------------------------------------------------- #
 

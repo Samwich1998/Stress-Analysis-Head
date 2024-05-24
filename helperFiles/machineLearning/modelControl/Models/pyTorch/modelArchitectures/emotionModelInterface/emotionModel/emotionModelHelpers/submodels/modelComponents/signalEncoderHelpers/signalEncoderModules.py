@@ -4,7 +4,7 @@ import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import boundedExp
-from ..modelHelpers.convolutionalHelpers import convolutionalHelpers
+from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN
 
 
 class signalEncoderModules(convolutionalHelpers):
@@ -43,6 +43,17 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             # Convolution architecture: feature engineering
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+        )
+
+    def independentSkipConnectionEncoding(self, inChannel=2, outChannel=1):
+        return nn.Sequential(
+            independentModelCNN(
+                useCheckpoint=False,
+                module=nn.Sequential(
+                    # Convolution architecture: feature engineering
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True)
+                ),
+            ),
         )
 
     # ------------------- Positional Encoding Architectures ------------------- #

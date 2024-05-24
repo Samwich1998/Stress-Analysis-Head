@@ -4,7 +4,7 @@ import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import switchActivation, boundedExp
-from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, ResNet
+from ..modelHelpers.convolutionalHelpers import convolutionalHelpers
 
 
 class signalEncoderModules(convolutionalHelpers):
@@ -38,15 +38,6 @@ class signalEncoderModules(convolutionalHelpers):
         parameter = nn.Parameter(torch.zeros((1, numChannels, 1)))
 
         return parameter
-
-    @staticmethod
-    def neuralOperatorActivation(activationMethod, useSwitchActivation):
-        activationFunction = boundedExp()
-
-        if useSwitchActivation:
-            activationFunction = switchActivation(activationFunction, switchState=True)
-
-        return activationFunction
 
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
         return nn.Sequential(

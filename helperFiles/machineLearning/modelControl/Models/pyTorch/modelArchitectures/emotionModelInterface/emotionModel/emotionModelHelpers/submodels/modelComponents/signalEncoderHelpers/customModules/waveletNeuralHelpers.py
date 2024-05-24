@@ -62,6 +62,11 @@ class waveletNeuralHelpers(signalEncoderModules):
         maximumNumDecompositions = math.floor(math.log(sequenceBounds[0]) / math.log(2))  # The sequence length can be up to 2**numDecompositions.
         assert self.numDecompositions < maximumNumDecompositions, f'The number of decompositions must be less than {maximumNumDecompositions}.'
 
+        # Assert the validity of the parameters under independent channels.
+        if self.independentChannels:
+            assert self.numOutputSignals == -1, "The number of output channel is irrelevant. Please use -1."
+            assert self.numInputSignals == -1, "The number of input channel is irrelevant. Please use -1."
+
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)
         self.idwt = DWT1DInverse(wave=self.wavelet, mode=self.mode)

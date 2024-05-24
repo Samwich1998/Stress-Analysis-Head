@@ -12,6 +12,7 @@ class denoiser(signalEncoderModules):
         self.sequenceBounds = sequenceBounds
 
         # Neural operator parameters.
+        self.activationMethod = self.getActivationMethod_denoiser()
         self.numDecompositions = 2  # Number of decompositions for the wavelet transform.
         self.wavelet = 'bior3.7'  # Wavelet type for the wavelet transform: bior3.7, db3, dmey
         self.mode = 'zero'  # Mode for the wavelet transform.

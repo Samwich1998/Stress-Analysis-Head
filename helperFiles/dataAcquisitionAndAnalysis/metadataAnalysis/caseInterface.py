@@ -41,39 +41,39 @@ class caseInterface(globalMetaAnalysis):
         df_videos = pd.read_excel(self.subjectFoldersMetaData + 'videos.xlsx', engine='openpyxl')
         self.videoIDtoName = {row['Video-ID']: row['Source (Year)'] + ', ' + row['Video-label'] for index, row in df_videos.dropna(subset=['Video-ID']).iterrows()}
         self.activityNames = ['amusing', 'blue screen', 'boring', 'relaxed', 'scary', 'startVid']
-        self.trialDuration = 5 * 60  # 5 minute sliding window per trial in experiment
-        self.trialShift = 30  # 30 second sliding window shift
+        self.trialDuration = 5 * 60  # 5-minute sliding window per trial in experiment
+        self.trialShift = 30  # 30-second sliding window shift
         self.videoStartBuffer = 60  # 60 seconds for emotional response from video
-        self.surveyAggregation = 0.5  # emotion responses are averaged over last 3 seconds of trial
-        # Initialze the global meta protocol.
-        super().__init__(self.subjectFolders, self.surveyQuestions)  # Intiailize meta analysis.
+        self.surveyAggregation = 0.5  # emotion responses are averaged over the last 3 seconds of trial
+        # Initialize the global meta protocol.
+        super().__init__(self.subjectFolders, self.surveyQuestions)  # Initialize meta-analysis.
 
     @staticmethod
-    def cleanFileData(sychronizedData, emotionAnnotations):
-        sychronizedData['daqtime'] = sychronizedData['daqtime'] / 1000
+    def cleanFileData(synchronizedData, emotionAnnotations):
+        synchronizedData['daqtime'] = synchronizedData['daqtime'] / 1000
         emotionAnnotations['jstime'] = emotionAnnotations['jstime'] / 1000
 
-        return sychronizedData, emotionAnnotations
+        return synchronizedData, emotionAnnotations
 
     def aggregateSurveysPerTrial(self, surveys):
-        # surveys is pandas df only containing the responses per given trial
+        # surveys are pandas df only containing the responses per given trial
         return [scipy.stats.trim_mean(surveys[question], 0.1) for question in self.surveyQuestions]
 
     def getData(self, showPlots=False):
         # Initialize data holders.
-        allExperimentalTimes = []
-        allExperimentalNames = []
-        allSurveyAnswerTimes = []
-        allSurveyAnswersList = []
-        allSynchronizedData = []
-        subjectOrder = []
-        allContextualInfo = []
+        givenExperimentalTimes = []
+        givenExperimentalNames = []
+        givenSurveyAnswerTimes = []
+        givenSurveyAnswersList = []
+        givenSynchronizedData = []
+        givenSubjectOrder = []
+        givenContextualInfo = []
 
         df_metadata = pd.read_excel(self.subjectFoldersMetaData + 'participants.xlsx', engine='openpyxl')
 
         # For each subject in the training folder.
         for subjectSignalDataName in natsorted(os.listdir(self.subjectFolders)):
-            # Do not alayze hidden files.
+            # Do not analyze hidden files.
             if subjectSignalDataName.startswith((".", "~")): continue
 
             # Only look at subject folders, while ignoring other analysis folders.
@@ -85,9 +85,9 @@ class caseInterface(globalMetaAnalysis):
                 # Get Contextual Info -----------------------------------------
 
                 subjectInfo = df_metadata.iloc[int(subjectName.split("_")[-1]) - 1]
-                allContextualInfo.append([self.demographicsQuestions, [subjectInfo['Age-Group'], subjectInfo['Sex']]])
+                givenContextualInfo.append([self.demographicsQuestions, [subjectInfo['Age-Group'], subjectInfo['Sex']]])
                 if self.debug:
-                    print(allContextualInfo)
+                    print(givenContextualInfo)
 
                 # -------------------------------------------------------------
 
@@ -106,21 +106,21 @@ class caseInterface(globalMetaAnalysis):
                 videoBufferTimestamps = {}
                 for video in unique_videos:
                     videoStartTime = df_subjectSynchronizedData[df_subjectSynchronizedData['video'] == video].iloc[0]['daqtime']
-                    videoBufferTimestamps[video] = [videoStartTime, videoStartTime + (self.videoStartBuffer)]
+                    videoBufferTimestamps[video] = [videoStartTime, videoStartTime + self.videoStartBuffer]
 
                 # Get experiments ---------------------------------------------
 
                 experimentTimes = []
                 experimentNames = []
                 trialKeep = []
-                for i in range((int(df_subjectEmotionAnnotations['jstime'].max()) + 1 - (self.trialDuration)) // (self.trialShift)):
+                for i in range((int(df_subjectEmotionAnnotations['jstime'].max()) + 1 - self.trialDuration) // self.trialShift):
                     # For each Trial:
-                    trialStart = i * (self.trialShift)
-                    trialEnd = trialStart + (self.trialDuration)
+                    trialStart = i * self.trialShift
+                    trialEnd = trialStart + self.trialDuration
                     df_currTrialEmotionAnnotations = df_subjectEmotionAnnotations[(df_subjectEmotionAnnotations['jstime'] > trialStart) &
                                                                                   (df_subjectEmotionAnnotations['jstime'] < trialEnd)]
                     trialVideos = df_currTrialEmotionAnnotations['video'].unique()
-                    if trialEnd - videoBufferTimestamps[trialVideos[-1]][0] > (self.videoStartBuffer):
+                    if trialEnd - videoBufferTimestamps[trialVideos[-1]][0] > self.videoStartBuffer:
                         # do not consider trial if survey response time (trial end) happens to soon after a video begins
                         experimentTimes.append([trialStart, trialEnd])
                         videoNames = [self.videoIDtoName[video] for video in trialVideos]
@@ -146,7 +146,7 @@ class caseInterface(globalMetaAnalysis):
                     plt.title('Trial Time Visualization')
                     plt.show()
 
-                print(len(trialKeep), 'of', (int(df_subjectEmotionAnnotations['jstime'].max()) + 1 - (self.trialDuration)) // (self.trialShift), 'trials kept')
+                print(len(trialKeep), 'of', (int(df_subjectEmotionAnnotations['jstime'].max()) + 1 - self.trialDuration) // self.trialShift, 'trials kept')
 
                 # Get Valence + Arousal (Surveys) -----------------------------
 
@@ -155,7 +155,7 @@ class caseInterface(globalMetaAnalysis):
                 currentSurveyAnswerTimes = []
                 for timeWindow in experimentTimes:
                     currentSurveyAnswerTimes.append(timeWindow[1])
-                    # surveys aggregate last few seconds of time window
+                    # surveys aggregate the last few seconds of time window
                     df_currTrialEmotionAnnotations = df_subjectEmotionAnnotations[(df_subjectEmotionAnnotations['jstime'] >= timeWindow[1] - (self.surveyAggregation / 2)) &
                                                                                   (df_subjectEmotionAnnotations['jstime'] <= timeWindow[1] + (self.surveyAggregation / 2))]
 
@@ -210,56 +210,57 @@ class caseInterface(globalMetaAnalysis):
                 experimentTimes = np.array(experimentTimes)
                 currentSurveyAnswerTimes = np.array(currentSurveyAnswerTimes)
 
-                subjectOrder.append(subjectName)
-                allExperimentalTimes.append(experimentTimes)
-                allExperimentalNames.append(experimentNames)
-                allSynchronizedData.append(experimentSignalData)
-                allSurveyAnswerTimes.append(currentSurveyAnswerTimes)
-                allSurveyAnswersList.append(currentSurveyAnswersList)
+                givenSubjectOrder.append(subjectName)
+                givenExperimentalTimes.append(experimentTimes)
+                givenExperimentalNames.append(experimentNames)
+                givenSynchronizedData.append(experimentSignalData)
+                givenSurveyAnswerTimes.append(currentSurveyAnswerTimes)
+                givenSurveyAnswersList.append(currentSurveyAnswersList)
 
                 print("\tFinished data extraction")
 
                 if self.debug:
-                    print(self.extractExperimentLabels(allExperimentalNames[0]))
+                    print(self.extractExperimentLabels(givenExperimentalNames[0]))
 
-                    print(np.array(subjectOrder).shape)
-                    print(np.array(allExperimentalTimes).shape)
-                    print(np.array(allExperimentalNames).shape)
-                    print(np.array(allSurveyAnswerTimes).shape)
-                    print(np.array(allSurveyAnswersList).shape)
+                    print(np.array(givenSubjectOrder).shape)
+                    print(np.array(givenExperimentalTimes).shape)
+                    print(np.array(givenExperimentalNames).shape)
+                    print(np.array(givenSurveyAnswerTimes).shape)
+                    print(np.array(givenSurveyAnswersList).shape)
 
-        return allSynchronizedData, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo
+        return givenSynchronizedData, givenSubjectOrder, givenExperimentalTimes, givenExperimentalNames, givenSurveyAnswerTimes, givenSurveyAnswersList, givenContextualInfo
 
-    def extractExperimentLabels(self, allExperimentalNames):
-        activityNames = np.asarray(self.activityNames)
+    def extractExperimentLabels(self, givenExperimentalNames):
+        givenActivityNames = np.asarray(self.activityNames)
 
-        activityLabels = []
+        givenActivityLabels = []
         # For each trial during the day.
-        for trialActivityName in allExperimentalNames:
-            # Get the videos information.
+        for trialActivityName in givenExperimentalNames:
+            # Get the video information.
             videoType = trialActivityName.split('__')[-1]
 
             # Store the videos as a hashed index.
-            activityHash = next((i for i, name in enumerate(activityNames) if name in videoType))
-            activityLabels.append(activityHash)
+            activityHash = next((i for i, name in enumerate(givenActivityNames) if name in videoType))
+            givenActivityLabels.append(activityHash)
 
-        return activityNames, activityLabels
+        return givenActivityNames, givenActivityLabels
 
-    def getStreamingInfo(self):
+    @staticmethod
+    def getStreamingInfo():
         # Feature information
-        streamingOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
-        biomarkerOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
-        filteringOrders = [[None, None], [None, 20], [None, 15], [None, 20], [None, 0.1]]  # Sampling Freq: 1000 (Hz); Need 1/2 frequency at max.
-        featureAverageWindows = [30, 30, 30, 30, 30]  # ['ecg', 'bvp', 'gsr', 'rsp', 'skt']
+        givenStreamingOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
+        givenBiomarkerOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
+        givenFilteringOrders = [[None, None], [None, 20], [None, 15], [None, 20], [None, 0.1]]  # Sampling Freq: 1000 (Hz); Need 1/2 frequency at max.
+        givenFeatureAverageWindows = [30, 30, 30, 30, 30]  # ['ecg', 'bvp', 'gsr', 'rsp', 'skt']
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders
+        return givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenFilteringOrders
 
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
-        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
-        featureNames, biomarkerFeatureNames, biomarkerOrder = self.compileFeatureNames.extractFeatureNames(biomarkerOrder)
+        givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenFilteringOrders = self.getStreamingInfo()
+        featureNames, givenBiomarkerFeatureNames, givenBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(biomarkerOrder)
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames
+        return givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenBiomarkerFeatureNames
 
 
 if __name__ == "__main__":

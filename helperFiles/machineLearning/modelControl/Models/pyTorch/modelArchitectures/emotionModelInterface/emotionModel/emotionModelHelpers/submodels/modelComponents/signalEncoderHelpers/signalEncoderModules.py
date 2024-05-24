@@ -48,7 +48,6 @@ class signalEncoderModules(convolutionalHelpers):
             boundedExp(),
 
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
-            nn.Softmax(dim=-1),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #

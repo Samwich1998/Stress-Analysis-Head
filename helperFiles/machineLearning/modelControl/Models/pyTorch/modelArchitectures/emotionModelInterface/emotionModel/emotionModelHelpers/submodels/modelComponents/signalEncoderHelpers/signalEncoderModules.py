@@ -71,10 +71,10 @@ class signalEncoderModules(convolutionalHelpers):
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
 
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='boundedExp', layerType='fc'),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
 
-            self.weightInitialization.initialize_weights(nn.Linear(numClasses, numClasses), activationMethod='none', layerType='fc'),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #

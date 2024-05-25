@@ -145,11 +145,11 @@ class emotionPipeline(emotionPipelineHelpers):
 
                         # Compile the loss into one value
                         if 0.1 < encodedSignalStandardDeviationLoss:
-                            finalLoss = finalLoss + encodedSignalStandardDeviationLoss
+                            finalLoss = finalLoss + 0.5*encodedSignalStandardDeviationLoss
                         if 0.01 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.5 * signalEncodingTrainingLayerLoss
+                            finalLoss = finalLoss + 0.2*signalEncodingTrainingLayerLoss
                         if 0.1 < encodedSignalMeanLoss:
-                            finalLoss = finalLoss + encodedSignalMeanLoss
+                            finalLoss = finalLoss + 0.5*encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * finalLoss + positionalEncodingTrainingLoss
 

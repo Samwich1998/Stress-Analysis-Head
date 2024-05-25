@@ -252,27 +252,33 @@ class signalEncoderModel(globalModel):
 
     @staticmethod
     def plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
-        plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
-        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
+        plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2, label="Initial Data")
+        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
+        plt.title("Positional Encoding"); plt.legend()
         globalPlottingProtocols.clearFigure()
 
-        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
+        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
+        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
+        plt.title("Signal Encoding"); plt.legend()
         globalPlottingProtocols.clearFigure()
 
-        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-        plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2)
+        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
+        plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2, label="Variance Adjusted Data")
+        plt.title("Variance Adjustment"); plt.legend()
         globalPlottingProtocols.clearFigure()
 
-        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2)
-        plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5)
+        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
+        plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5, label="Encoded Data (after variance)")
+        plt.title("Signal Decoding"); plt.legend()
         globalPlottingProtocols.clearFigure()
 
-        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2)
-        plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5)
+        plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
+        plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5, label="Decoded Data (Backward Path)")
+        plt.title("Position Decoding"); plt.legend()
         globalPlottingProtocols.clearFigure()
 
-        plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2)
-        plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5)
-        plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25)
+        plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2, label="Initial Data")
+        plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5, label="Reconstructed Data")
+        plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25, label="Denoised Reconstructed Data")
+        plt.title("Final Denoising"); plt.legend()
         globalPlottingProtocols.clearFigure()

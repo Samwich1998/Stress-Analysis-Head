@@ -83,7 +83,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
         firstModule = nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
         )
 
@@ -131,7 +131,7 @@ class signalEncoderModules(convolutionalHelpers):
     def signalPostProcessing(self, inChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+            # self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):

@@ -18,7 +18,7 @@ class denoiser(signalEncoderModules):
         self.mode = 'zero'  # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.
-        self.denoiserNeuralOperator = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode,
+        self.denoiserNeuralOperator = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False,
                                                                  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='independentCNN')
 
         # Allow the final signals to denoise at the end.

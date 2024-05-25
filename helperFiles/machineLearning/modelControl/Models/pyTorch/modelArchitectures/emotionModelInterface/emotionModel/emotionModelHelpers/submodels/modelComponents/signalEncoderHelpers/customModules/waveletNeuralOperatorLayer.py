@@ -7,8 +7,8 @@ from .waveletNeuralHelpers import waveletNeuralHelpers
 
 class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
-        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, wavelet, mode, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, independentChannels, skipConnectionProtocol)
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
+        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, wavelet, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, independentChannels, skipConnectionProtocol)
 
     def forward(self, inputData, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.
@@ -53,9 +53,10 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
         reconstructedData = reconstructedData[:, :, -sequenceLength:]
         # reconstructedData dimension: batchSize, numOutputSignals, sequenceLength
 
-        # Add the bias terms.
-        reconstructedData = reconstructedData + self.operatorBiases
-        # outputData dimension: batchSize, numOutputSignals, sequenceLength
+        if self.addBiasTerm:
+            # Add the bias terms.
+            reconstructedData = reconstructedData + self.operatorBiases
+            # outputData dimension: batchSize, numOutputSignals, sequenceLength
 
         return reconstructedData
 

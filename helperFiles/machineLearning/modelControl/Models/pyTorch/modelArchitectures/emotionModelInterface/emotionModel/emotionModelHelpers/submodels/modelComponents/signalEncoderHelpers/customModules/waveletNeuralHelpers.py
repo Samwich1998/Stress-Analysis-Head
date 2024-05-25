@@ -36,7 +36,7 @@ from ..signalEncoderModules import signalEncoderModules
 
 class waveletNeuralHelpers(signalEncoderModules):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', activationMethod="none",
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', addBiasTerm=False, activationMethod="none",
                  encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
@@ -46,6 +46,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.numOutputSignals = numOutputSignals  # Number of output signals.
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
+        self.addBiasTerm = addBiasTerm  # Whether to add bias terms to the output.
         self.wavelet = wavelet  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
 
@@ -81,7 +82,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
         self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.
         self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)  # Skip connection model for the Fourier neural operator.
-        self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
+        if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.activationFunction = self.getActivationMethod(activationType=activationMethod, useSwitchActivation=True)  # Activation function for the Fourier neural operator.
 
     def getSkipConnectionProtocol(self, skipConnectionProtocol):
@@ -89,7 +90,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         if skipConnectionProtocol == 'none':
             skipConnectionModel = self.zero
         elif skipConnectionProtocol == 'identity':
-            skipConnectionModel = self.identity
+            skipConnectionModel = nn.Identity()
         elif skipConnectionProtocol == 'singleCNN':
             skipConnectionModel = self.skipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         elif skipConnectionProtocol == 'independentCNN':
@@ -148,10 +149,6 @@ class waveletNeuralHelpers(signalEncoderModules):
             fullLowFrequencyWeights = None
 
         return lowFrequencyWeights, fullLowFrequencyWeights
-
-    @staticmethod
-    def identity(x):
-        return x
 
     @staticmethod
     def zero(x):

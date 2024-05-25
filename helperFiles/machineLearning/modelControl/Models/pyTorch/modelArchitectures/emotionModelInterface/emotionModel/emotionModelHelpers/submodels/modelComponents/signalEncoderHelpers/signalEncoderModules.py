@@ -120,6 +120,12 @@ class signalEncoderModules(convolutionalHelpers):
 
     # ------------------- Signal Encoding Architectures ------------------- #
 
+    def heuristicEncoding(self, inChannel=1, outChannel=2):
+        return nn.Sequential(
+            # Convolution architecture: heuristic operator.
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
+        )
+
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: residual connection, feature engineering

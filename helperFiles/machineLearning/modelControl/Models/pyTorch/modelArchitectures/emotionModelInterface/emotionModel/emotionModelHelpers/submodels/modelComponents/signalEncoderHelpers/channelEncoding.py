@@ -27,6 +27,10 @@ class channelEncoding(signalEncoderModules):
         self.wavelet = 'db3'           # Wavelet type for the wavelet transform: bior3.7, db3, dmey
         self.mode = 'zero'             # Mode for the wavelet transform.
 
+        # initialize the heuristic method.
+        self.heuristicCompressionModel = self.heuristicEncoding(inChannel=self.numExpandedSignals, outChannel=self.numCompressedSignals)
+        self.heuristicExpansionModel = self.heuristicEncoding(inChannel=self.numCompressedSignals, outChannel=self.numExpandedSignals)
+
         # Initialize initial lifting models.
         self.liftingCompressionModel = self.liftingOperator(inChannel=self.numExpandedSignals, outChannel=self.numSigLiftedChannels)
         self.liftingExpansionModel = self.liftingOperator(inChannel=self.numCompressedSignals, outChannel=self.numSigLiftedChannels)
@@ -79,6 +83,10 @@ class channelEncoding(signalEncoderModules):
         processedData = self.projectingCompressionModel(processedData)
         # processedData dimension: batchSize, numCompressedSignals, signalDimension
 
+        # Add the heuristic model as a baseline.
+        processedData = processedData + self.heuristicCompressionModel(inputData)
+        # processedData dimension: batchSize, numCompressedSignals, signalDimension
+
         return processedData
 
     def expansionAlgorithm(self, inputData):
@@ -102,6 +110,10 @@ class channelEncoding(signalEncoderModules):
 
         # Learn the final signal.
         processedData = self.projectingExpansionModel(processedData)
+        # processedData dimension: batchSize, numExpandedSignals, signalDimension
+
+        # Add the heuristic model as a baseline.
+        processedData = processedData + self.heuristicExpansionModel(inputData)
         # processedData dimension: batchSize, numExpandedSignals, signalDimension
 
         return processedData

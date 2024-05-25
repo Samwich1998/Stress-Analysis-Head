@@ -17,7 +17,7 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Positional encoding parameters.
         self.numEncodingStamps = 8  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings). Max: 256 signals -> 2**8.
-        self.numPosEncodingLayers = 2  # The number of operator layers during positional encoding.
+        self.numPosEncodingLayers = 1  # The number of operator layers during positional encoding.
         self.maxNumEncodedSignals = 2 ** self.numEncodingStamps  # The maximum number of signals that can be encoded.
 
         # Neural operator parameters.
@@ -92,10 +92,10 @@ class channelPositionalEncoding(signalEncoderModules):
             positionEncodedData = learnNeuralOperatorLayers[modelInd](positionEncodedData, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
             # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
-            # Apply the post-processing layer.
-            # positionEncodedData = learnPostProcessing(positionEncodedData)
-            positionEncodedData = self.applySmoothing_forPosEnc(positionEncodedData)
-            # positionEncodedData dimension: batchSize, numSignals, signalDimension
+        # Apply the post-processing layer.
+        positionEncodedData = learnPostProcessing(positionEncodedData)
+        positionEncodedData = self.applySmoothing_forPosEnc(positionEncodedData)
+        # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
         # Residual connection to inject signal information back in.
         positionEncodedData = positionEncodedData + inputData

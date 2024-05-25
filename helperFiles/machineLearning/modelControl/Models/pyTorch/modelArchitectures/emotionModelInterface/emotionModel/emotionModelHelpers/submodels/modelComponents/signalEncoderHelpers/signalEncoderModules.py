@@ -85,13 +85,11 @@ class signalEncoderModules(convolutionalHelpers):
         firstModule = nn.Sequential(
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
-
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
-            boundedExp(),
         )
 
         secondModule = nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='none', layerType='fc'),
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='boundedExp', layerType='fc'),
+            boundedExp(),
         )
 
         return nn.Sequential(
@@ -119,7 +117,7 @@ class signalEncoderModules(convolutionalHelpers):
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: residual connection, feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None,
+            self.convolutionalFilters_resNetBlocks(numResNets=3, numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None,
                                                    useSwitchActivation=True),
 
             # Convolution architecture: lifting operator.
@@ -142,8 +140,7 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
 
             # Convolution architecture: residual connection, feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None,
-                                                   useSwitchActivation=True),
+            self.convolutionalFilters_resNetBlocks(numResNets=3, numBlocks=3, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp', numLayers=None, useSwitchActivation=True),
         )
 
     # ------------------- Final Statistics Architectures ------------------- #
@@ -156,7 +153,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     @staticmethod
     def getActivationMethod_denoiser():
-        return "none"
+        return "boundedExp"
 
     @staticmethod
     def smoothingKernel(kernelSize=3):

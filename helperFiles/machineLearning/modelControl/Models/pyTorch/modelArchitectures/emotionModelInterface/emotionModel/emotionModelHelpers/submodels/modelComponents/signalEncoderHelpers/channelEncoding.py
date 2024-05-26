@@ -47,15 +47,17 @@ class channelEncoding(signalEncoderModules):
 
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
+            lastLayer = modelInd == self.numSigEncodingLayers - 1
+
             # Create the spectral convolution layers.
             self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
-                                                                                  addBiasTerm=False,  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useLowFreqCNN=True, independentChannels=False, skipConnectionProtocol='identity'))
+                                                                                  addBiasTerm=False,  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq' if lastLayer else 'none', useLowFreqCNN=False, independentChannels=False, skipConnectionProtocol='identity'))
             self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
-                                                                                addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useLowFreqCNN=True, independentChannels=False, skipConnectionProtocol='identity'))
+                                                                                addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq' if lastLayer else 'none', useLowFreqCNN=False, independentChannels=False, skipConnectionProtocol='identity'))
 
             # Create the processing layers.
-            self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
-            self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
+            self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels, bottleneckChannel=self.numCompressedSignals))
+            self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels, bottleneckChannel=self.numExpandedSignals))
 
             # initialize the heuristic method.
             self.heuristicCompressionLayers.append(self.heuristicEncodingLayer(inChannel=self.numExpandedSignals, outChannel=self.numSigLiftedChannels))

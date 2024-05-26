@@ -89,6 +89,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         # Verify that the number of decomposition layers is appropriate.
         maximumNumDecompositions = self.max_decompositions(signal_length=self.sequenceBounds[0], wavelet_name=self.waveletType)
         assert self.numDecompositions <= maximumNumDecompositions, f'The number of decompositions must be less than or equal to {maximumNumDecompositions}.'
+        assert self.numDecompositions != 0, 'The number of decompositions cannot be 0.'
 
         if self.independentChannels:
             # Assert the validity of the parameters under independent channels.

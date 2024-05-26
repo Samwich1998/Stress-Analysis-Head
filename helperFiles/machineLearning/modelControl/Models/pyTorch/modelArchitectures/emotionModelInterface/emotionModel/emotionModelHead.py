@@ -40,6 +40,7 @@ class emotionModelHead(globalModel):
         self.datasetName = datasetName  # The name of the dataset the model is training on.
 
         # Signal encoder parameters.
+        self.signalEncoderWaveletType = userInputParams['signalEncoderWaveletType']         # The number of signals to group when you begin compression or finish expansion.
         self.numSigLiftedChannels = userInputParams['numSigLiftedChannels']     # The number of channels to lift to during signal encoding.
         self.numSigEncodingLayers = userInputParams['numSigEncodingLayers']     # The number of transformer layers during signal encoding.
         self.numExpandedSignals = userInputParams['numExpandedSignals']         # The number of signals to group when you begin compression or finish expansion.
@@ -94,6 +95,7 @@ class emotionModelHead(globalModel):
             numSigLiftedChannels=self.numSigLiftedChannels,
             numSigEncodingLayers=self.numSigEncodingLayers,
             numExpandedSignals=self.numExpandedSignals,
+            waveletType=self.signalEncoderWaveletType,
             numEncodedSignals=self.numEncodedSignals,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,

@@ -36,7 +36,7 @@ from ..signalEncoderModules import signalEncoderModules
 
 class waveletNeuralHelpers(signalEncoderModules):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', addBiasTerm=False, activationMethod="none",
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none",
                  encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
@@ -47,7 +47,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
         self.addBiasTerm = addBiasTerm  # Whether to add bias terms to the output.
-        self.wavelet = wavelet  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
+        self.waveletType = waveletType  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
 
         # Assert that the protocol is valid.
@@ -70,8 +70,8 @@ class waveletNeuralHelpers(signalEncoderModules):
             assert self.numInputSignals == 1, "The number of input channel is irrelevant. Please use 1."
 
         # Initialize the wavelet decomposition and reconstruction layers.
-        self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.wavelet, mode=self.mode)
-        self.idwt = DWT1DInverse(wave=self.wavelet, mode=self.mode)
+        self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)
+        self.idwt = DWT1DInverse(wave=self.waveletType, mode=self.mode)
 
         # Get the expected output shapes (hard to calculate by hand).
         lowFrequency, highFrequencies = self.dwt(torch.randn(1, 1, sequenceBounds[1]))
@@ -93,6 +93,8 @@ class waveletNeuralHelpers(signalEncoderModules):
             skipConnectionModel = nn.Identity()
         elif skipConnectionProtocol == 'singleCNN':
             skipConnectionModel = self.skipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
+        elif skipConnectionProtocol == 'resNetCNN':
+            skipConnectionModel = self.resnetSkipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         elif skipConnectionProtocol == 'independentCNN':
             skipConnectionModel = self.independentSkipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         else:

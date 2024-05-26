@@ -1,3 +1,5 @@
+import math
+
 import torch.nn as nn
 import torch
 
@@ -16,20 +18,21 @@ class switchActivation(nn.Module):
 
 
 class boundedExp(nn.Module):
-    def __init__(self, topExponent=0, infiniteBound=0.66667):
+    def __init__(self, topExponent=0, nonLinearityRegion=2, infiniteBound=math.exp(-0.5)):
         super(boundedExp, self).__init__()
         # General parameters.
+        self.nonLinearityRegion = nonLinearityRegion  # The non-linear region is mainly between [-nonLinearityRegion, nonLinearityRegion].
         self.infiniteBound = infiniteBound  # This controls how the activation converges at +/- infinity. The convergence is equal to inputValue*infiniteBound.
-        self.topExponent = topExponent  # This controls the non-linearity of the data close to 0. Larger values make the activation more linear.
+        self.topExponent = topExponent  # This controls the non-linearity of the data close to 0. Larger values make the activation more linear. Recommended to be 0 to 1. After 1, the activation becomes linear near 0.
 
         # Assert the validity of the inputs.
-        assert self.topExponent % 2 == 0, "The exponent in the numerator and denominator must be even."
         assert 0 <= self.topExponent, "The exponent in the numerator and denominator must be greater than 0 to be continuous."
+        assert self.infiniteBound <= 1, "The infinite bound must be less than or equal to 1 to ensure convergence."
 
     def forward(self, x):
         # Calculate the exponential activation function.
-        exponentialNumerator = torch.pow(x, self.topExponent)
-        exponentialDenominator = 1 + torch.pow(x, self.topExponent + 2)
+        exponentialNumerator = torch.pow(x/self.nonLinearityRegion, 2*self.topExponent)
+        exponentialDenominator = 1 + torch.pow(x/self.nonLinearityRegion, 2*self.topExponent + 2)
         exponentialTerm = torch.exp(exponentialNumerator / exponentialDenominator)
 
         # Calculate the linear term.

@@ -31,16 +31,17 @@ class globalPlottingProtocols:
 
     @staticmethod
     def clearFigure(fig=None, legend=None):
-        plt.show()  # Show the plot.
+        plt.show()  # Ensure the plot is displayed
 
-        # Clear the figure
+        # Clear and close the figure/legend if provided
         if legend is not None: legend.remove()
         if fig: fig.clear(); plt.close(fig)
-        # Clear plots
-        plt.close('all')
-        plt.cla()
-        plt.clf()
-        plt.rcdefaults()
+
+        # Clear all figures and plots
+        plt.close('all')  # Close all open figures
+        plt.cla()  # Clear the current axes
+        plt.clf()  # Clear the current figure
+        plt.rcdefaults()  # Reset Matplotlib settings to default
 
     @staticmethod
     def _createFolder(filePath):

@@ -8,7 +8,8 @@ srun accelerate launch ./../../metaTrainingControl.py \
     --numExpandedSignals "$3" \
     --deviceListed "HPC-$4" \
     --submodel "signalEncoder" \
-    --optimizerType "$5"
+    --signalEncoderWaveletType "$5" \
+    --optimizerType "$6" \
 
 end=$(date +%s)
 runtime=$((end-start))

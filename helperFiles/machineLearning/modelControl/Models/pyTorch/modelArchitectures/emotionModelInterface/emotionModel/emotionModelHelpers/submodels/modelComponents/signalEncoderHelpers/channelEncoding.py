@@ -1,5 +1,4 @@
 # PyTorch
-import torch
 from torch import nn
 from torch.utils.checkpoint import checkpoint
 
@@ -10,7 +9,7 @@ from .customModules.waveletNeuralOperatorLayer import waveletNeuralOperatorLayer
 
 class channelEncoding(signalEncoderModules):
 
-    def __init__(self, numCompressedSignals, numExpandedSignals, expansionFactor, numSigEncodingLayers, sequenceBounds, numSigLiftedChannels, debuggingResults=False):
+    def __init__(self, waveletType, numCompressedSignals, numExpandedSignals, expansionFactor, numSigEncodingLayers, sequenceBounds, numSigLiftedChannels, debuggingResults=False):
         super(channelEncoding, self).__init__()
         # General parameters
         self.numSigLiftedChannels = numSigLiftedChannels  # The number of channels to lift to during signal encoding.
@@ -23,9 +22,9 @@ class channelEncoding(signalEncoderModules):
 
         # Neural operator parameters.
         self.activationMethod = self.getActivationMethod_channelEncoder()
-        self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
-        self.wavelet = 'db3'           # Wavelet type for the wavelet transform: bior3.7, db3, dmey
-        self.mode = 'zero'             # Mode for the wavelet transform.
+        self.waveletType = waveletType  # wavelet type for the waveletType transform: bior, db3, dmey
+        self.numDecompositions = 2      # Number of decompositions for the waveletType transform.
+        self.mode = 'zero'              # Mode for the waveletType transform.
 
         # initialize the heuristic method.
         self.heuristicCompressionModel = self.heuristicEncoding(inChannel=self.numExpandedSignals, outChannel=self.numCompressedSignals)
@@ -43,15 +42,23 @@ class channelEncoding(signalEncoderModules):
         self.compressedProcessingLayers = nn.ModuleList([])
         self.expandedProcessingLayers = nn.ModuleList([])
 
+        # Initialize the heuristic layers.
+        self.heuristicCompressionLayers = nn.ModuleList([])
+        self.heuristicExpansionLayers = nn.ModuleList([])
+
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels + self.numExpandedSignals, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=False, skipConnectionProtocol='singleCNN'))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels + self.numCompressedSignals, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=False, skipConnectionProtocol='singleCNN'))
+            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=False, skipConnectionProtocol='identity'))
+            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=False, skipConnectionProtocol='identity'))
 
             # Create the processing layers.
             self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
             self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
+
+            # initialize the heuristic method.
+            self.heuristicCompressionLayers.append(self.heuristicEncodingLayer(inChannel=self.numExpandedSignals, outChannel=self.numSigLiftedChannels))
+            self.heuristicExpansionLayers.append(self.heuristicEncodingLayer(inChannel=self.numCompressedSignals, outChannel=self.numSigLiftedChannels))
 
         # Initialize final models.
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numCompressedSignals)
@@ -61,59 +68,36 @@ class channelEncoding(signalEncoderModules):
     # ----------------------- Signal Encoding Methods ---------------------- #
 
     def compressionAlgorithm(self, inputData):
-        # Learn the initial signal.
-        processedData = self.liftingCompressionModel(inputData)
-        # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
-
-        # For each encoder model.
-        for modelInd in range(self.numSigEncodingLayers):
-            # Keep attention to the initial signal.
-            processedData = torch.cat(tensors=(inputData, processedData), dim=1)
-            # processedData dimension: batchSize, numSigLiftedChannels + numExpandedSignals, signalDimension
-
-            # Apply the neural operator and the skip connection.
-            processedData = checkpoint(self.compressedNeuralOperatorLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
-
-            # Apply non-linearity to the processed data.
-            processedData = checkpoint(self.compressedProcessingLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
-
-        # Learn the final signal.
-        processedData = self.projectingCompressionModel(processedData)
-        # processedData dimension: batchSize, numCompressedSignals, signalDimension
-
-        # Add the heuristic model as a baseline.
-        processedData = processedData + self.heuristicCompressionModel(inputData)
-        # processedData dimension: batchSize, numCompressedSignals, signalDimension
-
-        return processedData
+        return self.applyChannelEncoding(inputData, self.heuristicCompressionModel, self.liftingCompressionModel, self.compressedNeuralOperatorLayers, self.compressedProcessingLayers, self.heuristicCompressionLayers, self.projectingCompressionModel)
 
     def expansionAlgorithm(self, inputData):
+        return self.applyChannelEncoding(inputData, self.heuristicExpansionModel, self.liftingExpansionModel, self.expandedNeuralOperatorLayers, self.expandedProcessingLayers, self.heuristicExpansionLayers, self.projectingExpansionModel)
+
+    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, heuristicLayers, projectingModel):
         # Learn the initial signal.
-        processedData = self.liftingExpansionModel(inputData)
+        processedData = liftingModel(inputData)
         # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
-            # Keep attention to the initial signal.
-            processedData = torch.cat(tensors=(inputData, processedData), dim=1)
-            # processedData dimension: batchSize, numSigLiftedChannels + numCompressedSignals, signalDimension
-
             # Apply the neural operator and the skip connection.
-            processedData = checkpoint(self.expandedNeuralOperatorLayers[modelInd], processedData, use_reentrant=False)
+            processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(self.expandedProcessingLayers[modelInd], processedData, use_reentrant=False)
+            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
+            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
+
+            # Apply non-linearity to the processed data.
+            processedData = checkpoint(heuristicLayers[modelInd], inputData, use_reentrant=False) + processedData
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.
-        processedData = self.projectingExpansionModel(processedData)
-        # processedData dimension: batchSize, numExpandedSignals, signalDimension
+        processedData = projectingModel(processedData)
+        # processedData dimension: batchSize, numOutputSignals, signalDimension
 
         # Add the heuristic model as a baseline.
-        processedData = processedData + self.heuristicExpansionModel(inputData)
-        # processedData dimension: batchSize, numExpandedSignals, signalDimension
+        processedData = processedData + heuristicModel(inputData)
+        # processedData dimension: batchSize, numOutputSignals, signalDimension
 
         return processedData

@@ -7,8 +7,8 @@ from .waveletNeuralHelpers import waveletNeuralHelpers
 
 class waveletNeuralOperatorLayer(waveletNeuralHelpers):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, wavelet='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
-        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, wavelet, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, independentChannels, skipConnectionProtocol)
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
+        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, independentChannels, skipConnectionProtocol)
 
     def forward(self, inputData, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.

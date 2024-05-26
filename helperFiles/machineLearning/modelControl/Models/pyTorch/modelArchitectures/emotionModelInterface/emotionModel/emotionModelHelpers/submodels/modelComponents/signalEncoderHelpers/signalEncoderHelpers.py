@@ -15,7 +15,7 @@ from .denoiser import denoiser
 
 
 class signalEncoderHelpers(nn.Module):
-    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, debuggingResults=False):
+    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
         super(signalEncoderHelpers, self).__init__()
         # General
         self.numSigEncodingLayers = numSigEncodingLayers          # The number of layers to encode the signals.
@@ -30,10 +30,10 @@ class signalEncoderHelpers(nn.Module):
         assert self.numExpandedSignals - self.numCompressedSignals == 1, "You should only gain 1 channel when expanding or else you may overshoot."
 
         # Initialize signal encoder helper classes.
-        self.channelEncodingInterface = channelEncoding(numCompressedSignals=self.numCompressedSignals, numExpandedSignals=self.numExpandedSignals, expansionFactor=self.expansionFactor, numSigEncodingLayers=numSigEncodingLayers, sequenceBounds=self.sequenceBounds, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
-        self.positionalEncodingInterface = channelPositionalEncoding(sequenceBounds=self.sequenceBounds, debuggingResults=debuggingResults)
-        self.finalVarianceInterface = changeVariance(sequenceBounds=sequenceBounds, debuggingResults=debuggingResults)
-        self.denoiseSignals = denoiser(sequenceBounds=sequenceBounds, debuggingResults=debuggingResults)
+        self.channelEncodingInterface = channelEncoding(waveletType=waveletType, numCompressedSignals=self.numCompressedSignals, numExpandedSignals=self.numExpandedSignals, expansionFactor=self.expansionFactor, numSigEncodingLayers=numSigEncodingLayers, sequenceBounds=self.sequenceBounds, numSigLiftedChannels=numSigLiftedChannels, debuggingResults=debuggingResults)
+        self.positionalEncodingInterface = channelPositionalEncoding(waveletType=waveletType, sequenceBounds=self.sequenceBounds, debuggingResults=debuggingResults)
+        self.finalVarianceInterface = changeVariance(waveletType=waveletType, sequenceBounds=sequenceBounds, debuggingResults=debuggingResults)
+        self.denoiseSignals = denoiser(waveletType=waveletType, sequenceBounds=sequenceBounds, debuggingResults=debuggingResults)
         self.dataInterface = emotionDataInterface
 
     # ----------------------- Signal Pairing Methods ----------------------- #

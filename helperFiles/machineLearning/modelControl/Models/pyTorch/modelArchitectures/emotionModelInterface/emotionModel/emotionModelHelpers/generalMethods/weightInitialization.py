@@ -14,7 +14,7 @@ class weightInitialization:
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-        elif activationMethod == 'boundedExp':
+        elif activationMethod.startswith('boundedExp'):
             if layerType == 'conv':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':

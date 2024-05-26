@@ -59,8 +59,10 @@ class convolutionalHelpers(abnormalConvolutions):
             activationFunction = nn.Tanhshrink()
         elif activationType == 'none':
             activationFunction = nn.Identity()
-        elif activationType == 'boundedExp':
-            activationFunction = boundedExp()
+        elif activationType.startswith('boundedExp'):
+            nonLinearityRegion = int(activationType.split('_')[2]) if '_' in activationType else 2
+            topExponent = int(activationType.split('_')[1]) if '_' in activationType else 0
+            activationFunction = boundedExp(topExponent=topExponent, nonLinearityRegion=nonLinearityRegion)
         elif activationType == 'boundedS':
             activationFunction = boundedS()
         elif activationType == 'PReLU':
@@ -84,11 +86,11 @@ class convolutionalHelpers(abnormalConvolutions):
     # --------------- Standard Convolutional Architectures --------------- #
 
     def convolutionalFilters_semiResNetBlocks(self, numResNets, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D',
-                                              activationType='selu', scalingFactor=1, secondMethodType='pointwise', finalDim=None):
+                                              activationType='selu', scalingFactor=1, secondMethodType='pointwise', finalDim=None, addBias=True, useSwitchActivation=False):
 
         if secondMethodType == 'pointwise':
             secondMethod = self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations,
-                                                           groups=groups, strides=strides, convType=secondMethodType, activationType=activationType, numLayers=None),
+                                                           groups=groups, strides=strides, convType=secondMethodType, activationType=activationType, numLayers=None, addBias=False, useSwitchActivation=useSwitchActivation),
         elif secondMethodType == 'upsample':
             secondMethod = nn.Upsample(size=finalDim, mode='linear', align_corners=True)
         else:
@@ -100,13 +102,13 @@ class convolutionalHelpers(abnormalConvolutions):
                 firstModule=nn.Sequential(
                     # Convolution architecture: feature engineering
                     self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations,
-                                                    groups=groups, strides=strides, convType=convType, activationType=activationType, numLayers=None),
+                                                    groups=groups, strides=strides, convType=convType, activationType=activationType, numLayers=None, addBias=addBias, useSwitchActivation=useSwitchActivation),
                 ), secondModule=secondMethod, scalingFactor=scalingFactor
             ))
 
         return nn.Sequential(*layers)
 
-    def convolutionalFilters_resNetBlocks(self, numResNets, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, useSwitchActivation=False):
+    def convolutionalFilters_resNetBlocks(self, numResNets, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, addBias=True, useSwitchActivation=False):
         if not isinstance(numChannels, list):
             assert numLayers is not None
         else:
@@ -116,12 +118,12 @@ class convolutionalHelpers(abnormalConvolutions):
         for i in range(numResNets):
             layers.append(ResNet(module=nn.Sequential(
                 self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations, groups=groups, strides=strides,
-                                                convType=convType, activationType=activationType, numLayers=numLayers, useSwitchActivation=useSwitchActivation),
+                                                convType=convType, activationType=activationType, numLayers=numLayers, addBias=addBias, useSwitchActivation=useSwitchActivation),
             ), numCycles=1))
 
         return nn.Sequential(*layers)
 
-    def convolutionalFiltersBlocks(self, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, useSwitchActivation=False):
+    def convolutionalFiltersBlocks(self, numBlocks, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, addBias=True, useSwitchActivation=False):
         if not isinstance(kernel_sizes, list): kernel_sizes = [kernel_sizes] * numBlocks
         if not isinstance(dilations, list): dilations = [dilations] * numBlocks
         if not isinstance(strides, list): strides = [strides] * numBlocks
@@ -129,12 +131,12 @@ class convolutionalHelpers(abnormalConvolutions):
 
         layers = []
         for i in range(numBlocks):
-            layers.append(self.convolutionalFilters(numChannels=numChannels, kernel_sizes=kernel_sizes[i], dilations=dilations[i], groups=groups[i], strides=strides[i], convType=convType, activationType=activationType, numLayers=numLayers,
-                                                    useSwitchActivation=useSwitchActivation))
+            layers.append(self.convolutionalFilters(numChannels=numChannels, kernel_sizes=kernel_sizes[i], dilations=dilations[i], groups=groups[i], strides=strides[i], convType=convType,
+                                                    activationType=activationType, numLayers=numLayers, addBias=addBias, useSwitchActivation=useSwitchActivation))
 
         return nn.Sequential(*layers)
 
-    def convolutionalFilters(self, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, useSwitchActivation=False):
+    def convolutionalFilters(self, numChannels, kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='selu', numLayers=None, addBias=True, useSwitchActivation=False):
         # Assert the integrity of the inputs.
         assert isinstance(numChannels, list) or numLayers is not None, f"If numLayers is not provided, numChannels must be a list: {numChannels} {numLayers}"
 
@@ -169,12 +171,12 @@ class convolutionalHelpers(abnormalConvolutions):
             # If adding a standard convolutional layer.
             if convType in ['conv1D', 'pointwise', 'depthwise']:
                 layer = nn.Conv1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
-                                  padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='reflect', bias=True)
+                                  padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='reflect', bias=addBias)
 
             # If adding a transposed convolutional layer.
             elif convType == 'transConv1D':
                 layer = nn.ConvTranspose1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
-                                           padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='zeros', bias=True, output_padding=0)
+                                           padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='zeros', bias=addBias, output_padding=0)
 
             else:
                 # If the convolutional type is not recognized.

@@ -12,7 +12,7 @@ from ....._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
@@ -27,6 +27,7 @@ class signalEncoderModel(globalModel):
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence lengths to consider.
         self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider.
+        self.waveletType = waveletType  # The type to use during the signal encoder.
 
         # Method to converge to the final number of signals.
         self.encodeSignals = generalSignalEncoding(
@@ -35,6 +36,7 @@ class signalEncoderModel(globalModel):
             numExpandedSignals=self.numExpandedSignals,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
+            waveletType=self.waveletType,
         )
 
         # Initialize helper classes.
@@ -135,7 +137,6 @@ class signalEncoderModel(globalModel):
 
         # Allow the model to adjust the incoming signals
         encodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(initialEncodedData)
-        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)  # Smooth over the encoding space.
         # adjustedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # ---------------------- Signal Reconstruction --------------------- #
@@ -195,7 +196,7 @@ class signalEncoderModel(globalModel):
             if 0.01 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
 
-            if self.plotDataFlow and random.random() < 0.015:
+            if self.plotDataFlow and random.random() < 0.02:
                 self.plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
         return encodedData, denoisedReconstructedData, predictedIndexProbabilities, signalEncodingLoss
@@ -218,6 +219,7 @@ class signalEncoderModel(globalModel):
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False):
         # Undo what was done in the initial adjustment.
+        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)  # Smooth over the encoding space.
         initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(encodedData)
 
         # Undo the signal encoding.
@@ -253,33 +255,39 @@ class signalEncoderModel(globalModel):
 
     @staticmethod
     def plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
+        fig = plt.figure()
         plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2, label="Initial Data")
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
         plt.title("Positional Encoding"); plt.legend()
-        globalPlottingProtocols.clearFigure()
+        globalPlottingProtocols.clearFigure(fig=fig)
 
+        fig = plt.figure()
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
         plt.title("Signal Encoding"); plt.legend()
-        globalPlottingProtocols.clearFigure()
+        globalPlottingProtocols.clearFigure(fig=fig)
 
+        fig = plt.figure()
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
         plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2, label="Variance Adjusted Data")
         plt.title("Variance Adjustment"); plt.legend()
-        globalPlottingProtocols.clearFigure()
+        globalPlottingProtocols.clearFigure(fig=fig)
 
+        fig = plt.figure()
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
         plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5, label="Encoded Data (after variance)")
         plt.title("Signal Decoding"); plt.legend()
-        globalPlottingProtocols.clearFigure()
+        globalPlottingProtocols.clearFigure(fig=fig)
 
+        fig = plt.figure()
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
         plt.plot(decodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, alpha=0.5, label="Decoded Data (Backward Path)")
         plt.title("Position Decoding"); plt.legend()
-        globalPlottingProtocols.clearFigure()
+        globalPlottingProtocols.clearFigure(fig=fig)
 
+        fig = plt.figure()
         plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2, label="Initial Data")
         plt.plot(reconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.5, label="Reconstructed Data")
         plt.plot(denoisedReconstructedData[0][0].cpu().detach().numpy(), 'k', linewidth=2, alpha=0.25, label="Denoised Reconstructed Data")
         plt.title("Final Denoising"); plt.legend()
-        globalPlottingProtocols.clearFigure()
+        globalPlottingProtocols.clearFigure(fig=fig)

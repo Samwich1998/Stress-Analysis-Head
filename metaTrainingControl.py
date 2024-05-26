@@ -121,9 +121,9 @@ if __name__ == "__main__":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
                 accelerator.gradient_accumulation_steps = 16
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 2:
-                accelerator.gradient_accumulation_steps = 16
+                accelerator.gradient_accumulation_steps = 8
             if args.numSigLiftedChannels <= 16 and args.numSigEncodingLayers <= 2:
-                accelerator.gradient_accumulation_steps = 16
+                accelerator.gradient_accumulation_steps = 4
 
         print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
 

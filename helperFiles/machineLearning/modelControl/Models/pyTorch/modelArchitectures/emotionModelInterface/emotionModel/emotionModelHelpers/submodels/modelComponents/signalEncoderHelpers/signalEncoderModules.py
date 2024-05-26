@@ -4,7 +4,7 @@ import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import boundedExp
-from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, addModules, ResNet
+from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, addModules
 
 
 class signalEncoderModules(convolutionalHelpers):
@@ -16,12 +16,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralWeightIndependentModel(self, numInputFeatures=1, numOutputFeatures=1):
         return nn.Sequential(
-            addModules(
-                firstModule=ResNet(module=self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'), numCycles=1),
-                secondModule=self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
-                secondModuleScale=-1,
-                scalingFactor=1,
-            ),
+            self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, finalFrequencyDim=46):
@@ -83,6 +78,9 @@ class signalEncoderModules(convolutionalHelpers):
 
     def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
         firstModule = nn.Sequential(
+            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
+            boundedExp(),
+
             self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numFeatures), activationMethod='boundedExp', layerType='fc'),
             boundedExp(),
 
@@ -165,7 +163,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     @staticmethod
     def getActivationMethod_denoiser():
-        return "boundedExp"
+        return "none"
 
     @staticmethod
     def smoothingKernel(kernelSize=3):

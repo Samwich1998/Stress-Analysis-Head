@@ -125,6 +125,7 @@ class signalEncoderModel(globalModel):
 
         # Predict the positional encoding index.
         predictedIndexProbabilities = self.encodeSignals.positionalEncodingInterface.predictSignalIndex(positionEncodedData)
+        predictedIndexProbabilities = self.encodeSignals.denoiseSignals.applySmoothing_forPosPreds(predictedIndexProbabilities)  # Smooth over the encoding space.
         # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
 
         # Compress the signal space into numEncodedSignals.

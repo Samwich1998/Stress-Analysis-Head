@@ -65,7 +65,7 @@ class waveletNeuralHelpers(signalEncoderModules):
 
         # Assert the validity of the parameters under independent channels.
         if self.independentChannels:
-            assert self.skipConnectionProtocol in ["none", "independentCNN"], "You cannot have a skip connection dependant on channel info if channels are independent!"
+            assert self.skipConnectionProtocol in ["none", "identity", "independentCNN"], "You cannot have a skip connection dependant on channel info if channels are independent!"
             assert self.numOutputSignals == 1, "The number of output channel is irrelevant. Please use 1."
             assert self.numInputSignals == 1, "The number of input channel is irrelevant. Please use 1."
 

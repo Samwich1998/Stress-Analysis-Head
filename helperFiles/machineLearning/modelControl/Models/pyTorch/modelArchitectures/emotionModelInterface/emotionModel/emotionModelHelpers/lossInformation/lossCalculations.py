@@ -25,6 +25,9 @@ class lossCalculations:
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.model = model
 
+        # Positional encoder information.
+        self.maxNumEncodedSignals = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals  # The number of classes in the positional encoder.
+
         # Initialize helper classes.
         self.dataInterface = emotionDataInterface()
         self.modelHelpers = modelHelpers()
@@ -39,7 +42,7 @@ class lossCalculations:
         # Initialize the loss function WITHOUT the class weights.
         self.activityClassificationLoss = pytorchLossMethods(lossType=self.activityClass_lossType, class_weights=None).loss_fn
         self.emotionClassificationLoss = pytorchLossMethods(lossType=self.emotionDist_lossType, class_weights=None).loss_fn
-        self.positionalEncoderLoss = pytorchLossMethods(lossType="CrossEntropyLoss", class_weights=None).loss_fn
+        self.positionalEncoderLoss = pytorchLossMethods(lossType="CrossEntropyLoss", class_weights=torch.linspace(start=1, end=self.maxNumEncodedSignals, steps=self.maxNumEncodedSignals, device=accelerator.device)).loss_fn
         self.reconstructionLoss = pytorchLossMethods(lossType="MeanSquaredError", class_weights=None).loss_fn
 
     # ---------------------------------------------------------------------- #

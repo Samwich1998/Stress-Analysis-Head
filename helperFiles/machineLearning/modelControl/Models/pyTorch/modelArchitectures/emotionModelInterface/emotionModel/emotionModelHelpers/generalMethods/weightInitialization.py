@@ -19,6 +19,9 @@ class weightInitialization:
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+        elif activationMethod == 'identity':
+            print("Probably not a good idea to use identity activation for initialization.")
+            self.identityFC(modelParam)
         else:
             modelParam.reset_parameters()
 
@@ -41,6 +44,17 @@ class weightInitialization:
                 param.data = signalEncoderModules.applySmoothing(param.data, smoothingKernel)
 
     # -------------------------- Layer Weights -------------------------- #
+
+    @staticmethod
+    def identityFC(layer):
+        nn.init.eye_(layer.weight)
+        nn.init.zeros_(layer.bias)
+
+        with torch.no_grad():
+            # Adding small random perturbation to the identity weights
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(layer.weight)
+            perturbation = torch.randn_like(layer.weight) * (1 / fan_in)
+            layer.weight.add_(perturbation)
 
     @staticmethod
     def initialize_weights_uniform(m):

@@ -19,13 +19,13 @@ class changeVariance(signalEncoderModules):
         self.mode = 'zero'             # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.
-        self.forwardNeuralOperatorVar = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', independentChannels=True, skipConnectionProtocol='independentCNN')
-        self.reverseNeuralOperatorVar = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', independentChannels=True, skipConnectionProtocol='independentCNN')
+        self.forwardNeuralOperatorVar = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', independentChannels=True, skipConnectionProtocol='identity')
+        self.reverseNeuralOperatorVar = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, wavelet=self.wavelet, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', independentChannels=True, skipConnectionProtocol='identity')
 
     def adjustSignalVariance(self, inputData):
         # Apply the neural operator and the skip connection.
-        return self.forwardNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None) + inputData
+        return self.forwardNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)
 
     def unAdjustSignalVariance(self, inputData):
         # Apply the neural operator and the skip connection.
-        return self.reverseNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None) + inputData
+        return self.reverseNeuralOperatorVar(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)

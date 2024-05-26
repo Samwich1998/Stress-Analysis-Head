@@ -9,10 +9,9 @@ from .signalEncoderModules import signalEncoderModules
 
 
 class channelPositionalEncoding(signalEncoderModules):
-    def __init__(self, waveletType, sequenceBounds=(90, 300), debuggingResults=False):
+    def __init__(self, waveletType, sequenceBounds=(90, 300)):
         super(channelPositionalEncoding, self).__init__()
         # General parameters.
-        self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
 
         # Positional encoding parameters.
@@ -21,13 +20,15 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Neural operator parameters.
         self.activationMethod = self.getActivationMethod_posEncoder()
-        self.numDecompositions = 2     # Number of decompositions for the wavelet transform.
+        self.numDecompositions = 1     # Number of decompositions for the wavelet transform.
         self.waveletType = waveletType  # wavelet type for the waveletType transform: bior, db3, dmey
         self.mode = 'zero'             # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.
-        self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='identity')
-        self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=True, skipConnectionProtocol='identity')
+        self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
+                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', useCNN=False, independentChannels=True, skipConnectionProtocol='identity')
+        self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
+                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', useCNN=False, independentChannels=True, skipConnectionProtocol='identity')
         self.lowFrequencyShape = self.learnNeuralOperatorLayers.lowFrequencyShape
 
         # A list of parameters to encode each signal.
@@ -74,8 +75,11 @@ class channelPositionalEncoding(signalEncoderModules):
         return positionEncodedData
 
     def compileStampEncoding(self, inputData, encodingStamp):
-        # Set up the variables for signal encoding.
+        # Extract the input data dimensions.
         batchSize, numSignals, signalDimension = inputData.size()
+
+        # Set up the variables for signal encoding.
+        numStampsUsed = torch.zeros(numSignals, device=inputData.device)
         finalStamp = torch.zeros((batchSize, numSignals, self.lowFrequencyShape), device=inputData.device)
 
         # Extract the size of the input parameter.
@@ -86,20 +90,23 @@ class channelPositionalEncoding(signalEncoderModules):
         binary_encoding = signalInds[:, None].bitwise_and(2 ** bitInds).bool()
         # binary_encoding dim: numSignals, numEncodingStamps
 
-        numStampsUsed = 0
         # For each stamp encoding
         for stampInd in range(self.numEncodingStamps):
-            # Smooth the encoding stamp.
-            currentStamp = encodingStamp[stampInd]
-
             # Check each signal if it is using this specific encoding.
-            usingStampEncoding = binary_encoding[:, stampInd:stampInd + 1]
-            encodingVector = usingStampEncoding.float() * currentStamp
+            usingStampEncoding = binary_encoding[:, stampInd:stampInd + 1].float()
+            encodingVector = usingStampEncoding * encodingStamp[stampInd]
             # encodingVector dim: numSignals, lowFrequencyShape
 
+            # Keep track of the stamps added.
+            numStampsUsed = numStampsUsed + usingStampEncoding.squeeze(1)
+
             # Add the stamp encoding to all the signals in all the batches.
-            finalStamp = finalStamp + (stampInd % 2 == 0) * encodingVector.unsqueeze(0)
+            finalStamp = finalStamp + encodingVector.unsqueeze(0)
             # finalStamp dim: batchSize, numSignals, lowFrequencyShape. Note, the unused signals are essentially zero-padded.
+
+        # Normalize the final stamp.
+        finalStamp = finalStamp / numStampsUsed.clamp(min=1).unsqueeze(0).unsqueeze(-1)
+        # finalStamp dim: batchSize, numSignals, lowFrequencyShape
 
         return finalStamp
 

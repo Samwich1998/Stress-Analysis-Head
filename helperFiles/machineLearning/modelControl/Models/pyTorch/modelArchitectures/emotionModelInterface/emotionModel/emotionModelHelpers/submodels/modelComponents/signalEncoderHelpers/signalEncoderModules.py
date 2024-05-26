@@ -33,6 +33,20 @@ class signalEncoderModules(convolutionalHelpers):
 
         return parameter
 
+    def neuralWeightCNN(self, inChannel=1, outChannel=2):
+        return nn.Sequential(
+            # Convolution architecture: feature engineering
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
+        )
+
+    def independentNeuralWeightCNN(self, inChannel=2, outChannel=1):
+        assert inChannel == outChannel, "The number of input and output signals must be equal."
+
+        return independentModelCNN(
+            module=self.neuralWeightCNN(inChannel=1, outChannel=1),
+            useCheckpoint=False,
+        )
+
     @staticmethod
     def neuralBiasParameters(numChannels=2):
         parameter = nn.Parameter(torch.zeros((1, numChannels, 1)))
@@ -59,13 +73,11 @@ class signalEncoderModules(convolutionalHelpers):
     def independentSkipConnectionEncoding(self, inChannel=2, outChannel=1):
         assert inChannel == outChannel == 1, "The number of input and output signals must be 1."
 
-        return nn.Sequential(
-            independentModelCNN(
-                useCheckpoint=False,
-                module=nn.Sequential(
-                    # Convolution architecture: feature engineering
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True)
-                ),
+        return independentModelCNN(
+            useCheckpoint=False,
+            module=nn.Sequential(
+                # Convolution architecture: feature engineering
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True)
             ),
         )
 

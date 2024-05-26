@@ -171,9 +171,7 @@ class compileModelDataHelpers:
 
             # Standardize the signals
             if self.standardizeSignals:
-                # standardizeClass = standardizeData(data, axisDimension=1, threshold=0)
-                # data = standardizeClass.standardize(data)
-                data = minMaxScale_noInverse(data, scale=2)
+                data = minMaxScale_noInverse(data, scale=self.modelParameters.getSignalMinMaxScale())
 
             # This is good data
             featureData.append(data.tolist())
@@ -343,8 +341,7 @@ class compileModelDataHelpers:
 
         return finalData, allLabels[goodBatchInds], subjectInds[goodBatchInds]
 
-    @staticmethod
-    def _removeBadSignals(allSignalData, featureNames):
+    def _removeBadSignals(self, allSignalData, featureNames):
         """
         Purpose: Remove poor signals from ALL data batches.
         --------------------------------------------
@@ -353,19 +350,20 @@ class compileModelDataHelpers:
         """
         # Initialize data holders.
         goodFeatureInds = set(np.arange(0, len(featureNames)))
-        assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), allSignalData
+        assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), "Feature names do not match data dimensions."
 
         # For each set of signals.
-        for dataInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[dataInd])
+        for batchInd in range(len(allSignalData)):
+            signalData = np.asarray(allSignalData[batchInd])
+            # signalData dimension: numSignals, sequenceLength
 
             # Calculate time-series statistics for each signal.
-            signalStandardDeviations = np.std(signalData, axis=1)
+            signalSNRs = self.calculate_snr(signalData)
 
             # Remove any feature that doesn't vary enough.
-            badIndices = np.where(signalStandardDeviations == 0)[0]
+            badIndices = np.where(signalSNRs == 0)[0]
             goodFeatureInds.difference_update(badIndices)
-        # Convert the set into a sorted list ofn indices.
+        # Convert the set into a sorted list of indices.
         goodFeatureInds = np.array(list(goodFeatureInds))
         goodFeatureInds.sort()
 
@@ -380,6 +378,24 @@ class compileModelDataHelpers:
         featureNames = featureNames[goodFeatureInds]
 
         return finalData, featureNames
+
+    @staticmethod
+    def calculate_snr(signalData):
+        # Standardize the signals
+        scaledData = minMaxScale_noInverse(signalData, scale=1)
+
+        # Calculate the signal-to-noise ratio for each signal.
+        signal_power = np.mean(scaledData ** 2, axis=-1)
+        noise_power = np.var(scaledData - np.mean(scaledData, axis=-1, keepdims=True), axis=-1)
+
+        # Handle the case when noise_power == 0 (avoid division by zero)
+        signal_power[noise_power == 0] = 1  # Prevent division by zero
+        noise_power[noise_power == 0] = 1  # Prevent division by zero
+
+        # Calculate the signal-to-noise ratio for each signal.
+        snr_values = 10 * np.log10(signal_power / noise_power)
+
+        return snr_values
 
     # ---------------------------------------------------------------------- #
     # -------------------------- Data Organization ------------------------- #

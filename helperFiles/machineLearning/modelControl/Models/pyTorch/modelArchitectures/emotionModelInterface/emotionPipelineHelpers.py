@@ -44,9 +44,12 @@ class emotionPipelineHelpers:
         self.featureNames = featureNames  # The names of each signal in the model. Dim: numSignals
         self.datasetName = datasetName  # The name of the specific dataset being used in this model (case, wesad, etc.)
 
+        # Store model parameters.
+        signalMinMaxScale = modelParameters.getSignalMinMaxScale()
+
         # Initialize the emotion model.
         if modelName == "emotionModel":
-            self.model = emotionModelHead(submodel, accelerator, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
+            self.model = emotionModelHead(submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
                                           emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults)
         # Assert that the model has been initialized.
         assert hasattr(self, 'model'), f"Unknown Model Type Requested: {modelName}"

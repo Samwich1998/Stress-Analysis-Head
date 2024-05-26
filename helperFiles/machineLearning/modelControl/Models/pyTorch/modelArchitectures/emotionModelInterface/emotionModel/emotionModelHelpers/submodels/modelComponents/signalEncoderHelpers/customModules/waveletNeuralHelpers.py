@@ -1,8 +1,8 @@
-# PyTorch
-import math
-import torch
-from torch import nn
+# General
 from pytorch_wavelets import DWT1DForward, DWT1DInverse
+from torch import nn
+import torch
+import pywt
 
 # Import machine learning files
 from ..signalEncoderModules import signalEncoderModules
@@ -37,9 +37,11 @@ from ..signalEncoderModules import signalEncoderModules
 class waveletNeuralHelpers(signalEncoderModules):
 
     def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none",
-                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
+                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useCNN=False, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
+        self.encodeHighFrequencyProtocol = encodeHighFrequencyProtocol  # The high-frequency encoding protocol to use.
+        self.encodeLowFrequencyProtocol = encodeLowFrequencyProtocol  # The low-frequency encoding protocol to use.
         self.skipConnectionProtocol = skipConnectionProtocol  # The skip connection protocol to use.
         self.independentChannels = independentChannels  # Whether to treat each channel independently.
         self.numDecompositions = numDecompositions  # Maximum number of decompositions to apply.
@@ -48,26 +50,16 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
         self.addBiasTerm = addBiasTerm  # Whether to add bias terms to the output.
         self.waveletType = waveletType  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
+        self.useCNN = useCNN  # Whether to use a convolutional neural network for the decomposition.
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
+        # Assert that the parameters are valid.
+        self.assertValidParams()
 
-        # Assert that the protocol is valid.
-        assert encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'none'], "The high-frequency encoding protocol must be 'highFreq', 'allFreqs', 'none'."
-        assert encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'none'], "The low-frequency encoding protocol must be 'lowFreq', 'allFreqs', 'none'."
         # Decide on the frequency encoding protocol.
         self.encodeHighFrequencies = encodeHighFrequencyProtocol in ['highFreq', 'allFreqs']  # Whether to encode the high frequencies.
         self.encodeLowFrequency = encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs']  # Whether to encode the low-frequency signal.
         self.encodeLowFrequencyFull = encodeHighFrequencyProtocol == 'allFreqs'  # Whether to encode the high frequencies into the low-frequency signal.
         self.encodeHighFrequencyFull = encodeLowFrequencyProtocol == 'allFreqs'  # Whether to encode the low-frequency signal into the high-frequency signal.
-
-        # Verify that the number of decomposition layers is appropriate.
-        maximumNumDecompositions = math.floor(math.log(sequenceBounds[0]) / math.log(2))  # The sequence length can be up to 2**numDecompositions.
-        assert self.numDecompositions < maximumNumDecompositions, f'The number of decompositions must be less than {maximumNumDecompositions}.'
-
-        # Assert the validity of the parameters under independent channels.
-        if self.independentChannels:
-            assert self.skipConnectionProtocol in ["none", "identity", "independentCNN"], "You cannot have a skip connection dependant on channel info if channels are independent!"
-            assert self.numOutputSignals == 1, "The number of output channel is irrelevant. Please use 1."
-            assert self.numInputSignals == 1, "The number of input channel is irrelevant. Please use 1."
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)
@@ -79,78 +71,39 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.lowFrequencyShape = lowFrequency.size(-1)  # Optimally: maxSequenceLength / numDecompositions**2
 
         # Initialize wavelet neural operator parameters.
+        self.activationFunction = self.getActivationMethod(activationType=activationMethod, useSwitchActivation=True)  # Activation function for the Fourier neural operator.
+        if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
         self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.
         self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)  # Skip connection model for the Fourier neural operator.
-        if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
-        self.activationFunction = self.getActivationMethod(activationType=activationMethod, useSwitchActivation=True)  # Activation function for the Fourier neural operator.
 
-    def getSkipConnectionProtocol(self, skipConnectionProtocol):
-        # Decide on the skip connection protocol.
-        if skipConnectionProtocol == 'none':
-            skipConnectionModel = self.zero
-        elif skipConnectionProtocol == 'identity':
-            skipConnectionModel = nn.Identity()
-        elif skipConnectionProtocol == 'singleCNN':
-            skipConnectionModel = self.skipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
-        elif skipConnectionProtocol == 'resNetCNN':
-            skipConnectionModel = self.resnetSkipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
-        elif skipConnectionProtocol == 'independentCNN':
-            skipConnectionModel = self.independentSkipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
-        else:
-            raise ValueError("The skip connection protocol must be in ['none', 'identity', 'CNN'].")
+    def assertValidParams(self):
+        # Assert that the frequency protocol is valid.
+        assert self.encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'none'], "The high-frequency encoding protocol must be 'highFreq', 'allFreqs', 'none'."
+        assert self.encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'none'], "The low-frequency encoding protocol must be 'lowFreq', 'allFreqs', 'none'."
 
-        return skipConnectionModel
+        if self.useCNN:
+            # Assert the validity of the CNN model.
+            assert self.encodeHighFrequencyProtocol != 'allFreqs', "Encoding all frequencies with a CNN model is not supported."
+            assert self.encodeLowFrequencyProtocol != 'allFreqs', "Encoding all frequencies with a CNN model is not supported."
+        assert not self.useCNN, "Convolutions in the wavelet domain is not recommended. Edit this if you disagree."
 
-    def getHighFrequencyWeights(self):
-        if self.encodeHighFrequencies:
-            highFrequenciesWeights = nn.ParameterList()
-            for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
-                if self.independentChannels:
-                    # Initialize the high-frequency weights to learn how to change.
-                    highFrequenciesWeights.append(self.neuralWeightIndependentModel(numInputFeatures=self.highFrequenciesShapes[highFrequenciesInd], numOutputFeatures=self.highFrequenciesShapes[highFrequenciesInd]))
-                else:
-                    # Initialize the high-frequency weights to learn how to change the channels.
-                    highFrequenciesWeights.append(self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
-        else:
-            highFrequenciesWeights = None
+        # Verify that the number of decomposition layers is appropriate.
+        maximumNumDecompositions = self.max_decompositions(signal_length=self.sequenceBounds[0], wavelet_name=self.waveletType)
+        assert self.numDecompositions <= maximumNumDecompositions, f'The number of decompositions must be less than or equal to {maximumNumDecompositions}.'
 
-        if self.encodeHighFrequencyFull:
-            fullHighFrequencyWeights = nn.ParameterList()
-            for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
-                if self.independentChannels:
-                    # Initialize the high-frequency weights to learn how to change.
-                    highFrequenciesWeights.append(self.neuralWeightIndependentModel(numInputFeatures=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd], numOutputFeatures=self.highFrequenciesShapes[highFrequenciesInd]))
-                else:
-                    # Initialize the frequency weights to learn how to change the channels.
-                    fullHighFrequencyWeights.append(self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd], finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
-        else:
-            fullHighFrequencyWeights = None
+        if self.independentChannels:
+            # Assert the validity of the parameters under independent channels.
+            assert self.skipConnectionProtocol in ["none", "identity", "independentCNN"], "You cannot have a skip connection dependant on channel info if channels are independent!"
+            assert self.numOutputSignals == 1, "The number of output channel is irrelevant. Please use 1."
+            assert self.numInputSignals == 1, "The number of input channel is irrelevant. Please use 1."
 
-        return highFrequenciesWeights, fullHighFrequencyWeights
-
-    def getLowFrequencyWeights(self):
-        if self.encodeLowFrequency:
-            if self.independentChannels:
-                # Initialize the low-frequency weights to learn how to change.
-                lowFrequencyWeights = self.neuralWeightIndependentModel(numInputFeatures=self.lowFrequencyShape, numOutputFeatures=self.lowFrequencyShape)
-            else:
-                # Initialize the low-frequency weights to learn how to change the channels.
-                lowFrequencyWeights = self.neuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, finalFrequencyDim=self.lowFrequencyShape)
-        else:
-            lowFrequencyWeights = None
-
-        if self.encodeLowFrequencyFull:
-            if self.independentChannels:
-                # Initialize the low-frequency weights to learn how to change.
-                fullLowFrequencyWeights = self.neuralWeightIndependentModel(numInputFeatures=self.lowFrequencyShape + sum(self.highFrequenciesShapes), numOutputFeatures=self.lowFrequencyShape)
-            else:
-                # Initialize the frequency weights to learn how to change the channels.
-                fullLowFrequencyWeights = self.neuralCombinationWeightParameters(inChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + sum(self.highFrequenciesShapes), finalFrequencyDim=self.lowFrequencyShape)
-        else:
-            fullLowFrequencyWeights = None
-
-        return lowFrequencyWeights, fullLowFrequencyWeights
+    @staticmethod
+    def max_decompositions(signal_length, wavelet_name):
+        wavelet = pywt.Wavelet(wavelet_name)
+        filter_length = len(wavelet.dec_lo)  # Decomposition low-pass filter length
+        max_level = torch.floor(torch.log2(torch.tensor(signal_length / (filter_length - 1), dtype=torch.float32))).int()
+        return max_level.item()
 
     @staticmethod
     def zero(x):

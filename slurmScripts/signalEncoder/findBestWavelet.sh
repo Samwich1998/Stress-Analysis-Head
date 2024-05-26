@@ -3,7 +3,6 @@
 waveletTypes=( \
     'bior1.1' 'bior1.3' 'bior1.5' 'bior2.2' 'bior2.4' 'bior2.6' 'bior2.8' \
     'bior3.1' 'bior3.3' 'bior3.5' 'bior3.7' 'bior3.9' 'bior4.4' 'bior5.5' 'bior6.8' \
-    'cgau1' 'cgau2' 'cgau3' 'cgau4' 'cgau5' 'cgau6' 'cgau7' 'cgau8' 'cmor' \
     'coif1' 'coif2' 'coif3' 'coif4' 'coif5' 'coif6' 'coif7' 'coif8' 'coif9' 'coif10' \
     'coif11' 'coif12' 'coif13' 'coif14' 'coif15' 'coif16' 'coif17' \
     'db1' 'db2' 'db3' 'db4' 'db5' 'db6' 'db7' 'db8' 'db9' 'db10' \

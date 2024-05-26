@@ -134,7 +134,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         self.modelHelpers.assertVariableIntegrity(encodedData, variableName="encoded data", assertGradient=False)
 
                         # Calculate the error in signal compression (signal encoding loss).
-                        signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalStandardDeviationLoss, positionalEncodingTrainingLoss, signalEncodingTrainingLayerLoss \
+                        signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalMinMaxLoss, positionalEncodingTrainingLoss, signalEncodingTrainingLayerLoss \
                             = self.organizeLossInfo.calculateSignalEncodingLoss(initialSignalData, encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss, batchTrainingMask, reconstructionIndex)
                         if signalReconstructedLoss.item() == 0: self.accelerator.print("Not useful\n\n\n\n\n\n"); continue
 
@@ -144,17 +144,17 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.1 < encodedSignalStandardDeviationLoss:
-                            finalLoss = finalLoss + 0.5*encodedSignalStandardDeviationLoss
+                        if 0.2 < encodedSignalMinMaxLoss:
+                            finalLoss = finalLoss + encodedSignalMinMaxLoss
                         if 0.01 < signalEncodingTrainingLayerLoss:
-                            finalLoss = finalLoss + 0.2*signalEncodingTrainingLayerLoss
+                            finalLoss = finalLoss + 0.25*signalEncodingTrainingLayerLoss
                         if 0.1 < encodedSignalMeanLoss:
-                            finalLoss = finalLoss + 0.5*encodedSignalMeanLoss
+                            finalLoss = finalLoss + encodedSignalMeanLoss
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * finalLoss + positionalEncodingTrainingLoss
 
                         # Update the user.
-                        self.accelerator.print("Final-Recon-Mean-Std-PE-Layer", finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalStandardDeviationLoss.item(), positionalEncodingTrainingLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
+                        self.accelerator.print("Final-Recon-Mean-MinMax-PE-Layer", finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalMinMaxLoss.item(), positionalEncodingTrainingLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
 
                     # Train the autoencoder
                     elif submodel == "autoencoder":
@@ -177,7 +177,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         self.modelHelpers.assertVariableIntegrity(compressedData, variableName="compressed data", assertGradient=False)
 
                         # Calculate the error in signal reconstruction (autoencoder loss).
-                        encodedReconstructedLoss, compressedMeanLoss, compressedStandardDeviationLoss, autoencoderTrainingLayerLoss = \
+                        encodedReconstructedLoss, compressedMeanLoss, compressedMinMaxLoss, autoencoderTrainingLayerLoss = \
                             self.organizeLossInfo.calculateAutoencoderLoss(encodedData, compressedData, reconstructedEncodedData, autoencoderLayerLoss, batchTrainingMask, reconstructionIndex)
                         # Calculate the error in signal reconstruction (encoding loss).
                         signalReconstructedLoss = self.organizeLossInfo.signalEncodingLoss(initialSignalData, denoisedDoubleReconstructedData).mean(dim=2).mean(dim=1).mean()
@@ -188,8 +188,8 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = encodedReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.1 < compressedStandardDeviationLoss:
-                            finalLoss = finalLoss + 0.1 * compressedStandardDeviationLoss
+                        if 0.1 < compressedMinMaxLoss:
+                            finalLoss = finalLoss + 0.1 * compressedMinMaxLoss
                         if 0.01 < autoencoderTrainingLayerLoss:
                             finalLoss = finalLoss + 0.5 * autoencoderTrainingLayerLoss
                         if 0.1 < compressedMeanLoss:
@@ -197,7 +197,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * (finalLoss + compressionFactorSE * signalReconstructedLoss)
 
                         # Update the user.
-                        self.accelerator.print(finalLoss.item(), encodedReconstructedLoss.item(), compressedMeanLoss.item(), compressedStandardDeviationLoss.item(), autoencoderTrainingLayerLoss.item(), signalReconstructedLoss.item(), "\n")
+                        self.accelerator.print(finalLoss.item(), encodedReconstructedLoss.item(), compressedMeanLoss.item(), compressedMinMaxLoss.item(), autoencoderTrainingLayerLoss.item(), signalReconstructedLoss.item(), "\n")
 
                     elif submodel == "emotionPrediction":
                         # Perform the forward pass through the model.
@@ -217,13 +217,13 @@ class emotionPipeline(emotionPipelineHelpers):
                         self.modelHelpers.assertVariableIntegrity(reconstructedCompressedData, "reconstructed compressed data", assertGradient=False)
 
                         # Calculate the error in emotion and activity prediction models.
-                        manifoldReconstructedLoss, manifoldMeanLoss, manifoldStandardDeviationLoss = self.organizeLossInfo.calculateSignalMappingLoss(
+                        manifoldReconstructedLoss, manifoldMeanLoss, manifoldMinMaxLoss = self.organizeLossInfo.calculateSignalMappingLoss(
                             encodedData, manifoldData, transformedManifoldData, reconstructedEncodedData, batchTrainingMask, reconstructionIndex)
                         emotionLoss, emotionOrthogonalityLoss, modelSpecificWeights = self.organizeLossInfo.calculateEmotionsLoss(activityDistribution, trueBatchLabels, batchTrainingMask, activityClassWeights)
                         activityLoss = self.organizeLossInfo.calculateActivityLoss(activityDistribution, trueBatchLabels, batchTrainingMask, activityClassWeights)
 
                         # Compile the loss into one value
-                        manifoldLoss = 0.8 * manifoldReconstructedLoss + 0.1 * manifoldMeanLoss + 0.1 * manifoldStandardDeviationLoss
+                        manifoldLoss = 0.8 * manifoldReconstructedLoss + 0.1 * manifoldMeanLoss + 0.1 * manifoldMinMaxLoss
                         finalLoss = emotionLoss * 0.45 + emotionOrthogonalityLoss * 0.05 + modelSpecificWeights * 0.05 + activityLoss * 0.4 + manifoldLoss * 0.05
                     else:
                         raise Exception()

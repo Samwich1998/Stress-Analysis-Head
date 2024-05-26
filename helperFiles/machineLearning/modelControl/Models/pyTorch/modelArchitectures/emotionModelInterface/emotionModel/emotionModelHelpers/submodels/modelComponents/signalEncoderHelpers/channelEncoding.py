@@ -9,21 +9,20 @@ from .customModules.waveletNeuralOperatorLayer import waveletNeuralOperatorLayer
 
 class channelEncoding(signalEncoderModules):
 
-    def __init__(self, waveletType, numCompressedSignals, numExpandedSignals, expansionFactor, numSigEncodingLayers, sequenceBounds, numSigLiftedChannels, debuggingResults=False):
+    def __init__(self, waveletType, numCompressedSignals, numExpandedSignals, expansionFactor, numSigEncodingLayers, sequenceBounds, numSigLiftedChannels):
         super(channelEncoding, self).__init__()
         # General parameters
         self.numSigLiftedChannels = numSigLiftedChannels  # The number of channels to lift to during signal encoding.
         self.numSigEncodingLayers = numSigEncodingLayers    # The number of operator layers during signal encoding.
         self.numCompressedSignals = numCompressedSignals    # Number of compressed signals.
         self.numExpandedSignals = numExpandedSignals        # Number of expanded signals.
-        self.debuggingResults = debuggingResults            # Whether to print debugging results. Type: bool
         self.expansionFactor = expansionFactor              # Expansion factor for the model.
         self.sequenceBounds = sequenceBounds                # The minimum and maximum sequence length.
 
         # Neural operator parameters.
+        self.numDecompositions = min(5, waveletNeuralOperatorLayer.max_decompositions(signal_length=self.sequenceBounds[0], wavelet_name=waveletType))  # Number of decompositions for the waveletType transform.
         self.activationMethod = self.getActivationMethod_channelEncoder()
         self.waveletType = waveletType  # wavelet type for the waveletType transform: bior, db3, dmey
-        self.numDecompositions = 2      # Number of decompositions for the waveletType transform.
         self.mode = 'zero'              # Mode for the waveletType transform.
 
         # initialize the heuristic method.
@@ -49,8 +48,10 @@ class channelEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=False, skipConnectionProtocol='identity'))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', independentChannels=False, skipConnectionProtocol='identity'))
+            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
+                                                                                  addBiasTerm=False,  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useCNN=False, independentChannels=False, skipConnectionProtocol='identity'))
+            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
+                                                                                addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useCNN=False, independentChannels=False, skipConnectionProtocol='identity'))
 
             # Create the processing layers.
             self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels))
@@ -86,9 +87,6 @@ class channelEncoding(signalEncoderModules):
 
             # Apply non-linearity to the processed data.
             processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
-            # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
-
-            # Apply non-linearity to the processed data.
             processedData = checkpoint(heuristicLayers[modelInd], inputData, use_reentrant=False) + processedData
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 

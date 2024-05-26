@@ -36,8 +36,8 @@ class autoencoderModel(globalModel):
         self.numEncodingsBufferPath_timeAnalysis = None
         self.trainingLosses_timeMeanAnalysis = None
         self.testingLosses_timeMeanAnalysis = None
-        self.trainingLosses_timeSTDAnalysis = None
-        self.testingLosses_timeSTDAnalysis = None
+        self.trainingLosses_timeMinMaxAnalysis = None
+        self.testingLosses_timeMinMaxAnalysis = None
         self.numEncodingsPath_timeAnalysis = None
         self.trainingLosses_timeReconstructionSVDAnalysis = None
         self.testingLosses_timeReconstructionSVDAnalysis = None
@@ -54,8 +54,8 @@ class autoencoderModel(globalModel):
         self.trainingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean testing losses. Dim: numTimeWindows, numEpochs
         # Autoencoder standard deviation loss holders.
-        self.trainingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation training losses. Dim: numTimeWindows, numEpochs
-        self.testingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation testing losses. Dim: numTimeWindows, numEpochs
+        self.trainingLosses_timeMinMaxAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation training losses. Dim: numTimeWindows, numEpochs
+        self.testingLosses_timeMinMaxAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation testing losses. Dim: numTimeWindows, numEpochs
 
         # Compression analysis.
         self.numEncodingsBufferPath_timeAnalysis = [[] for _ in self.timeWindows]  # List of list of buffers at each epoch. Dim: numTimeWindows, numEpochs

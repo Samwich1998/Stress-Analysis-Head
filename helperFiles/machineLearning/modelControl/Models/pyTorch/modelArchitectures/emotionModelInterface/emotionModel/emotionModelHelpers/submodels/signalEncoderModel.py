@@ -12,7 +12,7 @@ from ....._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
+    def __init__(self, sequenceBounds, signalMinMaxScale, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
@@ -25,6 +25,7 @@ class signalEncoderModel(globalModel):
         self.numSigEncodingLayers = numSigEncodingLayers  # The number of operator layers during signal encoding.
         self.numExpandedSignals = numExpandedSignals  # The number of signals in the expanded form for encoding to numExpandedSignals - 1.
         self.numEncodedSignals = numEncodedSignals  # The final number of signals to accept, encoding all signal information.
+        self.signalMinMaxScale = signalMinMaxScale  # The minimum and maximum signal values to scale the data.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence lengths to consider.
         self.maxNumSignals = maxNumSignals  # The maximum number of signals to consider.
         self.waveletType = waveletType  # The type to use during the signal encoder.
@@ -34,6 +35,7 @@ class signalEncoderModel(globalModel):
             numSigEncodingLayers=self.numSigEncodingLayers,
             numSigLiftedChannels=self.numSigLiftedChannels,
             numExpandedSignals=self.numExpandedSignals,
+            signalMinMaxScale=self.signalMinMaxScale,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             waveletType=self.waveletType,
@@ -51,8 +53,8 @@ class signalEncoderModel(globalModel):
         self.testingLosses_timePosEncAnalysis = None
         self.trainingLosses_timeMeanAnalysis = None
         self.testingLosses_timeMeanAnalysis = None
-        self.trainingLosses_timeSTDAnalysis = None
-        self.testingLosses_timeSTDAnalysis = None
+        self.trainingLosses_timeMinMaxAnalysis = None
+        self.testingLosses_timeMinMaxAnalysis = None
 
         # Reset the model.
         self.resetModel()
@@ -66,8 +68,8 @@ class signalEncoderModel(globalModel):
         self.trainingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean training losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timeMeanAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded mean testing losses. Dim: numTimeWindows, numEpochs
         # Signal encoder standard deviation loss holders.
-        self.trainingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation training losses. Dim: numTimeWindows, numEpochs
-        self.testingLosses_timeSTDAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation testing losses. Dim: numTimeWindows, numEpochs
+        self.trainingLosses_timeMinMaxAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation training losses. Dim: numTimeWindows, numEpochs
+        self.testingLosses_timeMinMaxAnalysis = [[] for _ in self.timeWindows]  # List of list of encoded standard deviation testing losses. Dim: numTimeWindows, numEpochs
 
         # Positional encoding analysis.
         self.trainingLosses_timePosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
@@ -78,10 +80,6 @@ class signalEncoderModel(globalModel):
         self.testingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction testing losses. Dim: numTimeWindows, numEpochs
 
     def setDebuggingResults(self, debuggingResults):
-        self.encodeSignals.channelEncodingInterface.debuggingResults = debuggingResults
-        self.encodeSignals.positionalEncodingInterface.debuggingResults = debuggingResults
-        self.encodeSignals.finalVarianceInterface.debuggingResults = debuggingResults
-        self.encodeSignals.denoiseSignals.debuggingResults = debuggingResults
         self.encodeSignals.debuggingResults = debuggingResults
         self.debuggingResults = debuggingResults
 
@@ -102,7 +100,6 @@ class signalEncoderModel(globalModel):
         # signalEncodingLoss dimension: batchSize
 
         # Initialize training parameters
-        initialDecodedData = None
         reconstructedData = None
         decodedData = None
 
@@ -132,7 +129,6 @@ class signalEncoderModel(globalModel):
 
         # Compress the signal space into numEncodedSignals.
         initialEncodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss)
-        initialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forSigEnc(initialEncodedData)  # Smooth over the encoding space.
         # initialEncodedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # Allow the model to adjust the incoming signals
@@ -145,11 +141,8 @@ class signalEncoderModel(globalModel):
 
         if decodeSignals:
             # Perform the reverse operation.
-            initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData, signalEncodingLayerLoss = \
-                self.reconstructEncodedData(encodedData, numSignalForwardPath, signalEncodingLayerLoss=signalEncodingLayerLoss, calculateLoss=calculateLoss)
-
-            # Normalize each encoding loss.
-            signalEncodingLayerLoss = signalEncodingLayerLoss / len(numSignalForwardPath)
+            decodedData, reconstructedData, denoisedReconstructedData, signalEncodingLayerLoss = self.reconstructEncodedData(encodedData, numSignalForwardPath, signalEncodingLayerLoss=signalEncodingLayerLoss, calculateLoss=calculateLoss)
+            signalEncodingLayerLoss = signalEncodingLayerLoss / len(numSignalForwardPath)  # Normalize each encoding loss.
 
         # ------------------------ Loss Calculations ----------------------- #
 
@@ -158,36 +151,25 @@ class signalEncoderModel(globalModel):
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Calculate the immediately reconstructed data.
             potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False)
-            potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forSigEnc(potentialEncodedData)  # Smooth over the encoding space.
             potentialDecodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=potentialEncodedData, calculateLoss=False)
-            # Prepare for loss calculations.
-            potentialEncodedData = self.encodeSignals.finalVarianceInterface.adjustSignalVariance(signalData)
-            potentialEncodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(potentialEncodedData)
-            potentialSignalData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(potentialEncodedData)
 
             # Calculate the loss by comparing encoder/decoder outputs.
-            varReconstructionStateLoss = (initialEncodedData - initialDecodedData).pow(2).mean(dim=2).mean(dim=1)
             encodingReconstructionStateLoss = (positionEncodedData - decodedData).pow(2).mean(dim=2).mean(dim=1)
             finalReconstructionStateLoss = (signalData - reconstructedData).pow(2).mean(dim=2).mean(dim=1)
             finalDenoisedReconstructionStateLoss = (initialSignalData - denoisedReconstructedData).pow(2).mean(dim=2).mean(dim=1)
-            if self.debuggingResults: print("State Losses (VEF-D):", varReconstructionStateLoss.detach().mean().item(), encodingReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
+            if self.debuggingResults: print("State Losses (EF-D):", encodingReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
             # Calculate the loss from taking other routes
             positionReconstructionLoss = (signalData - removedStampEncoding).pow(2).mean(dim=2).mean(dim=1)
             encodingReconstructionLoss = (signalData - potentialDecodedData).pow(2).mean(dim=2).mean(dim=1)
-            potentialVarReconstructionStateLoss = (signalData - potentialSignalData).pow(2).mean(dim=2).mean(dim=1)
-            if self.debuggingResults: print("Path Losses (P-E-V2-S):", positionReconstructionLoss.detach().mean().item(), encodingReconstructionLoss.detach().mean().item(), potentialVarReconstructionStateLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
+            if self.debuggingResults: print("Path Losses (P-E-S):", positionReconstructionLoss.detach().mean().item(), encodingReconstructionLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
 
             # Always add the final reconstruction loss (not denoised).
             signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
 
             # Add up all the state losses together.
-            if (positionReconstructionLoss.mean() < 0.1 and potentialVarReconstructionStateLoss.mean() < 0.1) and 0.1 < encodingReconstructionStateLoss.mean():
+            if positionReconstructionLoss.mean() < 0.1 < encodingReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionStateLoss
-            if (positionReconstructionLoss.mean() < 0.1 and encodingReconstructionStateLoss.mean() < 0.1) and 0.1 < varReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + varReconstructionStateLoss
             # Add up all the path losses together.
-            if 0.001 < potentialVarReconstructionStateLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + potentialVarReconstructionStateLoss
             if 0.001 < encodingReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionLoss
             if 0.001 < positionReconstructionLoss.mean():
@@ -196,8 +178,8 @@ class signalEncoderModel(globalModel):
             if 0.01 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
 
-            if self.plotDataFlow and random.random() < 0.02:
-                self.plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData)
+            if self.plotDataFlow and random.random() < 0.01:
+                self.plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
         return encodedData, denoisedReconstructedData, predictedIndexProbabilities, signalEncodingLoss
 
@@ -218,16 +200,12 @@ class signalEncoderModel(globalModel):
         return decodedData, reversePath, signalEncodingLayerLoss
 
     def reconstructEncodedData(self, encodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False):
-        # Undo what was done in the initial adjustment.
-        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forVar(encodedData)  # Smooth over the encoding space.
-        initialDecodedData = self.encodeSignals.finalVarianceInterface.unAdjustSignalVariance(encodedData)
-
         # Undo the signal encoding.
         decodedData, reversePath, signalEncodingLayerLoss = self.reverseEncoding(
             signalEncodingLayerLoss=signalEncodingLayerLoss,
             numSignalPath=numSignalForwardPath,
-            decodedData=initialDecodedData,
             calculateLoss=calculateLoss,
+            decodedData=encodedData,
         )
         # reconstructedInitEncodingData dimension: batchSize, numSignals, sequenceLength
         if self.debuggingResults: print("Signal Encoding Upward Path:", encodedData.size(1), reversePath, decodedData.size(1))
@@ -239,7 +217,7 @@ class signalEncoderModel(globalModel):
         # Denoise the final signals.
         denoisedReconstructedData = self.encodeSignals.denoiseSignals.applyDenoiser(reconstructedData)
 
-        return initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData, signalEncodingLayerLoss
+        return decodedData, reconstructedData, denoisedReconstructedData, signalEncodingLayerLoss
 
     def calculateOptimalLoss(self, initialSignalData, printLoss=True):
         with torch.no_grad():
@@ -254,7 +232,7 @@ class signalEncoderModel(globalModel):
             return pcaReconstructionLoss
 
     @staticmethod
-    def plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, initialDecodedData, decodedData, reconstructedData, denoisedReconstructedData):
+    def plotDataFlowDetails(initialSignalData, positionEncodedData, initialEncodedData, encodedData, decodedData, reconstructedData, denoisedReconstructedData):
         fig = plt.figure()
         plt.plot(initialSignalData[0][0].cpu().detach().numpy(), 'k', linewidth=2, label="Initial Data")
         plt.plot(positionEncodedData[0][0].cpu().detach().numpy(), 'tab:red', linewidth=2, label="Positional Encoding Data")
@@ -271,12 +249,6 @@ class signalEncoderModel(globalModel):
         plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
         plt.plot(encodedData[0][0].cpu().detach().numpy(), 'tab:green', linewidth=2, label="Variance Adjusted Data")
         plt.title("Variance Adjustment"); plt.legend()
-        globalPlottingProtocols.clearFigure(fig=fig)
-
-        fig = plt.figure()
-        plt.plot(initialEncodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, label="Encoded Data (before variance)")
-        plt.plot(initialDecodedData[0][0].cpu().detach().numpy(), 'tab:blue', linewidth=2, alpha=0.5, label="Encoded Data (after variance)")
-        plt.title("Signal Decoding"); plt.legend()
         globalPlottingProtocols.clearFigure(fig=fig)
 
         fig = plt.figure()

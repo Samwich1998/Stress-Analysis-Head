@@ -18,12 +18,13 @@ from ..._globalPytorchModel import globalModel
 
 
 class emotionModelHead(globalModel):
-    def __init__(self, submodel, accelerator, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                 emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults=False):
+    def __init__(self, submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength,
+                 userInputParams, emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults=False):
         super(emotionModelHead, self).__init__()
         # General model parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers (subject index, etc.).
         self.demographicLength = demographicLength  # The amount of demographic information (age, weight, etc.). Subject index is not included.
+        self.signalMinMaxScale = signalMinMaxScale  # The minimum and maximum values for the signals.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.numActivities = len(activityNames)  # The number of activities to predict.
         self.numEmotions = len(emotionNames)  # The number of emotions to predict.
@@ -97,6 +98,7 @@ class emotionModelHead(globalModel):
             numExpandedSignals=self.numExpandedSignals,
             waveletType=self.signalEncoderWaveletType,
             numEncodedSignals=self.numEncodedSignals,
+            signalMinMaxScale=self.signalMinMaxScale,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             plotDataFlow=not self.useParamsHPC,
@@ -189,7 +191,7 @@ class emotionModelHead(globalModel):
         if fullReconstruction:
             # Denoise the final signals.
             numSignalForwardPath = self.signalEncoderModel.encodeSignals.simulateSignalPath(initialSignalData.size(1), encodedData.size(1))[0]
-            doubleReconstructedData = self.signalEncoderModel.reconstructEncodedData(reconstructedEncodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)[3]
+            doubleReconstructedData = self.signalEncoderModel.reconstructEncodedData(reconstructedEncodedData, numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)[2]
             denoisedDoubleReconstructedData = self.autoencoderModel.generalAutoencoder.applyDenoiserLast(doubleReconstructedData)
             # denoisedDoubleReconstructedData dimension: batchSize, numSignals, sequenceLength
 

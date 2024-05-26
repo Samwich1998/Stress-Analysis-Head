@@ -1,25 +1,21 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General
 import numpy as np
 
 
 # Standardize data class
 def minMaxScale_noInverse(X, scale=1):
-    X = np.asarray(X)
-
     # Find the minimum and maximum along the last dimension
-    min_val = np.min(X, axis=-1, keepdims=True)
-    max_val = np.max(X, axis=-1, keepdims=True)
-
-    # Normalize the data.
-    normalized = (X - min_val) / (max_val - min_val)  # First, normalize to [0, 1]
-    scaled = 2 * normalized - 1  # Then scale to [-1, 1]
-    scaled = scale*scaled  # Then scale
+    min_val = X.min(axis=-1, keepdims=True)
+    max_val = X.max(axis=-1, keepdims=True)
 
     # Handle the case when max_val == min_val (avoid division by zero)
-    scaled[np.isnan(scaled)] = 0
+    range_val = max_val - min_val
+    range_val[range_val == 0] = 1  # Prevent division by zero
+
+    # Normalize the data.
+    normalized = (X - min_val) / range_val  # Normalize to [0, 1]
+    scaled = 2 * normalized - 1  # Then scale to [-1, 1]
+    scaled = scale * scaled  # Apply additional scaling if needed
 
     return scaled
 

@@ -10,8 +10,8 @@ from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
 
 
 class signalEncoderBase(signalEncoderHelpers):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
-        super(signalEncoderBase, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
+    def __init__(self, sequenceBounds=(90, 300), signalMinMaxScale=2, numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
+        super(signalEncoderBase, self).__init__(sequenceBounds=sequenceBounds, signalMinMaxScale=signalMinMaxScale, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
                                                 numSigLiftedChannels=numSigLiftedChannels, waveletType=waveletType, debuggingResults=debuggingResults)
 
     # ---------------------------- Loss Methods ---------------------------- #
@@ -47,8 +47,9 @@ class signalEncoderBase(signalEncoderHelpers):
         layerLoss = self.calculateEncodingLoss(originalData, encodedData)
 
         # If the loss is significant, add it to the total loss.
-        if 0.1 < layerLoss.mean().item(): layerLoss = 1.25 * layerLoss
-        if 0.001 < layerLoss.mean().item(): signalEncodingLayerLoss = 1.5*signalEncodingLayerLoss + layerLoss
+        if 0.1 < layerLoss.mean().item(): layerLoss = 2*layerLoss
+        if 0.1 < signalEncodingLayerLoss.mean().item(): signalEncodingLayerLoss = 2*signalEncodingLayerLoss
+        if 0.001 < layerLoss.mean().item(): signalEncodingLayerLoss = signalEncodingLayerLoss + layerLoss
 
         return signalEncodingLayerLoss
 
@@ -91,8 +92,8 @@ class signalEncoderBase(signalEncoderHelpers):
 # -------------------------- Encoder Architecture -------------------------- #
 
 class generalSignalEncoding(signalEncoderBase):
-    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType="bior3.7", debuggingResults=False):
-        super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
+    def __init__(self, sequenceBounds=(90, 300), signalMinMaxScale=2, numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType="bior3.7", debuggingResults=False):
+        super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, signalMinMaxScale=signalMinMaxScale, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
                                                     numSigLiftedChannels=numSigLiftedChannels, waveletType=waveletType, debuggingResults=debuggingResults)
 
     def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True):

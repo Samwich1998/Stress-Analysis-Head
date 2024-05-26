@@ -3,8 +3,10 @@ import torch
 import math
 
 # Helper classes
-from ..emotionDataInterface import emotionDataInterface
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.generalMethods.modelHelpers import modelHelpers
+from ..generalMethods.generalMethods import generalMethods
+from ..emotionDataInterface import emotionDataInterface
+from ..modelParameters import modelParameters
 
 # Loss methods
 from ......Helpers.lossFunctions import pytorchLossMethods
@@ -30,6 +32,8 @@ class lossCalculations:
 
         # Initialize helper classes.
         self.dataInterface = emotionDataInterface()
+        self.modelParameters = modelParameters
+        self.generalMethods = generalMethods()
         self.modelHelpers = modelHelpers()
 
         # Specify the model's loss functions (READ BEFORE USING!!). 
@@ -83,9 +87,9 @@ class lossCalculations:
         signalReconstructedLoss = signalReconstructedLoss.mean(dim=2).mean(dim=1).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
-        encodedSignalMeanLoss, encodedSignalStandardDeviationLoss = self.calculateStandardizationLoss(encodedData, expectedMean=0, expectedStandardDeviation=1, dim=-1)
+        encodedSignalMeanLoss, encodedSignalMinMaxLoss = self.calculateMinMaxLoss(encodedData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1)
         # Reduce the loss to a singular value.
-        encodedSignalStandardDeviationLoss = encodedSignalStandardDeviationLoss.mean(dim=1).mean()
+        encodedSignalMinMaxLoss = encodedSignalMinMaxLoss.mean(dim=2).mean(dim=1).mean()
         encodedSignalMeanLoss = encodedSignalMeanLoss.mean(dim=1).mean()
 
         # If there is a layer loss, average the loss.
@@ -101,10 +105,10 @@ class lossCalculations:
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, variableName="encoded signal mean loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(positionalEncodingLoss, variableName="positional encoding loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, variableName="encoded signal reconstructed loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(encodedSignalStandardDeviationLoss, variableName="encoded signal standard deviation loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(encodedSignalMinMaxLoss, variableName="encoded signal standard deviation loss", assertGradient=False)
         if signalEncodingLayerLoss is not None: self.modelHelpers.assertVariableIntegrity(signalEncodingLayerLoss, "encoded signal layer loss", assertGradient=False)
 
-        return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalStandardDeviationLoss, positionalEncodingLoss, signalEncodingLayerLoss
+        return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalMinMaxLoss, positionalEncodingLoss, signalEncodingLayerLoss
 
     def calculateAutoencoderLoss(self, allEncodedData, allCompressedData, allReconstructedEncodedData, allAutoencoderLayerLoss, allLabelsMask, reconstructionIndex):
         # Find the boolean flags for the data involved in the loss calculation.
@@ -121,9 +125,9 @@ class lossCalculations:
         reconstructedLoss = reconstructedLoss.mean(dim=2).mean(dim=1).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
-        compressedMeanLoss, compressedStandardDeviationLoss = self.calculateStandardizationLoss(compressedData, expectedMean=0, expectedStandardDeviation=1, dim=-1)
+        compressedMeanLoss, compressedMinMaxLoss = self.calculateMinMaxLoss(compressedData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1)
         # Reduce the loss to a singular value.
-        compressedStandardDeviationLoss = compressedStandardDeviationLoss.mean(dim=1).mean()
+        compressedMinMaxLoss = compressedMinMaxLoss.mean(dim=1).mean()
         compressedMeanLoss = compressedMeanLoss.mean(dim=1).mean()
 
         # If there is a layer loss, average the loss.
@@ -132,10 +136,10 @@ class lossCalculations:
         # Assert that nothing is wrong with the loss calculations. 
         self.modelHelpers.assertVariableIntegrity(compressedMeanLoss, variableName="autoencoder mean loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(reconstructedLoss, variableName="autoencoder reconstructed loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(compressedStandardDeviationLoss, variableName="autoencoder standard deviation loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(compressedMinMaxLoss, variableName="autoencoder standard deviation loss", assertGradient=False)
         if autoencoderLayerLoss is not None: self.modelHelpers.assertVariableIntegrity(autoencoderLayerLoss, "autoencoder layer loss", assertGradient=False)
 
-        return reconstructedLoss, compressedMeanLoss, compressedStandardDeviationLoss, autoencoderLayerLoss
+        return reconstructedLoss, compressedMeanLoss, compressedMinMaxLoss, autoencoderLayerLoss
 
     def calculateSignalMappingLoss(self, allEncodedData, allManifoldData, allTransformedManifoldData, allReconstructedEncodedData, allLabelsMask, reconstructionIndex):
         # Find the boolean flags for the data involved in the loss calculation.
@@ -152,19 +156,19 @@ class lossCalculations:
         manifoldReconstructedLoss = manifoldReconstructedLoss.mean(axis=2).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
-        manifoldMeanLoss, manifoldStandardDeviationLoss = self.calculateStandardizationLoss(manifoldData, expectedMean=0, expectedStandardDeviation=1, dim=-1)
+        manifoldMeanLoss, manifoldMinMaxLoss = self.calculateMinMaxLoss(manifoldData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1)
         # Reduce the loss to a singular value.
         manifoldMeanLoss = manifoldMeanLoss.mean()
-        manifoldStandardDeviationLoss = manifoldStandardDeviationLoss.mean()
+        manifoldMinMaxLoss = manifoldMinMaxLoss.mean()
 
         # Enforce the same properties across all the time series data.
 
         # Assert that nothing is wrong with the loss calculations. 
         self.modelHelpers.assertVariableIntegrity(manifoldMeanLoss, "manifold mean loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(manifoldReconstructedLoss, "manifold reconstructed loss", assertGradient=False)
-        self.modelHelpers.assertVariableIntegrity(manifoldStandardDeviationLoss, "manifold standard deviation loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(manifoldMinMaxLoss, "manifold standard deviation loss", assertGradient=False)
 
-        return manifoldReconstructedLoss, manifoldMeanLoss, manifoldStandardDeviationLoss
+        return manifoldReconstructedLoss, manifoldMeanLoss, manifoldMinMaxLoss
 
     def calculateActivityLoss(self, predictedActivityLabels, allLabels, allLabelsMask, activityClassWeights):
         # Find the boolean flags for the data involved in the loss calculation.
@@ -238,16 +242,16 @@ class lossCalculations:
         # Calculate the overlap in probability between each basic emotion.
         allBasicEmotionDistributionsAbs_T = allBasicEmotionDistributionsAbs.permute(0, 1, 3, 2)  # batchSize, self.numInterpreterHeads, emotionLength, numBasicEmotions
         probabilityOverlap_basicEmotions = allBasicEmotionDistributionsAbs.sqrt() @ allBasicEmotionDistributionsAbs_T.sqrt()
-        # Zero out self overlap as each signal SHOULD be overlapping with itself.
+        # Zero out self-overlap as each signal SHOULD be overlapping with itself.
         probabilityOverlap_basicEmotions -= torch.eye(numBasicEmotion, numBasicEmotion, device=allBasicEmotionDistributions.device).view(1, 1, numBasicEmotion, numBasicEmotion)
         # For each interpretation of emotions, the basis states should be orthonormal.
         basicEmotion_orthoganalityLoss = probabilityOverlap_basicEmotions.mean()
 
         # Calculate the overlap in probability for each basic emotion across each interpretation.
-        allInterpretationEmtoions = allBasicEmotionDistributionsAbs.permute(0, 2, 1, 3)  # batchSize, numBasicEmotions, numInterpreterHeads, emotionLength
-        allInterpretationEmtoions_T = allBasicEmotionDistributionsAbs.permute(0, 2, 3, 1)  # batchSize, numBasicEmotions, emotionLength, numInterpreterHeads
-        probabilityOverlap_interpretations = allInterpretationEmtoions.sqrt() @ allInterpretationEmtoions_T.sqrt()
-        # Zero out self overlap as each signal SHOULD be overlapping with itself.
+        allInterpretationEmotions = allBasicEmotionDistributionsAbs.permute(0, 2, 1, 3)  # batchSize, numBasicEmotions, numInterpreterHeads, emotionLength
+        allInterpretationEmotions_T = allBasicEmotionDistributionsAbs.permute(0, 2, 3, 1)  # batchSize, numBasicEmotions, emotionLength, numInterpreterHeads
+        probabilityOverlap_interpretations = allInterpretationEmotions.sqrt() @ allInterpretationEmotions_T.sqrt()
+        # Zero out self-overlap as each signal SHOULD be overlapping with itself.
         probabilityOverlap_interpretations -= torch.eye(numInterpreterHeads, numInterpreterHeads, device=allBasicEmotionDistributions.device).view(1, 1, numInterpreterHeads, numInterpreterHeads)
         # Between all interpretations, each basis state should be different.
         emotionInterpretation_orthoganalityLoss = probabilityOverlap_basicEmotions.mean()
@@ -262,7 +266,7 @@ class lossCalculations:
         allSubjectWeights = allSubjectWeights.squeeze(3)
         # Calculate the different in how each subject interprets their emotions.
         allSubjectWeights_subjectDeviation = allSubjectWeights[None, :, :, :] - allSubjectWeights[:, None, :, :]
-        # For every basic emotion, every subject should have the same interpretation (weight for each interpretations).
+        # For every basic emotion, every subject should have the same interpretation (weight for each interpretation).
         subjectDeviationNorm = torch.norm(allSubjectWeights_subjectDeviation, dim=3)[0, 1:]
         subjectDeviationNormLoss = subjectDeviationNorm.mean()
 
@@ -299,6 +303,17 @@ class lossCalculations:
 
         return gradients_norm
 
+    def calculateMinMaxLoss(self, inputData, expectedMean=0, expectedMinMax=1, dim=-1):
+        # Calculate the min-max loss.
+        minMaxData = self.generalMethods.minMaxScale_noInverse(inputData, scale=expectedMinMax)
+        minMaxLoss = (minMaxData - expectedMean).pow(2)
+
+        # Calculate the mean error.
+        meanData = inputData.mean(dim=dim)
+        meanError = (meanData - expectedMean).pow(2)
+
+        return meanError, minMaxLoss
+
     @staticmethod
     def calculateStandardizationLoss(inputData, expectedMean=0, expectedStandardDeviation=1, dim=-1):
         # Calculate the data statistics on the last dimension.
@@ -316,14 +331,12 @@ class lossCalculations:
         standardDeviationData = originalData.std(dim=dim)
         meanData = originalData.mean(dim=dim)
 
-        meanError, standardDeviationError = self.calculateStandardizationLoss(inputData=predictedData,
-                                                                              expectedMean=meanData,
-                                                                              expectedStandardDeviation=standardDeviationData,
-                                                                              dim=dim)
+        meanError, standardDeviationError = self.calculateStandardizationLoss(inputData=predictedData, expectedMean=meanData, expectedStandardDeviation=standardDeviationData, dim=dim)
         return meanError, standardDeviationError
 
-    def standardize(self, data, dataMean=None, dataSTD=None):
-        if dataMean == None and dataSTD == None:
+    @staticmethod
+    def standardize(data, dataMean=None, dataSTD=None):
+        if dataMean is None and dataSTD is None:
             dataMean = data.mean(dim=-1, keepdim=True)
             dataSTD = data.std(dim=-1, keepdim=True)
 

@@ -2,13 +2,13 @@
 import torch
 
 # Import machine learning files
-from .waveletNeuralHelpers import waveletNeuralHelpers
+from .waveletNeuralOperatorWeights import waveletNeuralOperatorWeights
 
 
-class waveletNeuralOperatorLayer(waveletNeuralHelpers):
+class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, independentChannels=False, skipConnectionProtocol='CNN'):
-        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, independentChannels, skipConnectionProtocol)
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useCNN=True, independentChannels=False, skipConnectionProtocol='CNN'):
+        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useCNN, independentChannels, skipConnectionProtocol)
 
     def forward(self, inputData, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.
@@ -118,7 +118,7 @@ class waveletNeuralOperatorLayer(waveletNeuralHelpers):
             frequencies = frequencies + frequencyTerms
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
-        if self.independentChannels:
+        if self.independentChannels or self.useCNN:
             frequencies = weights(frequencies)  # Learn a new set of wavelet coefficients to transform the data.
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
         else:

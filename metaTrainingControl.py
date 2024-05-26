@@ -48,7 +48,7 @@ if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
         dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=4,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
@@ -114,16 +114,16 @@ if __name__ == "__main__":
     # Self-check the hpc parameters.
     if userInputParams['deviceListed'].startswith("HPC") and useParamsHPC:
         accelerator.gradient_accumulation_steps = 16
-        # storeLoss = True # Turn on loss storage for HPC.
-        # fastPass = False # Turn off fast pass for HPC.
+        storeLoss = True # Turn on loss storage for HPC.
+        fastPass = False # Turn off fast pass for HPC.
 
         if args.submodel == "signalEncoder":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
                 accelerator.gradient_accumulation_steps = 16
-            if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 2:
+            if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 1:
                 accelerator.gradient_accumulation_steps = 8
             if args.numSigLiftedChannels <= 16 and args.numSigEncodingLayers <= 2:
-                accelerator.gradient_accumulation_steps = 4
+                accelerator.gradient_accumulation_steps = 8
 
         print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
 

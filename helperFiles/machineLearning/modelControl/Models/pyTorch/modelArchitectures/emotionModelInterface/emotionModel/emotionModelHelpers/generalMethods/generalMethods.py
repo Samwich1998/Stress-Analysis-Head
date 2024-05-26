@@ -6,6 +6,24 @@ import random
 class generalMethods:
 
     @staticmethod
+    def minMaxScale_noInverse(inputData, scale=1):
+        # Find the minimum and maximum along the last dimension
+        min_val = inputData.min(dim=-1, keepdim=True).values
+        max_val = inputData.max(dim=-1, keepdim=True).values
+
+        # Prevent division by zero
+        range_val = max_val - min_val
+        range_val = torch.where(range_val == 0, torch.ones_like(range_val), range_val)
+
+        # Normalize to [0, 1]
+        normalized = (inputData - min_val) / range_val
+
+        # Scale to [-n, n]
+        scaled = 2 * scale * normalized - scale
+
+        return scaled
+
+    @staticmethod
     def pcaCompression(signals, numComponents, standardizeSignals=True):
         # Extract the incoming data's dimension.
         batch_size, num_signals, signal_dimension = signals.shape

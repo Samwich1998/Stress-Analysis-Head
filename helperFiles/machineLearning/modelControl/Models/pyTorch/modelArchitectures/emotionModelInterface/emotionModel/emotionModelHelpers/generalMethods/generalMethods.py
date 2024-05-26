@@ -11,15 +11,14 @@ class generalMethods:
         min_val = inputData.min(dim=-1, keepdim=True).values
         max_val = inputData.max(dim=-1, keepdim=True).values
 
-        # Prevent division by zero
+        # Handle the case when max_val == min_val (avoid division by zero)
         range_val = max_val - min_val
-        range_val = torch.where(range_val == 0, torch.ones_like(range_val), range_val)
+        range_val[range_val == 0] = 1  # Prevent division by zero
 
-        # Normalize to [0, 1]
-        normalized = (inputData - min_val) / range_val
-
-        # Scale to [-n, n]
-        scaled = 2 * scale * normalized - scale
+        # Normalize the data.
+        normalized = (inputData - min_val) / range_val  # Normalize to [0, 1]
+        scaled = 2 * normalized - 1  # Then scale to [-1, 1]
+        scaled = scale * scaled  # Apply additional scaling if needed
 
         return scaled
 

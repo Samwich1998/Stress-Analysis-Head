@@ -10,8 +10,8 @@ from .signalEncoderHelpers.signalEncoderHelpers import signalEncoderHelpers
 
 
 class signalEncoderBase(signalEncoderHelpers):
-    def __init__(self, sequenceBounds=(90, 300), signalMinMaxScale=2, numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
-        super(signalEncoderBase, self).__init__(sequenceBounds=sequenceBounds, signalMinMaxScale=signalMinMaxScale, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
+        super(signalEncoderBase, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
                                                 numSigLiftedChannels=numSigLiftedChannels, waveletType=waveletType, debuggingResults=debuggingResults)
 
     # ---------------------------- Loss Methods ---------------------------- #
@@ -92,8 +92,8 @@ class signalEncoderBase(signalEncoderHelpers):
 # -------------------------- Encoder Architecture -------------------------- #
 
 class generalSignalEncoding(signalEncoderBase):
-    def __init__(self, sequenceBounds=(90, 300), signalMinMaxScale=2, numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType="bior3.7", debuggingResults=False):
-        super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, signalMinMaxScale=signalMinMaxScale, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
+    def __init__(self, sequenceBounds=(90, 300), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType="bior3.7", debuggingResults=False):
+        super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
                                                     numSigLiftedChannels=numSigLiftedChannels, waveletType=waveletType, debuggingResults=debuggingResults)
 
     def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True):

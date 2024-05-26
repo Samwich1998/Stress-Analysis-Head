@@ -20,8 +20,6 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
             skipConnectionModel = nn.Identity()
         elif skipConnectionProtocol == 'singleCNN':
             skipConnectionModel = self.skipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
-        elif skipConnectionProtocol == 'resNetCNN':
-            skipConnectionModel = self.resnetSkipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         elif skipConnectionProtocol == 'independentCNN':
             skipConnectionModel = self.independentSkipConnectionEncoding(inChannel=self.numInputSignals, outChannel=self.numOutputSignals)
         else:

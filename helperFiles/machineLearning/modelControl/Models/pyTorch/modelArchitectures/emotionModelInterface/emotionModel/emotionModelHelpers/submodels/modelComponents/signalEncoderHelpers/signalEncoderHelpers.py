@@ -10,12 +10,11 @@ from torch import nn
 from .channelPositionalEncoding import channelPositionalEncoding
 from ....emotionDataInterface import emotionDataInterface
 from .channelEncoding import channelEncoding
-from .changeVariance import changeVariance
 from .denoiser import denoiser
 
 
 class signalEncoderHelpers(nn.Module):
-    def __init__(self, sequenceBounds=(90, 240), signalMinMaxScale=2, numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
+    def __init__(self, sequenceBounds=(90, 240), numExpandedSignals=2, numSigEncodingLayers=5, numSigLiftedChannels=48, waveletType='bior3.7', debuggingResults=False):
         super(signalEncoderHelpers, self).__init__()
         # General
         self.numSigEncodingLayers = numSigEncodingLayers          # The number of layers to encode the signals.
@@ -33,7 +32,6 @@ class signalEncoderHelpers(nn.Module):
         self.channelEncodingInterface = channelEncoding(waveletType=waveletType, numCompressedSignals=self.numCompressedSignals, numExpandedSignals=self.numExpandedSignals, expansionFactor=self.expansionFactor, numSigEncodingLayers=numSigEncodingLayers, sequenceBounds=self.sequenceBounds, numSigLiftedChannels=numSigLiftedChannels)
         self.positionalEncodingInterface = channelPositionalEncoding(waveletType=waveletType, sequenceBounds=self.sequenceBounds)
         self.denoiseSignals = denoiser(waveletType=waveletType, sequenceBounds=sequenceBounds)
-        self.finalVarianceInterface = changeVariance(signalMinMaxScale=signalMinMaxScale)
         self.dataInterface = emotionDataInterface
 
     # ----------------------- Signal Pairing Methods ----------------------- #

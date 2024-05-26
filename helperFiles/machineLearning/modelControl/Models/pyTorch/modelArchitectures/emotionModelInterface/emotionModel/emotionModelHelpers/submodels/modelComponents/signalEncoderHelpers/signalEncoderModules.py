@@ -36,7 +36,7 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
         )
 
     def independentNeuralWeightCNN(self, inChannel=2, outChannel=1):
@@ -59,26 +59,12 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
         )
 
-    def resnetSkipConnectionEncoding(self, inChannel=2, outChannel=1):
-        model = nn.Sequential(
-            # Convolution architecture: feature engineering
-            self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True),
-        )
-
-        if inChannel != outChannel:
-            model.append(self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True))
-
-        return model
-
     def independentSkipConnectionEncoding(self, inChannel=2, outChannel=1):
         assert inChannel == outChannel == 1, "The number of input and output signals must be 1."
 
         return independentModelCNN(
+            module=self.skipConnectionEncoding(inChannel=1, outChannel=1),
             useCheckpoint=False,
-            module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True)
-            ),
         )
 
     # ------------------- Positional Encoding Architectures ------------------- #
@@ -154,12 +140,6 @@ class signalEncoderModules(convolutionalHelpers):
             # Convolution architecture: projection operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True),
         )
-
-    # ------------------- Final Statistics Architectures ------------------- #
-
-    @staticmethod
-    def getActivationMethod_var():
-        return "none"
 
     # ----------------------- Denoiser Architectures ----------------------- #
 

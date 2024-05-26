@@ -145,7 +145,7 @@ class emotionPipeline(emotionPipelineHelpers):
 
                         # Compile the loss into one value
                         if 0.5 < encodedSignalMinMaxLoss:
-                            finalLoss = finalLoss + 0.25*encodedSignalMinMaxLoss
+                            finalLoss = finalLoss + 0.1*encodedSignalMinMaxLoss
                         if 0.01 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.25*signalEncodingTrainingLayerLoss
                         if 0.1 < encodedSignalMeanLoss:

@@ -18,11 +18,10 @@ class denoiser(signalEncoderModules):
 
         # Create the spectral convolution layers.
         self.denoiserNeuralOperator = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
-                                                                 activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='highFreq', useLowFreqCNN=True, independentChannels=True, skipConnectionProtocol='identity')
+                                                                 activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useLowFreqCNN=True, independentChannels=True, skipConnectionProtocol='identity')
 
         # Allow the final signals to denoise at the end.
-        self.gausKernel_forSigEncFinal = self.smoothingKernel(kernelSize=3, averageWeights=[0.1, 0.8, 0.1])
-        self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=3, averageWeights=[0.25, 0.5, 0.25])
+        self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=3, averageWeights=[0.2, 0.6, 0.2])
         self.gausKernel_forPosPreds = self.smoothingKernel(kernelSize=3)
 
     def applySmoothing_forPosPreds(self, inputData):
@@ -30,9 +29,6 @@ class denoiser(signalEncoderModules):
 
     def applySmoothing_forSigEnc(self, inputData):
         return self.applySmoothing(inputData, self.gausKernel_forSigEnc)
-
-    def applySmoothing_forSigEncFinal(self, inputData):
-        return self.applySmoothing(inputData, self.gausKernel_forSigEncFinal)
 
     def applyDenoiser(self, inputData):
         # Apply the neural operator and the skip connection.

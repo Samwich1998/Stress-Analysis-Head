@@ -46,8 +46,7 @@ class signalEncoderModules(convolutionalHelpers):
             useCheckpoint=False,
             module=nn.Sequential(
                 # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_1_2', numLayers=None, addBias=False, useSwitchActivation=True),
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
+                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
             ),
         )
 
@@ -111,12 +110,6 @@ class signalEncoderModules(convolutionalHelpers):
 
     # ------------------- Signal Encoding Architectures ------------------- #
 
-    def heuristicEncoding(self, inChannel=1, outChannel=2):
-        return nn.Sequential(
-            # Convolution architecture: heuristic operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
-        )
-
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: lifting operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
@@ -137,13 +130,19 @@ class signalEncoderModules(convolutionalHelpers):
     def heuristicEncodingLayer(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: heuristic operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: projection operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False, useSwitchActivation=True),
+        )
+
+    def heuristicEncoding(self, inChannel=1, outChannel=2):
+        return nn.Sequential(
+            # Convolution architecture: heuristic operator.
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False, useSwitchActivation=True),
         )
 
     # ----------------------- Denoiser Architectures ----------------------- #

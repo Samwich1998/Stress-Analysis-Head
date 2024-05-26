@@ -127,7 +127,6 @@ class signalEncoderModel(globalModel):
 
         # Compress the signal space into numEncodedSignals.
         encodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss, forward=True)
-        encodedData = self.encodeSignals.denoiseSignals.applySmoothing_forSigEncFinal(encodedData)
         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # ---------------------- Signal Reconstruction --------------------- #

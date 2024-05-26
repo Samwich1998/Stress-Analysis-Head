@@ -8,8 +8,8 @@ from .lossCalculations import lossCalculations
 
 class organizeTrainingLosses(lossCalculations):
 
-    def __init__(self, accelerator, model, allEmotionClasses, activityLabelInd, generalTimeWindow):
-        super(organizeTrainingLosses, self).__init__(accelerator, model, allEmotionClasses, activityLabelInd)
+    def __init__(self, accelerator, model, allEmotionClasses, activityLabelInd, generalTimeWindow, useParamsHPC=False):
+        super(organizeTrainingLosses, self).__init__(accelerator, model, allEmotionClasses, activityLabelInd, useParamsHPC)
         self.generalTimeWindow = generalTimeWindow
 
     # ---------------------------------------------------------------------- #

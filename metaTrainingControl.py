@@ -52,12 +52,12 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-05-25"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-05-25 low CNN"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 

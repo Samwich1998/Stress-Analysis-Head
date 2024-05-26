@@ -37,7 +37,7 @@ from ..signalEncoderModules import signalEncoderModules
 class waveletNeuralHelpers(signalEncoderModules):
 
     def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none",
-                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useCNN=False, independentChannels=False, skipConnectionProtocol='CNN'):
+                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useLowFreqCNN=False, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
         self.encodeHighFrequencyProtocol = encodeHighFrequencyProtocol  # The high-frequency encoding protocol to use.
@@ -48,9 +48,9 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.numOutputSignals = numOutputSignals  # Number of output signals.
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
+        self.useLowFreqCNN = useLowFreqCNN  # Whether to use a convolutional neural network for the decomposition.
         self.addBiasTerm = addBiasTerm  # Whether to add bias terms to the output.
         self.waveletType = waveletType  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
-        self.useCNN = useCNN  # Whether to use a convolutional neural network for the decomposition.
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
         # Assert that the parameters are valid.
         self.assertValidParams()
@@ -82,11 +82,9 @@ class waveletNeuralHelpers(signalEncoderModules):
         assert self.encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'none'], "The high-frequency encoding protocol must be 'highFreq', 'allFreqs', 'none'."
         assert self.encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'none'], "The low-frequency encoding protocol must be 'lowFreq', 'allFreqs', 'none'."
 
-        if self.useCNN:
+        if self.useLowFreqCNN:
             # Assert the validity of the CNN model.
-            assert self.encodeHighFrequencyProtocol != 'allFreqs', "Encoding all frequencies with a CNN model is not supported."
             assert self.encodeLowFrequencyProtocol != 'allFreqs', "Encoding all frequencies with a CNN model is not supported."
-        assert not self.useCNN, "Convolutions in the wavelet domain is not recommended. Edit this if you disagree."
 
         # Verify that the number of decomposition layers is appropriate.
         maximumNumDecompositions = self.max_decompositions(signal_length=self.sequenceBounds[0], wavelet_name=self.waveletType)

@@ -126,9 +126,8 @@ class generalSignalEncoding(signalEncoderBase):
             # Apply smoothing to the signals in the forward direction.
             if forward: signalData = self.denoiseSignals.applySmoothing_forSigEnc(signalData)
 
-            if calculateLoss:
-                # Keep track of the error during each compression/expansion.
-                signalEncodingLayerLoss = self.updateLossValues(originalData, signalData, signalEncodingLayerLoss)
+            # Keep track of the error during each compression/expansion.
+            if calculateLoss: signalEncodingLayerLoss = self.updateLossValues(originalData, signalData, signalEncodingLayerLoss)
 
             # Keep track of the signal's at each iteration.
             numSignalPath.append(signalData.size(1))

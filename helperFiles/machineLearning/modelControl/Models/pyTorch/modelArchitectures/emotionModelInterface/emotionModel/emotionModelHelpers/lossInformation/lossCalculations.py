@@ -20,12 +20,13 @@ from ......Helpers.lossFunctions import weightLoss
 
 class lossCalculations:
 
-    def __init__(self, accelerator, model, allEmotionClasses, activityLabelInd):
+    def __init__(self, accelerator, model, allEmotionClasses, activityLabelInd, useParamsHPC=False):
         # General parameters
         self.allEmotionClasses = allEmotionClasses  # The number of classes (intensity levels) within each emotion to predict. Dim: numEmotions
         self.emotionLength = model.compressedLength  # The number of indices in every final emotion distribution.
         self.activityLabelInd = activityLabelInd
         self.numEmotions = model.numEmotions  # The number of emotions to predict.
+        self.useParamsHPC = useParamsHPC  # Whether to use the HPC parameters.
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.model = model
 
@@ -102,8 +103,7 @@ class lossCalculations:
         predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
         targetClasses = torch.arange(numSignals, device=signalData.device).long().repeat(numExperiments, 1).view(-1)
         positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
-        # Print the error per class.
-        if random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
+        if not self.useParamsHPC and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
 
         # Assert that nothing is wrong with the loss calculations.
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, variableName="encoded signal mean loss", assertGradient=False)

@@ -96,7 +96,7 @@ class generalSignalEncoding(signalEncoderBase):
         super(generalSignalEncoding, self).__init__(sequenceBounds=sequenceBounds, numExpandedSignals=numExpandedSignals, numSigEncodingLayers=numSigEncodingLayers,
                                                     numSigLiftedChannels=numSigLiftedChannels, waveletType=waveletType, debuggingResults=debuggingResults)
 
-    def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True):
+    def forward(self, signalData, targetNumSignals=32, signalEncodingLayerLoss=None, calculateLoss=True, forward=True):
         """ The shape of signalData: (batchSize, numSignals, compressedLength) """
         # Initialize first time parameters for signal encoding.
         if signalEncodingLayerLoss is None: signalEncodingLayerLoss = torch.zeros((signalData.size(0),), device=signalData.device)
@@ -122,6 +122,9 @@ class generalSignalEncoding(signalEncoderBase):
 
             # Expand the signals up to the targetNumSignals.
             else: signalData = self.expansionModel(signalData, targetNumSignals)
+
+            # Apply smoothing to the signals in the forward direction.
+            if forward: signalData = self.denoiseSignals.applySmoothing_forSigEnc(signalData)
 
             if calculateLoss:
                 # Keep track of the error during each compression/expansion.

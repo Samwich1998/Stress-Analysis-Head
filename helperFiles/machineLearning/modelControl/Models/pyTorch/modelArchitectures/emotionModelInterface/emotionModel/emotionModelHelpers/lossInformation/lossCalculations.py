@@ -48,7 +48,7 @@ class lossCalculations:
         # Initialize the loss function WITHOUT the class weights.
         self.activityClassificationLoss = pytorchLossMethods(lossType=self.activityClass_lossType, class_weights=None).loss_fn
         self.emotionClassificationLoss = pytorchLossMethods(lossType=self.emotionDist_lossType, class_weights=None).loss_fn
-        self.positionalEncoderLoss = pytorchLossMethods(lossType="CrossEntropyLoss", class_weights=torch.linspace(start=1, end=2, steps=self.maxNumEncodedSignals, device=accelerator.device)).loss_fn
+        self.positionalEncoderLoss = pytorchLossMethods(lossType="CrossEntropyLoss", class_weights=None).loss_fn
         self.reconstructionLoss = pytorchLossMethods(lossType="MeanSquaredError", class_weights=None).loss_fn
 
     # ---------------------------------------------------------------------- #
@@ -101,10 +101,9 @@ class lossCalculations:
         numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
         predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
         targetClasses = torch.arange(numSignals, device=signalData.device).long().repeat(numExperiments, 1).view(-1)
-        positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses)
+        positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
         # Print the error per class.
-        if random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses, positionalEncodingLoss)
-        positionalEncodingLoss = positionalEncodingLoss.mean()
+        if random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
 
         # Assert that nothing is wrong with the loss calculations.
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, variableName="encoded signal mean loss", assertGradient=False)
@@ -287,18 +286,21 @@ class lossCalculations:
     # ----------------------- Standardization Losses ----------------------- #
 
     @staticmethod
-    def errorPerClass(output, target, loss):
+    def errorPerClass(output, target):
         # Calculate the error per class
         num_classes = output.size(1)
         class_errors = torch.zeros(num_classes)
+        output = output.detach().argmax(dim=-1)
 
         for i in range(num_classes):
             # Mask for the current class
             class_mask = (target == i)
             if class_mask.sum() > 0:
-                class_errors[i] = loss[class_mask].mean()
+                error = output[class_mask] - target[class_mask]
+                class_errors[i] = error.float().abs().mean()
 
         print("Loss per class:", class_errors)
+        print("Final classes:", output[0:num_classes])
 
     @staticmethod
     def gradient_penalty(inputs, outputs, dims):

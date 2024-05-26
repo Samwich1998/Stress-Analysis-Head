@@ -126,7 +126,7 @@ class signalEncoderModel(globalModel):
         # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
 
         # Compress the signal space into numEncodedSignals.
-        encodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss)
+        encodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss, forward=True)
         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
 
         # ---------------------- Signal Reconstruction --------------------- #
@@ -144,7 +144,7 @@ class signalEncoderModel(globalModel):
             # Prepare for loss calculations.
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
             # Calculate the immediately reconstructed data.
-            potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False)
+            potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False, forward=True)
             potentialDecodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=potentialEncodedData, calculateLoss=False)
 
             # Calculate the loss by comparing encoder/decoder outputs.
@@ -188,7 +188,8 @@ class signalEncoderModel(globalModel):
                 = self.encodeSignals(signalEncodingLayerLoss=signalEncodingLayerLoss,
                                      targetNumSignals=numSignalPath[pathInd],
                                      calculateLoss=calculateLoss,
-                                     signalData=decodedData)
+                                     signalData=decodedData,
+                                     forward=False)
             reversePath.extend(miniPath)
 
         return decodedData, reversePath, signalEncodingLayerLoss

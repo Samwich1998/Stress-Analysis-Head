@@ -21,7 +21,7 @@ class denoiser(signalEncoderModules):
                                                                  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useLowFreqCNN=True, independentChannels=True, skipConnectionProtocol='identity')
 
         # Allow the final signals to denoise at the end.
-        self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=3, averageWeights=[0.2, 0.6, 0.2])
+        self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=3, averageWeights=[0.25, 0.5, 0.25])
         self.gausKernel_forPosPreds = self.smoothingKernel(kernelSize=3)
 
     def applySmoothing_forPosPreds(self, inputData):

@@ -57,7 +57,7 @@ if __name__ == "__main__":
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
@@ -113,8 +113,8 @@ if __name__ == "__main__":
     # Self-check the hpc parameters.
     if userInputParams['deviceListed'].startswith("HPC") and useParamsHPC:
         accelerator.gradient_accumulation_steps = 16
-        storeLoss = True # Turn on loss storage for HPC.
-        fastPass = False # Turn off fast pass for HPC.
+        storeLoss = True  # Turn on loss storage for HPC.
+        fastPass = False  # Turn off fast pass for HPC.
 
         if args.submodel == "signalEncoder":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
@@ -183,7 +183,8 @@ if __name__ == "__main__":
 
     # Compile the meta-learning modules.
     allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModels(metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
-                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None, useParamsHPC=useParamsHPC, random_state=42)
+                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None,
+                                                                                            useParamsHPC=useParamsHPC, random_state=42)
     # Compile the final modules.
     allModels, allDataLoaders, allLossDataHolders = modelCompiler.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
                                                                                 [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, useParamsHPC=useParamsHPC, random_state=42)

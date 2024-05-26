@@ -20,8 +20,8 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Neural operator parameters.
         self.activationMethod = self.getActivationMethod_posEncoder()
-        self.numDecompositions = 1     # Number of decompositions for the wavelet transform.
         self.waveletType = waveletType  # wavelet type for the waveletType transform: bior, db3, dmey
+        self.numDecompositions = 1     # Number of decompositions for the wavelet transform.
         self.mode = 'zero'             # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.

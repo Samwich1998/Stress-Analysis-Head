@@ -12,8 +12,8 @@ class denoiser(signalEncoderModules):
 
         # Neural operator parameters.
         self.activationMethod = self.getActivationMethod_denoiser()
-        self.numDecompositions = 1  # Number of decompositions for the waveletType transform.
         self.waveletType = waveletType  # wavelet type for the waveletType transform: bior, db3, dmey
+        self.numDecompositions = 1  # Number of decompositions for the waveletType transform.
         self.mode = 'zero'  # Mode for the waveletType transform.
 
         # Create the spectral convolution layers.
@@ -21,8 +21,8 @@ class denoiser(signalEncoderModules):
                                                                  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useCNN=False, independentChannels=True, skipConnectionProtocol='identity')
 
         # Allow the final signals to denoise at the end.
-        self.gausKernel_forPosPreds = self.smoothingKernel(kernelSize=5)
-        self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=5)
+        self.gausKernel_forPosPreds = self.smoothingKernel(kernelSize=3)
+        self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=3)
 
     def applySmoothing_forPosPreds(self, inputData):
         return self.applySmoothing(inputData, self.gausKernel_forPosPreds)

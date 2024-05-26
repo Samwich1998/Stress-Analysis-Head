@@ -102,8 +102,7 @@ class modelParameters:
         minimumBatchSize = 16
 
         if submodel == "signalEncoder":
-            if self.userInputParams['numSigEncodingLayers'] <= 2 and self.userInputParams['numSigLiftedChannels'] <= 48: minimumBatchSize = 32
-            if self.userInputParams['numSigEncodingLayers'] <= 1: minimumBatchSize = 32
+            if self.userInputParams['numSigEncodingLayers'] <= 2 and self.userInputParams['numSigLiftedChannels'] <= 48: minimumBatchSize = 16
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":

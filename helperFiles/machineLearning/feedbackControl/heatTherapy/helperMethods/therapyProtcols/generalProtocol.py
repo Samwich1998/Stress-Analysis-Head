@@ -456,7 +456,7 @@ class generalProtocol(abc.ABC):
         plt.style.use('seaborn-v0_8-pastel')
         plt.figure(figsize=(10, 6))
         # plot the loss prediction loss
-        plt.plot(epoch_list, loss_prediction_loss, label='Loss Prediction Loss', marker='o', linestyle='-', color='darkblue', linewidth=2, markersize=8)
+        plt.plot(epoch_list, loss_prediction_loss, label='Loss Prediction Loss', linestyle='-', color='darkblue', linewidth=2, markersize=8)
         # plot the loss bias
         #plt.plot(epoch_list, loss_bias, label='Minimize Loss Bias', marker='x', linestyle='--', color='firebrick', linewidth=2, markersize=8)
         # plot the current User Loss
@@ -526,23 +526,40 @@ class generalProtocol(abc.ABC):
         plt.tight_layout()
         plt.show()
 
-    def plot_delta_loss_comparison(self, epoch_list, deltaListPA, deltaLossNA, deltaLossSA, predictedLossPA, predictedLossNA, predictedLossSA):
-        # deltaLossValues (list) = [deltaPA, deltaNA, deltaSA]
-        # flattened_therapyState_loss (tensor) = [PA, NA, SA]
+    import matplotlib.pyplot as plt
 
+    def plot_delta_loss_comparison(self, epoch_list, deltaListPA, deltaLossNA, deltaLossSA, predictedLossPA, predictedLossNA, predictedLossSA):
+        # Setting up the plot style
         plt.style.use('seaborn-v0_8-pastel')
-        plt.figure(figsize=(10, 6))
-        plt.plot(epoch_list, deltaListPA, label='delta PA', linestyle='-', color='darkblue', linewidth=2, markersize=8)
-        plt.plot(epoch_list, deltaLossNA, label='delta NA', linestyle='-', color='firebrick', linewidth=2, markersize=8)
-        plt.plot(epoch_list, deltaLossSA, label='delta SA', linestyle='-', color='forestgreen', linewidth=2, markersize=8)
-        plt.plot(epoch_list, predictedLossPA, label='predicted PA', linestyle='--', color='pink', linewidth=2, markersize=8)
-        plt.plot(epoch_list, predictedLossNA, label='predicted NA', linestyle='--', color='brown', linewidth=2, markersize=8)
-        plt.plot(epoch_list, predictedLossSA, label='predicted SA', linestyle='--', color='olive', linewidth=2, markersize=8)
-        plt.xlabel('Epoch', fontsize=14)
-        plt.ylabel('Loss changes', fontsize=14)
-        plt.title('Therapy Results per Epoch', fontsize=16)
-        plt.legend(frameon=True, loc='best', fontsize=12)
-        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+        fig, axs = plt.subplots(3, 1, figsize=(10, 18), sharex=True)
+
+        # Plotting delta PA and predicted PA
+        axs[0].plot(epoch_list, deltaListPA, label='delta PA', linestyle='-', color='darkblue', linewidth=2, markersize=8)
+        axs[0].plot(epoch_list, predictedLossPA, label='predicted PA', linestyle='--', color='pink', linewidth=2, markersize=8)
+        axs[0].set_ylabel('Loss changes (PA)', fontsize=14)
+        axs[0].set_title('Delta vs Predicted PA', fontsize=16)
+        axs[0].legend(frameon=True, loc='best', fontsize=12)
+        axs[0].grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        # Plotting delta NA and predicted NA
+        axs[1].plot(epoch_list, deltaLossNA, label='delta NA', linestyle='-', color='firebrick', linewidth=2, markersize=8)
+        axs[1].plot(epoch_list, predictedLossNA, label='predicted NA', linestyle='--', color='brown', linewidth=2, markersize=8)
+        axs[1].set_ylabel('Loss changes (NA)', fontsize=14)
+        axs[1].set_title('Delta vs Predicted NA', fontsize=16)
+        axs[1].legend(frameon=True, loc='best', fontsize=12)
+        axs[1].grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        # Plotting delta SA and predicted SA
+        axs[2].plot(epoch_list, deltaLossSA, label='delta SA', linestyle='-', color='forestgreen', linewidth=2, markersize=8)
+        axs[2].plot(epoch_list, predictedLossSA, label='predicted SA', linestyle='--', color='olive', linewidth=2, markersize=8)
+        axs[2].set_xlabel('Epoch', fontsize=14)
+        axs[2].set_ylabel('Loss changes (SA)', fontsize=14)
+        axs[2].set_title('Delta vs Predicted SA', fontsize=16)
+        axs[2].legend(frameon=True, loc='best', fontsize=12)
+        axs[2].grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        # Adjusting layout
+        plt.tight_layout()
         plt.show()
 
     def plot_temp(self, epoch_list, temp_list):

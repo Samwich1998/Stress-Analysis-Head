@@ -109,8 +109,8 @@ class nnProtocol(generalProtocol):
             newUserTemp = self.unstandardizeTemperature(finalTemperaturePredictions[0][0][0].item())
         else:
             newUserTemp = self.unstandardizeTemperature(finalTemperaturePredictions[0][0][0].item())
-            if random.uniform(0,1) < self.epsilon:
-                newUserTemp = self.sample_temperature(newUserTemp)
+            # if random.uniform(0,1) < self.epsilon:
+            #     newUserTemp = self.sample_temperature(newUserTemp)
         print('newUserTemp: ', newUserTemp)
         newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = super().getNextState(newUserTemp)
         self.userFullStatePathDistribution.append([newUserTemp, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated])

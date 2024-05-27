@@ -28,7 +28,8 @@ class lossCalculations:
     def scoreModel(self, therapyState, trueLossValues):
         """ Score the model based on the final loss. """
         # Unpack the final loss predictions.
-        finalTemperaturePredictions, finalLossPredictions = therapyState
+        finalTemperaturePredictions = therapyState[0]
+        finalLossPredictions = therapyState[1:]
         numLosses, batchSize, numLossBins = finalLossPredictions.size()
         # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
         # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
@@ -42,18 +43,23 @@ class lossCalculations:
         lossPredictionLoss = 0
         minimizeLossBias = 0
 
+        # print the datatypes for lossPredictionLoss, finalLossPredictions, trueLossValues
+        print(f"lossPredictionLoss: {type(lossPredictionLoss)}")
+        print(f"finalLossPredictions: {type(finalLossPredictions)}")
         # For each mental state score.
         for lossInd in range(self.numLosses):
             # Bias the model to predict the next loss.
-            self.lossCalculation(lossPredictionLoss, finalLossPredictions, trueLossValues, lossInd, lossType=self.predictionLossType)
+            lossPredictionLoss = self.lossCalculation(lossPredictionLoss, finalLossPredictions, trueLossValues, lossInd, lossType=self.predictionLossType)
 
             # Bias the model to minimize the loss.
-            expectedLoss = self.optimalFinalLossBinIndex.expand(self.numLosses, batchSize)  # expectedLoss dimensions: [self.numLosses, batchSize].
-            self.lossCalculation(minimizeLossBias, finalLossPredictions, expectedLoss, lossInd, lossType=self.optimalLossType)
+            expectedLoss = self.optimalFinalLossBinIndex#.expand(self.numLosses, batchSize)  # expectedLoss dimensions: [self.numLosses, batchSize].
+            minimizeLossBias = self.lossCalculation(minimizeLossBias, finalLossPredictions, expectedLoss, lossInd, lossType=self.optimalLossType)
 
         return lossPredictionLoss, minimizeLossBias
 
     def lossCalculation(self, lossPredictionLoss, finalLossPredictions, trueLossValues, lossInd, lossType):
+        # printout the size of the finalLossPredictions and trueLossValues
+
         # KL divergence loss
         if lossType == "KL":
             # Add the loss value.
@@ -73,7 +79,9 @@ class lossCalculations:
         elif lossType == "MSE":
             # Prepare the final loss predictions for MSE.
             trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numLosses, batchSize].
-
+            trueLossValues = trueLossValues.unsqueeze(-1)
+            print(f"finalLossPredictions: {finalLossPredictions.size()}")
+            print(f"trueLossValues: {trueLossValues.size()}")
             # Add the loss value.
             lossPredictionLoss = lossPredictionLoss + self.MSELoss(finalLossPredictions[lossInd], trueLossValues[lossInd]).mean()
         else:

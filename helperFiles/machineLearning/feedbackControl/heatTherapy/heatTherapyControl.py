@@ -80,13 +80,17 @@ class heatTherapyControl:
         while not self.therapyProtocol.finishedTherapy:
             # Get the next states for the therapy.
             therapyState, allMaps = self.therapyProtocol.updateTherapyState()
+            print(f"Therapy state: {therapyState}\n")
             if self.therapyMethod == "nnProtocol":
                 if self.therapyProtocol.onlineTraining:
                     print('------Online training started-------')
                     # Calculate the final loss.
                     self.therapyProtocol.getNextState(therapyState)
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
-                    deltaLossValues = [true - last for true, last in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]
+                    if iteration > 2:
+                        deltaLossValues = [true - prev for true, prev in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]  # self.therapyProtocol.optimalLoss
+                    else:
+                        deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
                     lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, deltaLossValues) # losspredictionloss is from the model
                     self.latestLoss = lossPredictionLoss.item()
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
@@ -101,14 +105,19 @@ class heatTherapyControl:
                 elif not self.therapyProtocol.onlineTraining:
                     print('------simulation (offline) training started-------')
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
-                    deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues,[0,0,0] )]# self.therapyProtocol.optimalLoss
+                    if iteration > 2:
+                        deltaLossValues = [true - prev for true, prev in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]  # self.therapyProtocol.optimalLoss
+                    else:
+                        deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
                     deltaLossValues = torch.tensor(deltaLossValues, dtype=torch.float32)
-                    lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel_offline(therapyState, deltaLossValues) #losspredictionloss is from the model
+                    lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, deltaLossValues) #losspredictionloss is from the model
+                    # print the datatype of lossPredictionLoss
                     self.therapyProtocol.getNextState(therapyState)
                     self.latestLoss = lossPredictionLoss.item()
                     print('****** latestLoss: ', self.latestLoss)
                     print('therapy State: ', therapyState)
                     print('^^^^^^ NA loss', self.therapyProtocol.optimalLoss[1] + therapyState[2])
+                    print('iteration: ', iteration)
 
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
                     currentUserLoss = self.therapyProtocol.userStatePath_simulated[-1][1]
@@ -186,8 +195,8 @@ if __name__ == "__main__":
     therapyProtocol = heatTherapyControl(userTemperatureBounds, userTempBinWidth, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
 
     # Run the therapy protocol.
-    #therapyProtocol.runTherapyProtocol(maxIterations=500)
-    therapyProtocol.runHMMProtocol()
+    therapyProtocol.runTherapyProtocol(maxIterations=2000)
+    #therapyProtocol.runHMMProtocol()
 
     # TODO: lost per epoch  (optimal, predicted, actual loss) (lossPredictionLoss, minimizeLossBias, currentUserLoss) (checked)
     # TODO: change the architecture

@@ -124,6 +124,7 @@ if __name__ == "__main__":
 
             saveModel = True  # Save the Machine Learning Model for Later Use
             trainingFolder = "./_experimentalData/allSensors/_finalDataset/"  # Data Folder to Save the Excel Data; MUST END IN '/'
+            trainingFolder = "./_experimentalData/allSensors/_finalTherapyData/"  # Data Folder to Save the Excel Data; MUST END IN '/'
         else:
             saveModel = False
             trainingFolder = None
@@ -209,6 +210,7 @@ if __name__ == "__main__":
         for analysisInd in range(len(allRawFeatureHolders[0])):
             assert len(allRawFeatureHolders[0][analysisInd][0]) == len(biomarkerFeatureNames[analysisInd]), "Incorrect number of fraw eatures extracted"
         print("\nFinished Feature Extraction")
+        exit()
 
         # Standardize data
         standardizeClass_Features = standardizeData(allFinalFeatures, threshold=0)

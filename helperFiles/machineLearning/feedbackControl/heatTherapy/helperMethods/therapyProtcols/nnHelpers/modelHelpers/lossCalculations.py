@@ -2,7 +2,10 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+
+# Import files.
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.generalProtocol import generalProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.dataInterface.dataInterface import dataInterface
 
 
 class lossCalculations:
@@ -21,7 +24,7 @@ class lossCalculations:
 
         # Initialize the optimal final loss.
         self.optimalLoss = [1, 0, 0]  # The optimal final loss bin index. [PA, NA, SA].
-        self.optimalFinalLossBinIndex = list(map(lambda loss: generalProtocol.getBinIndex(self.loss_bins, loss), self.optimalLoss))
+        self.optimalFinalLossBinIndex = list(map(lambda loss: dataInterface.getBinIndex(self.loss_bins, loss), self.optimalLoss))
         self.optimalFinalLossBinIndex = torch.tensor(data=self.optimalFinalLossBinIndex, dtype=torch.long)
         # self.optimalFinalLoss_bin dimensions: [numLosses].
 

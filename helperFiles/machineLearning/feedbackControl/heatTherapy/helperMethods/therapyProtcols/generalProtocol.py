@@ -19,7 +19,6 @@ class generalProtocol(abc.ABC):
         self.userFullStatePathDistribution = []  # The path of the user state with loss distribution. Tailored for simulation nnProtocol (T, PA_distribution, NA_distribution, SA_distribution)
         self.applyGaussianFilter = True     # Whether to apply a Gaussian filter on the discrete maps.
         self.temperatureTimepoints = []     # Time delays for each discrete temperature-loss pair. (time, T)
-        self.simulateTherapy = False        # Whether to simulate the therapy.
         self.finishedTherapy = False        # Whether the therapy has finished.
         self.userFullStatePath = []         # The path of the user state. Order: (T, PA, NA, SA)
         self.userStatePath = []             # The path of the user state. Order: (T, Loss)
@@ -50,6 +49,7 @@ class generalProtocol(abc.ABC):
         else:
             # Define a helper class for experimental parameters.
             self.empatchProtocols = empatchProtocols(self.predictionOrder)
+            self.simulationProtocols = simulationProtocols(self.temp_bins, self.loss_bins, self.lossBinWidth, self.temperatureBounds, self.lossBounds, self.numLosses, self.lossWeights, self.optimalState, simulationParameters)
         # initialize helper classes.
         self.plottingProtocolsMain = plottingProtocolsMain(self.temperatureBounds, self.numTempBins, self.tempBinWidth, self.lossBounds, self.numLossBins, self.lossBinWidth)
         self.dataInterface = dataInterface(self.lossWeights, self.optimalState, self.temperatureBounds)

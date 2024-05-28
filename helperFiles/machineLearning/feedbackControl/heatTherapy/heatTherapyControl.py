@@ -2,7 +2,6 @@
 import time
 import torch
 import sys
-import numpy as np
 
 sys.path.append("./../../../../")
 import helperFiles
@@ -183,6 +182,7 @@ if __name__ == "__main__":
     userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
     userTemperatureBounds = (30, 50)  # The temperature bounds for the therapy.
     plotTherapyResults = True  # Whether to plot the results.
+    userName = "Squirtle"
 
     # Simulation parameters.
     currentSimulationParameters = {
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     }
 
     # Initialize the therapy protocol
-    therapyProtocol = heatTherapyControl(userTemperatureBounds, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
+    therapyProtocol = heatTherapyControl(userName, userTemperatureBounds, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
 
     # Run the therapy protocol.
     therapyProtocol.runTherapyProtocol(maxIterations=2000)

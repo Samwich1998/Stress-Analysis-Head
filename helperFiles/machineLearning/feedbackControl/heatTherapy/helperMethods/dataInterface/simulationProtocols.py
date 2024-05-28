@@ -11,7 +11,7 @@ from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.thera
 class simulationProtocols:
     def __init__(self, temp_bins, loss_bins, lossBinWidth, temperatureBounds, lossBounds, numLosses, lossWeights, optimalState, simulationParameters):
         # General parameters.
-        self.startingPoint = self.randomlySamplePoint()
+        self.temperatureBounds = temperatureBounds
         self.lossBinWidth = lossBinWidth
         self.lossBounds = lossBounds
         self.temp_bins = temp_bins
@@ -26,7 +26,7 @@ class simulationProtocols:
         self.numSimulationTrueSamples = simulationParameters['numSimulationTrueSamples']
         self.heuristicMapType = simulationParameters['heuristicMapType']
         self.simulatedMapType = simulationParameters['simulatedMapType']
-        self.temperatureBounds = temperatureBounds
+        self.startingPoint = self.randomlySamplePoint()
 
         # Uninitialized parameters.
         self.PA_map_simulated = None

@@ -52,7 +52,7 @@ if __name__ == "__main__":
     )
 
     # General model parameters.
-    trainingDate = "2024-05-25 round 2"  # The current date we are training the model. Unique identifier of this training set.
+    trainingDate = "2024-05-25 round 3"  # The current date we are training the model. Unique identifier of this training set.
     modelName = "emotionModel"  # The emotion model's unique identifier. Options: emotionModel
     testSplitRatio = 0.2  # The percentage of testing points.
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     parser.add_argument('--optimizerType', type=str, default='AdamW', help='The optimizerType used during training convergence: Options: RMSprop, Adam, AdamW, SGD, etc.')
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
-    parser.add_argument('--signalEncoderWaveletType', type=str, default='bior3.5', help='The wavelet type for the wavelet transform: bior3.7, db3, dmey, etc')
+    parser.add_argument('--signalEncoderWaveletType', type=str, default='sym13', help='The wavelet type for the wavelet transform: bior3.7, db3, dmey, etc')
     parser.add_argument('--numSigLiftedChannels', type=int, default=32, help='The number of channels to lift to during signal encoding. Range: (16, 64, 16)')
     parser.add_argument('--numSigEncodingLayers', type=int, default=2, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')

@@ -65,6 +65,8 @@ class convolutionalHelpers(abnormalConvolutions):
             activationFunction = boundedExp(topExponent=topExponent, nonLinearityRegion=nonLinearityRegion)
         elif activationType == 'boundedS':
             activationFunction = boundedS()
+        elif activationType == 'linearOscillation':
+            activationFunction = linearOscillation()
         elif activationType == 'PReLU':
             activationFunction = nn.PReLU()
         elif activationType == 'selu':

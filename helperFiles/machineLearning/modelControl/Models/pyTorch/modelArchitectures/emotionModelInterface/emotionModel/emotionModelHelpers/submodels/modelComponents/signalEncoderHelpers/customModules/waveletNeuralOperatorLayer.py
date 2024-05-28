@@ -118,7 +118,7 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
             frequencies = frequencies + frequencyTerms
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
-        if self.independentChannels or (self.useLowFreqCNN and lowFrequencyFlag):
+        if self.independentChannels or (self.useLowFreqCNN): # and lowFrequencyFlag):
             frequencies = weights(frequencies)  # Learn a new set of wavelet coefficients to transform the data.
             # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
         else:

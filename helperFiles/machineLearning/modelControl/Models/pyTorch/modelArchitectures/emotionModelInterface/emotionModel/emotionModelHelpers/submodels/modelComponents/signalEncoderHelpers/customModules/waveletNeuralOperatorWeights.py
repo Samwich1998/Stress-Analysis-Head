@@ -61,7 +61,7 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
         return lowFrequencyWeights, fullLowFrequencyWeights
 
     def getNeuralWeightParameters(self, inChannel, outChannel, initialFrequencyDim, finalFrequencyDim, lowFrequencyFlag=False):
-        if self.useLowFreqCNN and lowFrequencyFlag:
+        if self.useLowFreqCNN: # and lowFrequencyFlag:
             if self.independentChannels:
                 # Initialize the frequency weights to learn how to change.
                 assert inChannel == outChannel, "The number of input and output signals must be equal."

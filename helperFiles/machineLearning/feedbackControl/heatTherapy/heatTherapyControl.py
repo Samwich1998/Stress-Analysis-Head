@@ -9,8 +9,8 @@ import helperFiles
 # Import the necessary libraries.
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.aStarProtocol import aStarProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.basicProtocol import basicProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.HMMProtocol import HMMProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnProtocol
 
 
 class heatTherapyControl:
@@ -181,8 +181,8 @@ if __name__ == "__main__":
     # User parameters.
     userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
     userTemperatureBounds = (30, 50)  # The temperature bounds for the therapy.
+    testingUserName = "Squirtle"  # The username for the therapy.
     plotTherapyResults = True  # Whether to plot the results.
-    userName = "Squirtle"
 
     # Simulation parameters.
     currentSimulationParameters = {
@@ -194,20 +194,7 @@ if __name__ == "__main__":
     }
 
     # Initialize the therapy protocol
-    therapyProtocol = heatTherapyControl(userName, userTemperatureBounds, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
+    therapyProtocol = heatTherapyControl(testingUserName, userTemperatureBounds, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
 
     # Run the therapy protocol.
     therapyProtocol.runTherapyProtocol(maxIterations=2000)
-    #therapyProtocol.runHMMProtocol()
-
-    # TODO: lost per epoch  (optimal, predicted, actual loss) (lossPredictionLoss, minimizeLossBias, currentUserLoss) (checked)
-    # TODO: change the architecture
-    # TODO: save the good copy
-    # TODO: figure out the crossentropyerror high issue?
-    # TODO: other types of losses for classification (look into them)
-    # TODO: add a learning rate scheduler   (checked)
-    # TODO: online training
-    # TODO: saving and loading models
-    # TODO: look into gradient clipping and spectral normalization 
-
-    # loss vs epoch

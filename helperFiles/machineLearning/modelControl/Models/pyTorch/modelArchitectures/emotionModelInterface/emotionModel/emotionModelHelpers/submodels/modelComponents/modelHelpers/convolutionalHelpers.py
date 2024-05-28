@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import switchActivation, sinh, boundedS, boundedExp
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.optimizerMethods.activationFunctions import switchActivation, sinh, boundedS, boundedExp, \
+    linearOscillation
 # Import files.
 from .abnormalConvolutions import abnormalConvolutions
 

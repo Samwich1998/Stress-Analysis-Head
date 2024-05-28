@@ -1,73 +1,132 @@
 # General
 import numpy as np
+import random
 import torch
 
+# Import helper files.
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.dataInterface.dataInterface import dataInterface
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.helperTherapyMethods.generalMethods import generalMethods
+
+
 class simulationProtocols:
-    def __init__(self, temp_bins, loss_bins, lossBinWidth, temperatureBounds, lossBounds, simulationParameters):
+    def __init__(self, temp_bins, loss_bins, lossBinWidth, temperatureBounds, lossBounds, numLosses, lossWeights, optimalState, simulationParameters):
         # General parameters.
-        self.startingPoint = [47,  0.5966159,   0.69935307,  0.91997683]
+        self.startingPoint = self.randomlySamplePoint()
         self.lossBinWidth = lossBinWidth
         self.lossBounds = lossBounds
         self.temp_bins = temp_bins
         self.loss_bins = loss_bins
+        self.numLosses = numLosses
+
+        # Hardcoded parameters.
         self.timeDelay = 10
 
-        # Simulation parameters
+        # Simulation parameters.
         self.numSimulationHeuristicSamples = simulationParameters['numSimulationHeuristicSamples']
         self.numSimulationTrueSamples = simulationParameters['numSimulationTrueSamples']
         self.heuristicMapType = simulationParameters['heuristicMapType']
         self.simulatedMapType = simulationParameters['simulatedMapType']
         self.temperatureBounds = temperatureBounds
-        self.simulatedMap = None
 
+        # Uninitialized parameters.
         self.PA_map_simulated = None
         self.NA_map_simulated = None
         self.SA_map_simulated = None
+        self.simulatedMap = None
 
         # Gumbel-Softmax parameters
-        self.initial_temperature = 5
-        self.temperature_decay = 0.99
+        self.gumbelTemperatureDecay = 0.99
+        self.gumbelTemperature = 5
+
+        # Initialize helper classes.
+        self.dataInterface = dataInterface(lossWeights, optimalState, temperatureBounds)
+        self.generalMethods = generalMethods()
+
+    # ------------------------ Getter Methods ------------------------ #
+
+    def getSimulatedTime(self, lastTimePoint=None):
+        return lastTimePoint + self.timeDelay if lastTimePoint is not None else 0
+
+    def getFirstPoint(self):
+        return self.startingPoint  # (T, PA, NA, SA)
+
+    def initializeSimulatedMaps(self, lossWeights, gausSTD, applyGaussianFilter):
+        # Get the simulated data points.
+        initialSimulatedStates = self.generateSimulatedMap()
+        # initialSimulatedStates dimension: numSimulationTrueSamples, (T, PA, NA, SA); 2D array
+
+        # Get the simulated matrix from the simulated points.
+        initialSimulatedData = self.dataInterface.compileStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
+        self.NA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.temp_bins, self.loss_bins, gausSTD, noise=0.05, applyGaussianFilter=applyGaussianFilter)
+        self.SA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.temp_bins, self.loss_bins, gausSTD, noise=0.1, applyGaussianFilter=applyGaussianFilter)
+        self.PA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.temp_bins, self.loss_bins, gausSTD, noise=0.0, applyGaussianFilter=applyGaussianFilter)
+
+        # say that state anxiety has a slightly higher weight
+        self.simulatedMap = (lossWeights[0]*self.PA_map_simulated + lossWeights[1]*self.NA_map_simulated + lossWeights[2]*self.SA_map_simulated) / np.sum(lossWeights)
+        print('####simulatedMap: ', self.simulatedMap)
 
     # ------------------------ Simulation Interface ------------------------ #
 
-    def getSimulatedTime(self, lastTimePoint=None):
-        # Simulate a new time.
-        return lastTimePoint + self.timeDelay if lastTimePoint is not None else 0
+    def randomlySamplePoint(self):
+        # generate a random temperature within the bounds.
+        randomTemperature = np.random.uniform(self.temperatureBounds[0], self.temperatureBounds[1])
 
+        randomLosses = []
+        # For each loss value.
+        for lossInd in range(self.numLosses):
+            # generate a random loss within the bounds.
+            randomLosses.append(np.random.uniform(self.lossBounds[0], self.lossBounds[1]))
 
+        # Combine all the loss values.
+        return [randomTemperature] + randomLosses
 
     def gumbel_softmax_sample(self, logits):
         gumbels = -torch.empty_like(logits).exponential_().log()  # Sample from Gumbel(0, 1)
-        gumbels = (logits + gumbels) / self.initial_temperature  # Add gumbels and divide by temperature
+        gumbels = (logits + gumbels) / self.gumbelTemperature  # Add gumbels and divide by temperature
         return torch.nn.functional.softmax(gumbels, dim=-1)
 
     def update_temperature(self):
-        self.initial_temperature *= self.temperature_decay
+        self.gumbelTemperature *= self.gumbelTemperatureDecay
 
-    def sampleNewLoss(self, currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0):
-        simulatedMap = torch.tensor(self.simulatedMap, dtype=torch.float32)
+    def getSimulatedLoss(self, currentUserState, newUserTemp=None):
+        # Unpack the current user state.
+        currentUserTemp, currentUserLoss = currentUserState
+        newUserTemp = currentUserTemp if newUserTemp is None else newUserTemp
+
+        # Calculate the bin indices for the current and new user states.
+        currentTempBinIndex = self.dataInterface.getBinIndex(self.temp_bins, currentUserTemp)
+        currentLossIndex = self.dataInterface.getBinIndex(self.loss_bins, currentUserLoss)
+        newTempBinIndex = self.dataInterface.getBinIndex(self.temp_bins, newUserTemp)
+
+        # Simulate a new user loss.
+        PA, NA, SA, PA_dist, NA_dist, SA_dist = self.sampleNewLoss(currentLossIndex, newTempBinIndex)
+        PA_np = PA.detach().numpy()
+        NA_np = NA.detach().numpy()
+        SA_np = SA.detach().numpy()
+
+        newUserLoss = self.dataInterface.calculateLoss(np.asarray([[PA_np, NA_np, SA_np]]))[0]
+        return newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist
+
+    def sampleNewLoss(self, currentLossIndex, newTempBinIndex, gausSTD=0.1):
         PA_map_simulated = torch.tensor(self.PA_map_simulated, dtype=torch.float32)
         NA_map_simulated = torch.tensor(self.NA_map_simulated, dtype=torch.float32)
         SA_map_simulated = torch.tensor(self.SA_map_simulated, dtype=torch.float32)
+        simulatedMap = torch.tensor(self.simulatedMap, dtype=torch.float32)
         loss_bins = torch.tensor(self.loss_bins, dtype=torch.float32)
-
-        # Standard deviation for the Gaussian boost
-        std = 0.1
 
         # Calculate new loss probabilities and Gaussian boost
         newLossProbabilities = simulatedMap[newTempBinIndex] / torch.sum(simulatedMap[newTempBinIndex])
-        gaussian_boost = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities), dtype=torch.float32) - currentLossIndex) / std) ** 2)
-        gaussian_boost = gaussian_boost / torch.sum(gaussian_boost)
+        gaussian_boost = self.generalMethods.createGaussianArray(inputData=newLossProbabilities, gausMean=currentLossIndex, gausSTD=gausSTD, torchFlag=True)
 
         # Combine the two distributions and normalize
         newLossProbabilities = newLossProbabilities + gaussian_boost
         newLossProbabilities = newLossProbabilities / torch.sum(newLossProbabilities)
 
-        # Use Gumbel-Softmax for differentiable sampling
-        soft_sample = self.gumbel_softmax_sample(newLossProbabilities)
-
         # Sample distribution of loss at a certain temperature for PA, NA, SA
         newLossProbabilities_PA = PA_map_simulated[newTempBinIndex] / torch.sum(PA_map_simulated[newTempBinIndex])
+        gaussian_boost = self.generalMethods.createGaussianArray(inputData=newLossProbabilities_PA, gausMean=currentLossIndex, gausSTD=gausSTD, torchFlag=True)
+
+
         gaussian_boost_PA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_PA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
         gaussian_boost_PA = gaussian_boost_PA / torch.sum(gaussian_boost_PA)
 
@@ -106,47 +165,36 @@ class simulationProtocols:
         print(f"Gradient tracking enabled: {soft_sample_SA.requires_grad}")
         loss_distribution_perTemp_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
 
-
         # Update the temperature for annealing
         self.update_temperature()
-        print('initial_temperature: ', self.initial_temperature)
+        print('initial_temperature: ', self.gumbelTemperature)
 
         return newUserLoss_PA, newUserLoss_NA, newUserLoss_SA, loss_distribution_perTemp_PA, loss_distribution_perTemp_NA, loss_distribution_perTemp_SA
 
-    def sampleNewLoss_HMM(self, currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.01):
-        # if we changed the temperature.
-        if newTempBinIndex != currentTempBinIndex or np.random.rand() < 0.1:
-            # Sample a new loss from the distribution.
-            newLossProbabilities = self.simulatedMap[newTempBinIndex] / np.sum(self.simulatedMap[newTempBinIndex])
-            gaussian_boost = np.exp(-0.5 * ((np.arange(len(newLossProbabilities)) - currentLossIndex) / 0.1) ** 2)
-            gaussian_boost = gaussian_boost / np.sum(gaussian_boost)
+    def sampleSingleLoss(self, newLossProbabilities_SA, loss_bins):
+        # Normalizing the loss distribution.
+        newLossProbabilities_SA = newLossProbabilities_SA / torch.sum(newLossProbabilities_SA)
+        newLossProbabilities_SA = newLossProbabilities_SA.clone().requires_grad_(True)
 
-            # Combine the two distributions.
-            newLossProbabilities = newLossProbabilities + gaussian_boost
-            newLossProbabilities = newLossProbabilities / np.sum(newLossProbabilities)
+        soft_sample_SA = self.gumbel_softmax_sample(newLossProbabilities_SA)
+        newUserLoss_SA = torch.sum(soft_sample_SA * loss_bins)
+        print('newUserLoss_SA: ', newUserLoss_SA)
+        print('soft_sample_SA: ', soft_sample_SA)
+        print(f"Gradient tracking enabled: {soft_sample_SA.requires_grad}")
+        loss_distribution_perTemp_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
 
-            # Sample a new loss from the distribution.
-            newLossBinIndex = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
-            newUserLoss = self.loss_bins[newLossBinIndex]
-        else:
-            newUserLoss = currentUserLoss + np.random.normal(loc=0, scale=0.01)
-
-        return max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss))
-
-    def getFirstPoint(self):
-        return self.startingPoint  # (T, PA, NA, SA)
+        return newUserLoss_SA, loss_distribution_perTemp_SA
 
     # ------------------------ Sampling Methods ------------------------ #
 
-    def generateSimulatedMap(self, numSimulationSamples, simulatedMapType=None):
-        simulatedMapType = simulatedMapType if simulatedMapType is not None else self.simulatedMapType
+    def generateSimulatedMap(self):
         """ Final dimension: numSimulationSamples, (T, PA, NA, SA); 2D array """
-        if simulatedMapType == "uniformSampling":
-            return self.uniformSampling(numSimulationSamples)
-        elif simulatedMapType == "linearSampling":
-            return self.linearSampling(numSimulationSamples)
-        elif simulatedMapType == "parabolicSampling":
-            return self.parabolicSampling(numSimulationSamples)
+        if self.simulatedMapType == "uniformSampling":
+            return self.uniformSampling(self.numSimulationTrueSamples)
+        elif self.simulatedMapType == "linearSampling":
+            return self.linearSampling(self.numSimulationTrueSamples)
+        elif self.simulatedMapType == "parabolicSampling":
+            return self.parabolicSampling(self.numSimulationTrueSamples)
         else:
             raise Exception()
 

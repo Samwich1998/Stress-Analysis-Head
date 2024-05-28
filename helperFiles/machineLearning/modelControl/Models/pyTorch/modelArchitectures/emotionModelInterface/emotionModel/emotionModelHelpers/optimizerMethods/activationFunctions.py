@@ -41,14 +41,19 @@ class boundedExp(nn.Module):
         return linearTerm * exponentialTerm
 
 
+# CHECK IF USING
 class linearOscillation(nn.Module):
     def __init__(self, linearity=1, amplitude=1):
         super(linearOscillation, self).__init__()
+        # NOTE MONOTONICITY: The linearity term must be greater or equal to the MAGNITUDE (ABS) of the amplitude to ensure the activation is monotonically increasing.
         self.linearity = linearity
         self.amplitude = amplitude
 
     def forward(self, x):
-        return self.linearity*x + self.amplitude * torch.sin(x)
+        # Ensure monotonicity.
+        linearity = torch.clamp(self.linearity, min=abs(self.amplitude))
+
+        return linearity*x + self.amplitude * torch.sin(x)
 
 
 class boundedS(nn.Module):

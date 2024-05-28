@@ -141,7 +141,7 @@ class modelParameters:
 
     @staticmethod
     def getSignalMinMaxScale():
-        return 2
+        return 1  # Some wavelets constrained to +/- 1.
 
     @staticmethod
     def getShiftInfo(submodel):

@@ -4,8 +4,8 @@ from .generalProtocol import generalProtocol
 
 
 class HMMProtocol(generalProtocol):
-    def __init__(self, temperatureBounds, tempBinWidth, simulationParameters):
-        super().__init__(temperatureBounds, tempBinWidth, simulationParameters)
+    def __init__(self, temperatureBounds, simulationParameters):
+        super().__init__(temperatureBounds, simulationParameters)
         self.numStates = self.numTempBins # number of states in the HMM
 
         # HMM intialization:
@@ -164,3 +164,80 @@ class HMMProtocol(generalProtocol):
         optimal_temperature, loss = self.predict_next_temperature(self.userStatePath[-1])
         self.userStatePath.append((optimal_temperature, loss))
 
+
+    def initializeUserState_HMM(self):
+        # Get the user information.
+        timePoint, userState = self.getCurrentState()  # userState: (T, PA, NA, SA)
+        tempIndex = self.getBinIndex(self.temp_bins, userState[0])
+        # Track the user state and time delay.
+        self.userStatePath.append(self.compileLossStates(np.asarray([userState]))[0])  # userStatePath: (numEpochs, 2=(T, Loss))
+        self.temperatureTimepoints.append((timePoint, tempIndex))  # temperatureTimepoints: (numEpochs, 2=(time, tempIndex))
+        self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(T, PA, NA, SA))
+
+    def initializeStartingProbabilityMatrix_HMM(self):
+        initial_probs = np.full(self.numTempBins, 1 / self.numTempBins)
+        return initial_probs
+
+    def initializeTransitionMatrix_HMM(self):
+        transition_matrix = np.full((self.numTempBins, self.numTempBins), 1 / self.numTempBins)
+        return transition_matrix
+
+    def initializeMeans_HMM(self):
+        # initialize means based on each temperature bin associated loss values from simulated map (get the mean of the loss values in this temperature bin)
+        means = np.zeros(self.numTempBins)
+        for i in range(self.numTempBins):
+            means[i] = np.mean(self.simulationProtocols.simulatedMap[i])
+        return means
+
+    def initializeVariances_HMM(self):
+        # initialize variance based on each tempearture bin associated loss values from simulated map (get the variance of the loss values in this temperature bin)
+        variances = np.zeros(self.numTempBins)
+        for i in range(self.numTempBins):
+            variances[i] = np.var(self.simulationProtocols.simulatedMap[i])
+        return variances
+
+    def randomSampleTempLossPairs(self, numSamples):
+        # randomly sample temperature-loss pairs from the simulated map
+        tempLossPairs = []
+        loss = []
+        for i in range(numSamples):
+            tempIndex = np.random.choice(self.numTempBins)
+            lossIndex = np.random.choice(self.numLossBins)
+            tempLossPairs.append([self.temp_bins[tempIndex], self.loss_bins[lossIndex]])
+            loss.append(self.loss_bins[lossIndex])
+        return tempLossPairs, loss
+
+
+    def getSimulatedLoss_HMM(self, currentUserState, newUserTemp):
+        # Unpack the current user state.
+        currentUserTemp, currentUserLoss = currentUserState
+
+        # Calculate the bin indices for the current and new user states.
+        currentTempBinIndex = self.getBinIndex(self.temp_bins, currentUserTemp)
+        currentLossIndex = self.getBinIndex(self.loss_bins, currentUserLoss)
+        newTempBinIndex = self.getBinIndex(self.temp_bins, newUserTemp)
+
+        # Simulate a new user loss.
+        newUserLoss = self.simulationProtocols.sampleNewLoss_HMM(currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex)
+
+        return newUserLoss
+
+    def sampleNewLoss_HMM(self, currentUserLoss, currentLossIndex, currentTempBinIndex, newTempBinIndex, bufferZone=0.01):
+        # if we changed the temperature.
+        if newTempBinIndex != currentTempBinIndex or np.random.rand() < 0.1:
+            # Sample a new loss from the distribution.
+            newLossProbabilities = self.simulatedMap[newTempBinIndex] / np.sum(self.simulatedMap[newTempBinIndex])
+            gaussian_boost = np.exp(-0.5 * ((np.arange(len(newLossProbabilities)) - currentLossIndex) / 0.1) ** 2)
+            gaussian_boost = gaussian_boost / np.sum(gaussian_boost)
+
+            # Combine the two distributions.
+            newLossProbabilities = newLossProbabilities + gaussian_boost
+            newLossProbabilities = newLossProbabilities / np.sum(newLossProbabilities)
+
+            # Sample a new loss from the distribution.
+            newLossBinIndex = np.random.choice(a=len(newLossProbabilities), p=newLossProbabilities)
+            newUserLoss = self.loss_bins[newLossBinIndex]
+        else:
+            newUserLoss = currentUserLoss + np.random.normal(loc=0, scale=0.01)
+
+        return max(self.loss_bins[0] + bufferZone, min(self.loss_bins[-1] - bufferZone, newUserLoss))

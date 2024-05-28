@@ -1,18 +1,14 @@
 # General
-import random
-import sys
 import numpy as np
-from scipy.ndimage import gaussian_filter
-import matplotlib.pyplot as plt
+import random
 
+# Import files.
 from .generalProtocol import generalProtocol
 
 
-# make a stupid algorithm
-
 class basicProtocol(generalProtocol):
-    def __init__(self, temperatureBounds, tempBinWidth, simulationParameters, personalizedMap=None):
-        super().__init__(temperatureBounds, tempBinWidth, simulationParameters)
+    def __init__(self, temperatureBounds, simulationParameters):
+        super().__init__(temperatureBounds, simulationParameters)
         # Specific basic protocol parameters
         self.discretePersonalizedMap = [] # store the probability matrix
         self.gausSTD = np.array([0.05, 2.5])  # The standard deviation for the Gaussian distribution
@@ -20,7 +16,7 @@ class basicProtocol(generalProtocol):
         self.finishedTherapy = False    # Whether the therapy has finished.
         self.numTempsConsider = 2  # Number of temperatures to consider for the next step
         self.percentHeuristic = 1  # The percentage of the heuristic map to use.
-        self.heuristicMap = self.initializeSimulatedMaps()
+        self.heuristicMap = self.initializeMaps()
 
 
     # ------------------------ Update Parameters ------------------------ #
@@ -76,7 +72,7 @@ class basicProtocol(generalProtocol):
         self.personalizedMap = uniformMap
 
     # ------------------------ initialize simulated Map ------------------------ #
-    def initializeSimulatedMaps(self):
+    def initializeMaps(self):
         if self.simulateTherapy:
             # Get the simulated data points.
             initialHeuristicStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationHeuristicSamples, simulatedMapType=self.simulationProtocols.heuristicMapType)

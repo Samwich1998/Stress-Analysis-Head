@@ -11,16 +11,13 @@ from .nnHelpers.heatTherapyModel import heatTherapyModel
 from .nnHelpers.modelHelpers.lossCalculations import lossCalculations
 from .nnHelpers.heatTherapyModelUpdate import heatTherapyModelUpdate
 
+
 class nnProtocol(generalProtocol):
-    def __init__(self, temperatureBounds, tempBinWidth, simulationParameters, modelName, onlineTraining=False):
-        super().__init__(temperatureBounds, tempBinWidth, simulationParameters)
+    def __init__(self, temperatureBounds, simulationParameters, modelName, onlineTraining=False):
+        super().__init__(temperatureBounds, simulationParameters)
         # General model parameters.
         self.onlineTraining = onlineTraining  # Whether to train the model live.
         self.modelName = modelName  # The model's unique identifier.
-
-        # Specify specific model parameters.
-        self.numTemperatures = 1  # The number of temperatures to predict.
-        self.numLosses = 3  # The number of losses to predict. (PA, NA, SA)
 
         # Model parameters.
         self.optimizer = None  # The optimizer for the model.
@@ -40,12 +37,13 @@ class nnProtocol(generalProtocol):
 
         # epsilon based exploration
         self.epsilon = 0.1
+
     # ------------------------ Setup nnProtocol ------------------------ #
 
     def setupModelHelpers(self):
         # LR: [1E-2, 1E-6] -> 1E-3, 1E-4 is typical
         # LR: [1E-3, 1E-8]     
-        
+
         # Define the optimizer.
         self.optimizer = optim.AdamW([
             # Specify the model parameters for the signal mapping.
@@ -59,12 +57,13 @@ class nnProtocol(generalProtocol):
         # The scheduler for the optimizer.
         #self.scheduler = StepLR(self.optimizer, step_size=30, gamma=0.1)
         self.scheduler = ExponentialLR(self.optimizer, gamma=0.95)
+
     # ------------------------ nnProtocol ------------------------ #
 
     def updateTherapyState(self):
         """ currentUserState dimensions: [temperature, PA, NA, SA] """
         if not self.onlineTraining:
-            # offline training: extract the most recent state and starndardize the temperature
+            # Extract the most recent state and standardize the temperature
             temperature, PA, NA, SA = self.userFullStatePath[-1]
             temperature = self.standardizeTemperature(temperature)
             # Update currentUserState and prepare for input to the model
@@ -79,11 +78,10 @@ class nnProtocol(generalProtocol):
         # finalLossPrediction dimensions: [numLosses=3, batchSize=1, numLossBins=11].
         return finalStatePredictions, None
 
-
     # ------------------------ exploration for nnProtocol simulation ------------------------ #
 
     def explore_temperature(self, predicted_temp_change, epsilon):
-        if random.uniform(0,1) < epsilon:
+        if random.uniform(0, 1) < epsilon:
             print('------- exploring -------')
             predicted_temp_change = random.uniform(0, 5)
             return predicted_temp_change
@@ -99,7 +97,7 @@ class nnProtocol(generalProtocol):
     def getNextState(self, therapyState):
         """ Overwrite the general getNextState method to include the neural network. """
         # Unpack the final temperature predictions.
-        finalTemperaturePredictions = therapyState[0] # dim: torch.size([1, 1, 11])
+        finalTemperaturePredictions = therapyState[0]  # dim: torch.size([1, 1, 11])
         finalTemperaturePredictions = finalTemperaturePredictions.unsqueeze(0).expand(self.numTemperatures, 1, self.numTempBins)
         # Get the new temperature to be compatible with the general protocol method.
         assert finalTemperaturePredictions.size() == (self.numTemperatures, 1, self.numTempBins), f"Expected 1 temperature and batch for training, but got {finalTemperaturePredictions.size()}"
@@ -153,6 +151,5 @@ class nnProtocol(generalProtocol):
         print('total_error: ', total_error)
         # Backpropagation.
         total_error.backward()  # Calculate the gradients.
-        self.optimizer.step()   # Update the weights.
+        self.optimizer.step()  # Update the weights.
         self.optimizer.zero_grad()  # Zero the gradients.
-

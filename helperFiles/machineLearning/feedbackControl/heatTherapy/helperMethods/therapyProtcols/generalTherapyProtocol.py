@@ -59,9 +59,9 @@ class generalTherapyProtocol(abc.ABC):
 
         # Define a helper class for experimental parameters.
         self.simulationProtocols = simulationProtocols(self.allParameterBins, self.allPredictionBins, self.predictionBinWidths, self.modelParameterBounds, self.numPredictions, self.numParameters, self.predictionWeights, self.optimalNormalizedState, simulationParameters)
-        self.plottingProtocolsMain = plottingProtocolsMain(self.modelParameterBounds, self.allParameterBins, self.parameterBinWidths, self.predictionBounds, self.allNumPredictionBins, self.predictionBinWidths)
+        self.plottingProtocolsMain = plottingProtocolsMain(self.modelParameterBounds, self.allNumParameterBins, self.parameterBinWidths, self.predictionBounds, self.allNumPredictionBins, self.predictionBinWidths)
         self.dataInterface = dataInterface(self.predictionWeights, self.optimalNormalizedState)
-        self.empatchProtocols = empatchProtocols(self.predictionOrder)
+        self.empatchProtocols = empatchProtocols(self.predictionOrder, self.predictionBounds, self.modelParameterBounds)
         self.generalMethods = generalMethods()
 
         # Reset the therapy parameters.

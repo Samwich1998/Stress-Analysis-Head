@@ -13,6 +13,8 @@ class dataInterface:
         """ initialStates: numPoints, (PA, NA, SA); 2D array"""
         initialMentalStates = torch.as_tensor(initialMentalStates)
 
+        print(initialMentalStates.size(), self.optimalNormalizedState.size(), self.predictionWeights.size())
+
         # Calculate the compiled loss.
         compiledLoss = self.predictionWeights * (initialMentalStates - self.optimalNormalizedState).pow(2)
         compiledLoss = compiledLoss.sum(dim=1)

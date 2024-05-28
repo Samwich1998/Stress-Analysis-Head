@@ -24,7 +24,7 @@ class simulationProtocols:
         self.timeDelay = 10
 
         # Given simulation parameters.
-        self.uniformParamSampler = torch.distributions.uniform.Uniform(modelParameterBounds[0], modelParameterBounds[1])
+        self.uniformParamSampler = torch.distributions.uniform.Uniform(torch.FloatTensor([modelParameterBounds[0]]), torch.FloatTensor([modelParameterBounds[1]]))
         self.numSimulationHeuristicSamples = simulationParameters['numSimulationHeuristicSamples']
         self.numSimulationTrueSamples = simulationParameters['numSimulationTrueSamples']
         self.heuristicMapType = simulationParameters['heuristicMapType']
@@ -61,8 +61,8 @@ class simulationProtocols:
 
     def randomlySamplePoints(self, numPoints=1, lastTimePoint=None):
         # generate a random temperature within the bounds.
-        sampledPredictions = self.uniformParamSampler.sample(torch.Size([numPoints, self.numPredictions]))
-        sampledParameters = self.uniformParamSampler.sample(torch.Size([numPoints, self.numParameters]))
+        sampledPredictions = self.uniformParamSampler.sample(torch.Size([numPoints, self.numPredictions])).unsqueeze(-1)
+        sampledParameters = self.uniformParamSampler.sample(torch.Size([numPoints, self.numParameters])).unsqueeze(-1)
         simulatedTimes = self.getSimulatedTimes(numPoints, lastTimePoint)
         # sampledPredictions dimension: numPoints, numPredictions
         # sampledParameters dimension: numPoints, numParameters

@@ -6,17 +6,17 @@ import torch
 
 
 class plottingProtocolsMain:
-    def __init__(self, modelParameterBounds, allParameterBins, parameterBinWidths, predictionBounds, allNumPredictionBins, predictionBinWidths):
+    def __init__(self, modelParameterBounds, allNumParameterBins, parameterBinWidths, predictionBounds, allNumPredictionBins, predictionBinWidths):
         # General parameters.
         self.modelParameterBounds = modelParameterBounds  # The bounds for the parameter.
         self.parameterBinWidths = parameterBinWidths  # The width of the parameter bins.
         self.predictionBinWidths = predictionBinWidths  # The width of the loss bins.
         self.allNumPredictionBins = allNumPredictionBins  # The number of loss bins.
-        self.allParameterBins = allParameterBins  # The number of parameter bins.
+        self.allNumParameterBins = allNumParameterBins  # The number of parameter bins.
         self.predictionBounds = predictionBounds  # The bounds for the loss.
 
         # Initialize heatmaps for plotting
-        heatmap_size = (self.allParameterBins, self.allNumPredictionBins)
+        heatmap_size = (self.allNumParameterBins[0], self.allNumPredictionBins[0])
         self.pa_heatmap = np.zeros(heatmap_size)
         self.na_heatmap = np.zeros(heatmap_size)
         self.sa_heatmap = np.zeros(heatmap_size)

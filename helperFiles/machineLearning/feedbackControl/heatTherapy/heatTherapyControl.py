@@ -19,21 +19,6 @@ class heatTherapyControl(heatTherapyHelpers):
         # Initialize holder parameters such as the user maps.
         self.therapyProtocol.initializeUserState(userName=self.userName)
 
-        # --------------------------------for plotting purposes-----------------------------------
-        iteration = 0
-        loss_prediction_loss = []
-        loss_bias = []
-        current_user_loss = []
-        epoch_list = []
-        deltaLossList_PA = []
-        deltaLossList_NA = []
-        deltaLossList_SA = []
-        predictedDeltaLossList_PA = []
-        predictedDeltaLossList_NA = []
-        predictedDeltaLossList_SA = []
-        tempList = []
-        # ----------------------------------------------------------------------------------------
-
         # Until the therapy converges.
         while not self.therapyProtocol.finishedTherapy:
             # Get the next states for the therapy.

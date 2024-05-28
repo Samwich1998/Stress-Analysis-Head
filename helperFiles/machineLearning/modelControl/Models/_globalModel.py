@@ -102,7 +102,7 @@ class globalModel(abc.ABC):
         # Save the information we trained on.
         self.finalFeatureNames = np.asarray(featureNames)
         # Start model from scratch
-        self._resetModel()
+        self.resetModel()
         
         return Training_Data, Training_Labels, Testing_Data, Testing_Labels
     
@@ -131,7 +131,7 @@ class globalModel(abc.ABC):
         raise NotImplementedError("Must override in child")  
         
     @abc.abstractmethod
-    def _resetModel(self):
+    def resetModel(self):
         """ Create contract for child class method """
         raise NotImplementedError("Must override in child") 
         

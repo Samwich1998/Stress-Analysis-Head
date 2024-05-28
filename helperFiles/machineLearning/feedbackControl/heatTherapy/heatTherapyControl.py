@@ -11,8 +11,9 @@ from helperFiles.machineLearning.feedbackControl.heatTherapy.heatTherapyHelpers 
 
 
 class heatTherapyControl(heatTherapyHelpers):
-    def __init__(self, userName, temperatureBounds, simulationParameters, therapyMethod="aStarProtocol", plotResults=False):
-        super().__init__(userName=userName, temperatureBounds=temperatureBounds, simulationParameters=simulationParameters, therapyMethod=therapyMethod, plotResults=plotResults)
+    def __init__(self, userName, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod, plotResults=False):
+        super().__init__(userName=userName, initialParameterBounds=initialParameterBounds, unNormalizedParameterBinWidths=unNormalizedParameterBinWidths,
+                         simulationParameters=simulationParameters, therapyMethod=therapyMethod, plotResults=plotResults)
 
     def runTherapyProtocol(self, maxIterations=None):
         # Initialize holder parameters such as the user maps.
@@ -39,16 +40,16 @@ class heatTherapyControl(heatTherapyHelpers):
             therapyState, allMaps = self.therapyProtocol.updateTherapyState()
 
             print(f"Therapy state: {therapyState}\n")
-            if self.therapyMethod == "nnProtocol":
+            if self.therapyMethod == "nnTherapyProtocol":
                 if self.therapyProtocol.onlineTraining:
                     print('------Online training started-------')
                     # Calculate the final loss.
                     self.therapyProtocol.getNextState(therapyState)
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
                     if iteration > 2:
-                        deltaLossValues = [true - prev for true, prev in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]  # self.therapyProtocol.optimalLoss
+                        deltaLossValues = [true - prev for true, prev in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]  # self.therapyProtocol.optimalNormalizedState
                     else:
-                        deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
+                        deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalNormalizedState)]
                     lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, deltaLossValues)  # losspredictionloss is from the model
                     self.latestLoss = lossPredictionLoss.item()
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
@@ -65,9 +66,9 @@ class heatTherapyControl(heatTherapyHelpers):
                     print('------simulation (offline) training started-------')
                     trueLossValues = self.therapyProtocol.userFullStatePath[-1][1:]
                     if iteration > 2:
-                        deltaLossValues = [true - prev for true, prev in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]  # self.therapyProtocol.optimalLoss
+                        deltaLossValues = [true - prev for true, prev in zip(trueLossValues, self.therapyProtocol.userFullStatePath[-2][1:])]  # self.therapyProtocol.optimalNormalizedState
                     else:
-                        deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalLoss)]
+                        deltaLossValues = [true - optimal for true, optimal in zip(trueLossValues, self.therapyProtocol.optimalNormalizedState)]
                     deltaLossValues = torch.tensor(deltaLossValues, dtype=torch.float32)
                     lossPredictionLoss, minimizeLossBias = self.therapyProtocol.lossCalculations.scoreModel(therapyState, deltaLossValues)  #losspredictionloss is from the model
                     # print the datatype of lossPredictionLoss
@@ -75,7 +76,7 @@ class heatTherapyControl(heatTherapyHelpers):
                     self.latestLoss = lossPredictionLoss.item()
                     print('****** latestLoss: ', self.latestLoss)
                     print('therapy State: ', therapyState)
-                    print('^^^^^^ NA loss', self.therapyProtocol.optimalLoss[1] + therapyState[2])
+                    print('^^^^^^ NA loss', self.therapyProtocol.optimalNormalizedState[1] + therapyState[2])
                     print('iteration: ', iteration)
 
                     self.therapyProtocol.updateWeights(lossPredictionLoss, minimizeLossBias)
@@ -124,10 +125,10 @@ class heatTherapyControl(heatTherapyHelpers):
                         self.therapyProtocol.plot_delta_loss_comparison(epoch_list, deltaLossList_PA, deltaLossList_NA, deltaLossList_SA, predictedDeltaLossList_PA, predictedDeltaLossList_NA, predictedDeltaLossList_SA)
                         self.therapyProtocol.plot_temp(epoch_list, tempList)
             if self.plotResults:
-                if self.therapyMethod == "aStarProtocol":
+                if self.therapyMethod == "aStarTherapyProtocol":
                     self.therapyProtocol.plotTherapyResults(allMaps)
                     print(f"Alpha after iteration: {self.therapyProtocol.percentHeuristic}\n")
-                elif self.therapyMethod == "basicProtocol":
+                elif self.therapyMethod == "basicTherapyProtocol":
                     self.therapyProtocol.plotTherapyResults_basic(allMaps)  # For basic protocol, allMaps is the simulated map (only 1)
             # Check if the therapy has converged.
             self.therapyProtocol.checkConvergence(maxIterations)
@@ -135,9 +136,10 @@ class heatTherapyControl(heatTherapyHelpers):
 
 if __name__ == "__main__":
     # User parameters.
-    userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol", "nnProtocol", "nnProtocol"
-    userTemperatureBounds = (35, 50)  # The temperature bounds for the therapy.
+    userTherapyMethod = "hmmTherapyProtocol"  # The therapy algorithm to run. Options: "aStarTherapyProtocol", "basicTherapyProtocol", "nnTherapyProtocol", "hmmTherapyProtocol"
     testingUserName = "Squirtle"  # The username for the therapy.
+    temperatureBounds = (35, 50)  # The temperature bounds for the therapy.
+    temperatureBinWidth = 2.5  # The temperature bounds for the therapy.
     plotTherapyResults = True  # Whether to plot the results.
 
     # Simulation parameters.
@@ -150,7 +152,7 @@ if __name__ == "__main__":
     }
 
     # Initialize the therapy protocol
-    therapyProtocol = heatTherapyControl(testingUserName, userTemperatureBounds, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
+    therapyProtocol = heatTherapyControl(testingUserName, temperatureBounds, temperatureBinWidth, currentSimulationParameters, therapyMethod=userTherapyMethod, plotResults=plotTherapyResults)
 
     # Run the therapy protocol.
     therapyProtocol.runTherapyProtocol(maxIterations=2000)

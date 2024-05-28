@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 20 18:47:49 2021
-
-@author: samuel solomon
-"""
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General
 import os
 import collections
@@ -22,33 +11,26 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Import Files for Machine Learning
-sys.path.append(os.path.dirname(__file__) + "/../modelControl/modelSpecifications/")
-from compileModelInfo import compileModelInfo
+from ..modelControl.modelSpecifications.compileModelInfo import compileModelInfo
+from ...globalPlottingProtocols import globalPlottingProtocols
 
-# -------------------------------------------------------------------------- #
-# ---------------------------- Feature Analysis ---------------------------- #
 
-class featurePlotting:
+class featurePlotting(globalPlottingProtocols):
     
-    def __init__(self, saveDataFolder, overwrite):        
+    def __init__(self, saveDataFolder, overwrite):    
+        super().__init__()    
         # Save Information
         self.overwrite = overwrite
         self.saveDataFolder = saveDataFolder
         
-        self.modelInfoClass = compileModelInfo("_.pkl", [0,1,2])
+        self.modelInfoClass = compileModelInfo()
         
         # Plotting
         plt.ioff() # prevent memory leaks; plt.ion()
         self.colorList = ['k', 'tab:red', 'tab:blue', 'brown', 'purple', 'tab:green', 'k', 'tab:red']
-    
-    def clearFigure(self, fig, legend):
-        if legend != None: legend.remove()
-        # Clear plots
-        fig.clear()
-        plt.cla(); plt.clf()
-        plt.close(fig); plt.close('all')
         
-    def calculateTimeUnit(self, timePoints, preAveragingSeconds, averageIntervalList, surveyCollectionTimes, experimentTimes):
+    @staticmethod
+    def calculateTimeUnit(timePoints, preAveragingSeconds, averageIntervalList, surveyCollectionTimes, experimentTimes):
         # Assume all time is in seconds
         timeUnit = "Second"; scaleTime = 1
         # If the analysis is longer than 5 hours, use hours

@@ -6,17 +6,17 @@ import torch
 
 
 class plottingProtocolsMain:
-    def __init__(self, temperatureBounds, numTempBins, tempBinWidth, lossBounds, numLossBins, lossBinWidth):
+    def __init__(self, modelParameterBounds, allParameterBins, parameterBinWidths, predictionBounds, allNumPredictionBins, predictionBinWidths):
         # General parameters.
-        self.temperatureBounds = temperatureBounds  # The bounds for the temperature.
-        self.tempBinWidth = tempBinWidth  # The width of the temperature bins.
-        self.lossBinWidth = lossBinWidth  # The width of the loss bins.
-        self.numLossBins = numLossBins  # The number of loss bins.
-        self.numTempBins = numTempBins  # The number of temperature bins.
-        self.lossBounds = lossBounds  # The bounds for the loss.
+        self.modelParameterBounds = modelParameterBounds  # The bounds for the parameter.
+        self.parameterBinWidths = parameterBinWidths  # The width of the parameter bins.
+        self.predictionBinWidths = predictionBinWidths  # The width of the loss bins.
+        self.allNumPredictionBins = allNumPredictionBins  # The number of loss bins.
+        self.allParameterBins = allParameterBins  # The number of parameter bins.
+        self.predictionBounds = predictionBounds  # The bounds for the loss.
 
         # Initialize heatmaps for plotting
-        heatmap_size = (self.numTempBins, self.numLossBins)
+        heatmap_size = (self.allParameterBins, self.allNumPredictionBins)
         self.pa_heatmap = np.zeros(heatmap_size)
         self.na_heatmap = np.zeros(heatmap_size)
         self.sa_heatmap = np.zeros(heatmap_size)
@@ -49,7 +49,7 @@ class plottingProtocolsMain:
         # Plotting each map with the corresponding user state path
         for i, (map_to_plot, title) in enumerate(zip(maps, titles)):
             ax = axs[i % 2, i // 2]
-            plottingImage = ax.imshow(map_to_plot.T, cmap='coolwarm', extent=[self.temperatureBounds[0], self.temperatureBounds[1], self.lossBounds[0], self.lossBounds[1]], aspect='auto', origin='lower')
+            plottingImage = ax.imshow(map_to_plot.T, cmap='coolwarm', extent=[self.modelParameterBounds[0], self.modelParameterBounds[1], self.predictionBounds[0], self.predictionBounds[1]], aspect='auto', origin='lower')
 
             # Plot past user states with fading red line
             for j in range(num_steps - 1):
@@ -59,7 +59,7 @@ class plottingProtocolsMain:
 
             ax.scatter(userStatePath[-1][0], userStatePath[-1][1], color='tab:red', label='Current State', edgecolor='black', s=75, zorder=10)
             ax.set_title(f'{title} (After Iteration {num_steps})')
-            ax.set_xlabel('Temperature')
+            ax.set_xlabel('parameter')
             ax.set_ylabel('Loss')
             ax.legend()
 
@@ -68,7 +68,7 @@ class plottingProtocolsMain:
         fig.colorbar(plottingImage, ax=axs.ravel().tolist(), label='Probability')
         plt.show()
 
-        print(f"New current state after iteration {num_steps + 1}: Temperature = {userStatePath[-1][0]}, Loss = {userStatePath[-1][1]}")
+        print(f"New current state after iteration {num_steps + 1}: parameter = {userStatePath[-1][0]}, Loss = {userStatePath[-1][1]}")
 
     # ------------------------ Basic Protocol plotting ------------------------ #
 
@@ -83,7 +83,7 @@ class plottingProtocolsMain:
         alphas = np.linspace(0.1, 1, num_steps - 1)  # Adjust alpha for segments
 
         # Plotting the simulated map with the corresponding user state path
-        im = ax.imshow(simulated_map.T, cmap='coolwarm', extent=[self.temperatureBounds[0], self.temperatureBounds[1], self.lossBounds[0], self.lossBounds[1]], aspect='auto', origin='lower')
+        im = ax.imshow(simulated_map.T, cmap='coolwarm', extent=[self.modelParameterBounds[0], self.modelParameterBounds[1], self.predictionBounds[0], self.predictionBounds[1]], aspect='auto', origin='lower')
 
         # Plot past user states with fading color
         for j in range(num_steps - 1):
@@ -96,7 +96,7 @@ class plottingProtocolsMain:
 
         # Set titles and labels
         ax.set_title(f'Simulated Map (After Iteration {num_steps})')
-        ax.set_xlabel('Temperature')
+        ax.set_xlabel('parameter')
         ax.set_ylabel('Loss')
         ax.legend()
 
@@ -105,7 +105,7 @@ class plottingProtocolsMain:
         plt.show()
 
         # Print current state information
-        print(f"New current state after iteration {num_steps + 1}: Temperature = {userStatePath[-1][0]}, Loss = {userStatePath[-1][1]}")
+        print(f"New current state after iteration {num_steps + 1}: parameter = {userStatePath[-1][0]}, Loss = {userStatePath[-1][1]}")
 
     # ------------------------ NN Plotting ------------------------ #
 
@@ -147,20 +147,20 @@ class plottingProtocolsMain:
 
     def plot_heatmaps(self, currentPA, currentNA, currentSA, currentPA_pred, currentNA_pred, currentSA_pred, currentTemp):
         # Define bins
-        temperature_bins = np.arange(self.temperatureBounds[0], self.temperatureBounds[1], self.tempBinWidth)
-        loss_bins = np.arange(self.lossBounds[0], self.lossBounds[1], self.lossBinWidth)
+        parameter_bins = np.arange(self.modelParameterBounds[0], self.modelParameterBounds[1], self.parameterBinWidths)
+        loss_bins = np.arange(self.predictionBounds[0], self.predictionBounds[1], self.predictionBinWidths)
 
         # Determine the index
-        temperature_index = np.digitize(currentTemp, temperature_bins) - 1
+        parameter_index = np.digitize(currentTemp, parameter_bins) - 1
 
         # Fill the heatmaps
-        for i in range(self.numLossBins):
-            self.pa_heatmap[i, temperature_index] = currentPA[i]
-            self.na_heatmap[i, temperature_index] = currentNA[i]
-            self.sa_heatmap[i, temperature_index] = currentSA[i]
-            self.pa_heatmap_predicted[i, temperature_index] = currentPA_pred[i]
-            self.na_heatmap_predicted[i, temperature_index] = currentNA_pred[i]
-            self.sa_heatmap_predicted[i, temperature_index] = currentSA_pred[i]
+        for i in range(self.allNumPredictionBins):
+            self.pa_heatmap[i, parameter_index] = currentPA[i]
+            self.na_heatmap[i, parameter_index] = currentNA[i]
+            self.sa_heatmap[i, parameter_index] = currentSA[i]
+            self.pa_heatmap_predicted[i, parameter_index] = currentPA_pred[i]
+            self.na_heatmap_predicted[i, parameter_index] = currentNA_pred[i]
+            self.sa_heatmap_predicted[i, parameter_index] = currentSA_pred[i]
 
         # Plotting the heat maps
         fig, axes = plt.subplots(2, 3, figsize=(20, 12))
@@ -175,9 +175,9 @@ class plottingProtocolsMain:
         ]
 
         for idx, (heatmap, title) in enumerate(heatmaps):
-            sns.heatmap(heatmap, ax=axes[idx // 3, idx % 3], cmap='coolwarm', xticklabels=temperature_bins, yticklabels=np.round(loss_bins, 2), annot=False)
+            sns.heatmap(heatmap, ax=axes[idx // 3, idx % 3], cmap='coolwarm', xticklabels=parameter_bins, yticklabels=np.round(loss_bins, 2), annot=False)
             axes[idx // 3, idx % 3].set_title(title)
-            axes[idx // 3, idx % 3].set_xlabel('Temperature')
+            axes[idx // 3, idx % 3].set_xlabel('parameter')
             axes[idx // 3, idx % 3].set_ylabel('Loss')
 
         plt.tight_layout()

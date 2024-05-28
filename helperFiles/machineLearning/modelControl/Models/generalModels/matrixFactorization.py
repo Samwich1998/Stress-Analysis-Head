@@ -94,7 +94,7 @@ class matrixFactorization(globalModel):
         self.dL_dAlpha = None # 0 
         
         
-    def _resetModel(self):
+    def resetModel(self):
         self.createModel()
         self.clearPastRatings()
         

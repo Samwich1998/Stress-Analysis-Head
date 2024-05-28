@@ -61,7 +61,7 @@ class heatTherapyModel(nn.Module):
 
         # Predict the next temperatures for the patient.
         finalTemperaturePredictions = self.predictNextTemperature(initialPatientStates)
-        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
+        # finalTemperaturePrediction dimensions: [numParameters, batchSize, allNumParameterBins].
 
         # Update the patient's state. RESNET
         compiledTemperaturePredictions = finalTemperaturePredictions.transpose(0, 1).contiguous().view(batchSize, self.numTemperatures * self.numTempBins)
@@ -71,7 +71,7 @@ class heatTherapyModel(nn.Module):
 
         # Predict the expected loss of the patient.
         finalLossPredictions = self.predictNextState(nextPatientStates)
-        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
+        # finalLossPrediction dimensions: [numPredictions, batchSize, numPredictionBins].
 
         # Assert the dimensions are correct.
         assert finalTemperaturePredictions.size() == (self.numTemperatures, initialPatientStates.size(0), self.numTempBins), f"Incorrect dimensions: {finalTemperaturePredictions.size()}"
@@ -84,7 +84,7 @@ class heatTherapyModel(nn.Module):
         # Predict the next temperature of the patient.
         sharedTempFeatures = self.sharedModelWeights.sharedTempFeatureExtraction(patientStates)  # Extract the shared model features.
         finalTemperaturePredictions = self.specificModelWeights.predictNextTemperature(sharedTempFeatures)
-        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
+        # finalTemperaturePrediction dimensions: [numParameters, batchSize, allNumParameterBins].
 
         return finalTemperaturePredictions
 
@@ -92,6 +92,6 @@ class heatTherapyModel(nn.Module):
         # Predict the expected loss of the patient.
         sharedLossFeatures = self.sharedModelWeights.sharedLossFeatureExtraction(patientStates)  # Extract the shared model features.
         finalLossPredictions = self.specificModelWeights.predictNextLoss(sharedLossFeatures)
-        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
+        # finalLossPrediction dimensions: [numPredictions, batchSize, numPredictionBins].
 
         return finalLossPredictions

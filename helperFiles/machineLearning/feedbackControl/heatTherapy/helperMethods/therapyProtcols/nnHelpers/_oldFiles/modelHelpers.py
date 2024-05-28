@@ -60,7 +60,7 @@ class modelHelpers:
     def trainOneEpoch(self, initialPatientStates, targetTempInds):
         """
         inputData: The input data for the model. Dimensions: [batchSize, numInputFeatures=4].
-        targetTempInds: The index of the output data. Dimensions: [batchSize, numTemperatures].
+        targetTempInds: The index of the output data. Dimensions: [batchSize, numParameters].
         """
         # Set up the model for training.
         self.optimizer.zero_grad()
@@ -68,8 +68,8 @@ class modelHelpers:
 
         # Forward pass through the model.
         finalTemperaturePredictions, finalLossPredictions = self.model(initialPatientStates)     # Predict the probability of which temperature bin we should aim for.
-        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
-        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
+        # finalTemperaturePrediction dimensions: [numParameters, batchSize, allNumParameterBins].
+        # finalLossPrediction dimensions: [numPredictions, batchSize, numPredictionBins].
 
         # Loss calculation.
         temperaturePredictionLoss, lossPredictionLoss, minimizeLossBias = self.compileLosses(finalTemperaturePredictions, finalLossPredictions, targetTempInds)

@@ -134,9 +134,9 @@ if __name__ == "__main__":
     sharedModelWeights = ["signalEncoderModel", "autoencoderModel", "sharedEmotionModel"]
 
     # Initialize the model information classes.
-    modelInfoClass = compileModelInfo(modelFile="_.pkl", modelTypes=[0, 1, 2])
     modelCompiler = compileModelData(submodel, userInputParams, accelerator)
     modelParameters = modelParameters(userInputParams, accelerator)
+    modelInfoClass = compileModelInfo()
 
     # Specify training parameters
     numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel)

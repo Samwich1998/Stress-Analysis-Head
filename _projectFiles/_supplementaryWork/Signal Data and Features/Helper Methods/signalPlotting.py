@@ -29,7 +29,7 @@ class plotData:
         self.savingFolder = "./Figures/"
         plt.ioff() # prevent memory leaks; plt.ion()
         
-        self.modelInfoClass = _compileModelInfo.compileModelInfo("_.pkl", [0,1,2])
+        self.modelInfoClass = _compileModelInfo.compileModelInfo()
         
         self.rawDataOrder = ['EOG', 'EEG', 'EDA', 'Temp']
         self.rawDataColors = [
@@ -348,7 +348,7 @@ class plotData:
             experimentTimes = np.array(readData.experimentTimes)
             experimentNames = np.array(readData.experimentNames)
             
-            modelInfoClass = _compileModelInfo.compileModelInfo("_.pkl", [0,1,2])
+            modelInfoClass = _compileModelInfo.compileModelInfo()
             featureLabelTypes, finalLabels = modelInfoClass.extractFinalLabels(surveyAnswersList, [])
             
             # General parameters.

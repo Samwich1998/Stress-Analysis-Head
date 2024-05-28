@@ -211,7 +211,7 @@ class neuralNetwork(globalModel):
         self.model.compile(optimizer = opt, loss = loss, metrics = list([metric]))
         # print("NN Model Created")
         
-    def _resetModel(self):
+    def resetModel(self):
         self.createModel()
     
     def trainModel(self, Training_Data, Training_Labels, Testing_Data, Testing_Labels, featureNames, epochs = 250, seeTrainingSteps = False, returnScore = False):

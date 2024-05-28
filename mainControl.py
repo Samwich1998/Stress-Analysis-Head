@@ -38,14 +38,20 @@ if __name__ == "__main__":
     #    User Parameters to Edit (More Complex Edits are Inside the Files)   #
     # ---------------------------------------------------------------------- #
 
-    # Protocol switches: only the first true variable executes.
+    # Protocol switches: only the first true variably executes.
     readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
     streamData = False  # Stream in Data from the Board and Analyze.
     trainModel = True  # Train Model with ALL Data in 'trainingFolder'.
     metaTrainModel = False
+
     # User options during the run: any number can be true.
     plotStreamedData = False  # Graph the Data to Show Incoming Signals + Analysis.
     useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.
+
+    # Specify the user parameters.
+    userName = "Sam".replace(" ", "")
+    trialName = "HeatingPad"
+    date = "2024-05-16"
 
     # ---------------------------------------------------------------------- #
 
@@ -80,7 +86,7 @@ if __name__ == "__main__":
         recordQuestionnaire = not plotStreamedData  # Only use one GUI: questionnaire or streaming
 
         # Save streaming data information as Excel file.
-        saveExcelPath = "./_experimentalData/allSensors/_finalDataset/2024-05-16 HeatingPad Trial Ruixiao.xlsx"
+        saveExcelPath = f"./_experimentalData/allSensors/_finalDataset/{date} {trialName} Trial {userName}.xlsx"
         fileName = os.path.basename(saveExcelPath).split(".")[0]
     else:
         # Specify flags when not streaming
@@ -124,10 +130,12 @@ if __name__ == "__main__":
 
             saveModel = True  # Save the Machine Learning Model for Later Use
             trainingFolder = "./_experimentalData/allSensors/_finalDataset/"  # Data Folder to Save the Excel Data; MUST END IN '/'
-            trainingFolder = "./_experimentalData/allSensors/_finalTherapyData/"  # Data Folder to Save the Excel Data; MUST END IN '/'
+            # trainingFolder = "./_experimentalData/allSensors/_finalTherapyData/"  # Data Folder to Save the Excel Data; MUST END IN '/'
         else:
-            saveModel = False
+            plotTrainingData = False
+            reanalyzeData = False
             trainingFolder = None
+            saveModel = False
 
         # Get the Machine Learning Module
         performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, trainingFolder)
@@ -210,7 +218,7 @@ if __name__ == "__main__":
         for analysisInd in range(len(allRawFeatureHolders[0])):
             assert len(allRawFeatureHolders[0][analysisInd][0]) == len(biomarkerFeatureNames[analysisInd]), "Incorrect number of fraw eatures extracted"
         print("\nFinished Feature Extraction")
-        exit()
+        # exit()
 
         # Standardize data
         standardizeClass_Features = standardizeData(allFinalFeatures, threshold=0)

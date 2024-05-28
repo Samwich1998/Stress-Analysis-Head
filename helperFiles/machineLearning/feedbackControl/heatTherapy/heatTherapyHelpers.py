@@ -1,15 +1,16 @@
 # Import the necessary libraries.
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.aStarProtocol import aStarProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.basicProtocol import basicProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.HMMProtocol import HMMProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.aStarProtocol import aStarTherapyProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.basicProtocol import basicTherapyProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.HMMProtocol import HMMTherapyProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnTherapyProtocol
 
 
 class heatTherapyHelpers:
-    def __init__(self, userName, temperatureBounds, simulationParameters, therapyMethod="aStarProtocol", plotResults=False):
+    def __init__(self, userName, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod="aStarTherapyProtocol", plotResults=False):
         # General parameters.
+        self.unNormalizedParameterBinWidths = unNormalizedParameterBinWidths  # The bin widths for the parameter bounds.
+        self.initialParameterBounds = initialParameterBounds  # The parameter bounds for the therapy.
         self.simulationParameters = simulationParameters  # The simulation parameters for the therapy.
-        self.temperatureBounds = temperatureBounds  # The temperature bounds for the therapy.
         self.plotResults = plotResults  # Whether to plot the results.
         self.userName = userName  # The username for the therapy.
 
@@ -26,13 +27,13 @@ class heatTherapyHelpers:
     def setupTherapyProtocols(self, therapyMethod):
         # Change the therapy method.
         self.therapyMethod = therapyMethod
-        if self.therapyMethod == "aStarProtocol":
-            self.therapyProtocol = aStarProtocol(self.temperatureBounds, self.simulationParameters, learningRate=2)
-        elif self.therapyMethod == "basicProtocol":
-            self.therapyProtocol = basicProtocol(self.temperatureBounds, self.simulationParameters)
-        elif self.therapyMethod == "nnProtocol":
-            self.therapyProtocol = nnProtocol(self.temperatureBounds, self.simulationParameters, modelName="2024-04-12 heatTherapyModel", onlineTraining=False)
-        elif self.therapyMethod == "HMMProtocol":
-            self.therapyProtocol = HMMProtocol(self.temperatureBounds, self.simulationParameters)
+        if self.therapyMethod == "aStarTherapyProtocol":
+            self.therapyProtocol = aStarTherapyProtocol(self.initialParameterBounds, self.simulationParameters, learningRate=2)
+        elif self.therapyMethod == "basicTherapyProtocol":
+            self.therapyProtocol = basicTherapyProtocol(self.initialParameterBounds, self.simulationParameters)
+        elif self.therapyMethod == "nnTherapyProtocol":
+            self.therapyProtocol = nnTherapyProtocol(self.initialParameterBounds, self.simulationParameters, modelName="2024-04-12 heatTherapyModel", onlineTraining=False)
+        elif self.therapyMethod == "hmmTherapyProtocol":
+            self.therapyProtocol = HMMTherapyProtocol(self.initialParameterBounds, self.unNormalizedParameterBinWidths, self.simulationParameters)
         else:
             raise ValueError("Invalid therapy method provided.")

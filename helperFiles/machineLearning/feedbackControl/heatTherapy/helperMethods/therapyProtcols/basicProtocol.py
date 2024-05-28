@@ -3,10 +3,10 @@ import numpy as np
 import random
 
 # Import files.
-from .generalProtocol import generalProtocol
+from .generalTherapyProtocol import generalTherapyProtocol
 
 
-class basicProtocol(generalProtocol):
+class basicTherapyProtocol(generalTherapyProtocol):
     def __init__(self, temperatureBounds, simulationParameters):
         super().__init__(temperatureBounds, simulationParameters)
         # Specific basic protocol parameters
@@ -67,7 +67,7 @@ class basicProtocol(generalProtocol):
 
     def initializeFirstPersonalizedMap(self):
         # Initialize a uniform personalized map. No bias.
-        uniformMap = np.ones((self.numTempBins, self.numLossBins))
+        uniformMap = np.ones((self.allNumParameterBins, self.numPredictionBins))
         uniformMap /= uniformMap.sum()
         self.personalizedMap = uniformMap
 

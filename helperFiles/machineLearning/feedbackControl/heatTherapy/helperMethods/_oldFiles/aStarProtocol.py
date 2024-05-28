@@ -85,7 +85,7 @@ class aStarProtocol(generalProtocol):
         potentialBenefit = self.loss_bins - lossValue  # Assuming we want to minimize the loss
 
         # Compute the gradient using numpy.gradient()
-        gradients = np.gradient(currentMap * potentialBenefit)  # Dimension: 2, numTempBins, numLossBins
+        gradients = np.gradient(currentMap * potentialBenefit)  # Dimension: 2, allNumParameterBins, numPredictionBins
 
         # Assert that we calculated the correct gradient.
         assert len(gradients) == 2, "The gradient calculation is incorrect."

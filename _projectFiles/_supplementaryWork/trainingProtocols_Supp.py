@@ -41,7 +41,7 @@ class trainingProtocols(extractData):
         
         # Initialize important classes
         self.saveInputs = saveExcelData()
-        self.modelInfoClass = compileModelInfo("_.pkl", [0,1,2])
+        self.modelInfoClass = compileModelInfo()
         self.analyzeFeatures = featurePlotting(self.trainingDataExcelFolder + "dataAnalysis/", overwrite = False)
     
     def extractData_Old(self, ExcelSheet, startDataCol = 1, endDataCol = 2, data = None):

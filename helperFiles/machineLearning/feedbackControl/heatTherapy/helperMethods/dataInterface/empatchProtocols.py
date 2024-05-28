@@ -1,27 +1,30 @@
 # General
+from natsort import natsorted
+import torch
 import os
 
-import numpy as np
-from natsort import natsorted
-
-from helperFiles.dataAcquisitionAndAnalysis.excelProcessing.extractDataProtocols import extractData
+# Import files.
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.dataInterface.dataInterface import dataInterface
 from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
+from helperFiles.dataAcquisitionAndAnalysis.excelProcessing.extractDataProtocols import extractData
 
 
 class empatchProtocols(extractData):
 
-    def __init__(self, predictionOrder):
+    def __init__(self, predictionOrder, predictionBounds, modelParameterBounds):
         super().__init__()
         # General parameters.
         self.trainingFolder = os.path.dirname(__file__) + "/../../../../../../_experimentalData/allSensors/_finalTherapyData/"
+        self.modelParameterBounds = modelParameterBounds
+        self.predictionBounds = predictionBounds
         self.predictionOrder = predictionOrder
 
         # Collected data parameters.
         self.featureNames, self.biomarkerFeatureNames, self.biomarkerOrder = self.getFeatureInformation()
 
         # Initialize helper classes.
-        self.modelInfoClass = compileModelInfo("_.pkl", [0, 1, 2])
+        self.modelInfoClass = compileModelInfo()
 
     @staticmethod
     def getFeatureInformation():
@@ -30,16 +33,6 @@ class empatchProtocols(extractData):
         featureNames, biomarkerFeatureNames, biomarkerOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
 
         return featureNames, biomarkerFeatureNames, biomarkerOrder
-
-    # ------------------------ Data Collection Methods ------------------------ #
-    @staticmethod
-    def stateNormalization(PA, NA, SA):
-        # Normalize the state values.
-        PA_norm = (PA - 5) / 20
-        NA_norm = (NA - 5) / 20
-        SA_norm = (SA - 20) / 60
-
-        return [PA_norm, NA_norm, SA_norm]
 
     def getTherapyData(self):
         # Initialize holders.
@@ -68,13 +61,11 @@ class empatchProtocols(extractData):
             # Extract the mental health information.
             predictionOrder, finalLabels = self.modelInfoClass.extractFinalLabels(currentSurveyAnswersList, finalLabels=[])
             assert predictionOrder == self.predictionOrder, f"Expected prediction order: {self.predictionOrder}, but got {predictionOrder}"
-            # print('rawfeatureTimeholder', rawFeatureTimesHolder[3])
-            mean_temperature_list = np.asarray(rawFeatureHolder[3])[:, 0]
-            # print('rawfeatureholder', mean_temperature_list)
+            mean_temperature_list = torch.as_tensor(rawFeatureHolder[3])[:, 0]
 
             # Get the temperatures in the time window.
-            allTemperatureTimes = np.asarray(rawFeatureTimesHolder[3])
-            allTemperatures = np.asarray(mean_temperature_list)
+            allTemperatureTimes = torch.as_tensor(rawFeatureTimesHolder[3])
+            allTemperatures = torch.as_tensor(mean_temperature_list)
 
             # For each experiment.
             for experimentalInd in range(len(experimentNames)):
@@ -88,27 +79,16 @@ class empatchProtocols(extractData):
                     experimentalTemp = int(experimentName.split("-")[-1])
                 else:
                     # Get the temperature at the start and end of the experiment.
-                    startTemperatureInd = np.argmin(np.abs(allTemperatureTimes - startExperimentTime))
-                    surveyAnswerTimeInd = np.argmin(np.abs(allTemperatureTimes - surveyAnswerTime))
+                    startTemperatureInd = torch.argmin(torch.abs(allTemperatureTimes - startExperimentTime))
+                    surveyAnswerTimeInd = torch.argmin(torch.abs(allTemperatureTimes - surveyAnswerTime))
 
                     # Find the average temperature between the start and end times.
-                    experimentalTemp = np.mean(allTemperatures[startTemperatureInd:surveyAnswerTimeInd])
+                    experimentalTemp = torch.mean(allTemperatures[startTemperatureInd:surveyAnswerTimeInd])
 
                 # Store the state values.
-                emotion_states = self.stateNormalization(finalLabels[0][experimentalInd], finalLabels[1][experimentalInd], finalLabels[2][experimentalInd])
+                emotion_states = [finalLabels[0][experimentalInd], finalLabels[1][experimentalInd], finalLabels[2][experimentalInd]]
+                emotion_states = dataInterface.normalizeParameters(currentParamBounds=self.predictionBounds, normalizedParamBounds=self.modelParameterBounds, currentParamValues=emotion_states).tolist()
                 stateHolder.append([experimentalTemp] + emotion_states)
+        stateHolder = torch.as_tensor(stateHolder)
 
-        return np.asarray(stateHolder)
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return stateHolder

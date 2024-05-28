@@ -20,9 +20,8 @@ class compileModelData(compileModelDataHelpers):
 
     def __init__(self, submodel, userInputParams, accelerator=None):
         super().__init__(submodel, userInputParams, accelerator)
-
         # Initialize relevant classes.
-        self.modelInfoClass = compileModelInfo(modelFile="_.pkl", modelTypes=[0, 1, 2])
+        self.modelInfoClass = compileModelInfo()
 
     # ---------------------------------------------------------------------- #
     # ------------------------ Compile Analysis Data ------------------------ #

@@ -1,7 +1,3 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General
 import numpy as np
 
@@ -11,8 +7,6 @@ from .modelSpecifications.compileModelInfo import compileModelInfo
 from .Models.generalModels.generalModels import generalModel
 from .Models.tensorFlow.neuralNetwork import neuralNetwork
 
-# -------------------------------------------------------------------------- #
-# ------------------------ Simple Regression Modules ----------------------- #
 
 class modelControl:
     
@@ -21,8 +15,8 @@ class modelControl:
         self.modelFile = modelFile
         self.allFeatureNames = allFeatureNames
         # Store variable parameters.
-        self.modelTypes = modelTypes # List of all model keys: example, "KNN".
-        self.modelClasses = [] # A list of all model classes
+        self.modelTypes = modelTypes  # List of all model keys: example, "KNN".
+        self.modelClasses = []  # A list of all model classes
         self.modelPaths = None
                 
         # Create models.
@@ -57,13 +51,14 @@ class modelControl:
     def resetModels(self):
         # For each given model.
         for modelInd in range(len(self.modelClasses)):
-            self.modelClasses[modelInd]._resetModel()
+            self.modelClasses[modelInd].resetModel()
         
-    def getModelPaths(self, modelFile, modelTypes):
+    @staticmethod
+    def getModelPaths(modelFile, modelTypes):
         # Instantiate model info class
-        compileModelInfoClass = compileModelInfo(modelFile, modelTypes)
+        compileModelInfoClass = compileModelInfo()
         # Extract all model paths as list: this order is DEFINED in _compileModelInfo
-        modelPaths = compileModelInfoClass.compileModelPaths()
+        modelPaths = compileModelInfoClass.compileModelPaths(modelFile, modelTypes)
         
         return modelPaths    
 
@@ -72,21 +67,22 @@ class modelControl:
         for modelInd in range(len(self.modelClasses)):
             self.modelClasses[modelInd].saveModelInfo()
             
-    def getSpecificFeatures(self, allFeatureNames, getFeatureNames, featureData):
+    @staticmethod
+    def getSpecificFeatures(allFeatureNames, getFeatureNames, featureData):
         featureData = np.asarray(featureData)
         
-        newfeatureData = []
+        newFeatureData = []
         for featureName in getFeatureNames:
             featureInd = list(allFeatureNames).index(featureName)
             
-            if len(newfeatureData) == 0:
-                newfeatureData = featureData[:,featureInd]
+            if len(newFeatureData) == 0:
+                newFeatureData = featureData[:,featureInd]
             else:
-                newfeatureData = np.dstack((newfeatureData, featureData[:,featureInd]))
+                newFeatureData = np.dstack((newFeatureData, featureData[:,featureInd]))
         
-        if len(newfeatureData) == 0:
+        if len(newFeatureData) == 0:
             print("No Features grouped")
             return []
-        return newfeatureData[0]
+        return newFeatureData[0]
     
 # ---------------------------------------------------------------------------#

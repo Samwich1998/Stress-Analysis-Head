@@ -47,7 +47,7 @@ class trainingProtocols(extractData):
 
         # Initialize important classes
         self.saveInputs = saveExcelData()
-        self.modelInfoClass = compileModelInfo("_.pkl", [0, 1, 2])
+        self.modelInfoClass = compileModelInfo()
         self.analyzeFeatures = featurePlotting(self.trainingFolder + "dataAnalysis/", overwrite=False)
 
     def streamTrainingData(self, featureAverageWindows, plotTrainingData=False, reanalyzeData=False, extendedTime=False, metaTraining=False):

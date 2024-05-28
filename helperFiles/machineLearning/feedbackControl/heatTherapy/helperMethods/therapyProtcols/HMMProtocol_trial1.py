@@ -1,10 +1,10 @@
 from hmmlearn import hmm
 import numpy as np
-from .generalProtocol import generalProtocol
-class HMMProtocol_trial1(generalProtocol):
+from .generalTherapyProtocol import generalTherapyProtocol
+class HMMTherapyProtocol_trial1(generalTherapyProtocol):
     def __init__(self, temperatureBounds, tempBinWidth, simulationParameters, start_probabilities, transition_matrix, means, variances):
         super().__init__(temperatureBounds, tempBinWidth, simulationParameters)
-        self.numStates = self.numTempBins
+        self.numStates = self.allNumParameterBins
         self.model = hmm.GaussianHMM(n_components=self.numStates, covariance_type="diag", init_params="")
         self.model.startprob_ = start_probabilities
         self.model.transmat_ = transition_matrix

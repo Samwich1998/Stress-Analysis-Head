@@ -119,7 +119,7 @@ class generalModel(globalModel):
         else:
             sys.exit("Looked in the general models. Found no model called '" + self.modelType + "'")
             
-    def _resetModel(self):
+    def resetModel(self):
         self.createModel()
             
     def _loadModel(self):
@@ -133,7 +133,7 @@ class generalModel(globalModel):
     def trainModel(self, Training_Data, Training_Labels, Testing_Data, Testing_Labels, featureNames, imbalancedData = False):  
         assert len(featureNames) == len(Training_Data[0])
         
-        self._resetModel()
+        self.resetModel()
 
         # Train the Model
         if self.modelType.split('_')[0] == "XGB":

@@ -6,13 +6,13 @@ from torch.optim.lr_scheduler import ExponentialLR
 import random
 
 # Import files.
-from .generalProtocol import generalProtocol
+from .generalTherapyProtocol import generalTherapyProtocol
 from .nnHelpers.heatTherapyModel import heatTherapyModel
 from .nnHelpers.modelHelpers.lossCalculations import lossCalculations
 from .nnHelpers.heatTherapyModelUpdate import heatTherapyModelUpdate
 
 
-class nnProtocol(generalProtocol):
+class nnTherapyProtocol(generalTherapyProtocol):
     def __init__(self, temperatureBounds, simulationParameters, modelName, onlineTraining=False):
         super().__init__(temperatureBounds, simulationParameters)
         # General model parameters.
@@ -25,12 +25,12 @@ class nnProtocol(generalProtocol):
         self.scheduler = None
 
         # Model parameters.
-        self.model = heatTherapyModelUpdate(numTemperatures=self.numTemperatures, numLosses=self.numLosses, numTempBins=self.numTempBins, numLossBins=self.numLossBins)  # The model for the therapy.
+        self.model = heatTherapyModelUpdate(numTemperatures=self.numParameters, numLosses=self.numPredictions, numTempBins=self.allNumParameterBins, numLossBins=self.numPredictionBins)  # The model for the therapy.
         self.setupModelHelpers()
         self.setupModelScheduler()
 
         # Initialize helper classes.
-        self.lossCalculations = lossCalculations(loss_bins=self.loss_bins, numTemperatures=self.numTemperatures, numLosses=self.numLosses)
+        self.lossCalculations = lossCalculations(loss_bins=self.loss_bins, numTemperatures=self.numParameters, numLosses=self.numPredictions)
 
         # keeping track of state alterations
         self.sampled_temperatures = set()  # The set of sampled temperatures.
@@ -38,7 +38,7 @@ class nnProtocol(generalProtocol):
         # epsilon based exploration
         self.epsilon = 0.1
 
-    # ------------------------ Setup nnProtocol ------------------------ #
+    # ------------------------ Setup nnTherapyProtocol ------------------------ #
 
     def setupModelHelpers(self):
         # LR: [1E-2, 1E-6] -> 1E-3, 1E-4 is typical
@@ -58,7 +58,7 @@ class nnProtocol(generalProtocol):
         #self.scheduler = StepLR(self.optimizer, step_size=30, gamma=0.1)
         self.scheduler = ExponentialLR(self.optimizer, gamma=0.95)
 
-    # ------------------------ nnProtocol ------------------------ #
+    # ------------------------ nnTherapyProtocol ------------------------ #
 
     def updateTherapyState(self):
         """ currentUserState dimensions: [temperature, PA, NA, SA] """
@@ -74,11 +74,11 @@ class nnProtocol(generalProtocol):
         self.optimizer.zero_grad()  # Zero the gradients.
         # Forward pass through the model.
         finalStatePredictions = self.model(currentUserState)
-        # finalTemperaturePrediction dimensions: [numTemperatures=1, batchSize=1, numTempBins=11].
-        # finalLossPrediction dimensions: [numLosses=3, batchSize=1, numLossBins=11].
+        # finalTemperaturePrediction dimensions: [numParameters=1, batchSize=1, allNumParameterBins=11].
+        # finalLossPrediction dimensions: [numPredictions=3, batchSize=1, numPredictionBins=11].
         return finalStatePredictions, None
 
-    # ------------------------ exploration for nnProtocol simulation ------------------------ #
+    # ------------------------ exploration for nnTherapyProtocol simulation ------------------------ #
 
     def explore_temperature(self, predicted_temp_change, epsilon):
         if random.uniform(0, 1) < epsilon:
@@ -98,9 +98,9 @@ class nnProtocol(generalProtocol):
         """ Overwrite the general getNextState method to include the neural network. """
         # Unpack the final temperature predictions.
         finalTemperaturePredictions = therapyState[0]  # dim: torch.size([1, 1, 11])
-        finalTemperaturePredictions = finalTemperaturePredictions.unsqueeze(0).expand(self.numTemperatures, 1, self.numTempBins)
+        finalTemperaturePredictions = finalTemperaturePredictions.unsqueeze(0).expand(self.numParameters, 1, self.allNumParameterBins)
         # Get the new temperature to be compatible with the general protocol method.
-        assert finalTemperaturePredictions.size() == (self.numTemperatures, 1, self.numTempBins), f"Expected 1 temperature and batch for training, but got {finalTemperaturePredictions.size()}"
+        assert finalTemperaturePredictions.size() == (self.numParameters, 1, self.allNumParameterBins), f"Expected 1 temperature and batch for training, but got {finalTemperaturePredictions.size()}"
 
         # For online training only (not much difference between bins, so take the middle point of each bin as the next temperature adjustments)
         if self.onlineTraining:
@@ -118,7 +118,7 @@ class nnProtocol(generalProtocol):
         finalTemperaturePredictions = therapyState[0]  # dim: torch.size([1, 1, 11])
 
         # Get the new temperature to be compatible with the general protocol method.
-        assert finalTemperaturePredictions.size() == (self.numTemperatures, 1, self.numTempBins), f"Expected 1 temperature and batch for training, but got {finalTemperaturePredictions.size()}"
+        assert finalTemperaturePredictions.size() == (self.numParameters, 1, self.allNumParameterBins), f"Expected 1 temperature and batch for training, but got {finalTemperaturePredictions.size()}"
         newUserTemp_bin = finalTemperaturePredictions.argmax(dim=2)[0][0].item()  # Assumption on input dimension
 
         newUserTemp = self.sample_temperature(self.temp_bins[newUserTemp_bin])
@@ -130,11 +130,11 @@ class nnProtocol(generalProtocol):
     def sample_temperature(self, previous_temperature):
         while True:
             # Sample a new temperature uniformly between 0 and (upper_bound - lower_bound)
-            random_temp = random.uniform(0, self.temperatureBounds[1] - self.temperatureBounds[0])
+            random_temp = random.uniform(0, self.allParameterBounds[1] - self.allParameterBounds[0])
             newUserTemp = previous_temperature + random_temp
 
             # Ensure the temperature is within the bounds 30 to 50
-            if self.temperatureBounds[0] <= newUserTemp <= self.temperatureBounds[1] and abs(random_temp) >= 2:
+            if self.allParameterBounds[0] <= newUserTemp <= self.allParameterBounds[1] and abs(random_temp) >= 2:
                 # Check if the temperature has been sampled before
                 if newUserTemp not in self.sampled_temperatures:
                     # Add the new temperature to the set of sampled temperatures

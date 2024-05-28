@@ -1,12 +1,14 @@
 from hmmlearn import hmm
 import numpy as np
-from .generalProtocol import generalProtocol
+
+# Import files.
+from .generalTherapyProtocol import generalTherapyProtocol
 
 
-class HMMProtocol(generalProtocol):
-    def __init__(self, temperatureBounds, simulationParameters):
-        super().__init__(temperatureBounds, simulationParameters)
-        self.numStates = self.numTempBins # number of states in the HMM
+class HMMTherapyProtocol(generalTherapyProtocol):
+    def __init__(self, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters):
+        super().__init__(initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters)
+        self.numStates = self.allNumParameterBins # number of states in the HMM
 
         # HMM intialization:
         # transition matrix initialization: probability of transitioning from one state to another
@@ -14,7 +16,7 @@ class HMMProtocol(generalProtocol):
         self.A /= self.A.sum(axis=1, keepdims=True) # normalize the transition matrix
 
         # emission matrix: 
-        self.B = self.simulationProtocols.simulatedMap.copy() # dimension: [numStates, numLossBins] // TODO: rethink about normalization, simulated map is normalzied across the whole
+        self.B = self.simulationProtocols.simulatedMap.copy() # dimension: [numStates, numPredictionBins] // TODO: rethink about normalization, simulated map is normalzied across the whole
         #self.B = np.random.rand(self.numStates, self.numStates)
         self.B /= self.B.sum(axis=1, keepdims=True) # normalize the emission matrix
 
@@ -35,11 +37,11 @@ class HMMProtocol(generalProtocol):
 
         # Initial state
         states[0] = np.random.choice(self.numStates, p=self.pi)
-        observations[0] = np.random.choice(self.numLossBins, p=self.B[states[0], :])
+        observations[0] = np.random.choice(self.numPredictionBins, p=self.B[states[0], :])
 
         for t in range(1, length):
             states[t] = np.random.choice(self.numStates, p=self.A[states[t-1], :])
-            observations[t] = np.random.choice(self.numLossBins, p=self.B[states[t], :])
+            observations[t] = np.random.choice(self.numPredictionBins, p=self.B[states[t], :])
 
         return observations, states
 
@@ -114,7 +116,7 @@ class HMMProtocol(generalProtocol):
                 for j in range(self.numStates):
                     self.A[i, j] = np.sum(xi[:, i, j]) / np.sum(gamma[:-1, i])
 
-                for k in range(self.numLossBins):
+                for k in range(self.numPredictionBins):
                     mask = (observations == k) # array of boolean statement of observations == k
                     self.B[i, k] = np.sum(gamma[mask, i]) / np.sum(gamma[:, i])
 
@@ -150,8 +152,8 @@ class HMMProtocol(generalProtocol):
         next_state_probs = np.dot(current_state_probs, self.A)
 
         # expected loss for each possible next temperature
-        expected_losses = np.zeros(self.numTempBins)
-        for temp in range(self.numTempBins):
+        expected_losses = np.zeros(self.allNumParameterBins)
+        for temp in range(self.allNumParameterBins):
             for state in range(self.numStates):
                 expected_losses[temp] += next_state_probs[state] * self.B[state, temp]
 
@@ -175,24 +177,24 @@ class HMMProtocol(generalProtocol):
         self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(T, PA, NA, SA))
 
     def initializeStartingProbabilityMatrix_HMM(self):
-        initial_probs = np.full(self.numTempBins, 1 / self.numTempBins)
+        initial_probs = np.full(self.allNumParameterBins, 1 / self.allNumParameterBins)
         return initial_probs
 
     def initializeTransitionMatrix_HMM(self):
-        transition_matrix = np.full((self.numTempBins, self.numTempBins), 1 / self.numTempBins)
+        transition_matrix = np.full((self.allNumParameterBins, self.allNumParameterBins), 1 / self.allNumParameterBins)
         return transition_matrix
 
     def initializeMeans_HMM(self):
         # initialize means based on each temperature bin associated loss values from simulated map (get the mean of the loss values in this temperature bin)
-        means = np.zeros(self.numTempBins)
-        for i in range(self.numTempBins):
+        means = np.zeros(self.allNumParameterBins)
+        for i in range(self.allNumParameterBins):
             means[i] = np.mean(self.simulationProtocols.simulatedMap[i])
         return means
 
     def initializeVariances_HMM(self):
         # initialize variance based on each tempearture bin associated loss values from simulated map (get the variance of the loss values in this temperature bin)
-        variances = np.zeros(self.numTempBins)
-        for i in range(self.numTempBins):
+        variances = np.zeros(self.allNumParameterBins)
+        for i in range(self.allNumParameterBins):
             variances[i] = np.var(self.simulationProtocols.simulatedMap[i])
         return variances
 
@@ -201,8 +203,8 @@ class HMMProtocol(generalProtocol):
         tempLossPairs = []
         loss = []
         for i in range(numSamples):
-            tempIndex = np.random.choice(self.numTempBins)
-            lossIndex = np.random.choice(self.numLossBins)
+            tempIndex = np.random.choice(self.allNumParameterBins)
+            lossIndex = np.random.choice(self.numPredictionBins)
             tempLossPairs.append([self.temp_bins[tempIndex], self.loss_bins[lossIndex]])
             loss.append(self.loss_bins[lossIndex])
         return tempLossPairs, loss

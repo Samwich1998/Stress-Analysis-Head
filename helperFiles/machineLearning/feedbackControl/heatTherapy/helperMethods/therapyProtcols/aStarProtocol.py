@@ -1,10 +1,10 @@
 # General
 import numpy as np
 
-from .generalProtocol import generalProtocol
+from .generalTherapyProtocol import generalTherapyProtocol
 
 
-class aStarProtocol(generalProtocol):
+class aStarTherapyProtocol(generalTherapyProtocol):
     def __init__(self, temperatureBounds, simulationParameters, learningRate=5):
         super().__init__(temperatureBounds, simulationParameters)
         # Define update parameters.
@@ -18,7 +18,7 @@ class aStarProtocol(generalProtocol):
         self.uncertaintyBias = 1  # The bias for uncertainty.
 
         # Specific A Star Protocol parameters.
-        self.tempBinsVisited = np.full(self.numTempBins, False)
+        self.tempBinsVisited = np.full(self.allNumParameterBins, False)
         self.decayConstant = 1 / (2 * 3600)  # The decay constant for the personalized map.
 
         # Initialize the heuristic and personalized maps.
@@ -85,7 +85,7 @@ class aStarProtocol(generalProtocol):
         return self.temp_bins[bestTempBinIndex] + self.tempBinWidth / 2, expectedRewards
 
         # # Compute the gradient.
-        # potentialTemperatureRewards = np.gradient(potentialTemperatureRewards)  # Dimension: 2, numTempBins, numLossBins
+        # potentialTemperatureRewards = np.gradient(potentialTemperatureRewards)  # Dimension: 2, allNumParameterBins, numPredictionBins
 
     def updateAlpha(self):
         # Calculate the percentage of the temperature bins visited.
@@ -129,7 +129,7 @@ class aStarProtocol(generalProtocol):
         personalizedMapWeights = self.personalizedMapWeightingFunc(currentTimeDelays, self.decayConstant)
 
         # For each temperature bin.
-        for tempIndex in range(self.numTempBins):
+        for tempIndex in range(self.allNumParameterBins):
             # If the temperature bin has been visited.
             if tempIndex in associatedTempInds:
                 tempIndMask = associatedTempInds == tempIndex
@@ -151,7 +151,7 @@ class aStarProtocol(generalProtocol):
 
     def initializeFirstPersonalizedMap(self):
         # Initialize a uniform personalized map. No bias.
-        uniformMap = np.ones((self.numTempBins, self.numLossBins))
+        uniformMap = np.ones((self.allNumParameterBins, self.numPredictionBins))
         uniformMap = uniformMap / uniformMap.sum()
 
         # Store the initial personalized map estimate.

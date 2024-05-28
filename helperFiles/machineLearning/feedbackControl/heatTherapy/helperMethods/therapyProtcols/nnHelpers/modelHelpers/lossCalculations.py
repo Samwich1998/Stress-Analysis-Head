@@ -4,7 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 
 # Import files.
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.generalProtocol import generalProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.generalTherapyProtocol import generalTherapyProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.dataInterface.dataInterface import dataInterface
 
 
@@ -26,7 +26,7 @@ class lossCalculations:
         self.optimalLoss = [1, 0, 0]  # The optimal final loss bin index. [PA, NA, SA].
         self.optimalFinalLossBinIndex = list(map(lambda loss: dataInterface.getBinIndex(self.loss_bins, loss), self.optimalLoss))
         self.optimalFinalLossBinIndex = torch.tensor(data=self.optimalFinalLossBinIndex, dtype=torch.long)
-        # self.optimalFinalLoss_bin dimensions: [numLosses].
+        # self.optimalFinalLoss_bin dimensions: [numPredictions].
 
     def scoreModel(self, therapyState, trueLossValues):
         """ Score the model based on the final loss. """
@@ -34,9 +34,9 @@ class lossCalculations:
         finalTemperaturePredictions = therapyState[0]
         finalLossPredictions = therapyState[1:]
         numLosses, batchSize, numLossBins = finalLossPredictions.size()
-        # trueLossValues dimensions: [numLosses] if self.onlineTraining else [numLosses, numLossBins]
-        # finalTemperaturePrediction dimensions: [numTemperatures, batchSize, numTempBins].
-        # finalLossPrediction dimensions: [numLosses, batchSize, numLossBins].
+        # trueLossValues dimensions: [numPredictions] if self.onlineTraining else [numPredictions, numPredictionBins]
+        # finalTemperaturePrediction dimensions: [numParameters, batchSize, allNumParameterBins].
+        # finalLossPrediction dimensions: [numPredictions, batchSize, numPredictionBins].
 
         # Assert the validity of the parameters.
         assert numLosses == self.numLosses, "The number of losses must match the expected number of losses."
@@ -55,7 +55,7 @@ class lossCalculations:
             lossPredictionLoss = self.lossCalculation(lossPredictionLoss, finalLossPredictions, trueLossValues, lossInd, lossType=self.predictionLossType)
 
             # Bias the model to minimize the loss.
-            expectedLoss = self.optimalFinalLossBinIndex#.expand(self.numLosses, batchSize)  # expectedLoss dimensions: [self.numLosses, batchSize].
+            expectedLoss = self.optimalFinalLossBinIndex#.expand(self.numPredictions, batchSize)  # expectedLoss dimensions: [self.numPredictions, batchSize].
             minimizeLossBias = self.lossCalculation(minimizeLossBias, finalLossPredictions, expectedLoss, lossInd, lossType=self.optimalLossType)
 
         return lossPredictionLoss, minimizeLossBias
@@ -71,9 +71,9 @@ class lossCalculations:
         # Cross-entropy loss
         elif lossType == "CE":
             # Prepare the final loss predictions for classification.
-            trueLossValues = list(map(lambda loss: generalProtocol.getBinIndex(self.loss_bins, loss), trueLossValues))
+            trueLossValues = list(map(lambda loss: generalTherapyProtocol.getBinIndex(self.loss_bins, loss), trueLossValues))
             trueLossValues = torch.tensor(data=trueLossValues, dtype=torch.long)  # Convert the true loss values to a tensor.
-            trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numLosses, batchSize].
+            trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numPredictions, batchSize].
 
             # Add the loss value.
             lossPredictionLoss = lossPredictionLoss + self.classificationLoss(finalLossPredictions[lossInd], trueLossValues[lossInd].argmax(dim=-1)).mean()
@@ -81,7 +81,7 @@ class lossCalculations:
         # MSE loss
         elif lossType == "MSE":
             # Prepare the final loss predictions for MSE.
-            trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numLosses, batchSize].
+            trueLossValues = trueLossValues.unsqueeze(-1).expand(-1, finalLossPredictions.size(1))  # trueLossValues dimensions: [numPredictions, batchSize].
             trueLossValues = trueLossValues.unsqueeze(-1)
             print(f"finalLossPredictions: {finalLossPredictions.size()}")
             print(f"trueLossValues: {trueLossValues.size()}")

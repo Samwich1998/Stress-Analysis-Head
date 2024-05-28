@@ -142,7 +142,7 @@ class aStarProtocol(generalProtocol):
 
         if self.applyGaussianFilter:
             # Smoothen the personalized map.
-            personalizedMap = self.smoothenArray(personalizedMap, sigma=self.gausSTD[::-1])
+            personalizedMap = self.generalMethods.smoothenArray(personalizedMap, sigma=self.gausSTD[::-1])
 
         # Normalize the personalized map.
         personalizedMap = personalizedMap / personalizedMap.sum()  # Normalize along the temperature axis.

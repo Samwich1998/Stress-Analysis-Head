@@ -1,5 +1,4 @@
 # General.
-import time
 import torch
 import sys
 
@@ -8,7 +7,7 @@ sys.path.append("./../../../../")
 import helperFiles
 
 # Import the necessary libraries.
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.heatTherapyHelpers import heatTherapyHelpers
+from helperFiles.machineLearning.feedbackControl.heatTherapy.heatTherapyHelpers import heatTherapyHelpers
 
 
 class heatTherapyControl(heatTherapyHelpers):
@@ -130,15 +129,14 @@ class heatTherapyControl(heatTherapyHelpers):
                     print(f"Alpha after iteration: {self.therapyProtocol.percentHeuristic}\n")
                 elif self.therapyMethod == "basicProtocol":
                     self.therapyProtocol.plotTherapyResults_basic(allMaps)  # For basic protocol, allMaps is the simulated map (only 1)
-                    time.sleep(0.1)
             # Check if the therapy has converged.
             self.therapyProtocol.checkConvergence(maxIterations)
 
 
 if __name__ == "__main__":
     # User parameters.
-    userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol"
-    userTemperatureBounds = (30, 50)  # The temperature bounds for the therapy.
+    userTherapyMethod = "nnProtocol"  # The therapy algorithm to run. Options: "aStarProtocol", "basicProtocol", "nnProtocol", "nnProtocol"
+    userTemperatureBounds = (35, 50)  # The temperature bounds for the therapy.
     testingUserName = "Squirtle"  # The username for the therapy.
     plotTherapyResults = True  # Whether to plot the results.
 

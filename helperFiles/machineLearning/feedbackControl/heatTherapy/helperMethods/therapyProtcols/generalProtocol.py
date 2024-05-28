@@ -13,7 +13,6 @@ from ..dataInterface.simulationProtocols import simulationProtocols
 class generalProtocol(abc.ABC):
     def __init__(self, temperatureBounds, simulationParameters):
         # General parameters.
-        self.predictionOrder = ["Positive Affect", "Negative Affect", "State Anxiety"]  # The order of the mental health predictions.
         self.simulateTherapy = simulationParameters['simulateTherapy']  # Whether to simulate the therapy.
         self.temperatureBounds = temperatureBounds  # The temperature bounds for the therapy.
         self.userFullStatePathDistribution = []  # The path of the user state with loss distribution. Tailored for simulation nnProtocol (T, PA_distribution, NA_distribution, SA_distribution)
@@ -24,6 +23,7 @@ class generalProtocol(abc.ABC):
         self.userStatePath = []             # The path of the user state. Order: (T, Loss)
 
         # Hardcoded information.
+        self.predictionOrder = ["Positive Affect", "Negative Affect", "State Anxiety"]  # The order of the mental health predictions.
         self.lossWeights = np.array([0.1, 0.1, 0.8])    # The weights for the loss function. [PA, NA, SA]
         self.gausSTD = np.array([2.5, 1.5])      # The standard deviation for the Gaussian distribution: [T, L]
         self.optimalState = [1, 0, 0]            # The final goal for the therapy. [PA, NA, SA]
@@ -55,7 +55,18 @@ class generalProtocol(abc.ABC):
         self.dataInterface = dataInterface(self.lossWeights, self.optimalState, self.temperatureBounds)
         self.generalMethods = generalMethods()
 
-        # Initialize protocol parameters.
+        # Reset the therapy parameters.
+        self.resetTherapy()
+
+    def resetTherapy(self):
+        # Reset the therapy parameters.
+        self.userFullStatePathDistribution = []  # The path of the user state with loss distribution.
+        self.temperatureTimepoints = []  # Time delays for each discrete temperature-loss pair.
+        self.finishedTherapy = False  # Whether the therapy has finished.
+        self.userFullStatePath = []  # The path of the user state.
+        self.userStatePath = []  # The path of the user state.
+
+        # Reset the therapy maps.
         self.initializeMaps()
 
     # ------------------------ Track User States ------------------------ #
@@ -78,11 +89,9 @@ class generalProtocol(abc.ABC):
     def initializeUserState(self, userName):
         # Get the user information.
         timePoint, userState = self.getCurrentState()  # userState: (T, PA, NA, SA)
-        tempIndex = self.dataInterface.getBinIndex(self.temp_bins, userState[0])
 
         # Track the user state and time delay.
-        self.temperatureTimepoints.append((timePoint, tempIndex))  # temperatureTimepoints: (numEpochs, 2=(time, tempIndex))
-        self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(T, PA, NA, SA))
+        self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(timePoint, T, PA, NA, SA))
 
         # Calculate the initial user loss.
         initialUserState = self.dataInterface.compileStates(userState)[-1]

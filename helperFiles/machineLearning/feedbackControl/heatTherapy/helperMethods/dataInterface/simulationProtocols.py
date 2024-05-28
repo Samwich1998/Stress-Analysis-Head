@@ -81,7 +81,7 @@ class simulationProtocols:
         return [randomTemperature] + randomLosses
 
     def gumbel_softmax_sample(self, logits):
-        gumbels = -torch.empty_like(logits).exponential_().log()  # Sample from Gumbel(0, 1)
+        gumbels = -torch.empty_like(logits).exp().log()  # Sample from Gumbel(0, 1)
         gumbels = (logits + gumbels) / self.gumbelTemperature  # Add gumbels and divide by temperature
         return torch.nn.functional.softmax(gumbels, dim=-1)
 
@@ -94,7 +94,6 @@ class simulationProtocols:
         newUserTemp = currentUserTemp if newUserTemp is None else newUserTemp
 
         # Calculate the bin indices for the current and new user states.
-        currentTempBinIndex = self.dataInterface.getBinIndex(self.temp_bins, currentUserTemp)
         currentLossIndex = self.dataInterface.getBinIndex(self.loss_bins, currentUserLoss)
         newTempBinIndex = self.dataInterface.getBinIndex(self.temp_bins, newUserTemp)
 
@@ -126,64 +125,21 @@ class simulationProtocols:
         newLossProbabilities_PA = PA_map_simulated[newTempBinIndex] / torch.sum(PA_map_simulated[newTempBinIndex])
         gaussian_boost = self.generalMethods.createGaussianArray(inputData=newLossProbabilities_PA, gausMean=currentLossIndex, gausSTD=gausSTD, torchFlag=True)
 
-
-        gaussian_boost_PA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_PA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
-        gaussian_boost_PA = gaussian_boost_PA / torch.sum(gaussian_boost_PA)
-
-        newLossProbabilities_PA = newLossProbabilities_PA / torch.sum(newLossProbabilities_PA)
-        newLossProbabilities_PA = newLossProbabilities_PA.clone().detach().requires_grad_(True)
-        soft_sample_PA = self.gumbel_softmax_sample(newLossProbabilities_PA)
-        newUserLoss_PA = torch.sum(soft_sample_PA * loss_bins)
-        print('newUserLoss_PA: ', newUserLoss_PA)
-        print('soft_sample_PA: ', soft_sample_PA)
-        print(f"Gradient tracking enabled: {soft_sample_PA.requires_grad}")
-        loss_distribution_perTemp_PA = newLossProbabilities_PA.clone().detach().requires_grad_(True)
-
-        newLossProbabilities_NA = NA_map_simulated[newTempBinIndex] / torch.sum(NA_map_simulated[newTempBinIndex])
-        gaussian_boost_NA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_NA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
-        gaussian_boost_NA = gaussian_boost_NA / torch.sum(gaussian_boost_NA)
-
-        newLossProbabilities_NA = newLossProbabilities_NA / torch.sum(newLossProbabilities_NA)
-        newLossProbabilities_NA = newLossProbabilities_NA.clone().detach().requires_grad_(True)
-        soft_sample_NA = self.gumbel_softmax_sample(newLossProbabilities_NA)
-        newUserLoss_NA = torch.sum(soft_sample_NA * loss_bins)
-        print('newUserLoss_NA: ', newUserLoss_NA)
-        print('soft_sample_NA: ', soft_sample_NA)
-        print(f"Gradient tracking enabled: {soft_sample_NA.requires_grad}")
-        loss_distribution_perTemp_NA = newLossProbabilities_NA.clone().detach().requires_grad_(True)
-
-        newLossProbabilities_SA = SA_map_simulated[newTempBinIndex] / torch.sum(SA_map_simulated[newTempBinIndex])
-        gaussian_boost_SA = torch.exp(-0.5 * ((torch.arange(len(newLossProbabilities_SA), dtype=torch.float32) - currentLossIndex) / std) ** 2)
-        gaussian_boost_SA = gaussian_boost_SA / torch.sum(gaussian_boost_SA)
-
-        newLossProbabilities_SA = newLossProbabilities_SA / torch.sum(newLossProbabilities_SA)
-        newLossProbabilities_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
-        soft_sample_SA = self.gumbel_softmax_sample(newLossProbabilities_SA)
-        newUserLoss_SA = torch.sum(soft_sample_SA * loss_bins)
-        print('newUserLoss_SA: ', newUserLoss_SA)
-        print('soft_sample_SA: ', soft_sample_SA)
-        print(f"Gradient tracking enabled: {soft_sample_SA.requires_grad}")
-        loss_distribution_perTemp_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
-
         # Update the temperature for annealing
         self.update_temperature()
         print('initial_temperature: ', self.gumbelTemperature)
 
         return newUserLoss_PA, newUserLoss_NA, newUserLoss_SA, loss_distribution_perTemp_PA, loss_distribution_perTemp_NA, loss_distribution_perTemp_SA
 
-    def sampleSingleLoss(self, newLossProbabilities_SA, loss_bins):
+    def sampleSingleLoss(self, newLossProbabilities, loss_bins):
         # Normalizing the loss distribution.
-        newLossProbabilities_SA = newLossProbabilities_SA / torch.sum(newLossProbabilities_SA)
-        newLossProbabilities_SA = newLossProbabilities_SA.clone().requires_grad_(True)
+        newLossProbabilities = newLossProbabilities / torch.sum(newLossProbabilities)
 
-        soft_sample_SA = self.gumbel_softmax_sample(newLossProbabilities_SA)
-        newUserLoss_SA = torch.sum(soft_sample_SA * loss_bins)
+        newUserLoss_SA = torch.sum(newLossProbabilities * loss_bins)
         print('newUserLoss_SA: ', newUserLoss_SA)
-        print('soft_sample_SA: ', soft_sample_SA)
-        print(f"Gradient tracking enabled: {soft_sample_SA.requires_grad}")
-        loss_distribution_perTemp_SA = newLossProbabilities_SA.clone().detach().requires_grad_(True)
+        print('soft_sample_SA: ', newLossProbabilities)
 
-        return newUserLoss_SA, loss_distribution_perTemp_SA
+        return newUserLoss_SA, newLossProbabilities
 
     # ------------------------ Sampling Methods ------------------------ #
 

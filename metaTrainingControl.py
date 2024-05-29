@@ -6,7 +6,6 @@ import warnings
 import argparse
 from accelerate import DataLoaderConfiguration
 
-from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.trainingProtocolHelpers import trainingProtocolHelpers
 
 # Set specific environmental parameters.
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
@@ -19,6 +18,7 @@ import torch
 
 # Import files for machine learning
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.modelParameters import modelParameters
+from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.trainingProtocolHelpers import trainingProtocolHelpers
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
 from helperFiles.machineLearning.modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
 from helperFiles.machineLearning.featureAnalysis.featureImportance import featureImportance  # Import feature analysis files.
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 

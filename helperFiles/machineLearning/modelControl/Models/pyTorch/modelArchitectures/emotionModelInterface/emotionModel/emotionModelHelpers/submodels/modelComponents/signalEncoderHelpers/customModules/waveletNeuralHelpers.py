@@ -1,6 +1,5 @@
 # General
 from pytorch_wavelets import DWT1DForward, DWT1DInverse
-from torch import nn
 import torch
 import pywt
 
@@ -37,18 +36,18 @@ from ..signalEncoderModules import signalEncoderModules
 class waveletNeuralHelpers(signalEncoderModules):
 
     def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none",
-                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useLowFreqCNN=False, independentChannels=False, skipConnectionProtocol='CNN'):
+                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=False, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
         self.encodeHighFrequencyProtocol = encodeHighFrequencyProtocol  # The high-frequency encoding protocol to use.
         self.encodeLowFrequencyProtocol = encodeLowFrequencyProtocol  # The low-frequency encoding protocol to use.
         self.skipConnectionProtocol = skipConnectionProtocol  # The skip connection protocol to use.
         self.independentChannels = independentChannels  # Whether to treat each channel independently.
+        self.useConvolutionFlag = useConvolutionFlag  # Whether to use a convolutional neural network for the decomposition.
         self.numDecompositions = numDecompositions  # Maximum number of decompositions to apply.
         self.numOutputSignals = numOutputSignals  # Number of output signals.
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
-        self.useLowFreqCNN = useLowFreqCNN  # Whether to use a convolutional neural network for the decomposition.
         self.addBiasTerm = addBiasTerm  # Whether to add bias terms to the output.
         self.waveletType = waveletType  # The wavelet to use for the decomposition. Options: 'haar', 'db', 'sym', 'coif', 'bior', 'rbio', 'dmey', 'gaus', 'mexh', 'morl', 'cgau', 'shan', 'fbsp', 'cmor'
         self.mode = mode  # The padding mode to use for the decomposition. Options: 'zero', 'symmetric', 'reflect' or 'periodization'.
@@ -71,7 +70,7 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.lowFrequencyShape = lowFrequency.size(-1)  # Optimally: maxSequenceLength / numDecompositions**2
 
         # Initialize wavelet neural operator parameters.
-        self.activationFunction = self.getActivationMethod(activationType=activationMethod, useSwitchActivation=True)  # Activation function for the Fourier neural operator.
+        self.activationFunction = self.getActivationMethod(activationType=activationMethod)  # Activation function for the Fourier neural operator.
         if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
         self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.
@@ -82,8 +81,9 @@ class waveletNeuralHelpers(signalEncoderModules):
         assert self.encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'none'], "The high-frequency encoding protocol must be 'highFreq', 'allFreqs', 'none'."
         assert self.encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'none'], "The low-frequency encoding protocol must be 'lowFreq', 'allFreqs', 'none'."
 
-        if self.useLowFreqCNN:
+        if self.useConvolutionFlag:
             # Assert the validity of the CNN model.
+            assert self.encodeHighFrequencyProtocol != 'allFreqs', "Encoding all frequencies with a CNN model is not supported."
             assert self.encodeLowFrequencyProtocol != 'allFreqs', "Encoding all frequencies with a CNN model is not supported."
 
         # Verify that the number of decomposition layers is appropriate.

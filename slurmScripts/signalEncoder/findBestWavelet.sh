@@ -15,8 +15,8 @@ waveletTypes=( \
     'sym11' 'sym12' 'sym13' 'sym14' 'sym15' 'sym16' 'sym17' 'sym18' 'sym19' 'sym20' \
 )
 numSigLiftedChannels=32
-numSigEncodingLayers=2
-numExpandedSignals=2
+numSigEncodingLayers=4
+numExpandedSignals=4
 optimizer='AdamW'
 
 for waveletType in "${waveletTypes[@]}"

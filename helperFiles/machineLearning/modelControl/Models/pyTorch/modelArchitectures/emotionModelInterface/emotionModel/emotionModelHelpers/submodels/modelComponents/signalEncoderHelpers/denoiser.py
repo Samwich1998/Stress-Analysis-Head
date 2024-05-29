@@ -18,7 +18,7 @@ class denoiser(signalEncoderModules):
 
         # Create the spectral convolution layers.
         self.denoiserNeuralOperator = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
-                                                                 activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useLowFreqCNN=True, independentChannels=True, skipConnectionProtocol='identity')
+                                                                 activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='independentCNN')
 
         # Allow the final signals to denoise at the end.
         self.gausKernel_forSigEnc = self.smoothingKernel(kernelSize=3, averageWeights=[0.25, 0.25, 0.25])
@@ -32,4 +32,6 @@ class denoiser(signalEncoderModules):
 
     def applyDenoiser(self, inputData):
         # Apply the neural operator and the skip connection.
-        return self.denoiserNeuralOperator(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)
+        denoisedData = self.denoiserNeuralOperator(inputData, lowFrequencyTerms=None, highFrequencyTerms=None)
+
+        return denoisedData

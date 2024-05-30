@@ -40,8 +40,8 @@ if __name__ == "__main__":
 
     # Protocol switches: only the first true variably executes.
     readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    streamData = False  # Stream in Data from the Board and Analyze.
-    trainModel = True  # Train Model with ALL Data in 'trainingFolder'.
+    streamData = True  # Stream in Data from the Board and Analyze.
+    trainModel = False  # Train Model with ALL Data in 'trainingFolder'.
     metaTrainModel = False
 
     # User options during the run: any number can be true.
@@ -49,9 +49,9 @@ if __name__ == "__main__":
     useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.
 
     # Specify the user parameters.
-    userName = "Sam".replace(" ", "")
+    userName = "Kexin".replace(" ", "")
     trialName = "HeatingPad"
-    date = "2024-05-16"
+    date = "2024-05-29"
 
     # ---------------------------------------------------------------------- #
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     # Specify biomarker information.
     streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in.
-    extractFeaturesFrom = ["eog", "eeg", "eda", "temp"]  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
+    extractFeaturesFrom = []  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
     allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
     # Compile feature names
@@ -282,7 +282,8 @@ if __name__ == "__main__":
     # Save the Data in Excel
     if saveRawSignals:
         # Double Check to See if User Wants to Save the Data
-        verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
+        # verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
+        verifiedSave = "Y"
         if verifiedSave.upper() == "Y":
             # Get the streaming data
             streamingData = []

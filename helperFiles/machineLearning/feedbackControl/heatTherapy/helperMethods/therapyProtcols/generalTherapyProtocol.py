@@ -79,6 +79,7 @@ class generalTherapyProtocol(abc.ABC):
 
         # Reset the therapy maps.
         self.initializeMaps()
+        print('passed here')
 
     # ------------------------ Track User States ------------------------ #
 
@@ -87,7 +88,12 @@ class generalTherapyProtocol(abc.ABC):
             self.simulationProtocols.initializeSimulatedMaps(self.predictionWeights, self.gausLossSTDs, self.applyGaussianFilter)
         else:
             # real data points
-            initialSimulatedStates = self.empatchProtocols.getTherapyData()
+            temperature, pa, na, sa = self.empatchProtocols.getTherapyData()
+            print('temperature: ', temperature)
+            print('pa: ', pa)
+            print('na: ', na)
+            print('sa: ', sa)
+            exit()
             # initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
             initialSimulatedData = self.dataInterface.compileStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
             self.simulationProtocols.NA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, self.gausLossSTDs, noise=0.05, applyGaussianFilter=self.applyGaussianFilter)

@@ -125,7 +125,7 @@ if __name__ == "__main__":
     testingUserName = "Squirtle"  # The username for the therapy.
     temperatureBounds = (35, 50)  # The temperature bounds for the therapy.
     temperatureBinWidth = 2.5  # The temperature bounds for the therapy.
-    plotTherapyResults = True  # Whether to plot the results.
+    plotTherapyResults = False  # Whether to plot the results.
 
     # Simulation parameters.
     currentSimulationParameters = {
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         'simulatedMapType': 'uniformSampling',  # The method for generating the simulated map. Options: 'uniformSampling', 'linearSampling', 'parabolicSampling'
         'numSimulationHeuristicSamples': 100,  # The number of simulation samples to generate.
         'numSimulationTrueSamples': 50,  # The number of simulation samples to generate.
-        'simulateTherapy': True,  # Whether to simulate the therapy.
+        'simulateTherapy': False,  # Whether to simulate the therapy.
     }
 
     # Initialize the therapy protocol

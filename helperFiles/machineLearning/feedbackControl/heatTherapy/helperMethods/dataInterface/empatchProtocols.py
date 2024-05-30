@@ -87,8 +87,13 @@ class empatchProtocols(extractData):
 
                 # Store the state values.
                 emotion_states = [finalLabels[0][experimentalInd], finalLabels[1][experimentalInd], finalLabels[2][experimentalInd]]
-                emotion_states = dataInterface.normalizeParameters(currentParamBounds=self.predictionBounds, normalizedParamBounds=self.modelParameterBounds, currentParamValues=emotion_states).tolist()
+                emotion_states = dataInterface.normalizeParameters(currentParamBounds=self.predictionBounds, normalizedParamBounds=self.modelParameterBounds, currentParamValues=torch.tensor(emotion_states)).tolist()
+
                 stateHolder.append([experimentalTemp] + emotion_states)
         stateHolder = torch.as_tensor(stateHolder)
+        temperature = stateHolder[:, 0].view(1, -1)
+        pa = stateHolder[:, 1].view(1, -1)
+        na = stateHolder[:, 2].view(1, -1)
+        sa = stateHolder[:, 3].view(1, -1)
 
-        return stateHolder
+        return temperature, pa, na, sa

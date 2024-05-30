@@ -1,8 +1,5 @@
 """ Written by Samuel Solomon: https://scholar.google.com/citations?user=9oq12oMAAAAJ&hl=en """
 
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General
 import os
 import sys
@@ -17,15 +14,13 @@ from helperFiles.machineLearning.dataInterface.dataPreparation import standardiz
 from helperFiles.machineLearning import machineLearningInterface, trainingProtocols
 from helperFiles.surveyInformation.questionaireGUI import stressQuestionnaireGUI  # Import file for GUI control
 from helperFiles.dataAcquisitionAndAnalysis import streamingProtocols  # Import interfaces for reading/writing data
-# from adjustInputParameters import adjustInputParameters
+from adjustInputParameters import adjustInputParameters
 
 # Import file for music therapy
-# from helperFiles.machineLearning.feedbackControl. import musicTherapy
+from helperFiles.machineLearning.feedbackControl.musicTherapy import musicTherapy
 
 # Add the directory of the current file to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# -------------------------------------------------------------------------- #
 
 if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
@@ -48,114 +43,33 @@ if __name__ == "__main__":
     trialName = "HeatingPad"
     date = "2024-05-30"
 
+    # Specify experimental parameters.
+    boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number)
+
     # ---------------------------------------------------------------------- #
-
-    # Analyze the data in batches.
-    numPointsPerBatch = 4000  # The Number of Data Points to Display to the User at a Time.
-    moveDataFinger = 400  # The Minimum Number of NEW Data Points to Plot/Analyze in Each Batch;
-
-    # Specify biomarker information.
-    streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in.
-    extractFeaturesFrom = ["eog", "eeg", "eda", "temp"]  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
-    allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
-
-    # Compile feature names
-    featureNames, biomarkerFeatureNames, biomarkerOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
-
-    # Specify the path to the collected data.
-    collectedDataFolder = compileModelInfo.getTrainingDataFolder(useTherapyData)
-    currentFilename = collectedDataFolder + f"{date} {trialName} Trial {userName}.xlsx"
-
-    featureAverageWindows = []
-    # Compile feature average windows.
-    for biomarker in biomarkerOrder:
-        featureAverageWindows.append(allAverageIntervals[streamingOrder.index(biomarker)])
-
-    # Stream in real-time incoming data.
-    if streamData:
-        # Arduino Streaming Parameters
-        boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number)
-        stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
-        adcResolution = 4096
-        maxVolt = 3.3
-
-        # Streaming flags
-        saveRawSignals = True  # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
-        recordQuestionnaire = not plotStreamedData  # Only use one GUI: questionnaire or streaming
-    else:
-        # Specify flags when not streaming
-        boardSerialNum, maxVolt, adcResolution, stopTimeStreaming = None, None, None, None
-        saveRawSignals, recordQuestionnaire = False, False
-
-    # Stream in excel data
-    if readDataFromExcel:
-        saveRawFeatures = False
-        if not plotStreamedData:
-            # If not displaying, read in all the excel data (max per sheet) at once
-            numPointsPerBatch = 2048576
-            moveDataFinger = 1048100
-
-        # Specify the input file to analyze
-        testSheetNum = 0  # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
-    else:
-        saveRawFeatures = False
-
-    if saveRawSignals or saveRawFeatures:
-        saveInputs = saveDataProtocols.saveExcelData()
-
-    # Train or test the machine learning modules
-    if trainModel or useModelPredictions:
-        # ML Flags
-        actionControl = None  # NOT IMPLEMENTED YET
-        reanalyzeData = False  # Reanalyze training files: don't use saved features
-        plotTrainingData = True  # Plot all training information
-        # If training, read the data as quickly as possible
-
-        # Specify the machine learning information
-        modelFile = "predictionModel.pkl"  # Path to Model (Creates New if it Doesn't Exist)
-        modelTypes = ["MF", "MF", "MF"]  # Model Options: linReg, logReg, ridgeReg, elasticNet, SVR_linear, SVR_poly, SVR_rbf, SVR_sigmoid, SVR_precomputed, SVC_linear, SVC_poly, SVC_rbf, SVC_sigmoid, SVC_precomputed, KNN, RF, ADA, XGB, XGB_Reg, lightGBM_Reg
-        # Choose the Folder to Save ML Results
-        if trainModel:
-            # If not streaming real-time
-            numPointsPerBatch = 2048576
-            moveDataFinger = 1048100
-            saveModel = True  # Save the Machine Learning Model for Later Use
-        else:
-            plotTrainingData, reanalyzeData, saveModel = False, False, False
-
-        # Get the Machine Learning Module
-        performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, collectedDataFolder)
-        modelClasses = performMachineLearning.modelControl.modelClasses
-    else:
-        actionControl, performMachineLearning = None, None
-        modelClasses = []
-
-    if True or useModelPredictions:
-        # Specify the MTG-Jamendo dataset path
-        soundInfoFile = 'raw_30s_cleantags_50artists.tsv'
-        dataFolder = './helperFiles/machineLearning/_Feedback Control/Music Therapy/Organized Sounds/MTG-Jamendo/'
-        # Initialize the classes
-        # soundManager = musicTherapy.soundController(dataFolder, soundInfoFile)  # Controls the music playing
-        # soundManager.loadSound(soundManager.soundInfo[0][3])
-        playGenres = [None, 'pop', 'jazz', 'heavymetal', 'classical', None]
-        # playGenres = [None, 'hiphop', 'blues', 'disco', 'ethno', None]
-        # playGenres = [None, 'funk', 'reggae', 'rap', 'classicrock', None]
-
-        # playGenres = [None, 'hiphop', 'blues', 'hardrock', 'african', None]
-        # soundManager.pickSoundFromGenres(playGenres)
-    # sys.exit()
 
     # Assert the proper use of the program
     assert sum((readDataFromExcel, streamData, trainModel)) == 1, "Only one protocol can be be executed."
 
-    # ---------------------------------------------------------------------- #
-    # ---------------------------------------------------------------------- #
-    #           Data Collection Program (Should Not Have to Edit)            #
-    # ---------------------------------------------------------------------- #
-    # ---------------------------------------------------------------------- #
+    # Define helper classes.
+    inputParameterClass = adjustInputParameters(plotStreamedData, streamData, readDataFromExcel, trainModel, useModelPredictions, useTherapyData)
+
+    # Get the reading/saving information.
+    collectedDataFolder, currentFilename = inputParameterClass.getSavingInformation(date, trialName, userName)
+    numPointsPerBatch, moveDataFinger = inputParameterClass.getPlottingParams(analyzeBatches= plotStreamedData or useModelPredictions)
+
+    # Compile all the protocol information.
+    boardSerialNum, maxVolt, adcResolution, stopTimeStreaming, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams()
+    saveRawFeatures, numPointsPerBatch, moveDataFinger, testSheetNum = inputParameterClass.getExcelParams()
+
+    if saveRawSignals or saveRawFeatures:
+        saveInputs = saveDataProtocols.saveExcelData()
+
     # Initialize instance to analyze the data
     readData = streamingProtocols.streamingProtocols(boardSerialNum, modelClasses, actionControl, numPointsPerBatch, moveDataFinger,
                                                      streamingOrder, biomarkerOrder, featureAverageWindows, plotStreamedData)
+
+    # ---------------------------------------------------------------------- #
 
     # Stream in Data
     if streamData:

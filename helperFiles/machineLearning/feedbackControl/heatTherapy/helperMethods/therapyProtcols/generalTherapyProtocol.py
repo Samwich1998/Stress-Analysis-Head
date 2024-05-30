@@ -88,10 +88,12 @@ class generalTherapyProtocol(abc.ABC):
         if self.simulateTherapy:
             self.simulationProtocols.initializeSimulatedMaps(self.predictionWeights, self.gausLossSTDs, self.applyGaussianFilter)
         else:
+            # initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
             # real data points
             temperature, pa, na, sa = self.empatchProtocols.getTherapyData()
-            # initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
-            initialSimulatedData = self.dataInterface.compileStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
+            # sort the temperature, pa, na, sa into correct format passed to generate initialSimulatedData
+            initialSimulatedStates = torch.stack([temperature, pa, na, sa], dim=1)
+            initialSimulatedData = self.dataInterface.calculateCompiledLoss(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
             self.simulationProtocols.NA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, self.gausLossSTDs, noise=0.05, applyGaussianFilter=self.applyGaussianFilter)
             self.simulationProtocols.SA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, self.gausLossSTDs, noise=0.1, applyGaussianFilter=self.applyGaussianFilter)
             self.simulationProtocols.PA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, self.gausLossSTDs, noise=0.0, applyGaussianFilter=self.applyGaussianFilter)

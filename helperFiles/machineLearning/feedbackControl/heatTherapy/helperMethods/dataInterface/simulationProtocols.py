@@ -81,6 +81,8 @@ class simulationProtocols:
 
         # Get the simulated matrix from the simulated points.
         simulatedCompiledLoss = self.dataInterface.calculateCompiledLoss(sampledPredictions)
+        # Compiling the simulated Data for generating probability matrix
+        initialSimulatedData = torch.cat((sampledParameters, sampledPredictions, simulatedCompiledLoss.unsqueeze(-1)), dim=1) #TODO: double check
         self.simulatedMapPA = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, gausSTDs[0], noise=0.1, applyGaussianFilter=applyGaussianFilter)
         self.simulatedMapNA = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, gausSTDs[1], noise=0.1, applyGaussianFilter=applyGaussianFilter)
         self.simulatedMapSA = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, gausSTDs[2], noise=0.1, applyGaussianFilter=applyGaussianFilter)

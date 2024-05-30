@@ -61,7 +61,7 @@ class generalMethods:
                 # Generate a delta function probability.
                 tempBinIndex = self.dataInterface.getBinIndex(allParameterBins, currentUserTemp)
                 lossBinIndex = self.dataInterface.getBinIndex(allPredictionBins, currentUserLoss)
-                probabilityMatrix[tempBinIndex, lossBinIndex] += 1  # map out bins and fill out with discrete values
+                probabilityMatrix[tempBinIndex][lossBinIndex] += 1  # map out bins and fill out with discrete values
             else:
                 # Generate 2D gaussian matrix.
                 gaussianMatrix = self.createGaussianMap(allParameterBins, allPredictionBins, gausMean=(currentUserLoss, currentUserTemp), gausSTD=gausSTD)

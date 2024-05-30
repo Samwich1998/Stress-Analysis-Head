@@ -9,21 +9,15 @@ import sys
 import threading
 import numpy as np
 
-# Import interfaces for reading/writing data
-from helperFiles.dataAcquisitionAndAnalysis.excelProcessing import extractDataProtocols, saveDataProtocols
-from helperFiles.dataAcquisitionAndAnalysis import streamingProtocols
-
-# Import interface for extracting feature names
-from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames
-
-# Import files for machine learning
+# Import helper files.
+from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames  # Import interface for extracting feature names
+from helperFiles.dataAcquisitionAndAnalysis.excelProcessing import extractDataProtocols, saveDataProtocols  # Import interfaces for reading/writing data
+from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo  # Import files for machine learning
+from helperFiles.machineLearning.dataInterface.dataPreparation import standardizeData  # Import interface for the data
 from helperFiles.machineLearning import machineLearningInterface, trainingProtocols
-
-# Import interface for the data
-from helperFiles.machineLearning.dataInterface.dataPreparation import standardizeData
-
-# Import file for GUI control
-from helperFiles.surveyInformation.questionaireGUI import stressQuestionnaireGUI
+from helperFiles.surveyInformation.questionaireGUI import stressQuestionnaireGUI  # Import file for GUI control
+from helperFiles.dataAcquisitionAndAnalysis import streamingProtocols  # Import interfaces for reading/writing data
+# from adjustInputParameters import adjustInputParameters
 
 # Import file for music therapy
 # from helperFiles.machineLearning.feedbackControl. import musicTherapy
@@ -39,14 +33,15 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
 
     # Protocol switches: only the first true variably executes.
-    readDataFromExcel = False  # Analyze Data from Excel File called 'testDataExcelFile' on Sheet Number 'testSheetNum'
-    streamData = True  # Stream in Data from the Board and Analyze.
-    trainModel = False  # Train Model with ALL Data in 'trainingFolder'.
+    readDataFromExcel = False  # Analyze Data from Excel File called 'currentFilename' on Sheet Number 'testSheetNum'
+    streamData = False  # Stream in Data from the Board and Analyze.
+    trainModel = True  # Train Model with ALL Data in 'collectedDataFolder'.
     metaTrainModel = False
 
     # User options during the run: any number can be true.
     plotStreamedData = False  # Graph the Data to Show Incoming Signals + Analysis.
     useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.
+    useTherapyData = True  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
     userName = "Kexin".replace(" ", "")
@@ -61,11 +56,15 @@ if __name__ == "__main__":
 
     # Specify biomarker information.
     streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in.
-    extractFeaturesFrom = []  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
+    extractFeaturesFrom = ["eog", "eeg", "eda", "temp"]  # ["eog", "eeg", "eda", "temp"] # A list with all the biomarkers from streamingOrder for feature extraction
     allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
     # Compile feature names
     featureNames, biomarkerFeatureNames, biomarkerOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+
+    # Specify the path to the collected data.
+    collectedDataFolder = compileModelInfo.getTrainingDataFolder(useTherapyData)
+    currentFilename = collectedDataFolder + f"{date} {trialName} Trial {userName}.xlsx"
 
     featureAverageWindows = []
     # Compile feature average windows.
@@ -75,7 +74,6 @@ if __name__ == "__main__":
     # Stream in real-time incoming data.
     if streamData:
         # Arduino Streaming Parameters
-        # boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'   # Board's Serial Number (port.serial_number)
         boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number)
         stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
         adcResolution = 4096
@@ -84,13 +82,9 @@ if __name__ == "__main__":
         # Streaming flags
         saveRawSignals = True  # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
         recordQuestionnaire = not plotStreamedData  # Only use one GUI: questionnaire or streaming
-
-        # Save streaming data information as Excel file.
-        saveExcelPath = f"./_experimentalData/allSensors/_finalDataset/{date} {trialName} Trial {userName}.xlsx"
-        fileName = os.path.basename(saveExcelPath).split(".")[0]
     else:
         # Specify flags when not streaming
-        boardSerialNum, saveExcelPath, maxVolt, adcResolution, stopTimeStreaming = None, None, None, None, None
+        boardSerialNum, maxVolt, adcResolution, stopTimeStreaming = None, None, None, None
         saveRawSignals, recordQuestionnaire = False, False
 
     # Stream in excel data
@@ -103,9 +97,7 @@ if __name__ == "__main__":
 
         # Specify the input file to analyze
         testSheetNum = 0  # The Sheet/Tab Order (Zeroth/First/Second/Third) on the Bottom of the Excel Document
-        testDataExcelFile = "./_experimentalData/allSensors/_finalDataset/2024-03-18 HeatingPad Trial Shukun.xlsx"
     else:
-        testDataExcelFile = None
         saveRawFeatures = False
 
     if saveRawSignals or saveRawFeatures:
@@ -127,18 +119,12 @@ if __name__ == "__main__":
             # If not streaming real-time
             numPointsPerBatch = 2048576
             moveDataFinger = 1048100
-
             saveModel = True  # Save the Machine Learning Model for Later Use
-            trainingFolder = "./_experimentalData/allSensors/_finalDataset/"  # Data Folder to Save the Excel Data; MUST END IN '/'
-            # trainingFolder = "./_experimentalData/allSensors/_finalTherapyData/"  # Data Folder to Save the Excel Data; MUST END IN '/'
         else:
-            plotTrainingData = False
-            reanalyzeData = False
-            trainingFolder = None
-            saveModel = False
+            plotTrainingData, reanalyzeData, saveModel = False, False, False
 
         # Get the Machine Learning Module
-        performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, trainingFolder)
+        performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, collectedDataFolder)
         modelClasses = performMachineLearning.modelControl.modelClasses
     else:
         actionControl, performMachineLearning = None, None
@@ -175,10 +161,10 @@ if __name__ == "__main__":
     if streamData:
         if not recordQuestionnaire:
             # Stream in the data from the circuit board
-            readData.streamArduinoData(maxVolt, adcResolution, stopTimeStreaming, saveExcelPath)
+            readData.streamArduinoData(maxVolt, adcResolution, stopTimeStreaming, currentFilename)
         else:
             # Stream in the data from the circuit board
-            streamingThread = threading.Thread(target=readData.streamArduinoData, args=(maxVolt, adcResolution, stopTimeStreaming, saveExcelPath), daemon=True)
+            streamingThread = threading.Thread(target=readData.streamArduinoData, args=(maxVolt, adcResolution, stopTimeStreaming, currentFilename), daemon=True)
             streamingThread.start()
             # Open the questionnaire GUI.
             folderPath = "./helperFiles/surveyInformation/"
@@ -191,21 +177,21 @@ if __name__ == "__main__":
     elif readDataFromExcel:
         # Collect the Data from Excel
         compiledRawData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions = \
-            extractDataProtocols.extractData().getData(testDataExcelFile, numberOfChannels=len(streamingOrder), testSheetNum=testSheetNum)
+            extractDataProtocols.extractData().getData(currentFilename, numberOfChannels=len(streamingOrder), testSheetNum=testSheetNum)
         # Analyze the Data using the Correct Protocol
         readData.streamExcelData(compiledRawData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList,
-                                 surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, testDataExcelFile)
+                                 surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, currentFilename)
 
     # Take Preprocessed (Saved) Features from Excel Sheet
     elif trainModel:
         # Initializing the training class.
-        trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerOrder, len(streamingOrder), trainingFolder, readData)
+        trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerOrder, len(streamingOrder), collectedDataFolder, readData)
 
         checkFeatureWindow_EEG = False
         if checkFeatureWindow_EEG:
             featureTimeWindows = np.arange(5, 25, 5)
             # # featureTimeWindows = [5, 30, 60, 90, 120, 150, 180]
-            excelFile = trainingFolder + '2022-12-16 Full Dataset TV.xlsx'
+            excelFile = collectedDataFolder + '2022-12-16 Full Dataset TV.xlsx'
             allRawFeatureTimesHolders, allRawFeatureHolders = trainingInterface.varyAnalysisParam(excelFile, featureAverageWindows, featureTimeWindows)
 
         # Extract the features from the training files and organize them.
@@ -218,6 +204,53 @@ if __name__ == "__main__":
         for analysisInd in range(len(allRawFeatureHolders[0])):
             assert len(allRawFeatureHolders[0][analysisInd][0]) == len(biomarkerFeatureNames[analysisInd]), "Incorrect number of fraw eatures extracted"
         print("\nFinished Feature Extraction")
+
+        import matplotlib.pyplot as plt
+        bounds = compileModelInfo().predictionBounds
+
+        colors = []
+        currentSubjectName = ""
+        subjectExperimentInds = []
+        for experimentInd in range(len(experimentalOrder)):
+            subjectName = subjectOrder[experimentInd]
+
+            if (currentSubjectName != subjectName and len(subjectExperimentInds)) != 0 or experimentInd == len(experimentalOrder) - 1:
+                if experimentInd == len(experimentalOrder) - 1:
+                    subjectExperimentInds.append(experimentInd)
+                    colors.append('#333333')
+
+                for finalLabelInd in range(len(featureLabelTypes)):
+                    finalLabel = featureLabelTypes[finalLabelInd]
+                    experimentNames = [experimentalOrder[i] for i in subjectExperimentInds]
+
+                    plt.figure(figsize=(12, 6))  # Increase the figure size for better readability
+                    bar_positions = np.arange(len(experimentNames))
+                    bars = plt.bar(bar_positions, [allFinalLabels[finalLabelInd][i] for i in subjectExperimentInds], color=colors)
+
+                    for bar in bars:
+                        yval = bar.get_height()
+                        plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.5, round(yval, 2), ha='center', va='bottom', fontsize=12, color='black')
+
+                    plt.xticks(ticks=bar_positions, labels=experimentNames, rotation=45, fontsize=12, ha='right')
+                    plt.title(f'{currentSubjectName} - {finalLabel}', fontsize=16)
+                    plt.xlabel("Experiment Number", fontsize=14)
+                    plt.ylabel("Label Value", fontsize=14)
+                    plt.grid(axis='y', linestyle='--', alpha=0.7)
+                    plt.ylim(bounds[finalLabelInd])
+                    plt.tight_layout()
+                    plt.show()
+
+                colors = []
+                subjectExperimentInds = []
+            experimentName = experimentalOrder[experimentInd]
+            subjectExperimentInds.append(experimentInd)
+            currentSubjectName = subjectName
+
+            colors.append('#333333')
+            if 'cpt' in experimentName.lower():
+                colors[-1] = 'skyblue'
+            if 'heat' in experimentName.lower():
+                colors[-1] = '#D62728'
         # exit()
 
         # Standardize data
@@ -292,13 +325,13 @@ if __name__ == "__main__":
                     streamingData.append(np.array(analysis.data[1][analysisChannelInd]))
             # Initialize Class to Save the Data and Save
             saveInputs.saveData(timePoints, streamingData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions,
-                                subjectInformationAnswers, subjectInformationQuestions, streamingOrder, saveExcelPath)
+                                subjectInformationAnswers, subjectInformationQuestions, streamingOrder, currentFilename)
         else:
             print("User Chose Not to Save the Data")
-    if saveRawFeatures:
+    elif saveRawFeatures:
         # Initialize Class to Save the Data and Save
         saveInputs.saveRawFeatures(readData.rawFeatureTimesHolder, readData.rawFeatureHolder, biomarkerFeatureNames, biomarkerOrder, experimentTimes,
-                                   experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, testDataExcelFile)
+                                   experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, currentFilename)
 
     # ----------------------------- End of Program ----------------------------- #
     # -------------------------------------------------------------------------- #
@@ -346,7 +379,7 @@ if __name__ == "__main__":
     # plottingFeatureNames.reverse()
     # shortenedNames.reverse()
 
-    saveName = testDataExcelFile.split("/")[-1].split(".")[0]
+    saveName = currentFilename.split("/")[-1].split(".")[0]
 
     plottingFeatureInds = [np.where(plottingFeatureNames[i] == featureNames)[0][0] for i in range(len(plottingFeatureNames))]
     yLim = [-3.5, 3.5]

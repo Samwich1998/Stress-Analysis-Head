@@ -3,12 +3,16 @@ import torch
 import math
 import os
 
+# Import files.
+import helperFiles
+
 
 class compileModelInfo:
 
     def __init__(self):
         # Store Extracted Features
         self.modelFolder = os.path.dirname(__file__) + "/_finalModels/"
+        self.trainingDataFolder = self.getTrainingDataFolder(useTherapyData=False)
 
         # Specify what each model is predicting
         self.predictionOrder = ["Positive Affect", "Negative Affect", "State Anxiety"]
@@ -61,6 +65,12 @@ class compileModelInfo:
         # Specify the possible activities.
         self.activityNames = np.array(["Baseline", "Music", "CPT", "Exercise", "VR", "Recovery"])
         self.therapyNames = np.array(["Binaural", "Heating", "Images", "Voice"])
+
+    @staticmethod
+    def getTrainingDataFolder(useTherapyData):
+        # Get the correct data folder name.
+        dataFolderName = "_finalTherapyData" if useTherapyData else "_finalDataset"
+        return f"./_experimentalData/allSensors/{dataFolderName}/"
 
     @staticmethod
     def calculateStandardErrorMeasurement(standardDeviation, reliability):

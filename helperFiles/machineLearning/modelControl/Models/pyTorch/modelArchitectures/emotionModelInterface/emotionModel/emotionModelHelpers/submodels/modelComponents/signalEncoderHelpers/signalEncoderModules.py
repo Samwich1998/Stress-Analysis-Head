@@ -4,7 +4,7 @@ import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import boundedExp
-from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, addModules
+from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, addModules, ResNet
 
 
 class signalEncoderModules(convolutionalHelpers):
@@ -57,6 +57,8 @@ class signalEncoderModules(convolutionalHelpers):
         return parameter
 
     def skipConnectionEncoding(self, inChannel=2, outChannel=1):
+        assert inChannel != 1, "The number of input signals must be greater than 1 or use a 'independentCNN' as kernel_size is 1."
+
         return nn.Sequential(
             # Convolution architecture: feature engineering
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
@@ -66,7 +68,7 @@ class signalEncoderModules(convolutionalHelpers):
         assert inChannel == outChannel == 1, "The number of input and output signals must be 1."
 
         return independentModelCNN(
-            module=self.skipConnectionEncoding(inChannel=1, outChannel=1),
+            module=self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
             useCheckpoint=False,
         )
 
@@ -118,12 +120,6 @@ class signalEncoderModules(convolutionalHelpers):
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
-    def heuristicEncodingLayer(self, inChannel=1, outChannel=2):
-        return nn.Sequential(
-            # Convolution architecture: heuristic operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-        )
-
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: projection operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
@@ -138,15 +134,15 @@ class signalEncoderModules(convolutionalHelpers):
 
     # ----------------------- Denoiser Architectures ----------------------- #
 
-    @staticmethod
-    def getActivationMethod_denoiser():
-        return "none"
-
     def denoiserModel(self):
-        return nn.Sequential(
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+        return independentModelCNN(
+            ResNet(
+                module=nn.Sequential(
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                )
+            ), useCheckpoint=False,
         )
 
     @staticmethod

@@ -173,7 +173,7 @@ class trainingProtocols(extractData):
             self.readData.alignFeatures(lastTimePoint, 1, rawFeatureTimesHolder, compiledFeatureHolders)
             # If there are no aligned features.
             if len(self.readData.alignedFeatures) == 0:
-                print("No aligned features found");
+                print("No aligned features found")
                 allRawFeatureTimesHolders.pop()
                 compiledFeatureHolders.pop()
                 allRawFeatureHolders.pop()

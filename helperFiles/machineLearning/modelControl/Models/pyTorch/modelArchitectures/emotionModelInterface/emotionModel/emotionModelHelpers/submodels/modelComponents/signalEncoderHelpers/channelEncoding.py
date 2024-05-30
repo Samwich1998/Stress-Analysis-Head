@@ -41,25 +41,17 @@ class channelEncoding(signalEncoderModules):
         self.compressedProcessingLayers = nn.ModuleList([])
         self.expandedProcessingLayers = nn.ModuleList([])
 
-        # Initialize the heuristic layers.
-        self.heuristicCompressionLayers = nn.ModuleList([])
-        self.heuristicExpansionLayers = nn.ModuleList([])
-
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
             # Create the spectral convolution layers.
             self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
-                                                                                  addBiasTerm=False,  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity'))
+                                                                                  addBiasTerm=False,  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='singleCNN'))
             self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
-                                                                                addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity'))
+                                                                                addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='singleCNN'))
 
             # Create the processing layers.
             self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels, bottleneckChannel=self.numCompressedSignals))
             self.expandedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels, bottleneckChannel=self.numExpandedSignals))
-
-            # initialize the heuristic method.
-            self.heuristicCompressionLayers.append(self.heuristicEncodingLayer(inChannel=self.numExpandedSignals, outChannel=self.numSigLiftedChannels))
-            self.heuristicExpansionLayers.append(self.heuristicEncodingLayer(inChannel=self.numCompressedSignals, outChannel=self.numSigLiftedChannels))
 
         # Initialize final models.
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numCompressedSignals)
@@ -69,25 +61,25 @@ class channelEncoding(signalEncoderModules):
     # ----------------------- Signal Encoding Methods ---------------------- #
 
     def compressionAlgorithm(self, inputData):
-        return self.applyChannelEncoding(inputData, self.heuristicCompressionModel, self.liftingCompressionModel, self.compressedNeuralOperatorLayers, self.compressedProcessingLayers, self.heuristicCompressionLayers, self.projectingCompressionModel)
+        return self.applyChannelEncoding(inputData, self.heuristicCompressionModel, self.liftingCompressionModel, self.compressedNeuralOperatorLayers, self.compressedProcessingLayers, self.projectingCompressionModel)
 
     def expansionAlgorithm(self, inputData):
-        return self.applyChannelEncoding(inputData, self.heuristicExpansionModel, self.liftingExpansionModel, self.expandedNeuralOperatorLayers, self.expandedProcessingLayers, self.heuristicExpansionLayers, self.projectingExpansionModel)
+        return self.applyChannelEncoding(inputData, self.heuristicExpansionModel, self.liftingExpansionModel, self.expandedNeuralOperatorLayers, self.expandedProcessingLayers, self.projectingExpansionModel)
 
-    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, heuristicLayers, projectingModel):
+    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, projectingModel):
         # Learn the initial signal.
-        processedData = liftingModel(inputData)
+        liftedData = liftingModel(inputData)
         # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
+        processedData = liftedData.clone()
         for modelInd in range(self.numSigEncodingLayers):
             # Apply the neural operator and the skip connection.
             processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
-            processedData = checkpoint(heuristicLayers[modelInd], inputData, use_reentrant=False) + processedData
+            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False) + liftedData
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.

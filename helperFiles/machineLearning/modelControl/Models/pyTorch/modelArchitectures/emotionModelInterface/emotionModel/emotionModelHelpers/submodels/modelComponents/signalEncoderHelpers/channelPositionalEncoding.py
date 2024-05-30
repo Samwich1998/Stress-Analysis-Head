@@ -39,7 +39,7 @@ class channelPositionalEncoding(signalEncoderModules):
         for stampInd in range(self.numEncodingStamps):
             # Assign a learnable parameter to the signal.
             self.encodingStamp.append(self.positionalEncodingStamp(self.lowFrequencyShape))
-            self.decodingStamp.append(self.positionalEncodingStamp(self.lowFrequencyShape))
+            self.decodingStamp.append(-self.positionalEncodingStamp(self.lowFrequencyShape))
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt_indexPredictor = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)

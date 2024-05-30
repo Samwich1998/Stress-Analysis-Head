@@ -237,23 +237,14 @@ class addModules(torch.nn.Module):
 
 
 class ResNet(torch.nn.Module):
-    def __init__(self, module, numCycles=1):
+    def __init__(self, module):
         super().__init__()
         # General helpers.
-        self.numCycles = numCycles
         self.module = module
 
     def forward(self, inputs):
-        # Store the initial inputs.
-        initialInput = inputs
-
-        # For each cycle to apply.
-        for _ in range(self.numCycles):
-            # Apply the module to the data.
-            inputs = self.module(inputs)
-
         # Return the residual connection.
-        return inputs + initialInput
+        return self.module(inputs) + inputs
 
     # -------------------------------------------------------------------------- #
 

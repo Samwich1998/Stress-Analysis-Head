@@ -16,7 +16,7 @@ waveletTypes=( \
 )
 numSigLiftedChannels=32
 numSigEncodingLayers=4
-numExpandedSignals=4
+numExpandedSignals=2
 optimizer='AdamW'
 
 for waveletType in "${waveletTypes[@]}"

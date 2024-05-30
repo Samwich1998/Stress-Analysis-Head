@@ -45,6 +45,8 @@ if __name__ == "__main__":
 
     # Specify experimental parameters.
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number)
+    stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
+    reanalyzeData = False  # Reanalyze training files: don't use saved features
 
     # ---------------------------------------------------------------------- #
 
@@ -53,17 +55,18 @@ if __name__ == "__main__":
 
     # Define helper classes.
     inputParameterClass = adjustInputParameters(plotStreamedData, streamData, readDataFromExcel, trainModel, useModelPredictions, useTherapyData)
+    saveInputs = saveDataProtocols.saveExcelData()
 
     # Get the reading/saving information.
-    collectedDataFolder, currentFilename = inputParameterClass.getSavingInformation(date, trialName, userName)
     numPointsPerBatch, moveDataFinger = inputParameterClass.getPlottingParams(analyzeBatches= plotStreamedData or useModelPredictions)
+    collectedDataFolder, currentFilename = inputParameterClass.getSavingInformation(date, trialName, userName)
 
     # Compile all the protocol information.
-    boardSerialNum, maxVolt, adcResolution, stopTimeStreaming, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams()
-    saveRawFeatures, numPointsPerBatch, moveDataFinger, testSheetNum = inputParameterClass.getExcelParams()
-
-    if saveRawSignals or saveRawFeatures:
-        saveInputs = saveDataProtocols.saveExcelData()
+    streamingOrder, biomarkerOrder, featureAverageWindows, featureNames, biomarkerFeatureNames = inputParameterClass.getGeneralParameters()
+    performMachineLearning, modelClasses, actionControl, plotTrainingData, saveModel = inputParameterClass.getMachineLearningParams(featureNames, collectedDataFolder)
+    maxVolt, adcResolution, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams()
+    soundInfoFile, dataFolder, playGenres = inputParameterClass.getModelParameters()
+    saveRawFeatures, testSheetNum = inputParameterClass.getExcelParams()
 
     # Initialize instance to analyze the data
     readData = streamingProtocols.streamingProtocols(boardSerialNum, modelClasses, actionControl, numPointsPerBatch, moveDataFinger,

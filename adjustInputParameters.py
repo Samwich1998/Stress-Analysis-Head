@@ -15,9 +15,10 @@ class adjustInputParameters:
         self.streamData = streamData  # Stream Data from the Arduino
         self.trainModel = trainModel  # Train the Machine Learning Model
 
+    def getGeneralParameters(self):
         # Specify biomarker information.
         streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in: ["eog", "eeg", "eda", "temp"]
-        extractFeaturesFrom = streamingOrder if useModelPredictions else []  # A list with all the biomarkers from streamingOrder for feature extraction
+        extractFeaturesFrom = streamingOrder if self.useModelPredictions else []  # A list with all the biomarkers from streamingOrder for feature extraction
         allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
         # Compile feature names
@@ -27,6 +28,8 @@ class adjustInputParameters:
         # Compile feature average windows.
         for biomarker in biomarkerOrder:
             featureAverageWindows.append(allAverageIntervals[streamingOrder.index(biomarker)])
+
+        return streamingOrder, biomarkerOrder, featureAverageWindows, featureNames, biomarkerFeatureNames
 
     def getSavingInformation(self, date, trialName, userName):
         # Specify the path to the collected data.
@@ -42,8 +45,6 @@ class adjustInputParameters:
         print("\tSetting streaming parameters.")
 
         # Arduino Streaming Parameters.
-        boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number)
-        stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
         adcResolution = 4096
         maxVolt = 3.3
 
@@ -51,7 +52,7 @@ class adjustInputParameters:
         recordQuestionnaire = not self.plotStreamedData  # Only use one GUI: questionnaire or streaming
         saveRawSignals = True  # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
 
-        return boardSerialNum, maxVolt, adcResolution, stopTimeStreaming, saveRawSignals, recordQuestionnaire
+        return maxVolt, adcResolution, saveRawSignals, recordQuestionnaire
 
     @staticmethod
     def getPlottingParams(analyzeBatches=False):
@@ -69,7 +70,7 @@ class adjustInputParameters:
     def getExcelParams(self):
         # Assert that you are using this protocol.
         if not self.readDataFromExcel:
-            return False, None, None, None
+            return False, None
         print("\tSetting reading parameters.")
 
         # Specify the Excel Parameters.
@@ -78,15 +79,14 @@ class adjustInputParameters:
 
         return saveRawFeatures, testSheetNum
 
-    def getModelParameters(self, featureNames, collectedDataFolder, reanalyzeData=False):
+    def getMachineLearningParams(self, featureNames, collectedDataFolder):
         # Train or test the machine learning modules
         if not (self.trainModel or self.useModelPredictions):
-            return None, None, None, None, None, None, None
+            return None, None, None, None, None
 
         print("\tSetting model parameters.")
 
         # Specify the Machine Learning Parameters
-        reanalyzeData = reanalyzeData  # Reanalyze training files: don't use saved features
         plotTrainingData = True  # Plot all training information
         actionControl = None  # NOT IMPLEMENTED YET
         # If training, read the data as quickly as possible
@@ -102,22 +102,25 @@ class adjustInputParameters:
         performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, collectedDataFolder)
         modelClasses = performMachineLearning.modelControl.modelClasses
 
-        return performMachineLearning, modelClasses, actionControl, reanalyzeData, plotTrainingData, saveModel
+        return performMachineLearning, modelClasses, actionControl, plotTrainingData, saveModel
 
-    def getModelParameters(self, featureNames, collectedDataFolder):
+    def getModelParameters(self):
         # Train or test the machine learning modules
-        if self.useModelPredictions:
-            print("\tSetting model parameters.")
+        if not self.useModelPredictions:
+            return None, None, None, None, None, None, None
+        print("\tSetting model parameters.")
 
-            # Specify the MTG-Jamendo dataset path
-            soundInfoFile = 'raw_30s_cleantags_50artists.tsv'
-            dataFolder = './helperFiles/machineLearning/_Feedback Control/Music Therapy/Organized Sounds/MTG-Jamendo/'
-            # Initialize the classes
-            # soundManager = musicTherapy.soundController(dataFolder, soundInfoFile)  # Controls the music playing
-            # soundManager.loadSound(soundManager.soundInfo[0][3])
-            playGenres = [None, 'pop', 'jazz', 'heavymetal', 'classical', None]
-            # playGenres = [None, 'hiphop', 'blues', 'disco', 'ethno', None]
-            # playGenres = [None, 'funk', 'reggae', 'rap', 'classicrock', None]
+        # Specify the MTG-Jamendo dataset path
+        soundInfoFile = 'raw_30s_cleantags_50artists.tsv'
+        dataFolder = './helperFiles/machineLearning/_Feedback Control/Music Therapy/Organized Sounds/MTG-Jamendo/'
+        # Initialize the classes
+        # soundManager = musicTherapy.soundController(dataFolder, soundInfoFile)  # Controls the music playing
+        # soundManager.loadSound(soundManager.soundInfo[0][3])
+        playGenres = [None, 'pop', 'jazz', 'heavymetal', 'classical', None]
+        # playGenres = [None, 'hiphop', 'blues', 'disco', 'ethno', None]
+        # playGenres = [None, 'funk', 'reggae', 'rap', 'classicrock', None]
 
-            # playGenres = [None, 'hiphop', 'blues', 'hardrock', 'african', None]
-            # soundManager.pickSoundFromGenres(playGenres)
+        # playGenres = [None, 'hiphop', 'blues', 'hardrock', 'african', None]
+        # soundManager.pickSoundFromGenres(playGenres)
+
+        return soundInfoFile, dataFolder, playGenres

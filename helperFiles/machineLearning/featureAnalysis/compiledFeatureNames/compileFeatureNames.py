@@ -1,10 +1,9 @@
-
 # General
 import os
 import numpy as np
 
 # Import interfaces for reading/writing data
-from ....dataAcquisitionAndAnalysis.excelProcessing import extractDataProtocols
+from ....dataAcquisitionAndAnalysis.excelProcessing.extractDataProtocols import extractData
 
 
 class compileFeatureNames:
@@ -13,18 +12,18 @@ class compileFeatureNames:
         # Store Extracted Features
         self.possibleFeatureNames = np.char.lower(["eog", "eeg", "ecg", "eda", "emg", "temp", "lowFreq", "highFreq"])
         self.featureNamesFolder = os.path.dirname(__file__) + "/All Features/"
-        self.extractDataInterface = extractDataProtocols.extractData()
+        self.extractDataInterface = extractData()
         
     def extractFeatureNames(self, extractFeaturesFrom):
         extractFeaturesFrom = [featureType.lower() for featureType in extractFeaturesFrom]
-        # Compile feature neames
+        # Compile feature names
         featureNames = []; biomarkerOrder = []
         biomarkerFeatureNames = []
         
         # For each feature we are processing.
         for featureName in extractFeaturesFrom:
             # Assert that we have a protocol for this feature.
-            assert featureName in self.possibleFeatureNames, f"Unknown feature neam: {featureName}"
+            assert featureName in self.possibleFeatureNames, f"Unknown feature name: {featureName}"
             
             # Organize and store the feature name information.
             self.getFeatures(featureName, biomarkerFeatureNames, featureNames, biomarkerOrder)

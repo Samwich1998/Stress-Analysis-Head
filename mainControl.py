@@ -1,23 +1,19 @@
 """ Written by Samuel Solomon: https://scholar.google.com/citations?user=9oq12oMAAAAJ&hl=en """
 
 # General
-import os
-import sys
-import threading
 import numpy as np
+import threading
+import sys
+import os
 
 # Import helper files.
-from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames  # Import interface for extracting feature names
 from helperFiles.dataAcquisitionAndAnalysis.excelProcessing import extractDataProtocols, saveDataProtocols  # Import interfaces for reading/writing data
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo  # Import files for machine learning
 from helperFiles.machineLearning.dataInterface.dataPreparation import standardizeData  # Import interface for the data
-from helperFiles.machineLearning import machineLearningInterface, trainingProtocols
 from helperFiles.surveyInformation.questionaireGUI import stressQuestionnaireGUI  # Import file for GUI control
 from helperFiles.dataAcquisitionAndAnalysis import streamingProtocols  # Import interfaces for reading/writing data
-from adjustInputParameters import adjustInputParameters
-
-# Import file for music therapy
-from helperFiles.machineLearning.feedbackControl.musicTherapy import musicTherapy
+from helperFiles.machineLearning import trainingProtocols  # Import interfaces for reading/writing data
+from adjustInputParameters import adjustInputParameters  # Import the class to adjust the input parameters
 
 # Add the directory of the current file to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -29,13 +25,12 @@ if __name__ == "__main__":
 
     # Protocol switches: only the first true variably executes.
     readDataFromExcel = False  # Analyze Data from Excel File called 'currentFilename' on Sheet Number 'testSheetNum'
-    streamData = False  # Stream in Data from the Board and Analyze.
-    trainModel = True  # Train Model with ALL Data in 'collectedDataFolder'.
-    metaTrainModel = False
+    streamData = True  # Stream in Data from the Board and Analyze.
+    trainModel = False  # Train Model with ALL Data in 'collectedDataFolder'.
 
     # User options during the run: any number can be true.
-    plotStreamedData = False  # Graph the Data to Show Incoming Signals + Analysis.
-    useModelPredictions = False  # Apply the Learning Algorithm to Decode the Signals.
+    useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
+    plotStreamedData = False  # Graph the data to show incoming signals.
     useTherapyData = True  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
@@ -44,7 +39,7 @@ if __name__ == "__main__":
     date = "2024-05-30"
 
     # Specify experimental parameters.
-    boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number)
+    boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.
     stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
     reanalyzeData = False  # Reanalyze training files: don't use saved features
 
@@ -64,7 +59,7 @@ if __name__ == "__main__":
     # Compile all the protocol information.
     streamingOrder, biomarkerOrder, featureAverageWindows, featureNames, biomarkerFeatureNames = inputParameterClass.getGeneralParameters()
     performMachineLearning, modelClasses, actionControl, plotTrainingData, saveModel = inputParameterClass.getMachineLearningParams(featureNames, collectedDataFolder)
-    maxVolt, adcResolution, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams()
+    boardSerialNum, maxVolt, adcResolution, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams(boardSerialNum)
     soundInfoFile, dataFolder, playGenres = inputParameterClass.getModelParameters()
     saveRawFeatures, testSheetNum = inputParameterClass.getExcelParams()
 
@@ -174,8 +169,8 @@ if __name__ == "__main__":
         standardizeClass_Features = standardizeData(allFinalFeatures, threshold=0)
         standardizedFeatures = standardizeClass_Features.standardize(allFinalFeatures)
         # Standardize labels
-        standardizeClass_Labels = [];
-        standardizedLabels = [];
+        standardizeClass_Labels = []
+        standardizedLabels = []
         scoreTransformations = []
         for modelInd in range(len(performMachineLearning.modelControl.modelClasses)):
             if modelInd == 2:

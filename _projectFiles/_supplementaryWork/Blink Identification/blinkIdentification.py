@@ -15,7 +15,7 @@ import helperFiles
 from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames # Functions to extract feature names
 from helperFiles.machineLearning.dataInterface.dataPreparation import standardizeData
 from helperFiles.dataAcquisitionAndAnalysis.streamingProtocols import streamingProtocols    # Functions to Handle Data from Arduino
-from helperFiles.machineLearning.machineLearningInterface import machineLearningHead
+from helperFiles.machineLearning.machineLearningInterface import machineLearningInterface
 from _projectFiles._supplementaryWork.trainingProtocols_Supp import trainingProtocols      # Functions to Save/Read in Data from Excel
 import featureSelection
 import plottingPipeline
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     trainingFolder = "./"   # Data Folder to Save the Excel Data; MUST END IN '/'
     # os.makedirs(trainingFolder, exist_ok = True)
     
-    performMachineLearning = machineLearningHead(modelTypes, modelFile, featureNames, trainingFolder)
+    performMachineLearning = machineLearningInterface(modelTypes, modelFile, featureNames, trainingFolder)
     modelClasses = performMachineLearning.modelControl.modelClasses
     
     performMachineLearning.createModels(modelTypes)

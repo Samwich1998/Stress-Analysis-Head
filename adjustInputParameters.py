@@ -1,19 +1,18 @@
-import machineLearningInterface
-from compiledFeatureNames.compileFeatureNames import compileFeatureNames
-from modelSpecifications.compileModelInfo import compileModelInfo
-from streamingProtocols import streamingProtocols
+# Import helper files.
+from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames
+from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
+from helperFiles.machineLearning.machineLearningInterface import machineLearningInterface
 
 
 class adjustInputParameters:
 
     def __init__(self, plotStreamedData=True, streamData=False, readDataFromExcel=False, trainModel=False, useModelPredictions=False, useTherapyData=False):
         # Set the parameters for the program.
-        self.useModelPredictions = useModelPredictions  # Use the Machine Learning Model for Predictions
+        self.useModelPredictions = useModelPredictions or trainModel  # Use the Machine Learning Model for Predictions
         self.readDataFromExcel = readDataFromExcel  # Read Data from an Excel File
         self.plotStreamedData = plotStreamedData  # Plot the Streamed Data in Real-Time
         self.useTherapyData = useTherapyData  # Use the Therapy Data for the Machine Learning Model
         self.streamData = streamData  # Stream Data from the Arduino
-        self.trainModel = trainModel  # Train the Machine Learning Model
 
     def getGeneralParameters(self):
         # Specify biomarker information.
@@ -38,10 +37,10 @@ class adjustInputParameters:
 
         return collectedDataFolder, currentFilename
 
-    def getStreamingParams(self):
+    def getStreamingParams(self, boardSerialNum):
         # Assert that you are using this protocol.
         if not self.streamData:
-            return None, None, None, None, None, None
+            return None, None, None, None, None
         print("\tSetting streaming parameters.")
 
         # Arduino Streaming Parameters.
@@ -52,7 +51,7 @@ class adjustInputParameters:
         recordQuestionnaire = not self.plotStreamedData  # Only use one GUI: questionnaire or streaming
         saveRawSignals = True  # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
 
-        return maxVolt, adcResolution, saveRawSignals, recordQuestionnaire
+        return boardSerialNum, maxVolt, adcResolution, saveRawSignals, recordQuestionnaire
 
     @staticmethod
     def getPlottingParams(analyzeBatches=False):
@@ -81,7 +80,7 @@ class adjustInputParameters:
 
     def getMachineLearningParams(self, featureNames, collectedDataFolder):
         # Train or test the machine learning modules
-        if not (self.trainModel or self.useModelPredictions):
+        if not self.useModelPredictions:
             return None, None, None, None, None
 
         print("\tSetting model parameters.")
@@ -99,7 +98,7 @@ class adjustInputParameters:
         saveModel = not self.useModelPredictions  # Save the Machine Learning Model for Later Use
 
         # Get the Machine Learning Module
-        performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, collectedDataFolder)
+        performMachineLearning = machineLearningInterface(modelTypes, modelFile, featureNames, collectedDataFolder)
         modelClasses = performMachineLearning.modelControl.modelClasses
 
         return performMachineLearning, modelClasses, actionControl, plotTrainingData, saveModel
@@ -107,14 +106,14 @@ class adjustInputParameters:
     def getModelParameters(self):
         # Train or test the machine learning modules
         if not self.useModelPredictions:
-            return None, None, None, None, None, None, None
+            return None, None, None
         print("\tSetting model parameters.")
 
         # Specify the MTG-Jamendo dataset path
         soundInfoFile = 'raw_30s_cleantags_50artists.tsv'
         dataFolder = './helperFiles/machineLearning/_Feedback Control/Music Therapy/Organized Sounds/MTG-Jamendo/'
         # Initialize the classes
-        # soundManager = musicTherapy.soundController(dataFolder, soundInfoFile)  # Controls the music playing
+        # soundManager = musicTherapy.soundController(dataFolder, soundInfoFile) # Controls the music playing
         # soundManager.loadSound(soundManager.soundInfo[0][3])
         playGenres = [None, 'pop', 'jazz', 'heavymetal', 'classical', None]
         # playGenres = [None, 'hiphop', 'blues', 'disco', 'ethno', None]

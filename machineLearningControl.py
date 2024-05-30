@@ -95,7 +95,7 @@ if __name__ == "__main__":
     trainingFolder = "./Data/allSensors/_finalDataset/"   # Data Folder to Save the Excel Data; MUST END IN '/'
 
     # Get the Machine Learning Module
-    performMachineLearning = machineLearningInterface.machineLearningHead(modelTypes, modelFile, featureNames, trainingFolder)
+    performMachineLearning = machineLearningInterface.machineLearningInterface(modelTypes, modelFile, featureNames, trainingFolder)
     modelClasses = performMachineLearning.modelControl.modelClasses
     
     if True or useModelPredictions:

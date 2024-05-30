@@ -16,7 +16,7 @@ class dataInterface:
         print(initialMentalStates.size(), self.optimalNormalizedState.size(), self.predictionWeights.size())
 
         # Calculate the compiled loss.
-        compiledLoss = self.predictionWeights * (initialMentalStates - self.optimalNormalizedState).pow(2)
+        compiledLoss = self.predictionWeights * (initialMentalStates - self.optimalNormalizedState).pow(2) # weighted MSE
         compiledLoss = compiledLoss.sum(dim=1)
         # compiledLoss dimension: numPoints
 

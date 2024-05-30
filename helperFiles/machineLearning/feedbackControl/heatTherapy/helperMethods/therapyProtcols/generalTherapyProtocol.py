@@ -32,15 +32,15 @@ class generalTherapyProtocol(abc.ABC):
 
         # Convert to torch tensors.
         self.unNormalizedParameterBinWidths = torch.tensor(self.unNormalizedParameterBinWidths)  # Dimensions: numParameters
-        self.initialParameterBounds = torch.tensor(self.initialParameterBounds)  # Dimensions: numParameters, 2
-        self.modelParameterBounds = torch.tensor(self.modelParameterBounds)  # Dimensions: 2
+        self.initialParameterBounds = torch.tensor(self.initialParameterBounds)  # Dimensions: numParameters, 2 #i.e.(lower and upper bounds): tensor([35, 50])
+        self.modelParameterBounds = torch.tensor(self.modelParameterBounds)  # Dimensions: 2 # tensor([0, 1]) normalized already
         self.predictionBinWidths = torch.tensor(self.predictionBinWidths)  # Dimensions: numPredictions
         self.optimalPredictions = torch.tensor(self.optimalPredictions)  # Dimensions: numPredictions
         self.predictionBounds = torch.tensor(self.predictionBounds)  # Dimensions: numPredictions, 2
         # Get the parameters in the correct data format.
-        if self.initialParameterBounds.ndim == 1: self.initialParameterBounds = torch.unsqueeze(self.initialParameterBounds, dim=0)
-        if self.predictionBounds.ndim == 1: self.predictionBounds = torch.unsqueeze(self.predictionBounds, dim=0)
-        self.numParameters = len(self.initialParameterBounds)  # The number of parameters.
+        if self.initialParameterBounds.ndim == 1: self.initialParameterBounds = torch.unsqueeze(self.initialParameterBounds, dim=0) # tensor([[35, 50]])
+        if self.predictionBounds.ndim == 1: self.predictionBounds = torch.unsqueeze(self.predictionBounds, dim=0) # ([[5, 25], [5, 25], [20, 80]])
+        self.numParameters = len(self.initialParameterBounds)  # The number of parameters. # 1 for now
 
         # Calculated parameters.
         self.parameterBinWidths = dataInterface.normalizeParameters(currentParamBounds=self.initialParameterBounds - self.initialParameterBounds[:, 0:1], normalizedParamBounds=self.modelParameterBounds, currentParamValues=self.unNormalizedParameterBinWidths)
@@ -51,11 +51,12 @@ class generalTherapyProtocol(abc.ABC):
         self.gausLossSTDs = self.predictionBinWidths.clone()  # The standard deviation for the Gaussian distribution for losses.
 
         # Initialize the loss and parameter bins.
-        self.allParameterBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.parameterBinWidths)    # Note this is an UNEVEN 2D list.
-        self.allPredictionBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.predictionBinWidths)  # Note this is an UNEVEN 2D list.
+        self.allParameterBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.parameterBinWidths)    # Note this is an UNEVEN 2D list. [[parameter]] bin list
+        self.allPredictionBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.predictionBinWidths)  # Note this is an UNEVEN 2D list. [[PA], [NA], [SA]] bin list
+
         # Initialize the number of bins for the parameter and loss.
-        self.allNumParameterBins = [len(self.allParameterBins[parameterInd]) for parameterInd in range(self.numParameters)]
-        self.allNumPredictionBins = [len(self.allPredictionBins[lossInd]) for lossInd in range(self.numPredictions)]
+        self.allNumParameterBins = [len(self.allParameterBins[parameterInd]) for parameterInd in range(self.numParameters)] # Parameter number of Bins in the list
+        self.allNumPredictionBins = [len(self.allPredictionBins[lossInd]) for lossInd in range(self.numPredictions)] #PA, NA, SA number of bins in the list
 
         # Define a helper class for experimental parameters.
         self.simulationProtocols = simulationProtocols(self.allParameterBins, self.allPredictionBins, self.predictionBinWidths, self.modelParameterBounds, self.numPredictions, self.numParameters, self.predictionWeights, self.optimalNormalizedState, simulationParameters)
@@ -89,11 +90,6 @@ class generalTherapyProtocol(abc.ABC):
         else:
             # real data points
             temperature, pa, na, sa = self.empatchProtocols.getTherapyData()
-            print('temperature: ', temperature)
-            print('pa: ', pa)
-            print('na: ', na)
-            print('sa: ', sa)
-            exit()
             # initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
             initialSimulatedData = self.dataInterface.compileStates(initialSimulatedStates)  # initialSimulatedData dimension: numSimulationTrueSamples, (T, L).
             self.simulationProtocols.NA_map_simulated = self.generalMethods.getProbabilityMatrix(initialSimulatedData, self.allParameterBins, self.allPredictionBins, self.gausLossSTDs, noise=0.05, applyGaussianFilter=self.applyGaussianFilter)

@@ -44,9 +44,9 @@ if __name__ == "__main__":
     useTherapyData = True  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
-    userName = "Kexin".replace(" ", "")
+    userName = "Josh".replace(" ", "")
     trialName = "HeatingPad"
-    date = "2024-05-29"
+    date = "2024-05-30"
 
     # ---------------------------------------------------------------------- #
 

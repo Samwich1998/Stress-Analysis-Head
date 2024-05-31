@@ -116,6 +116,8 @@ if __name__ == "__main__":
         storeLoss = True  # Turn on loss storage for HPC.
         fastPass = False  # Turn off fast pass for HPC.
 
+        fastPass = True
+
         if args.submodel == "signalEncoder":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
                 accelerator.gradient_accumulation_steps = 16

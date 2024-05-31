@@ -1,24 +1,24 @@
-import os
+# General
 from datetime import date
+import os
 
 # Import Files for Machine Learning
-import browserControl      # Methods for controlling the web browser.
-import imageModifications  # Methods for working with and altering images.
-import sys, os, json
+from ..imageModifications import imageModifications  # Methods for working with and altering images.
+from ..browserControl import browserControl      # Methods for controlling the web browser.
 
 class ImageFeedback:
     def __init__(self, client, model, thread, txtFilePath, userName = "Sam"):
-        self.client = client
-        self.imageModel = model
+        # General parameters.
         self.imageGenerationEvent = thread
-        self.userName = userName
         self.txtFilePath = txtFilePath
+        self.userName = userName
+        self.imageModel = model
+        self.client = client
 
-        self.browserController = browserControl.browserControl()
-        self.imageController = imageModifications.imageModifications(os.path.dirname(__file__) + "/_savedImages/")
+        # Instantiate the necessary classes.
+        self.imageController = imageModifications(os.path.dirname(__file__) + "/_savedImages/")
+        self.browserController = browserControl()
 
-
-    # ---------------------------------------------------------------------- #
     # ---------------------------- Image Methods ---------------------------- #
         
     def imageThread(self, conversationHistory, resultContainer):
@@ -32,7 +32,8 @@ class ImageFeedback:
         resultContainer['response'] = response
         return response
 
-    def prepPromptForImage(self, conversationHistory):
+    @staticmethod
+    def prepPromptForImage(conversationHistory):
         textPrompt = conversationHistory[-1]['content'][0]['text']
         i = -2
         mostRecentAssistantContent = []
@@ -64,13 +65,12 @@ class ImageFeedback:
             user = self.userName,     # A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. Learn more.
             prompt=textPrompt,        # A text description of the desired image(s). The maximum length is 4000 characters.
             size="1024x1024",         # The size of the generated images. Must be one of 256x256, 512x512, or 1024x1024.
-            style="vivid",            # vivid: hyper-real and dramatic images; natural: natural, less hyper-real looking images
+            style="vivid",            # vivid: hyperreal and dramatic images; natural: natural, less hyperreal looking images
             quality="hd",
             n=1,                      # The number of images to generate. Must be between 1 and 10.
         )
         
         return response
-    
     
     def displayImage(self, response):
         # Get the image URL.
@@ -83,17 +83,17 @@ class ImageFeedback:
         image_url = self.getImageURL(response)
         imageRGBA = self.imageController.pullDownWebImage(image_url)
 
-        # make image path
+        # Make an image path
         filepath = os.path.dirname(__file__) + "/../../" + save_path
         if not os.path.exists(filepath):
             print('path does not exist', filepath)
 
-        # save the file with todays date
+        # Save the file with today's date
         image_filepath = os.path.join(filepath, f"{date.today()}_{org_prompt}.png")
         imageRGBA.save(image_filepath, 'PNG')
         print(f"Image saved to {image_filepath}")
 
-        # write this to conversation history txt file
+        # Write this to conversation history txt file
         file = open(self.txtFilePath, 'a')
         print(self.txtFilePath)
         file.write(f"*** Image saved to {image_filepath} *** \n")
@@ -101,5 +101,6 @@ class ImageFeedback:
 
         return image_filepath
         
-    def getImageURL(self, response):
+    @staticmethod
+    def getImageURL(response):
         return response.data[0].url

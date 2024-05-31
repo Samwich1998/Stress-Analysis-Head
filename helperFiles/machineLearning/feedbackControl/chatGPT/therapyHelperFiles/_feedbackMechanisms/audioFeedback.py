@@ -1,39 +1,49 @@
-import sounddevice as sd
+# General parameters.
 import speech_recognition as sr
-import subprocess, threading
+import sounddevice as sd
 import numpy as np
+import subprocess
 
 class AudioFeedback:
-    def __init__(self, client, threads, userName = "Sam"):
-        self.client = client
-        self.userName = userName
+    def __init__(self, client, threads, userName="Sam"):
+        # General parameters.
+        self.playAudioEvent, self.userRecordingEvent = threads
+        self.userName = userName  # A unique username for the client. Not used for personalization.
+        self.client = client  # The OpenAI API client.
+
+        # Uninitialized parameters.
+        self.noMoreSentencesBuffer = None
+        self.microphone = None
+        self.recognizer = None
+        self.process = None
+
+        # Initialize the audio stream.
+        self.setup_ffmpeg_process()
+
+    def setupAudioStream(self):
         # Initialize with settings or default values
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
+
         with self.microphone as source:
-            self.recognizer.adjust_for_ambient_noise(source)  # we only need to calibrate once, before we start listening
-            # Adjust recognizer settings
-        self.recognizer.pause_threshold = 0.3  # The length of silence (in seconds) at which it will consider that the speech has ended.
-        self.recognizer.non_speaking_duration = 0.3  # The amount of silence (in seconds) that the recognizer allows before and after the actual speech. It helps in trimming the audio for processing.
-        self.recognizer.energy_threshold = 4000  # The energy level (in an arbitrary unit) that the recognizer considers as speech versus silence/noise.
+            # Calibrate the recognizer to the ambient noise level
+            self.recognizer.adjust_for_ambient_noise(source)  # We only need to calibrate once, before we start listening
+
+        # Adjust recognizer settings
+        self.recognizer.dynamic_energy_adjustment_damping = 0.15  # Controls how quickly the recognizer adjusts to changing noise conditions when dynamic_energy_threshold is True.
         self.recognizer.dynamic_energy_threshold = True  # Whether to adjust the energy_threshold automatically based on the ambient noise level.
-        self.recognizer.dynamic_energy_adjustment_damping = 0.15 #  Controls how quickly the recognizer adjusts to changing noise conditions when dynamic_energy_threshold is True.
-        self.recognizer.dynamic_energy_ratio = 1.5 # The factor by which speech is considered "louder" than the ambient noise when dynamic_energy_threshold is True.
-        self.recognizer.operation_timeout = 10 # The maximum number of seconds the operation can run before timing out. None will wait indefinitely.
-        self.recognizer.phrase_time_limit = 10 # The maximum number of seconds that this will allow a phrase to continue before stopping and returning the part of the phrase processed before the time limit was reached.
-        # Add any other initialization code here
-
-        self.playAudioEvent, self.userRecordingEvent = threads
-        self.noMoreSentencesBuffer = None
-
-        self.setup_ffmpeg_process()
+        self.recognizer.non_speaking_duration = 0.3  # The amount of silence (in seconds) that the recognizer allows before and after the actual speech. It helps in trimming the audio for processing.
+        self.recognizer.dynamic_energy_ratio = 1.5  # The factor by which speech is considered "louder" than the ambient noise when dynamic_energy_threshold is True.
+        self.recognizer.energy_threshold = 4000  # The energy level (in an arbitrary unit) that the recognizer considers as speech versus silence/noise.
+        self.recognizer.operation_timeout = 10  # The maximum number of seconds the operation can run before timing out. None will wait indefinitely.
+        self.recognizer.phrase_time_limit = 10  # The maximum number of seconds that this will allow a phrase to continue before stopping and returning the part of the phrase processed before the time limit was reached.
+        self.recognizer.pause_threshold = 0.3  # The length of silence (in seconds) at which it will consider that the speech has ended.
 
     def setup_ffmpeg_process(self):
         # Start a subprocess that uses ffmpeg to decode MP3 data to PCM and pipe the output to stdout for reading
         self.process = subprocess.Popen(['ffmpeg', '-i', 'pipe:0', '-f', 's16le', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '1', 'pipe:1'],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
         
-    # ---------------------------------------------------------------------- #
     # ---------------------------- Audio Methods --------------------------- #
     
     def getAudioResponse(self, textPrompt, save_path = ""):        
@@ -48,7 +58,6 @@ class AudioFeedback:
                 for chunk in response.iter_bytes(chunk_size=2048):
                     yield chunk
                 
-                
     def audioCallback(self, outdata, frames, time, status):
         # Read decoded audio data from ffmpeg stdout and play it
         data = self.process.stdout.read(frames * 2)  # 2 bytes per frame for s16le format
@@ -61,8 +70,7 @@ class AudioFeedback:
             raise sd.CallbackStop  # Stop the stream if we run out of data
         else:
             outdata[:] = np.frombuffer(data, dtype=np.int16).reshape(-1, 1)
-        
-        
+
     # Use a non-blocking approach to capture audio
     def voiceRecognitionCallback(self, recognizer, audio):
         print("I am ready to listen!")

@@ -11,6 +11,12 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
                  encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralOperatorWeights, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod,
                                                            encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useConvolutionFlag, independentChannels, skipConnectionProtocol)
+        # Initialize wavelet neural operator parameters.
+        self.activationFunction = self.getActivationMethod(activationType=activationMethod)  # Activation function for the Fourier neural operator.
+        if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
+        self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
+        self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.
+        self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)  # Skip connection model for the Fourier neural operator.
 
     def getSkipConnectionProtocol(self, skipConnectionProtocol):
         # Decide on the skip connection protocol.
@@ -65,8 +71,6 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
             if self.independentChannels:
                 # Initialize the frequency weights to learn how to change.
                 assert inChannel == outChannel, "The number of input and output signals must be equal."
-                if not lowFreqSignal:
-                    print("I would not recommend using the independent channels for high-frequency signals. Currently, the model will just linearly scale the coefficients.")
 
                 # Initialize the low-frequency weights to learn how to change.
                 return self.independentNeuralWeightCNN(inChannel=inChannel, outChannel=outChannel)

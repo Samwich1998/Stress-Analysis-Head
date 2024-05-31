@@ -3,7 +3,6 @@ from torch import nn
 import torch
 
 # Import files for machine learning
-from ....optimizerMethods.activationFunctions import boundedExp
 from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, ResNet
 
 
@@ -49,11 +48,8 @@ class signalEncoderModules(convolutionalHelpers):
         assert inChannel == outChannel, "The number of input and output signals must be equal."
 
         return independentModelCNN(
+            module=self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
             useCheckpoint=False,
-            module=nn.Sequential(
-                # Convolution architecture: feature engineering
-                self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
-            ),
         )
 
     @staticmethod
@@ -84,10 +80,10 @@ class signalEncoderModules(convolutionalHelpers):
     def getActivationMethod_posEncoder():
         return "none"
 
-    def positionalEncodingStamp(self, stampLength=1):
+    def positionalEncodingStamp(self, stampLength=1, paramBound=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.weightInitialization.heUniformInit(parameter, fan_in=stampLength)
+        parameter = self.weightInitialization.uniformInitialization(parameter, bound=paramBound)
 
         return parameter
 
@@ -122,8 +118,8 @@ class signalEncoderModules(convolutionalHelpers):
     def signalPostProcessing(self, inChannel=2, bottleneckChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):

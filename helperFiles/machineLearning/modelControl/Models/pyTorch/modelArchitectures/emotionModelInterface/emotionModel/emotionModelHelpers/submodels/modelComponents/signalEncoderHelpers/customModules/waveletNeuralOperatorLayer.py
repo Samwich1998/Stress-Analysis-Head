@@ -10,10 +10,10 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
     def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useConvolutionFlag, independentChannels, skipConnectionProtocol)
 
-    def forward(self, inputData, lowFrequencyTerms=None, highFrequencyTerms=None):
+    def forward(self, inputData, extraSkipConnection=0, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.
         neuralOperatorOutput = self.waveletNeuralOperator(inputData, lowFrequencyTerms, highFrequencyTerms)
-        neuralOperatorOutput = neuralOperatorOutput + self.skipConnectionModel(inputData)
+        neuralOperatorOutput = neuralOperatorOutput + self.skipConnectionModel(inputData) + extraSkipConnection
         # neuralOperatorOutput dimension: batchSize, numOutputSignals, sequenceLength
 
         # Apply the activation function.
@@ -66,14 +66,14 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
         # b = batchSize, i = numInputSignals, o = numOutputSignals, n = signalDimension
         # 'oin,bin->bon' = weights.size(), frequencies.size() -> frequencies.size()
 
-        if self.encodeHighFrequencies:
+        if self.encodeHighFrequencies or highFrequencyTerms is not None:
             # For each set of high-frequency coefficients.
             for highFrequencyInd in range(len(highFrequencies)):
                 # Learn a new set of wavelet coefficients to transform the data.
                 highFrequencies[highFrequencyInd] = self.applyEncoding(equationString, highFrequencies[highFrequencyInd], self.highFrequenciesWeights[highFrequencyInd], highFrequencyTerms)
                 # highFrequencies[highFrequencyInd] dimension: batchSize, numOutputSignals, highFrequenciesShapes[decompositionLayer]
 
-        if self.encodeLowFrequency:
+        if self.encodeLowFrequency or lowFrequencyTerms is not None:
             # Learn a new set of wavelet coefficients to transform the data.
             lowFrequency = self.applyEncoding(equationString, lowFrequency, self.lowFrequencyWeights, lowFrequencyTerms)
             # lowFrequency dimension: batchSize, numOutputSignals, lowFrequencyShape
@@ -118,12 +118,13 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
             frequencies = frequencies + frequencyTerms
             # frequencies dimension: batchSize, numInputSignals, frequencyDimension
 
-        if self.independentChannels or self.useConvolutionFlag:
-            frequencies = weights(frequencies)  # Learn a new set of wavelet coefficients to transform the data.
-            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
-        else:
-            # Learn a new set of wavelet coefficients to transform the data.
-            frequencies = torch.einsum(equationString, weights, frequencies)
-            # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+        if weights is not None:
+            if self.independentChannels or self.useConvolutionFlag:
+                frequencies = weights(frequencies)  # Learn a new set of wavelet coefficients to transform the data.
+                # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
+            else:
+                # Learn a new set of wavelet coefficients to transform the data.
+                frequencies = torch.einsum(equationString, weights, frequencies)
+                # frequencies dimension: batchSize, numOutputSignals, frequencyDimension
 
         return frequencies

@@ -12,9 +12,10 @@ from ....._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, signalMinMaxScale, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
+        self.signalMinMaxScale = signalMinMaxScale  # The minimum and maximum signal values to consider for scaling. Type: tuple
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.plotDataFlow = plotDataFlow  # Whether to plot the encoding process. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
@@ -34,6 +35,7 @@ class signalEncoderModel(globalModel):
             numSigEncodingLayers=self.numSigEncodingLayers,
             numSigLiftedChannels=self.numSigLiftedChannels,
             numExpandedSignals=self.numExpandedSignals,
+            signalMinMaxScale=self.signalMinMaxScale,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             waveletType=self.waveletType,

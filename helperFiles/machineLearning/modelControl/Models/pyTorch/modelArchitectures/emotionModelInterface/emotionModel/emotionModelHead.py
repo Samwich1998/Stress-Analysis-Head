@@ -98,6 +98,7 @@ class emotionModelHead(globalModel):
             numExpandedSignals=self.numExpandedSignals,
             waveletType=self.signalEncoderWaveletType,
             numEncodedSignals=self.numEncodedSignals,
+            signalMinMaxScale=self.signalMinMaxScale,
             debuggingResults=self.debuggingResults,
             sequenceBounds=self.sequenceBounds,
             plotDataFlow=not self.useParamsHPC,

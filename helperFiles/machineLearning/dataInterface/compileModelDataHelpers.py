@@ -154,17 +154,21 @@ class compileModelDataHelpers:
         """
         featureData = []
         # Compile the feature's data across all experiments.
-        for experimentInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[experimentInd])
+        for batchInd in range(len(allSignalData)):
+            signalData = np.asarray(allSignalData[batchInd])
             data = signalData[signalInds, :]
 
             # Assertions about data integrity.
             numSignals, sequenceLength = data.shape
             assert self.minSeqLength <= sequenceLength, f"Expected {self.minSeqLength}, but received {data.shape[1]} "
 
+            # Standardize the signals
+            if self.standardizeSignals:
+                data = minMaxScale_noInverse(data, scale=self.modelParameters.getSignalMinMaxScale())
+
             # Add buffer if needed.
             if sequenceLength < self.maxSeqLength + self.numSecondsShift:
-                prependedBuffer = np.ones((numSignals, self.maxSeqLength + self.numSecondsShift - sequenceLength)) * data[:, 0:1]
+                prependedBuffer = np.zeros((numSignals, self.maxSeqLength + self.numSecondsShift - sequenceLength)) * data[:, 0:1]
                 data = np.hstack((prependedBuffer, data))
             elif self.maxSeqLength + self.numSecondsShift < sequenceLength:
                 data = data[:, -self.maxSeqLength - self.numSecondsShift:]

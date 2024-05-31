@@ -103,6 +103,10 @@ class weightInitialization:
     # -------------------------- Parameter Weights -------------------------- #
 
     @staticmethod
+    def uniformInitialization(parameter, bound):
+        return nn.init.uniform_(parameter, -bound, bound)
+
+    @staticmethod
     def uniformParamInitialization(parameter, numUnits):
         return nn.init.uniform_(parameter, -1 / math.sqrt(numUnits), 1 / math.sqrt(numUnits))
 

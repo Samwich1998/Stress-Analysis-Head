@@ -75,7 +75,7 @@ class channelEncoding(signalEncoderModules):
         processedData = liftedData.clone()
         for modelInd in range(self.numSigEncodingLayers):
             # Apply the neural operator and the skip connection.
-            processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, use_reentrant=False)
+            processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, 0, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.

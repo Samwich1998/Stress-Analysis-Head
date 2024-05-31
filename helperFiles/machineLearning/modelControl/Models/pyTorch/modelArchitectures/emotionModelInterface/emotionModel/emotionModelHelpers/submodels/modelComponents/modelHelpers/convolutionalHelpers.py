@@ -52,7 +52,7 @@ class convolutionalHelpers(abnormalConvolutions):
 
     @staticmethod
     def restNet(module, numCycles=1):
-        return ResNet(module=module, numCycles=numCycles)
+        return ResNet(module=module)
 
     @staticmethod
     def getActivationMethod(activationType):
@@ -119,7 +119,7 @@ class convolutionalHelpers(abnormalConvolutions):
             layers.append(ResNet(module=nn.Sequential(
                 self.convolutionalFiltersBlocks(numBlocks=numBlocks, numChannels=numChannels, kernel_sizes=kernel_sizes, dilations=dilations, groups=groups, strides=strides,
                                                 convType=convType, activationType=activationType, numLayers=numLayers, addBias=addBias),
-            ), numCycles=1))
+            )))
 
         return nn.Sequential(*layers)
 

@@ -3,18 +3,13 @@ import torch
 
 
 # Standardize data class
-def minMaxScale_noInverse(X, scale=1, torchFlag=False):
+def minMaxScale_noInverse(X, scale=1):
     # Ensure the proper data type
-    X = torch.as_tensor(X) if torchFlag else np.asarray(X)
+    X = np.asarray(X)
 
     # Find the minimum and maximum along the last dimension
     min_val = X.min(axis=-1, keepdims=True)
     max_val = X.max(axis=-1, keepdims=True)
-
-    # Torch specific operations
-    if torchFlag:
-        min_val = min_val.values
-        max_val = max_val.values
 
     # Handle the case when max_val == min_val (avoid division by zero)
     range_val = max_val - min_val

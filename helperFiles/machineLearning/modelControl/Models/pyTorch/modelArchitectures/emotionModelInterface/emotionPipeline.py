@@ -120,7 +120,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         print("Input size:", augmentedSignalData.size())
 
                         # Perform the forward pass through the model.
-                        encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss = model.signalEncoding(augmentedSignalData, initialSignalData, decodeSignals=True, calculateLoss=self.calculateFullLoss, trainingFlag=True)
+                        encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = model.signalEncoding(augmentedSignalData, initialSignalData, decodeSignals=True, calculateLoss=self.calculateFullLoss, trainingFlag=True)
                         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
                         # reconstructedData dimension: batchSize, numSignals, sequenceLength
                         # signalEncodingLayerLoss dimension: batchSize
@@ -134,8 +134,8 @@ class emotionPipeline(emotionPipelineHelpers):
                         self.modelHelpers.assertVariableIntegrity(encodedData, variableName="encoded data", assertGradient=False)
 
                         # Calculate the error in signal compression (signal encoding loss).
-                        signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalMinMaxLoss, positionalEncodingTrainingLoss, signalEncodingTrainingLayerLoss \
-                            = self.organizeLossInfo.calculateSignalEncodingLoss(initialSignalData, encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss, batchTrainingMask, reconstructionIndex)
+                        signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalMinMaxLoss, positionalEncodingTrainingLoss, decodedPositionalEncodingLoss, signalEncodingTrainingLayerLoss \
+                            = self.organizeLossInfo.calculateSignalEncodingLoss(initialSignalData, encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss, batchTrainingMask, reconstructionIndex)
                         if signalReconstructedLoss.item() == 0: self.accelerator.print("Not useful\n\n\n\n\n\n"); continue
 
                         # Initialize basic core loss value.
@@ -150,11 +150,13 @@ class emotionPipeline(emotionPipelineHelpers):
                             finalLoss = finalLoss + 0.25*signalEncodingTrainingLayerLoss
                         if 0.1 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + encodedSignalMeanLoss
+                        if signalReconstructedLoss < 0.1 < decodedPositionalEncodingLoss:
+                            finalLoss = finalLoss + decodedPositionalEncodingLoss
                         # Account for the current training state when calculating the loss.
                         finalLoss = noiseFactor * finalLoss + positionalEncodingTrainingLoss
 
                         # Update the user.
-                        self.accelerator.print("Final-Recon-Mean-MinMax-PE-Layer", finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalMinMaxLoss.item(), positionalEncodingTrainingLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
+                        self.accelerator.print("Final-Recon-Mean-MinMax-PE-PEDec-Layer", finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalMinMaxLoss.item(), positionalEncodingTrainingLoss.item(), decodedPositionalEncodingLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")
 
                     # Train the autoencoder
                     elif submodel == "autoencoder":

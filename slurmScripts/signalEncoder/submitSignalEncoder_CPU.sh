@@ -2,7 +2,7 @@
 
 # Specify the module parameters
 #SBATCH --time=7-00:00:00   # Total runtime. Maximum 9-10 days
-#SBATCH --mem=192G    # Total memory
+#SBATCH --mem=96G    # Total memory
 #SBATCH --ntasks=1    # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1     # Total number of nodes
 

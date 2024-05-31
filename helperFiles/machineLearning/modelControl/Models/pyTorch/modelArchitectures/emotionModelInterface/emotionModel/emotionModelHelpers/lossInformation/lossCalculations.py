@@ -74,7 +74,7 @@ class lossCalculations:
         finalLoss = method(signalData).mean()
         return finalLoss
 
-    def calculateSignalEncodingLoss(self, allSignalData, allEncodedData, allReconstructedData, allPredictedIndexProbabilities, allSignalEncodingLayerLoss, allLabelsMask=None, reconstructionIndex=None):
+    def calculateSignalEncodingLoss(self, allSignalData, allEncodedData, allReconstructedData, allPredictedIndexProbabilities, allDecodedPredictedIndexProbabilities, allSignalEncodingLayerLoss, allLabelsMask=None, reconstructionIndex=None):
         # Find the boolean flags for the data involved in the loss calculation.
         reconstructionDataMask = self.getReconstructionDataMask(allLabelsMask, reconstructionIndex)
         # Isolate the signals for this loss (For example, training vs. testing).
@@ -83,6 +83,7 @@ class lossCalculations:
         reconstructedData = self.getData(allReconstructedData, reconstructionDataMask)  # Dim: numExperiments, numSignals, compressedLength
         signalEncodingLayerLoss = self.getData(allSignalEncodingLayerLoss, reconstructionDataMask)  # Dim: numExperiments
         predictedIndexProbabilities = self.getData(allPredictedIndexProbabilities, reconstructionDataMask)  # Dim: numExperiments, numSignals, maxNumEncodedSignals
+        decodedPredictedIndexProbabilities = self.getData(allDecodedPredictedIndexProbabilities, reconstructionDataMask)  # Dim: numExperiments, numSignals, maxNumEncodedSignals
         assert signalData.shape[0] != 0, "There are no signals for this loss calculation."
 
         # Calculate the error in signal reconstruction (encoding loss).
@@ -101,8 +102,10 @@ class lossCalculations:
         # Positional encoding loss.
         numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
         predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
+        decodedPredictedIndexProbabilities = decodedPredictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
         targetClasses = torch.arange(numSignals, device=signalData.device).long().repeat(numExperiments, 1).view(-1)
         positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
+        decodedPositionalEncodingLoss = self.positionalEncoderLoss(decodedPredictedIndexProbabilities, targetClasses).mean()
         if not self.useParamsHPC and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
 
         # Assert that nothing is wrong with the loss calculations.
@@ -110,9 +113,10 @@ class lossCalculations:
         self.modelHelpers.assertVariableIntegrity(positionalEncodingLoss, variableName="positional encoding loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(signalReconstructedLoss, variableName="encoded signal reconstructed loss", assertGradient=False)
         self.modelHelpers.assertVariableIntegrity(encodedSignalMinMaxLoss, variableName="encoded signal standard deviation loss", assertGradient=False)
+        self.modelHelpers.assertVariableIntegrity(decodedPositionalEncodingLoss, variableName="Decoded positional encoding loss", assertGradient=False)
         if signalEncodingLayerLoss is not None: self.modelHelpers.assertVariableIntegrity(signalEncodingLayerLoss, "encoded signal layer loss", assertGradient=False)
 
-        return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalMinMaxLoss, positionalEncodingLoss, signalEncodingLayerLoss
+        return signalReconstructedLoss, encodedSignalMeanLoss, encodedSignalMinMaxLoss, positionalEncodingLoss, decodedPositionalEncodingLoss, signalEncodingLayerLoss
 
     def calculateAutoencoderLoss(self, allEncodedData, allCompressedData, allReconstructedEncodedData, allAutoencoderLayerLoss, allLabelsMask, reconstructionIndex):
         # Find the boolean flags for the data involved in the loss calculation.

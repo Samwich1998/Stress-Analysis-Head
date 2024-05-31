@@ -57,7 +57,7 @@ if __name__ == "__main__":
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
+    useParamsHPC = False  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument('--signalEncoderWaveletType', type=str, default='sym13', help='The wavelet type for the wavelet transform: bior3.7, db3, dmey, etc')
     parser.add_argument('--numSigLiftedChannels', type=int, default=32, help='The number of channels to lift to during signal encoding. Range: (16, 64, 16)')
     parser.add_argument('--numSigEncodingLayers', type=int, default=4, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
-    parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+    parser.add_argument('--numExpandedSignals', type=int, default=4, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
     parser.add_argument('--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')
@@ -115,8 +115,6 @@ if __name__ == "__main__":
         accelerator.gradient_accumulation_steps = 16
         storeLoss = True  # Turn on loss storage for HPC.
         fastPass = False  # Turn off fast pass for HPC.
-
-        fastPass = True
 
         if args.submodel == "signalEncoder":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:

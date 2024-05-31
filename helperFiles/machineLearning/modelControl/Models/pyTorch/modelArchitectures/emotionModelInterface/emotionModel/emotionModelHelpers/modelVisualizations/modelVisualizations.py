@@ -180,16 +180,16 @@ class modelVisualizations(globalPlottingProtocols):
             signalEncodingTrainingOutputs, autoencodingTrainingOutputs, emotionModelTrainingOutputs = model(trainingSignalData, trainingSubjectIdentifiers, trainingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
 
             # Unpack all the data.
-            trainingEncodedData, trainingReconstructedData, trainingPredictedIndexProbabilities, trainingSignalEncodingLayerLoss = signalEncodingTrainingOutputs
             trainingCompressedData, trainingReconstructedEncodedData, trainingDenoisedDoubleReconstructedData, trainingAutoencoderLayerLoss = autoencodingTrainingOutputs
+            trainingEncodedData, trainingReconstructedData, trainingPredictedIndexProbabilities, trainingDecodedPredictedIndexProbabilities, trainingSignalEncodingLayerLoss = signalEncodingTrainingOutputs
             trainingMappedSignalData, trainingReconstructedCompressedData, trainingFeatureData, trainingActivityDistributions, trainingBasicEmotionDistributions, trainingFinalEmotionDistributions = emotionModelTrainingOutputs
 
             # Pass all the data through the model and store the emotions, activity, and intermediate variables.
             signalEncodingTestingOutputs, autoencodingTestingOutputs, emotionModelTestingOutputs = model(testingSignalData, testingSubjectIdentifiers, testingSignalData, reconstructSignals=True, compileVariables=False, submodel=submodel, trainingFlag=False)
 
             # Unpack all the data.
-            testingEncodedData, testingReconstructedData, testingPredictedIndexProbabilities, testingSignalEncodingLayerLoss = signalEncodingTestingOutputs
             testingCompressedData, testingReconstructedEncodedData, testingDenoisedDoubleReconstructedData, testingAutoencoderLayerLoss = autoencodingTestingOutputs
+            testingEncodedData, testingReconstructedData, testingPredictedIndexProbabilities, testingDecodedPredictedIndexProbabilities, testingSignalEncodingLayerLoss = signalEncodingTestingOutputs
             testingMappedSignalData, testingReconstructedCompressedData, testingFeatureData, testingActivityDistributions, testingBasicEmotionDistributions, testingFinalEmotionDistributions = emotionModelTestingOutputs
 
         # ------------------- Plot the Data on One Device ------------------ # 

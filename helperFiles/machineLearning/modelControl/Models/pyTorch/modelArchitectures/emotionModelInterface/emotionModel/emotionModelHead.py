@@ -161,13 +161,13 @@ class emotionModelHead(globalModel):
 
         t1 = time.time()
         # Forward pass through the signal encoder to reduce to a common signal number.
-        encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoderModel(signalData, initialSignalData, decodeSignals, calculateLoss, trainingFlag)
+        encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoderModel(signalData, initialSignalData, decodeSignals, calculateLoss, trainingFlag)
         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
         # reconstructedData dimension: batchSize, numSignals, sequenceLength
         # signalEncodingLayerLoss dimension: batchSize
         t2 = time.time(); print("\tSignal Encoder:", t2 - t1)
 
-        return encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss
+        return encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss
 
     def compressData(self, signalData, initialSignalData, reconstructSignals=True, calculateLoss=True, compileVariables=False, compileLosses=False, fullReconstruction=False, trainingFlag=False):
         # Add the data, labels, and training/testing indices to the device (GPU/CPU)
@@ -176,8 +176,8 @@ class emotionModelHead(globalModel):
 
         with torch.no_grad():
             # Compile the variables from signal encoding.
-            encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoding(signalData, initialSignalData, decodeSignals=compileVariables, calculateLoss=calculateLoss and compileLosses, trainingFlag=False)
-            signalEncodingOutputs = encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss
+            encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoding(signalData, initialSignalData, decodeSignals=compileVariables, calculateLoss=calculateLoss and compileLosses, trainingFlag=False)
+            signalEncodingOutputs = encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss
 
         t1 = time.time()
         # Forward pass through the autoencoder for data compression.
@@ -244,8 +244,8 @@ class emotionModelHead(globalModel):
         if submodel == "signalEncoder":
             with self.accelerator.autocast():
                 # Only look at the signal encoder.
-                encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoding(signalData, initialSignalData, decodeSignals=reconstructSignals, calculateLoss=compileVariables, trainingFlag=trainingFlag)
-                signalEncodingOutputs = encodedData.to('cpu'), reconstructedData.to('cpu'), predictedIndexProbabilities.to('cpu'), signalEncodingLayerLoss.to('cpu')
+                encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoding(signalData, initialSignalData, decodeSignals=reconstructSignals, calculateLoss=compileVariables, trainingFlag=trainingFlag)
+                signalEncodingOutputs = encodedData.to('cpu'), reconstructedData.to('cpu'), predictedIndexProbabilities.to('cpu'), decodedPredictedIndexProbabilities.to('cpu'), signalEncodingLayerLoss.to('cpu')
 
         elif submodel == "autoencoder":
             # Only look at the autoencoder.
@@ -265,6 +265,7 @@ class emotionModelHead(globalModel):
         batch_size, numSignals, _ = dataLoader.dataset.features.size()
 
         # Preallocate tensors for the signal encoder.
+        decodedPredictedIndexProbabilities = torch.zeros((batch_size, numSignals, self.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals), device=dataLoader.dataset.features.device)
         predictedIndexProbabilities = torch.zeros((batch_size, numSignals, self.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals), device=dataLoader.dataset.features.device)
         encodedData = torch.zeros((batch_size, self.numEncodedSignals, timeWindow), device=dataLoader.dataset.features.device)
         reconstructedData = torch.zeros((batch_size, numSignals, timeWindow), device=dataLoader.dataset.features.device)
@@ -299,7 +300,7 @@ class emotionModelHead(globalModel):
             # Forward pass for the current batch
             signalEncodingOutputs, autoencodingOutputs, emotionModelOutputs = self.forward(segmentedSignalData, allSubjectIdentifiers, segmentedSignalData, reconstructSignals, compileVariables, submodel, trainingFlag=trainingFlag)
             # Unpack all the parameters.
-            encodedBatchData, reconstructedBatchData, batchPredictedIndexProbabilities, batchSignalEncodingLayerLoss = signalEncodingOutputs
+            encodedBatchData, reconstructedBatchData, batchPredictedIndexProbabilities, batchDecodedPredictedIndexProbabilities, batchSignalEncodingLayerLoss = signalEncodingOutputs
             compressedBatchData, reconstructedEncodedBatchData, batchDenoisedDoubleReconstructedData, batchAutoencoderLayerLoss = autoencodingOutputs
             mappedBatchData, reconstructedCompressedBatchData, featureBatchData, batchActivityDistribution, batchBasicEmotionDistribution, batchEmotionDistributions = emotionModelOutputs
 
@@ -307,6 +308,7 @@ class emotionModelHead(globalModel):
             encodedData[startIdx:endIdx] = encodedBatchData
             reconstructedData[startIdx:endIdx] = reconstructedBatchData
             predictedIndexProbabilities[startIdx:endIdx] = batchPredictedIndexProbabilities
+            decodedPredictedIndexProbabilities[startIdx:endIdx] = batchDecodedPredictedIndexProbabilities
             # Autoencoder: assign the results to the preallocated tensors
             compressedData[startIdx:endIdx] = compressedBatchData
             reconstructedEncodedData[startIdx:endIdx] = reconstructedEncodedBatchData
@@ -329,7 +331,7 @@ class emotionModelHead(globalModel):
             startIdx = endIdx
 
         # Repack the data into the expected format.
-        signalEncodingOutputs = encodedData, reconstructedData, predictedIndexProbabilities, signalEncodingLayerLoss
+        signalEncodingOutputs = encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss
         autoencodingOutputs = compressedData, reconstructedEncodedData, denoisedDoubleReconstructedData, autoencoderLayerLoss
         emotionModelOutputs = mappedSignalData, reconstructedCompressedData, featureData, activityDistribution, eachBasicEmotionDistribution, finalEmotionDistributions
 

@@ -42,13 +42,16 @@ class signalEncoderModel(globalModel):
         )
 
         # Initialize helper classes.
-        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor, self.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals)
+        self.maxNumEncodedSignals = self.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals  # The maximum number of signals that can be encoded.
+        self.trainingMethods = trainingSignalEncoder(numEncodedSignals, self.encodeSignals.expansionFactor, self.maxNumEncodedSignals)
 
         # Initialize loss holders.
         self.trainingLosses_timeReconstructionOptimalAnalysis = None
         self.testingLosses_timeReconstructionOptimalAnalysis = None
         self.trainingLosses_timeReconstructionAnalysis = None
         self.testingLosses_timeReconstructionAnalysis = None
+        self.trainingLosses_timeDecodedPosEncAnalysis = None
+        self.testingLosses_timeDecodedPosEncAnalysis = None
         self.trainingLosses_timePosEncAnalysis = None
         self.testingLosses_timePosEncAnalysis = None
         self.trainingLosses_timeMeanAnalysis = None
@@ -74,6 +77,9 @@ class signalEncoderModel(globalModel):
         # Positional encoding analysis.
         self.trainingLosses_timePosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
         self.testingLosses_timePosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
+        # Positional encoding analysis.
+        self.trainingLosses_timeDecodedPosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
+        self.testingLosses_timeDecodedPosEncAnalysis = [[] for _ in self.timeWindows]  # List of list of positional encoding reconstruction losses. Dim: numTimeWindows, numEpochs
 
         # Signal encoder optimal reconstruction loss holders
         self.trainingLosses_timeReconstructionOptimalAnalysis = [[] for _ in self.timeWindows]  # List of list of data reconstruction training losses. Dim: numTimeWindows, numEpochs
@@ -94,6 +100,7 @@ class signalEncoderModel(globalModel):
         # signalData dimension: batchSize, numSignals, sequenceLength
 
         # Create placeholders for the final variables.
+        decodedPredictedIndexProbabilities = torch.ones((batchSize, numSignals, self.maxNumEncodedSignals), device=signalData.device)
         denoisedReconstructedData = torch.zeros_like(signalData, device=signalData.device)
         signalEncodingLoss = torch.zeros((batchSize,), device=signalData.device)
         # denoisedReconstructedData dimension: batchSize, numSignals, sequenceLength
@@ -120,12 +127,9 @@ class signalEncoderModel(globalModel):
 
         # Learn how to add positional encoding to each signal's position.
         positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
-        # positionEncodedData dimension: batchSize, numSignals, sequenceLength
-
-        # Predict the positional encoding index.
-        predictedIndexProbabilities = self.encodeSignals.positionalEncodingInterface.predictSignalIndex(positionEncodedData)
-        predictedIndexProbabilities = self.encodeSignals.denoiseSignals.applySmoothing_forPosPreds(predictedIndexProbabilities)  # Smooth over the encoding space.
+        predictedIndexProbabilities = self.predictPositionClasses(positionEncodedData)  # Predict the positional encoding index.
         # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
+        # positionEncodedData dimension: batchSize, numSignals, sequenceLength
 
         # Compress the signal space into numEncodedSignals.
         encodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss, forward=True)
@@ -148,6 +152,8 @@ class signalEncoderModel(globalModel):
             # Calculate the immediately reconstructed data.
             potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False, forward=True)
             potentialDecodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=potentialEncodedData, calculateLoss=False)
+            # Maintain the positional encoding on the decoded data.
+            decodedPredictedIndexProbabilities = self.predictPositionClasses(decodedData)  # Predict the positional encoding index.
 
             # Calculate the loss by comparing encoder/decoder outputs.
             encodingReconstructionStateLoss = (positionEncodedData - decodedData).pow(2).mean(dim=2).mean(dim=1)
@@ -177,9 +183,17 @@ class signalEncoderModel(globalModel):
             if self.plotDataFlow and random.random() < 0.01:
                 self.plotDataFlowDetails(initialSignalData, positionEncodedData, encodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
-        return encodedData, denoisedReconstructedData, predictedIndexProbabilities, signalEncodingLoss
+        return encodedData, denoisedReconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLoss
 
-        # ------------------------------------------------------------------ #  
+        # ------------------------------------------------------------------ #
+
+    def predictPositionClasses(self, positionEncodedData):
+        # Predict the positional encoding index.
+        predictedIndexProbabilities = self.encodeSignals.positionalEncodingInterface.predictSignalIndex(positionEncodedData)
+        predictedIndexProbabilities = self.encodeSignals.denoiseSignals.applySmoothing_forPosPreds(predictedIndexProbabilities)  # Smooth over the encoding space.
+        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
+
+        return predictedIndexProbabilities
 
     def reverseEncoding(self, decodedData, numSignalPath, signalEncodingLayerLoss, calculateLoss):
         reversePath = []

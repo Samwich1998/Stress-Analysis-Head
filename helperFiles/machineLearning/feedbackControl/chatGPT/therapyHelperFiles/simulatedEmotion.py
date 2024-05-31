@@ -1,13 +1,13 @@
 import json
 import random
-
+import os
 
 class simulatedEmotion:
 
     @staticmethod
     def generate_random_demographics():
         responses = {}
-        questionnaire_path = "therapyHelperFiles/surveyInformation/Subject Demographics.json"
+        questionnaire_path = os.path.dirname(os.path.abspath(__file__)) + "/../../../../surveyInformation/Subject Demographics.json"
         with open(questionnaire_path, 'r') as file:
             survey_questions = json.load(file)
         for key, value in survey_questions["surveyQuestions"].items():

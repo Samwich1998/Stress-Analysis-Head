@@ -6,12 +6,7 @@ from openai import OpenAI
 import threading
 import textwrap
 import json
-import sys
 import os
-
-# Add the directory of the current file to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../")
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import helper classes
 from therapyHelperFiles._feedbackMechanisms.audioFeedback import AudioFeedback

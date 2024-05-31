@@ -30,13 +30,13 @@ class simulatedEmotion:
         random_stai_score = random.randint(20, 80)
         random_emotion_profile = []
 
-        questionnaire_path = "therapyHelperFiles/surveyInformation/I-STAI-Y1 Questions.json"
+        questionnaire_path = os.path.dirname(os.path.abspath(__file__)) + "/../../../../surveyInformation/I-STAI-Y1 Questions.json"
         with open(questionnaire_path, 'r') as file:
             survey_questions = json.load(file)
             answers = [random.choice(survey_questions["answerChoices"]) for _ in survey_questions["questions"]]
             random_emotion_profile.append(", ".join([f"{q} {a}" for q, a in zip(survey_questions["questions"], answers)]))
 
-        questionnaire_path = "therapyHelperFiles/surveyInformation/PANAS Questions.json"
+        questionnaire_path = os.path.dirname(os.path.abspath(__file__)) + "/../../../../surveyInformation/PANAS Questions.json"
         with open(questionnaire_path, 'r') as file:
             survey_questions = json.load(file)
             answers = [random.choice(survey_questions["answerChoices"]) for _ in survey_questions["questions"]]

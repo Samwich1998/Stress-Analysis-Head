@@ -52,7 +52,7 @@ class chatGPTController:
         self.resetTherapySession()
 
     @staticmethod
-    def getsaveFilePath(save_path="/Helper Files/_savedConversations/"):
+    def getsaveFilePath(save_path="/therapyHelperFiles/_savedConversations/"):
         filepath = os.path.dirname(__file__) + save_path
         saveFilePath = os.path.join(filepath, f"{date.today()}")
         counter = 0
@@ -61,7 +61,7 @@ class chatGPTController:
 
         return f'{saveFilePath}_{counter}.txt'
 
-    def resetTherapySession(self, conversationFile, includeUserDemographic=True):
+    def resetTherapySession(self, includeUserDemographic=True):
         text = "You are a friendly and helpful virtual therapist performing Cognitive Behavioral Therapy. In your first response, introduce yourself and say your name is zenBot (only once). \
                                 You are having a one sided therapeutic conversation as you help a user to understand, control, and improve their mental state. \
                                 You will not directly hear the users verbal responses, only their state anxiety scores from the STAI-Y1 exam (range: 20 - 80). Do not mention this score to the user. \

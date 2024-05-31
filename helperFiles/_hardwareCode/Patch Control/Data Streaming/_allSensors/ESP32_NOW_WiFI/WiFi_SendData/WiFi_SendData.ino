@@ -38,6 +38,10 @@ String adcReadings_String[numChannels] = {"", "", "", ""};
 // Pinout variables
 const gpio_num_t multiplexPins[3] = {GPIO_NUM_40, GPIO_NUM_41, GPIO_NUM_42}; // {S0, S1, S2}
 
+// Heating pad variables
+const gpio_num_t heatingPadPins[1] = {GPIO_NUM_48};
+boolean connectToPython = false;
+
 // Calibration variables
 float calibratedVolts;
 float calibratedResistance;
@@ -99,6 +103,20 @@ void selectMuxPin(byte pin) {
     else
       digitalWriteFast(multiplexPins[i], LOW);
   }
+}
+
+void setHeatingPad(int pwmValue) {
+    // Ensure the received value is within the valid PWM range (0 to 255)
+    if (pwmValue > 0 && pwmValue <= 255) {
+
+      for (int pinInd = 0; pinInd < (int) sizeof(heatingPadPins)/sizeof(heatingPadPins[0]); pinInd++) {
+          analogWrite(heatingPadPins[pinInd], pwmValue); // Set PWM duty cycle
+          Serial.println(pwmValue);
+          Serial.println(pinInd);
+      }
+    } else {
+      Serial.println("Invalid PWM value. Please enter a value between 0 and 255.");
+    }
 }
 
 // Read and average ADC values. Throw out initial reads.
@@ -195,6 +213,13 @@ void printBytes(byte inputByte) {
     Serial.println();
 }
 
+void heatingPadInterface() {
+    if (Serial.available() > 0) {
+      int pwmValue = Serial.parseInt(); // Read the integer value from Serial Monitor
+      setHeatingPad(pwmValue);
+    }
+}
+
 // ************************************************************************************** //
 // *********************************** Setup Functions ********************************** //
 
@@ -203,6 +228,12 @@ void setupMultiplexer() {
     for (int pinInd = 0; pinInd < (int) sizeof(multiplexPins)/sizeof(multiplexPins[0]); pinInd++) {
         pinMode(multiplexPins[pinInd], OUTPUT);
         digitalWriteFast(multiplexPins[pinInd], HIGH);
+    }
+}
+
+void setupHeatingPad() {
+    for (int pinInd = 0; pinInd < (int) sizeof(heatingPadPins)/sizeof(heatingPadPins[0]); pinInd++) {
+        pinMode(heatingPadPins[pinInd], OUTPUT);
     }
 }
 
@@ -266,8 +297,9 @@ void setup() {
     
     // Setup ESP32
     setupADC();         // ADC calibration
-    connectToPeer();    // Initialize WiFi
+    //connectToPeer();    // Initialize WiFi
     setupMultiplexer(); // Setup output pins
+    setupHeatingPad();
 
     // Start the Timer at Zero
     currentSecond = 0;
@@ -286,8 +318,6 @@ void loop() {
       selectMuxPin(multiplexPin); // Select one pin to connect to Z
       adcReadings[multiplexPin] = readADC(analogChannel); // Reads in Z from multiplexer
     }
-    //Serial.print(",0,4095,");
-    //Serial.println(adcReadings[2]*4095.0/3.3);
     // Calibrate signals
     adcReadings[0] = adcReadings[0]*4095.0/3.3;
     adcReadings[1] = adcReadings[1]*4095.0/3.3;
@@ -323,30 +353,17 @@ void loop() {
     //recieverReply = esp_now_send(broadcastAddress, (uint8_t *) &sendingMessage, sizeof(sendingMessage));
     //char buff[13];
     //compileAndSendData(sendingMessage.toCharArray(buf, 16);
-
-    Serial.write(sendingMessage, 16);
-    Serial.println();
-    /*
-    Serial.println(currentSecond_String + "." + currentMicros_String);
-    
-    for(int i = 0; i < numChannels; i++) {
-        Serial.print(adcReadings[i]*3.3/4095.0);
-        Serial.print("\t");
-    }    
-    Serial.println();   
-    //Serial.println(calibrateTempResistor(adcReadings[2])); 
-    */
-    
-    
-    //Serial.println(adcReadings[2]);
-    //delay(30);
-    
+    //Serial.write(sendingMessage, 16);
+    //Serial.println();
 
     // If Data Sent
     if (recieverReply == ESP_OK) {
         // Keep Track of Time Gap Between Points
         previousMicros = previousMicros + currentMicros + oneSecMicro*currentSecond;
     }
+
+    // Feedback loop.
+    heatingPadInterface();
 
     // Reset Parameters
     currentSecond = 0;

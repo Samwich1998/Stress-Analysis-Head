@@ -90,7 +90,7 @@ class lossCalculations:
         signalReconstructedLoss = signalReconstructedLoss.mean(dim=2).mean(dim=1).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
-        encodedSignalMeanLoss, encodedSignalMinMaxLoss = self.calculateMinMaxLoss(encodedData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1)
+        encodedSignalMeanLoss, encodedSignalMinMaxLoss = self.calculateMinMaxLoss(encodedData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1, minMaxBuffer=0.1)
         # Reduce the loss to a singular value.
         encodedSignalMinMaxLoss = encodedSignalMinMaxLoss.mean(dim=2).mean(dim=1).mean()
         encodedSignalMeanLoss = encodedSignalMeanLoss.mean(dim=1).mean()
@@ -129,7 +129,7 @@ class lossCalculations:
         reconstructedLoss = reconstructedLoss.mean(dim=2).mean(dim=1).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
-        compressedMeanLoss, compressedMinMaxLoss = self.calculateMinMaxLoss(compressedData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1)
+        compressedMeanLoss, compressedMinMaxLoss = self.calculateMinMaxLoss(compressedData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1, minMaxBuffer=0.1)
         # Reduce the loss to a singular value.
         compressedMinMaxLoss = compressedMinMaxLoss.mean(dim=1).mean()
         compressedMeanLoss = compressedMeanLoss.mean(dim=1).mean()
@@ -160,7 +160,7 @@ class lossCalculations:
         manifoldReconstructedLoss = manifoldReconstructedLoss.mean(axis=2).mean()
 
         # Enforce that the compressed data has a mean of 0 and a standard deviation of 1.
-        manifoldMeanLoss, manifoldMinMaxLoss = self.calculateMinMaxLoss(manifoldData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1)
+        manifoldMeanLoss, manifoldMinMaxLoss = self.calculateMinMaxLoss(manifoldData, expectedMean=0, expectedMinMax=self.modelParameters.getSignalMinMaxScale(), dim=-1, minMaxBuffer=0.1)
         # Reduce the loss to a singular value.
         manifoldMeanLoss = manifoldMeanLoss.mean()
         manifoldMinMaxLoss = manifoldMinMaxLoss.mean()
@@ -324,9 +324,9 @@ class lossCalculations:
 
         return gradients_norm
 
-    def calculateMinMaxLoss(self, inputData, expectedMean=0, expectedMinMax=1, dim=-1):
+    def calculateMinMaxLoss(self, inputData, expectedMean=0, expectedMinMax=1, dim=-1, minMaxBuffer=0.0):
         # Calculate the min-max loss.
-        minMaxData = self.generalMethods.minMaxScale_noInverse(inputData, scale=expectedMinMax)
+        minMaxData = self.generalMethods.minMaxScale_noInverse(inputData, scale=expectedMinMax, buffer=minMaxBuffer)
         minMaxLoss = (minMaxData - expectedMean).pow(2)
 
         # Calculate the mean error.

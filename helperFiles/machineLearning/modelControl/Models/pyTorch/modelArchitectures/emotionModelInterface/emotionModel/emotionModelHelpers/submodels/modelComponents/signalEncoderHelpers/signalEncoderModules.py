@@ -36,7 +36,7 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightHighCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
     def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
@@ -71,7 +71,7 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     def independentSkipConnectionEncoding(self, inChannel=2, outChannel=1):
-        assert inChannel == outChannel == 1, "The number of input and output signals must be 1."
+        assert inChannel == outChannel, "The number of input and output signals must be equal."
 
         return independentModelCNN(
             module=self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),

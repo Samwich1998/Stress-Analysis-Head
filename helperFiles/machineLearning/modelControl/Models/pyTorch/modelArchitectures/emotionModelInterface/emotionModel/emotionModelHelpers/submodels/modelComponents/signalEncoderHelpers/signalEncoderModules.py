@@ -4,7 +4,7 @@ import torch
 
 # Import files for machine learning
 from ....optimizerMethods.activationFunctions import boundedExp
-from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, addModules, ResNet
+from ..modelHelpers.convolutionalHelpers import convolutionalHelpers, independentModelCNN, ResNet
 
 
 class signalEncoderModules(convolutionalHelpers):
@@ -33,7 +33,13 @@ class signalEncoderModules(convolutionalHelpers):
 
         return parameter
 
-    def neuralWeightCNN(self, inChannel=1, outChannel=2):
+    def neuralWeightHighCNN(self, inChannel=1, outChannel=2):
+        return nn.Sequential(
+            # Convolution architecture: feature engineering
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+        )
+
+    def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
@@ -61,7 +67,7 @@ class signalEncoderModules(convolutionalHelpers):
 
         return nn.Sequential(
             # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
     def independentSkipConnectionEncoding(self, inChannel=2, outChannel=1):

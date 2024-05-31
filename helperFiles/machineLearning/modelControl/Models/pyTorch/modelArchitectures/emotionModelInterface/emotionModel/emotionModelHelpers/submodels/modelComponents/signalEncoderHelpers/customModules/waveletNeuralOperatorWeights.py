@@ -36,13 +36,13 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
             highFrequenciesWeights = nn.ParameterList()
             for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
                 highFrequenciesWeights.append(self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd],
-                                                                             finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
+                                                                             finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd], lowFreqSignal=False))
 
         if self.encodeHighFrequencyFull:
             fullHighFrequencyWeights = nn.ParameterList()
             for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
                 fullHighFrequencyWeights.append(self.getNeuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + self.highFrequenciesShapes[highFrequenciesInd],
-                                                                               finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd]))
+                                                                               finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd], lowFreqSignal=False))
 
         return highFrequenciesWeights, fullHighFrequencyWeights
 
@@ -52,21 +52,27 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
         lowFrequencyWeights = None
 
         if self.encodeLowFrequency:
-            lowFrequencyWeights = self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape, finalFrequencyDim=self.lowFrequencyShape)
+            lowFrequencyWeights = self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape, finalFrequencyDim=self.lowFrequencyShape, lowFreqSignal=True)
 
         if self.encodeLowFrequencyFull:
             fullLowFrequencyWeights = self.getNeuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + sum(self.highFrequenciesShapes),
-                                                                     finalFrequencyDim=self.lowFrequencyShape)
+                                                                     finalFrequencyDim=self.lowFrequencyShape, lowFreqSignal=True)
 
         return lowFrequencyWeights, fullLowFrequencyWeights
 
-    def getNeuralWeightParameters(self, inChannel, outChannel, initialFrequencyDim, finalFrequencyDim):
+    def getNeuralWeightParameters(self, inChannel, outChannel, initialFrequencyDim, finalFrequencyDim, lowFreqSignal=False):
         if self.useConvolutionFlag:
             if self.independentChannels:
                 # Initialize the frequency weights to learn how to change.
                 assert inChannel == outChannel, "The number of input and output signals must be equal."
                 return self.independentNeuralWeightCNN(inChannel=inChannel, outChannel=outChannel)
-            return self.neuralWeightCNN(inChannel=inChannel, outChannel=outChannel)
+
+            if lowFreqSignal:
+                # Initialize the low-frequency weights to learn how to change.
+                return self.neuralWeightLowCNN(inChannel=inChannel, outChannel=outChannel)
+            else:
+                # Initialize the high-frequency weights to learn how to change.
+                return self.neuralWeightHighCNN(inChannel=inChannel, outChannel=outChannel)
 
         else:
             if self.independentChannels:

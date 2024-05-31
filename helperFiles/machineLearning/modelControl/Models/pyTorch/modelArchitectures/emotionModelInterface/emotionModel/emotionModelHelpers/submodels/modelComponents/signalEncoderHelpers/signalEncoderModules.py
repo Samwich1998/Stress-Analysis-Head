@@ -35,13 +35,13 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralWeightHighCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
-            # Convolution architecture: feature engineering
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+            # Convolution architecture: feature engineering. Detailed coefficients tend to look like delta spikes ... I think kernel_size of 1 is optimal.
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
     def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
-            # Convolution architecture: feature engineering
+            # Convolution architecture: feature engineering. Detailed coefficients tend to look like low-frequency waves.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
@@ -87,7 +87,7 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(self, stampLength=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.weightInitialization.heNormalInit(parameter, fan_in=stampLength)
+        parameter = self.weightInitialization.heUniformInit(parameter, fan_in=stampLength)
 
         return parameter
 

@@ -65,6 +65,10 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
             if self.independentChannels:
                 # Initialize the frequency weights to learn how to change.
                 assert inChannel == outChannel, "The number of input and output signals must be equal."
+                if not lowFreqSignal:
+                    print("I would not recommend using the independent channels for high-frequency signals. Currently, the model will just linearly scale the coefficients.")
+
+                # Initialize the low-frequency weights to learn how to change.
                 return self.independentNeuralWeightCNN(inChannel=inChannel, outChannel=outChannel)
 
             if lowFreqSignal:

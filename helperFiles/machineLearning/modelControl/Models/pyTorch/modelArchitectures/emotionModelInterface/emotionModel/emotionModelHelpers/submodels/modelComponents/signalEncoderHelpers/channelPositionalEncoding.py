@@ -26,9 +26,9 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Create the spectral convolution layers.
         self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
-                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='identity')
+                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='identity')
         self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
-                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='identity')
+                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='identity')
         self.lowFrequencyShape = self.learnNeuralOperatorLayers.lowFrequencyShape
 
         # A list of parameters to encode each signal.

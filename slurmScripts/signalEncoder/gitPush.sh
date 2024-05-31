@@ -7,7 +7,7 @@ for numExpandedSignals in {2..15}; do
     # Loop through numEncodingLayers values from 0 to 10
     for numEncodingLayers in {0..15}; do
         # Construct the directory path for the first set of folders
-        ##finalModelsDir="../../helperFiles/machineLearning/modelControl/_finalModels/emotionModel/metaTrainingModels/signalEncoder/$trainingData on CPU at numExpandedSignals ${numExpandedSignals} at numEncodingLayers ${numEncodingLayers}/"
+        ##finalModelsDir="../../therapyHelperFiles/machineLearning/modelControl/_finalModels/emotionModel/metaTrainingModels/signalEncoder/$trainingData on CPU at numExpandedSignals ${numExpandedSignals} at numEncodingLayers ${numEncodingLayers}/"
 
         # Add, commit, and push changes for the first directory
         #git add "$finalModelsDir"

@@ -79,7 +79,7 @@ if __name__ == "__main__":
             streamingThread = threading.Thread(target=readData.streamArduinoData, args=(maxVolt, adcResolution, stopTimeStreaming, currentFilename), daemon=True)
             streamingThread.start()
             # Open the questionnaire GUI.
-            folderPath = "./helperFiles/surveyInformation/"
+            folderPath = "./therapyHelperFiles/surveyInformation/"
             stressQuestionnaire = stressQuestionnaireGUI(readData, folderPath)
             # When the streaming stops, close the GUI/Thread.
             stressQuestionnaire.finishedRun()

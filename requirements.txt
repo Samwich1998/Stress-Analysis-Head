@@ -12,18 +12,21 @@ pyserial
 pyfirmata2
 
 shap
-torch
 xgboost
 lightgbm
 torchaudio
-torchvision
-torchsummary
 transformers
 scikit-learn
 tensorflow
 pytorch_wavelets
 PyWavelets
 tensorly
+
+--no-index
+-f https://download.pytorch.org/whl/cu121
+torch
+torchvision
+torchaudio
 
 pyeeg
 eeglib

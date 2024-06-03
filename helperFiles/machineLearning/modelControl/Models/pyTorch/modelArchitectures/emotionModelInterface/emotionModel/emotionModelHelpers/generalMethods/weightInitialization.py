@@ -14,18 +14,30 @@ class weightInitialization:
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+
         elif activationMethod.startswith('boundedExp'):
             if layerType == 'conv1D':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'conv1D_gausInit':
-                self.custom_kernel_initialization(modelParam)
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'pointwise':
-                self.pointwise_uniform_weights(modelParam)
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+
         elif activationMethod == 'identity':
             print("Probably not a good idea to use identity activation for initialization.")
             self.identityFC(modelParam)
+
+        elif activationMethod.startswith('none'):
+            if layerType == 'conv1D':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+            elif layerType == 'fc':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+            elif layerType == 'conv1D_gausInit':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+            elif layerType == 'pointwise':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         else:
             modelParam.reset_parameters()
 
@@ -192,39 +204,48 @@ class weightInitialization:
     # -------------------------- Custom Kernels Weights -------------------------- #
 
     @staticmethod
+    def smoothingKernel(kernelSize=3, averageWeights=None):
+        if averageWeights is not None:
+            assert len(averageWeights) == kernelSize, "The kernel size and the average weights must be the same size."
+            averageWeights = torch.tensor(averageWeights, dtype=torch.float32)
+        else:
+            averageWeights = torch.ones([kernelSize], dtype=torch.float32)
+        # Initialize kernel weights.
+        averageWeights = averageWeights / averageWeights.sum()
+
+        # Set the parameter weights
+        averageKernel = nn.Parameter(
+            averageWeights.view(1, 1, kernelSize),
+            requires_grad=False,  # Do not learn/change these weights.
+        )
+
+        return averageKernel
+
+    @staticmethod
     def custom_kernel_initialization(conv_layer):
         """
         Custom kernel initialization with a normal distribution that has a maximum
         around the center and normalized by the number of input channels.
         """
-        # Standard deviation for the kernel
-        std = 1/conv_layer.weight.size(-1)  # 1/kernel_size
-
         # Get the parameters of the conv layer
+        num_output_channels, num_input_channels, kernel_size = conv_layer.weight.size()
+        variance = 1 / (3 * kernel_size)
         weight = conv_layer.weight
-        num_input_channels = weight.size(1)  # C_in
-        kernel_size = weight.size(2)  # For Conv1D
-
-        # Create a 1D kernel with a peak at the center
         center = kernel_size // 2
-        kernel = torch.zeros(kernel_size, dtype=weight.dtype, device=weight.device)
 
         # Fill the kernel with a normal distribution centered at the center
-        for i in range(kernel_size):
-            distance_to_center = torch.abs(torch.tensor(i, dtype=weight.dtype) - torch.tensor(center, dtype=weight.dtype))
-            kernel[i] = torch.exp(-distance_to_center)
+        distanceToCenter = (torch.arange(kernel_size, dtype=weight.dtype, device=weight.device) - center) / kernel_size
+        kernel = torch.exp(-0.5 * distanceToCenter.pow(2) / variance)  # Normal distribution centered at the center of the kernel.
+        kernel = kernel / kernel.abs().sum()
 
-        # Normalize the kernel to have mean 0 and std specified
-        kernel = (kernel - kernel.mean()) / kernel.std() * std
+        # Normalize the kernel.
+        normalizationFactor = 2 / (num_input_channels + num_output_channels)
+        normalizationFactor = normalizationFactor / kernel_size
+        kernel = kernel * normalizationFactor
 
         # Create the final weight tensor by repeating the kernel across input and output channels
-        weight_np = kernel.repeat(conv_layer.out_channels, num_input_channels, 1)
-        weight_np = weight_np * 2 / (conv_layer.out_channels + num_input_channels)  # Normalize by the number of input channels
+        weight_np = kernel.repeat(num_output_channels, num_input_channels, 1)
 
         # Assign the initialized weights to the conv layer
         with torch.no_grad():
             weight.copy_(weight_np)
-
-        # Initialize biases to zero if they exist
-        if conv_layer.bias is not None:
-            nn.init.constant_(conv_layer.bias, 0)

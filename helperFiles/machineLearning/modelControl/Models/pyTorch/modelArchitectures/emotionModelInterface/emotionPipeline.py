@@ -22,7 +22,6 @@ class emotionPipeline(emotionPipelineHelpers):
         self.modelHelpers.l2Normalization(self.model, maxNorm=20, checkOnly=True)
         self.modelHelpers.switchActivationLayers(self.model, switchState=True)
         self.compileOptimizer(submodel)  # Initialize the optimizer (for back propagation)
-        self.resetModel()
 
     def trainModel(self, dataLoader, submodel, numEpochs=500, constrainedTraining=False):
         """

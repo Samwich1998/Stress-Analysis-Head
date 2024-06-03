@@ -119,7 +119,7 @@ class signalEncoderModules(convolutionalHelpers):
     def signalPostProcessing(self, inChannel=2, bottleneckChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Keep kernel_sizes as 1 for faster (?) convergence.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 

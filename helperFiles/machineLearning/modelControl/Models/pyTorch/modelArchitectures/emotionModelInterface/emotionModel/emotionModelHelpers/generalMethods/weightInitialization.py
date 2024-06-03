@@ -213,7 +213,7 @@ class weightInitialization:
         center = kernel_size // 2
 
         # Fill the kernel with a normal distribution centered at the center
-        distanceToCenter = (torch.arange(kernel_size, dtype=weight.dtype, device=weight.device) - center) / kernel_size
+        distanceToCenter = (torch.arange(kernel_size, dtype=weight.dtype, device=weight.device) - center) / kernel_size / 2
         kernel = torch.exp(-0.5 * distanceToCenter.pow(2) / variance)  # Normal distribution centered at the center of the kernel.
         kernel = kernel / kernel.abs().sum()
 

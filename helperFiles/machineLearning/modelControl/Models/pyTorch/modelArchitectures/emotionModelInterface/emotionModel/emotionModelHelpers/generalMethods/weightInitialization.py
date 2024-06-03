@@ -22,7 +22,7 @@ class weightInitialization:
             elif layerType == 'conv1D_encoding':
                 self.custom_kernel_initialization(modelParam)
             elif layerType == 'pointwise':
-                self.pointwise_uniform_weights(modelParam)
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         elif activationMethod == 'identity':
             print("Probably not a good idea to use identity activation for initialization.")
             self.identityFC(modelParam)

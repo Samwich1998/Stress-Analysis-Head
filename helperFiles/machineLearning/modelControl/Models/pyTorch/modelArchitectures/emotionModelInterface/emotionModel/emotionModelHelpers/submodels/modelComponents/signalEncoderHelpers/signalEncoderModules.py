@@ -134,7 +134,7 @@ class signalEncoderModules(convolutionalHelpers):
     def heuristicEncoding(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: heuristic operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
     # ----------------------- Denoiser Architectures ----------------------- #

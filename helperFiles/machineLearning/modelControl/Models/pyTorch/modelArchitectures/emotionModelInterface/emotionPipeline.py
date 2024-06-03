@@ -151,9 +151,9 @@ class emotionPipeline(emotionPipelineHelpers):
                         if 0.1 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + encodedSignalMeanLoss
                         if signalReconstructedLoss < 0.1 < decodedPositionalEncodingLoss:
-                            finalLoss = finalLoss + decodedPositionalEncodingLoss
+                            finalLoss = finalLoss + 0.25*decodedPositionalEncodingLoss
                         # Account for the current training state when calculating the loss.
-                        finalLoss = noiseFactor * finalLoss + positionalEncodingTrainingLoss
+                        finalLoss = noiseFactor * finalLoss + 0.25*positionalEncodingTrainingLoss
 
                         # Update the user.
                         self.accelerator.print("Final-Recon-Mean-MinMax-PE-PEDec-Layer", finalLoss.item(), signalReconstructedLoss.item(), encodedSignalMeanLoss.item(), encodedSignalMinMaxLoss.item(), positionalEncodingTrainingLoss.item(), decodedPositionalEncodingLoss.item(), signalEncodingTrainingLayerLoss.item(), "\n")

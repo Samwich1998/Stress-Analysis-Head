@@ -3,9 +3,6 @@ import torch
 import math
 import os
 
-# Import files.
-import helperFiles
-
 
 class compileModelInfo:
 
@@ -14,8 +11,13 @@ class compileModelInfo:
         self.modelFolder = os.path.dirname(__file__) + "/_finalModels/"
         self.trainingDataFolder = self.getTrainingDataFolder(useTherapyData=False)
 
-        # Specify what each model is predicting
+        # Specify the hardcoded strings.
+        self.activityNames = np.array(["Baseline", "Music", "CPT", "Exercise", "VR", "Recovery"])
+        self.therapyNames = np.array(["HeatingPad", "BinauralBeats", "Images", "Voice"])
         self.predictionOrder = ["Positive Affect", "Negative Affect", "State Anxiety"]
+        self.streamingOrder = ["eog", "eeg", "eda", "temp"]
+
+        # Specify what each model is predicting
         self.predictionBounds = ((5, 25), (5, 25), (20, 80))
         self.predictionWeights = [0.1, 0.1, 0.8]
         self.optimalPredictions = (25, 5, 20)
@@ -30,7 +32,7 @@ class compileModelInfo:
         self.allInds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
         self.numSurveyQuestions = len(self.posAffectInds) + len(self.negAffectInds) + len(self.staiInds_Pos) + len(self.staiInds_Neg)
         # Specify the survey question statistics.
-        self.standardDeviationEmotions = np.array([
+        self.standardDeviationEmotions = torch.tensor([
             0.65865002, 0.62711051, 1.18120277, 0.4208254, 1.07318031,
             0.99532107, 1.02520504, 1.18671143, 1.12580164, 0.71014069,
             1.00852383, 0.91094593, 0.91744722, 0.86153846, 0.96780522,
@@ -62,9 +64,20 @@ class compileModelInfo:
         # Compile the standard error of measurements in the correct order.
         self.standardErrorMeasurements = [self.standardErrorMeasurementPA, self.standardErrorMeasurementNA, self.standardErrorMeasurementSTAI]
 
-        # Specify the possible activities.
-        self.activityNames = np.array(["Baseline", "Music", "CPT", "Exercise", "VR", "Recovery"])
-        self.therapyNames = np.array(["Binaural", "Heating", "Images", "Voice"])
+    def assertValidTherapyMethod(self, therapyMethod):
+        assert therapyMethod in self.therapyNames, f"Invalid therapy method: {therapyMethod}"
+
+    def getHeatingTherapyNames(self):
+        return self.therapyNames[0]
+
+    def getMusicTherapyNames(self):
+        return self.therapyNames[1]
+
+    def getImageTherapyNames(self):
+        return self.therapyNames[2]
+
+    def getVoiceTherapyNames(self):
+        return self.therapyNames[3]
 
     @staticmethod
     def getTrainingDataFolder(useTherapyData):
@@ -99,7 +112,7 @@ class compileModelInfo:
     def extractFinalLabels(self, surveyAnswersList, finalLabels=()):
         assert len(surveyAnswersList[0]) == self.numSurveyQuestions
         # Configure the input variables to numpy.
-        surveyAnswersList = np.asarray(surveyAnswersList)
+        surveyAnswersList = torch.as_tensor(surveyAnswersList)
         # Create holder for final labels
         if len(finalLabels) == 0:
             finalLabels = [[] for _ in range(len(self.predictionOrder))]

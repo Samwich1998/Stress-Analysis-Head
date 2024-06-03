@@ -219,7 +219,7 @@ class weightInitialization:
 
         # Create the final weight tensor by repeating the kernel across input and output channels
         weight_np = kernel.repeat(conv_layer.out_channels, num_input_channels, 1)
-        weight_np = weight_np / num_input_channels  # Normalize by the number of input channels
+        weight_np = weight_np * 2 / (conv_layer.out_channels + num_input_channels)  # Normalize by the number of input channels
 
         # Assign the initialized weights to the conv layer
         with torch.no_grad():

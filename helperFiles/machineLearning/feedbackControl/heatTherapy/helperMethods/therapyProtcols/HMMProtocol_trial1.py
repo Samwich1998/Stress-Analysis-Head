@@ -11,8 +11,6 @@ class HMMTherapyProtocol_trial1(generalTherapyProtocol):
         self.model.means_ = np.array(means).reshape(-1, 1)
         self.model.covars_ = np.array(variances).reshape(-1, 1)
 
-
-
     def updateTherapyState(self):
         pass
 

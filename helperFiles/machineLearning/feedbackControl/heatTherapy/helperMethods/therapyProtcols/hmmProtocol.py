@@ -5,9 +5,9 @@ import numpy as np
 from .generalTherapyProtocol import generalTherapyProtocol
 
 
-class HMMTherapyProtocol(generalTherapyProtocol):
-    def __init__(self, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters):
-        super().__init__(initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters)
+class hmmTherapyProtocol(generalTherapyProtocol):
+    def __init__(self, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod):
+        super().__init__(initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod)
         self.numStates = self.allNumParameterBins # number of states in the HMM
 
         # HMM intialization:

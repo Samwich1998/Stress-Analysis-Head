@@ -12,7 +12,7 @@ from ..dataInterface.dataInterface import dataInterface
 
 
 class generalTherapyProtocol(abc.ABC):
-    def __init__(self, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters):
+    def __init__(self, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod):
         # General parameters.
         self.unNormalizedParameterBinWidths = unNormalizedParameterBinWidths  # The parameter bounds for the therapy.
         self.simulateTherapy = simulationParameters['simulateTherapy']  # Whether to simulate the therapy.
@@ -55,14 +55,14 @@ class generalTherapyProtocol(abc.ABC):
         self.allPredictionBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.predictionBinWidths)  # Note this is an UNEVEN 2D list. [[PA], [NA], [SA]] bin list
 
         # Initialize the number of bins for the parameter and loss.
-        self.allNumParameterBins = [len(self.allParameterBins[parameterInd]) for parameterInd in range(self.numParameters)] # Parameter number of Bins in the list
-        self.allNumPredictionBins = [len(self.allPredictionBins[lossInd]) for lossInd in range(self.numPredictions)] #PA, NA, SA number of bins in the list
+        self.allNumParameterBins = [len(self.allParameterBins[parameterInd]) for parameterInd in range(self.numParameters)]  # Parameter number of Bins in the list
+        self.allNumPredictionBins = [len(self.allPredictionBins[lossInd]) for lossInd in range(self.numPredictions)]  #PA, NA, SA number of bins in the list
 
         # Define a helper class for experimental parameters.
         self.simulationProtocols = simulationProtocols(self.allParameterBins, self.allPredictionBins, self.predictionBinWidths, self.modelParameterBounds, self.numPredictions, self.numParameters, self.predictionWeights, self.optimalNormalizedState, simulationParameters)
         self.plottingProtocolsMain = plottingProtocolsMain(self.modelParameterBounds, self.allNumParameterBins, self.parameterBinWidths, self.predictionBounds, self.allNumPredictionBins, self.predictionBinWidths)
+        self.empatchProtocols = empatchProtocols(self.predictionOrder, self.predictionBounds, self.modelParameterBounds, therapyMethod=therapyMethod)
         self.dataInterface = dataInterface(self.predictionWeights, self.optimalNormalizedState)
-        self.empatchProtocols = empatchProtocols(self.predictionOrder, self.predictionBounds, self.modelParameterBounds)
         self.generalMethods = generalMethods()
 
         # Reset the therapy parameters.
@@ -88,7 +88,6 @@ class generalTherapyProtocol(abc.ABC):
         if self.simulateTherapy:
             self.simulationProtocols.initializeSimulatedMaps(self.predictionWeights, self.gausLossSTDs, self.applyGaussianFilter)
         else:
-            # initialSimulatedStates = self.simulationProtocols.generateSimulatedMap(self.simulationProtocols.numSimulationTrueSamples, simulatedMapType=self.simulationProtocols.simulatedMapType)
             # real data points
             temperature, pa, na, sa = self.empatchProtocols.getTherapyData()
             # sort the temperature, pa, na, sa into correct format passed to generate initialSimulatedData

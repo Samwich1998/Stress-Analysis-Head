@@ -10,13 +10,14 @@ class adjustInputParameters:
         # Set the parameters for the program.
         self.useModelPredictions = useModelPredictions or trainModel  # Use the Machine Learning Model for Predictions
         self.readDataFromExcel = readDataFromExcel  # Read Data from an Excel File
+        self.compileModelInfo = compileModelInfo()  # Initialize the Model Information
         self.plotStreamedData = plotStreamedData  # Plot the Streamed Data in Real-Time
         self.useTherapyData = useTherapyData  # Use the Therapy Data for the Machine Learning Model
         self.streamData = streamData  # Stream Data from the Arduino
 
     def getGeneralParameters(self):
         # Specify biomarker information.
-        streamingOrder = ["eog", "eeg", "eda", "temp"]  # A List Representing the Order of the Sensors being Streamed in: ["eog", "eeg", "eda", "temp"]
+        streamingOrder = self.compileModelInfo.streamingOrder  # A List Representing the Order of the Sensors being Streamed in: ["eog", "eeg", "eda", "temp"]
         extractFeaturesFrom = streamingOrder if self.useModelPredictions else []  # A list with all the biomarkers from streamingOrder for feature extraction
         allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
@@ -32,7 +33,7 @@ class adjustInputParameters:
 
     def getSavingInformation(self, date, trialName, userName):
         # Specify the path to the collected data.
-        collectedDataFolder = compileModelInfo.getTrainingDataFolder(self.useTherapyData)
+        collectedDataFolder = self.compileModelInfo.getTrainingDataFolder(self.useTherapyData)
         currentFilename = collectedDataFolder + f"{date} {trialName} Trial {userName}.xlsx"
 
         return collectedDataFolder, currentFilename

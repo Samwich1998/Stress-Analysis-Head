@@ -1,7 +1,7 @@
 # Import the necessary libraries.
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.aStarProtocol import aStarTherapyProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.basicProtocol import basicTherapyProtocol
-from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.HMMProtocol import HMMTherapyProtocol
+from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.hmmProtocol import hmmTherapyProtocol
 from helperFiles.machineLearning.feedbackControl.heatTherapy.helperMethods.therapyProtcols.nnProtocol import nnTherapyProtocol
 
 
@@ -34,6 +34,6 @@ class heatTherapyHelpers:
         elif self.therapyMethod == "nnTherapyProtocol":
             self.therapyProtocol = nnTherapyProtocol(self.initialParameterBounds, self.simulationParameters, modelName="2024-04-12 heatTherapyModel", onlineTraining=False)
         elif self.therapyMethod == "hmmTherapyProtocol":
-            self.therapyProtocol = HMMTherapyProtocol(self.initialParameterBounds, self.unNormalizedParameterBinWidths, self.simulationParameters)
+            self.therapyProtocol = hmmTherapyProtocol(self.initialParameterBounds, self.unNormalizedParameterBinWidths, self.simulationParameters, therapyMethod="HeatingPad")
         else:
             raise ValueError("Invalid therapy method provided.")

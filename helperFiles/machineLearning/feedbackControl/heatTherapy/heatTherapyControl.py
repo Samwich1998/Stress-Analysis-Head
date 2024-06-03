@@ -124,15 +124,15 @@ if __name__ == "__main__":
     userTherapyMethod = "hmmTherapyProtocol"  # The therapy algorithm to run. Options: "aStarTherapyProtocol", "basicTherapyProtocol", "nnTherapyProtocol", "hmmTherapyProtocol"
     testingUserName = "Squirtle"  # The username for the therapy.
     temperatureBounds = (35, 50)  # The temperature bounds for the therapy.
-    temperatureBinWidth = 2.5  # The temperature bounds for the therapy.
+    temperatureBinWidth = 5  # The temperature bounds for the therapy.
     plotTherapyResults = False  # Whether to plot the results.
 
     # Simulation parameters.
     currentSimulationParameters = {
         'heuristicMapType': 'uniformSampling',  # The method for generating the simulated map. Options: 'uniformSampling', 'linearSampling', 'parabolicSampling'
         'simulatedMapType': 'uniformSampling',  # The method for generating the simulated map. Options: 'uniformSampling', 'linearSampling', 'parabolicSampling'
-        'numSimulationHeuristicSamples': 100,  # The number of simulation samples to generate.
-        'numSimulationTrueSamples': 50,  # The number of simulation samples to generate.
+        'numSimulationHeuristicSamples': 50,  # The number of simulation samples to generate.
+        'numSimulationTrueSamples': 30,  # The number of simulation samples to generate.
         'simulateTherapy': False,  # Whether to simulate the therapy.
     }
 

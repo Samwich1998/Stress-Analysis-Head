@@ -274,6 +274,22 @@ class independentModelCNN(torch.nn.Module):
 
         return signalData
 
+class modelCNN(torch.nn.Module):
+    def __init__(self, module, useCheckpoint=False):
+        super().__init__()
+        # General helpers.
+        self.useCheckpoint = useCheckpoint
+        self.module = module
+
+    def forward(self, signalData):
+        # Apply a CNN network.
+        if self.useCheckpoint:
+            signalData = checkpoint(self.module, signalData, use_reentrant=False)
+        else:
+            signalData = self.module(signalData)
+
+        return signalData
+
 
 # -------------------------------------------------------------------------- #
 

@@ -57,9 +57,6 @@ class channelEncoding(signalEncoderModules):
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numCompressedSignals)
         self.projectingExpansionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numExpandedSignals)
 
-        # Smoothing kernel for the channel encoding.
-        self.gausKernel_forChanEnc = self.smoothingKernel(kernelSize=3)
-
     # ---------------------------------------------------------------------- #
     # ----------------------- Signal Encoding Methods ---------------------- #
 
@@ -71,20 +68,18 @@ class channelEncoding(signalEncoderModules):
 
     def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, projectingModel):
         # Learn the initial signal.
-        liftedData = liftingModel(inputData)
-        liftedData = self.applySmoothing(liftedData, self.gausKernel_forChanEnc)
+        processedData = liftingModel(inputData)
         # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
-        processedData = liftedData.clone()
+        liftedData = processedData.clone()
         for modelInd in range(self.numSigEncodingLayers):
             # Apply the neural operator and the skip connection.
             processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, 0, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
-            processedData = self.applySmoothing(processedData, self.gausKernel_forChanEnc) + liftedData
+            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False) + liftedData
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.

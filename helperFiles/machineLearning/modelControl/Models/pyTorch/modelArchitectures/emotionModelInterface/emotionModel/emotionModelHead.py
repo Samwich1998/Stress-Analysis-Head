@@ -100,7 +100,7 @@ class emotionModelHead(globalModel):
             numEncodedSignals=self.numEncodedSignals,
             signalMinMaxScale=self.signalMinMaxScale,
             debuggingResults=self.debuggingResults,
-            plotDataFlow=not self.useFinalParams,
+            useFinalParams=self.useFinalParams,
             sequenceBounds=self.sequenceBounds,
             maxNumSignals=self.maxNumSignals,
             timeWindows=self.timeWindows,
@@ -115,7 +115,7 @@ class emotionModelHead(globalModel):
             compressedLength=self.compressedLength,
             debuggingResults=self.debuggingResults,
             expansionFactor=self.expansionFactor,
-            plotDataFlow=not self.useFinalParams,
+            useFinalParams=self.useFinalParams,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
         )

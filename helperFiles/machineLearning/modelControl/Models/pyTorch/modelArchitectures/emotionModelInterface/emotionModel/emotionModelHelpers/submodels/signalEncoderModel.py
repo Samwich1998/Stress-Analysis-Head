@@ -12,12 +12,12 @@ from ....._globalPytorchModel import globalModel
 
 
 class signalEncoderModel(globalModel):
-    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, signalMinMaxScale, timeWindows, accelerator, plotDataFlow=False, debuggingResults=False):
+    def __init__(self, sequenceBounds, maxNumSignals, numEncodedSignals, numExpandedSignals, numSigEncodingLayers, numSigLiftedChannels, waveletType, signalMinMaxScale, timeWindows, accelerator, useFinalParams=False, debuggingResults=False):
         super(signalEncoderModel, self).__init__()
         # General model parameters.
         self.signalMinMaxScale = signalMinMaxScale  # The minimum and maximum signal values to consider for scaling. Type: tuple
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
-        self.plotDataFlow = plotDataFlow  # Whether to plot the encoding process. Type: bool
+        self.useFinalParams = useFinalParams  # Whether to use the final parameters for the model. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
         self.accelerator = accelerator  # Hugging face interface for model and data optimizations.
 
@@ -173,7 +173,7 @@ class signalEncoderModel(globalModel):
             if 0.01 < signalEncodingLayerLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + signalEncodingLayerLoss
 
-            if self.plotDataFlow and random.random() < 0.01:
+            if not self.useFinalParams and random.random() < 0.01:
                 self.plotDataFlowDetails(initialSignalData, positionEncodedData, encodedData, decodedData, reconstructedData, denoisedReconstructedData)
 
         return encodedData, denoisedReconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLoss

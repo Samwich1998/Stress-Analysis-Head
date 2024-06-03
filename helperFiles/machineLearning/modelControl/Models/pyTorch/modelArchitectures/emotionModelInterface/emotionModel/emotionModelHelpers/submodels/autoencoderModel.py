@@ -8,11 +8,11 @@ from ....._globalPytorchModel import globalModel
 
 
 class autoencoderModel(globalModel):
-    def __init__(self, compressedLength, timeWindows, compressionFactor, expansionFactor, accelerator, plotDataFlow=False, debuggingResults=False):
+    def __init__(self, compressedLength, timeWindows, compressionFactor, expansionFactor, accelerator, useFinalParams=False, debuggingResults=False):
         super(autoencoderModel, self).__init__()
         # General model parameters.
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
-        self.plotDataFlow = plotDataFlow  # Whether to plot the encoding process. Type: bool
+        self.useFinalParams = useFinalParams  # Whether to use the final parameters for the model. Type: bool
         self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding. Type: list
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.plotEncoding = True  # Whether to plot the encoding process. Type: bool

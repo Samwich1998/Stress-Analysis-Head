@@ -223,8 +223,8 @@ if __name__ == "__main__":
         if plotSteps: trainingProtocols.plotModelState(epoch, unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, trainingDate, fastPass=fastPass)
 
         # Save the model sometimes (only on the main device).
-        if saveFullModel and accelerator.is_local_main_process:
-            trainingProtocols.saveModelState(epoch, unifiedLayerData, allMetaModels, allModels, submodel, modelName, allDatasetNames, trainingDate)
+        # if saveFullModel and accelerator.is_local_main_process:
+        #     trainingProtocols.saveModelState(epoch, unifiedLayerData, allMetaModels, allModels, submodel, modelName, allDatasetNames, trainingDate)
 
         # Finalize the epoch parameters.
         accelerator.wait_for_everyone()  # Wait before continuing.

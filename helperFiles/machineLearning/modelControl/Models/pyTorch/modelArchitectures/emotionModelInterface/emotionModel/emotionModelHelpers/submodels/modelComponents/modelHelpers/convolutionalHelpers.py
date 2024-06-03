@@ -180,7 +180,7 @@ class convolutionalHelpers(abnormalConvolutions):
 
             else:
                 # If the convolutional type is not recognized.
-                raise ValueError("Convolution type must be in ['conv1D', 'conv1D_encoding', 'pointwise', 'depthwise', 'transConv1D']")
+                raise ValueError("Convolution type must be in ['conv1D', 'conv1D_gausInit', 'pointwise', 'depthwise', 'transConv1D']")
 
             # Initialize the weights of the convolutional layer.
             layer = self.weightInitialization.initialize_weights(layer, activationMethod=activationType, layerType=convType)

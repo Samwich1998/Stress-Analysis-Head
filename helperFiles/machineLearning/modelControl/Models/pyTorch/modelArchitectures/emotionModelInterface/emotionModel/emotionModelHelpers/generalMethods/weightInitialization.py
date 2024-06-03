@@ -7,19 +7,19 @@ import math
 class weightInitialization:
 
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
-        assert layerType in ['conv1D', 'conv1D_encoding', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
+        assert layerType in ['conv1D', 'conv1D_gausInit', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         if activationMethod == 'selu':
             if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         elif activationMethod.startswith('boundedExp'):
             if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
-            elif layerType == 'conv1D_encoding':
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+            elif layerType == 'conv1D_gausInit':
                 self.custom_kernel_initialization(modelParam)
             elif layerType == 'pointwise':
                 self.pointwise_uniform_weights(modelParam)
@@ -192,11 +192,14 @@ class weightInitialization:
     # -------------------------- Custom Kernels Weights -------------------------- #
 
     @staticmethod
-    def custom_kernel_initialization(conv_layer, std=1):
+    def custom_kernel_initialization(conv_layer):
         """
         Custom kernel initialization with a normal distribution that has a maximum
         around the center and normalized by the number of input channels.
         """
+        # Standard deviation for the kernel
+        std = 1/conv_layer.weight.size(-1)  # 1/kernel_size
+
         # Get the parameters of the conv layer
         weight = conv_layer.weight
         num_input_channels = weight.size(1)  # C_in

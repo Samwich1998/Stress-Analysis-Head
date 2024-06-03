@@ -9,35 +9,14 @@ class weightInitialization:
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
         assert layerType in ['conv1D', 'conv1D_gausInit', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
-        if activationMethod == 'selu':
-            if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-
-        elif activationMethod.startswith('boundedExp'):
-            if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'conv1D_gausInit':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'pointwise':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-
-        elif activationMethod == 'identity':
-            print("Probably not a good idea to use identity activation for initialization.")
-            self.identityFC(modelParam)
-
-        elif activationMethod.startswith('none'):
-            if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'conv1D_gausInit':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
-            elif layerType == 'pointwise':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+        if layerType == 'conv1D':
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+        elif layerType == 'fc':
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+        elif layerType == 'conv1D_gausInit':
+            self.custom_kernel_initialization(modelParam)
+        elif layerType == 'pointwise':
+            self.pointwise_uniform_weights(modelParam)
         else:
             modelParam.reset_parameters()
 

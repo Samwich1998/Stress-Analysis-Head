@@ -57,6 +57,9 @@ class channelEncoding(signalEncoderModules):
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numCompressedSignals)
         self.projectingExpansionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numExpandedSignals)
 
+        # Smoothing kernel for the channel encoding.
+        self.gausKernel_forChanEnc = self.smoothingKernel(kernelSize=3)
+
     # ---------------------------------------------------------------------- #
     # ----------------------- Signal Encoding Methods ---------------------- #
 
@@ -69,6 +72,7 @@ class channelEncoding(signalEncoderModules):
     def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, projectingModel):
         # Learn the initial signal.
         liftedData = liftingModel(inputData)
+        liftedData = self.applySmoothing(liftedData, self.gausKernel_forChanEnc)
         # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
@@ -79,7 +83,8 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False) + liftedData
+            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
+            processedData = self.applySmoothing(processedData, self.gausKernel_forChanEnc) + liftedData
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.

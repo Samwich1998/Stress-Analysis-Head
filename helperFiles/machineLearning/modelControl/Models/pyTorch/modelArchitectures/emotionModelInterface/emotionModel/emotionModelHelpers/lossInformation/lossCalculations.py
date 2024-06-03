@@ -16,13 +16,13 @@ from ......Helpers.lossFunctions import weightLoss
 
 class lossCalculations:
 
-    def __init__(self, accelerator, model, allEmotionClasses, activityLabelInd, useParamsHPC=False):
+    def __init__(self, accelerator, model, allEmotionClasses, activityLabelInd, useFinalParams=False):
         # General parameters
         self.allEmotionClasses = allEmotionClasses  # The number of classes (intensity levels) within each emotion to predict. Dim: numEmotions
         self.emotionLength = model.compressedLength  # The number of indices in every final emotion distribution.
         self.activityLabelInd = activityLabelInd
         self.numEmotions = model.numEmotions  # The number of emotions to predict.
-        self.useParamsHPC = useParamsHPC  # Whether to use the HPC parameters.
+        self.useFinalParams = useFinalParams  # Whether to use the HPC parameters.
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.model = model
 
@@ -80,7 +80,7 @@ class lossCalculations:
 
         # Calculate the positional encoding loss.
         positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
-        if not self.useParamsHPC and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
+        if not self.useFinalParams and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
 
         # Weight the final loss based on the number of signals.
         classWeights = self.generalMethods.minMaxScale_noInverse(targetClasses, scale=0.5, buffer=0) + 1.5

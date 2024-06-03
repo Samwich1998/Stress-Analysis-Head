@@ -15,13 +15,13 @@ class emotionPipelineHelpers:
 
     def __init__(self, accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals,
                  numSubjectIdentifiers, demographicLength, numSubjects, userInputParams, emotionNames,
-                 activityNames, featureNames, submodel, useParamsHPC, debuggingResults=False):
+                 activityNames, featureNames, submodel, useFinalParams, debuggingResults=False):
         # General parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers to consider. Dim: [numSubjectIdentifiers]
         self.demographicLength = demographicLength  # The amount of demographic information provided to the model (age, weight, etc.). Dim: [numDemographics]
         self.debuggingResults = debuggingResults  # Whether to print debugging results. Type: bool
         self.sequenceLength = sequenceLength  # The length of each incoming signal. Type: int
-        self.useParamsHPC = useParamsHPC  # Whether to use the HPC parameters.
+        self.useFinalParams = useFinalParams  # Whether to use the HPC parameters.
         self.accelerator = accelerator  # Hugging face interface to speed up the training process.
         self.modelName = modelName  # The unique name of the model to initialize.
         self.modelID = modelID  # A unique integer identifier for this model.
@@ -50,7 +50,7 @@ class emotionPipelineHelpers:
         # Initialize the emotion model.
         if modelName == "emotionModel":
             self.model = emotionModelHead(submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                                          emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults)
+                                          emotionNames, activityNames, featureNames, numSubjects, datasetName, useFinalParams, debuggingResults)
         # Assert that the model has been initialized.
         assert hasattr(self, 'model'), f"Unknown Model Type Requested: {modelName}"
 
@@ -58,10 +58,10 @@ class emotionPipelineHelpers:
         self.generalTimeWindow = self.model.timeWindows[-1]  # The default time window to use for training and testing.
 
         # Initialize helper classes.
-        self.organizeLossInfo = organizeTrainingLosses(accelerator, self.model, allEmotionClasses, self.activityLabelInd, self.generalTimeWindow, self.useParamsHPC)
+        self.organizeLossInfo = organizeTrainingLosses(accelerator, self.model, allEmotionClasses, self.activityLabelInd, self.generalTimeWindow, self.useFinalParams)
         self.modelVisualization = modelVisualizations(accelerator, self.generalTimeWindow, modelSubfolder="trainingFigures/")
         self.modelParameters = modelParameters(userInputParams=userInputParams, accelerator=accelerator)
-        self.optimizerMethods = optimizerMethods(userInputParams, useParamsHPC)
+        self.optimizerMethods = optimizerMethods(userInputParams, useFinalParams)
         self.weightInitialization = weightInitialization()
         self.modelMigration = modelMigration(accelerator)
         self.dataInterface = emotionDataInterface()

@@ -9,10 +9,10 @@ from .emotionPipelineHelpers import emotionPipelineHelpers
 class emotionPipeline(emotionPipelineHelpers):
 
     def __init__(self, accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength,
-                 numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults=False):
+                 numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useFinalParams, debuggingResults=False):
         # General parameters.
         super().__init__(accelerator, modelID, datasetName, modelName, allEmotionClasses, sequenceLength, maxNumSignals, numSubjectIdentifiers, demographicLength,
-                         numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useParamsHPC, debuggingResults)
+                         numSubjects, userInputParams, emotionNames, activityNames, featureNames, submodel, useFinalParams, debuggingResults)
         # General parameters.
         self.maxBatchSignals = maxNumSignals
         self.calculateFullLoss = False

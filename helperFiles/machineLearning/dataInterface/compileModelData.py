@@ -145,7 +145,7 @@ class compileModelData(compileModelDataHelpers):
     # -------------------- Machine Learning Preparation -------------------- #
 
     def compileModels(self, metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
-                      metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining, specificInfo=None, useParamsHPC=False, random_state=42):
+                      metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining, specificInfo=None, useFinalParams=False, random_state=42):
         # Initialize relevant holders.
         allModelPipelines = []
         lossDataHolders = []
@@ -273,7 +273,7 @@ class compileModelData(compileModelDataHelpers):
             # Initialize and train the model class.
             modelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=metaDatasetName, modelName=modelName, allEmotionClasses=numQuestionOptions.copy(),
                                             sequenceLength=sequenceLength, maxNumSignals=numSignals, numSubjectIdentifiers=numSubjectIdentifiers, demographicLength=demographicLength, numSubjects=numSubjects,
-                                            userInputParams=self.userInputParams, emotionNames=surveyQuestions, activityNames=activityNames, featureNames=currentFeatureNames, submodel=submodel, useParamsHPC=useParamsHPC, debuggingResults=True)
+                                            userInputParams=self.userInputParams, emotionNames=surveyQuestions, activityNames=activityNames, featureNames=currentFeatureNames, submodel=submodel, useFinalParams=useFinalParams, debuggingResults=True)
 
             # Hugging face integration.
             modelDataLoader = modelPipeline.acceleratorInterface(modelDataLoader)
@@ -302,7 +302,7 @@ class compileModelData(compileModelDataHelpers):
 
         return allModelPipelines, allDataLoaders, lossDataHolders
 
-    def onlyPreloadModelAttributes(self, modelName, datasetNames, loadSubmodel, loadSubmodelDate, loadSubmodelEpochs, allDummyModelPipelines=[]):
+    def onlyPreloadModelAttributes(self, modelName, datasetNames, loadSubmodel, loadSubmodelDate, loadSubmodelEpochs, allDummyModelPipelines=()):
         # Initialize relevant holders.
         userInputParams = {'deviceListed': "cpu", 'submodel': 'emotionPrediction', 'numExpandedSignals': 2, 'numSigEncodingLayers': 4, 'numSigLiftedChannels': 4,
                            'compressionFactor': 1.5, 'expansionFactor': 1.5, 'numInterpreterHeads': 4, 'numBasicEmotions': 8, 'sequenceLength': 240}
@@ -319,7 +319,7 @@ class compileModelData(compileModelDataHelpers):
                 # Initialize and train the model class.
                 dummyModelPipeline = emotionPipeline(accelerator=self.accelerator, modelID=metadataInd, datasetName=datasetName, modelName=modelName, allEmotionClasses=[],
                                                      sequenceLength=240, maxNumSignals=500, numSubjectIdentifiers=1, demographicLength=0, numSubjects=1, userInputParams=userInputParams,
-                                                     emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel, useParamsHPC=True, debuggingResults=True)
+                                                     emotionNames=[], activityNames=[], featureNames=[], submodel=loadSubmodel, useFinalParams=True, debuggingResults=True)
                 # Hugging face integration.
                 dummyModelPipeline.acceleratorInterface()
 

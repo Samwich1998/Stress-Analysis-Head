@@ -57,7 +57,7 @@ if __name__ == "__main__":
     testSplitRatio = 0.2  # The percentage of testing points.
 
     # Training flags.
-    useParamsHPC = True  # If you want to use HPC parameters (and on the HPC).
+    useFinalParams = True  # If you want to use HPC parameters (and on the HPC).
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     submodel = args.submodel
 
     # Self-check the hpc parameters.
-    if userInputParams['deviceListed'].startswith("HPC") and useParamsHPC:
+    if userInputParams['deviceListed'].startswith("HPC") and useFinalParams:
         accelerator.gradient_accumulation_steps = 16
         storeLoss = True  # Turn on loss storage for HPC.
         fastPass = False  # Turn off fast pass for HPC.
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     modelInfoClass = compileModelInfo()
 
     # Specify training parameters
-    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useParamsHPC)
+    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useFinalParams)
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
     submodelsSaving = modelParameters.getSubmodelsSaving(submodel)
     numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)
@@ -186,10 +186,10 @@ if __name__ == "__main__":
     # Compile the meta-learning modules.
     allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModels(metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
                                                                                             metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None,
-                                                                                            useParamsHPC=useParamsHPC, random_state=42)
+                                                                                            useFinalParams=useFinalParams, random_state=42)
     # Compile the final modules.
     allModels, allDataLoaders, allLossDataHolders = modelCompiler.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
-                                                                                [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, useParamsHPC=useParamsHPC, random_state=42)
+                                                                                [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, useFinalParams=useFinalParams, random_state=42)
     # Create the meta-loss models and data loaders.
     allMetaLossDataHolders.extend(allLossDataHolders)
 

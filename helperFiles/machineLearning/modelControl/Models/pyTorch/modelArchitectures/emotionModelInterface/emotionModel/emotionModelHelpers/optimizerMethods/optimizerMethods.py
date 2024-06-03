@@ -7,10 +7,10 @@ from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.
 
 class optimizerMethods:
 
-    def __init__(self, userInputParams, useParamsHPC):
+    def __init__(self, userInputParams, useFinalParams):
         # Set the user input parameters.
         self.userInputParams = userInputParams
-        self.useParamsHPC = useParamsHPC
+        self.useFinalParams = useFinalParams
 
     @staticmethod
     def getModelParams(submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):

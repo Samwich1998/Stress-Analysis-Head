@@ -149,10 +149,6 @@ class signalEncoderModel(globalModel):
         if calculateLoss and decodeSignals:
             # Prepare for loss calculations.
             removedStampEncoding = self.encodeSignals.positionalEncodingInterface.removePositionalEncoding(positionEncodedData)
-            # Calculate the immediately reconstructed data.
-            potentialEncodedData, _, _ = self.encodeSignals(signalData=signalData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=False, forward=True)
-            potentialDecodedData, _, _ = self.reverseEncoding(signalEncodingLayerLoss=None, numSignalPath=numSignalForwardPath, decodedData=potentialEncodedData, calculateLoss=False)
-            # Maintain the positional encoding on the decoded data.
             decodedPredictedIndexProbabilities = self.predictPositionClasses(decodedData)  # Predict the positional encoding index.
 
             # Calculate the loss by comparing encoder/decoder outputs.
@@ -162,8 +158,7 @@ class signalEncoderModel(globalModel):
             if self.debuggingResults: print("State Losses (EF-D):", encodingReconstructionStateLoss.detach().mean().item(), finalReconstructionStateLoss.detach().mean().item(), finalDenoisedReconstructionStateLoss.detach().mean().item())
             # Calculate the loss from taking other routes
             positionReconstructionLoss = (signalData - removedStampEncoding).pow(2).mean(dim=2).mean(dim=1)
-            encodingReconstructionLoss = (signalData - potentialDecodedData).pow(2).mean(dim=2).mean(dim=1)
-            if self.debuggingResults: print("Path Losses (P-E-S):", positionReconstructionLoss.detach().mean().item(), encodingReconstructionLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
+            if self.debuggingResults: print("Path Losses (P-S):", positionReconstructionLoss.detach().mean().item(), signalEncodingLayerLoss.detach().mean().item())
 
             # Always add the final reconstruction loss (not denoised).
             signalEncodingLoss = signalEncodingLoss + finalReconstructionStateLoss
@@ -172,9 +167,7 @@ class signalEncoderModel(globalModel):
             if 0.1 < encodingReconstructionStateLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + encodingReconstructionStateLoss
             # Add up all the path losses together.
-            if 0.001 < encodingReconstructionLoss.mean():
-                signalEncodingLoss = signalEncodingLoss + encodingReconstructionLoss
-            if 0.001 < positionReconstructionLoss.mean():
+            if 0.1 < positionReconstructionLoss.mean():
                 signalEncodingLoss = signalEncodingLoss + positionReconstructionLoss
             # Add up all the layer losses together.
             if 0.01 < signalEncodingLayerLoss.mean():

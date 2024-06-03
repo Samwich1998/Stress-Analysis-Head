@@ -121,11 +121,11 @@ class modelParameters:
     @staticmethod
     def getNumEpochs(submodel):
         if submodel == "signalEncoder":
-            return 1000, 5  # numEpoch, numConstrainedEpochs
+            return 1000, 10  # numEpoch, numConstrainedEpochs
         elif submodel == "autoencoder":
-            return 1000, 5  # numEpoch, numConstrainedEpochs
+            return 1000, 10  # numEpoch, numConstrainedEpochs
         elif submodel == "emotionPrediction":
-            return 1000, 5  # numEpoch, numConstrainedEpochs
+            return 1000, 10  # numEpoch, numConstrainedEpochs
         else:
             raise Exception()
 
@@ -184,13 +184,13 @@ class modelParameters:
         return saveFullModel, plotSteps
 
     @staticmethod
-    def getEpochInfo(submodel, useParamsHPC):
+    def getEpochInfo(submodel, useFinalParams):
         if submodel == "signalEncoder":
-            return 10, 10 if useParamsHPC else -1  # numEpoch_toPlot, numEpoch_toSaveFull
+            return 10, 10 if useFinalParams else -1  # numEpoch_toPlot, numEpoch_toSaveFull
         elif submodel == "autoencoder":
-            return 10, 10 if useParamsHPC else -1  # numEpoch_toPlot, numEpoch_toSaveFull
+            return 10, 10 if useFinalParams else -1  # numEpoch_toPlot, numEpoch_toSaveFull
         elif submodel == "emotionPrediction":
-            return 10, 10 if useParamsHPC else -1  # numEpoch_toPlot, numEpoch_toSaveFull
+            return 10, 10 if useFinalParams else -1  # numEpoch_toPlot, numEpoch_toSaveFull
         else:
             raise Exception()
 

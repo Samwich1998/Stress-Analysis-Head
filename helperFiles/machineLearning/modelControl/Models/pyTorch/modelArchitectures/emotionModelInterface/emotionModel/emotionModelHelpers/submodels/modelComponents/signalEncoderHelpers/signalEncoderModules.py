@@ -107,9 +107,6 @@ class signalEncoderModules(convolutionalHelpers):
 
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
-            # Convolution architecture: synthesize the information learned.
-            # self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=True),
-
             # Convolution architecture: lifting operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )

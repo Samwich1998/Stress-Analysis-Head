@@ -11,18 +11,18 @@ class weightInitialization:
 
         if activationMethod == 'selu':
             if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         elif activationMethod.startswith('boundedExp'):
             if layerType == 'conv1D':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
             elif layerType == 'fc':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
             elif layerType == 'conv1D_encoding':
                 self.custom_kernel_initialization(modelParam)
             elif layerType == 'pointwise':
-                self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+                self.pointwise_uniform_weights(modelParam)
         elif activationMethod == 'identity':
             print("Probably not a good idea to use identity activation for initialization.")
             self.identityFC(modelParam)
@@ -53,10 +53,10 @@ class weightInitialization:
     def pointwise_uniform_weights(m):
         # Calculate the bounds for the pointwise operation.
         fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
-        bound = math.sqrt(1/fan_in)
+        bound = 2/(fan_in + fan_out)
 
         # Set the weights for the pointwise operation.
-        nn.init.uniform_(m.weight, -bound, bound)
+        nn.init.constant_(m.weight, bound)
         if m.bias is not None:
             bound = 1 / math.sqrt(fan_in) if fan_in != 0 else 0
             nn.init.uniform_(m.bias, -bound, bound)

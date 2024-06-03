@@ -19,7 +19,7 @@ from ..._globalPytorchModel import globalModel
 
 class emotionModelHead(globalModel):
     def __init__(self, submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength,
-                 userInputParams, emotionNames, activityNames, featureNames, numSubjects, datasetName, useParamsHPC, debuggingResults=False):
+                 userInputParams, emotionNames, activityNames, featureNames, numSubjects, datasetName, useFinalParams, debuggingResults=False):
         super(emotionModelHead, self).__init__()
         # General model parameters.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers (subject index, etc.).
@@ -35,7 +35,7 @@ class emotionModelHead(globalModel):
         self.featureNames = featureNames  # The names of each feature/signal in the model. Dim: numSignals
         self.emotionNames = emotionNames  # The names of each emotion we are predicting. Dim: numEmotions
         self.device = accelerator.device  # The device the model is running on.
-        self.useParamsHPC = useParamsHPC  # Whether to use the HPC parameters.
+        self.useFinalParams = useFinalParams  # Whether to use the HPC parameters.
         self.numSubjects = numSubjects  # The maximum number of subjects the model is training on.
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.datasetName = datasetName  # The name of the dataset the model is training on.
@@ -100,8 +100,8 @@ class emotionModelHead(globalModel):
             numEncodedSignals=self.numEncodedSignals,
             signalMinMaxScale=self.signalMinMaxScale,
             debuggingResults=self.debuggingResults,
+            plotDataFlow=not self.useFinalParams,
             sequenceBounds=self.sequenceBounds,
-            plotDataFlow=not self.useParamsHPC,
             maxNumSignals=self.maxNumSignals,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
@@ -115,7 +115,7 @@ class emotionModelHead(globalModel):
             compressedLength=self.compressedLength,
             debuggingResults=self.debuggingResults,
             expansionFactor=self.expansionFactor,
-            plotDataFlow=not self.useParamsHPC,
+            plotDataFlow=not self.useFinalParams,
             timeWindows=self.timeWindows,
             accelerator=self.accelerator,
         )

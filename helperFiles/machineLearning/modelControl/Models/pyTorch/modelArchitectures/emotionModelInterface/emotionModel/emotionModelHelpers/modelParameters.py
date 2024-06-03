@@ -100,7 +100,7 @@ class modelParameters:
         # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals.
         # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
         # Set the minimum batch size.
-        minimumBatchSize = 16 if self.gpuFlag else 4
+        minimumBatchSize = 16 if self.gpuFlag else 32
 
         if submodel == "signalEncoder":
             if self.userInputParams['numSigEncodingLayers'] <= 2 and self.userInputParams['numSigLiftedChannels'] <= 48: minimumBatchSize = 16

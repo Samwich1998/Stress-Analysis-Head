@@ -112,7 +112,7 @@ class convolutionalHelpers(abnormalConvolutions):
         if not isinstance(numChannels, list):
             assert numLayers is not None
         else:
-            assert numChannels[0] == numChannels[-1], f"For restNets we need the same first and last channel number: {numChannels}"
+            assert numChannels[0] == numChannels[-1] or numChannels[0] == 1, f"For restNets we need the same first and last channel number: {numChannels}"
 
         layers = []
         for i in range(numResNets):

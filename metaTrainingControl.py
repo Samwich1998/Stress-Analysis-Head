@@ -117,6 +117,7 @@ if __name__ == "__main__":
         fastPass = False  # Turn off fast pass for HPC.
 
         fastPass = True  # Turn off fast pass for HPC.
+        storeLoss = False
 
         if args.submodel == "signalEncoder":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:

@@ -117,6 +117,7 @@ if __name__ == "__main__":
         fastPass = False  # Turn off fast pass for HPC.
 
         fastPass = True  # Turn off fast pass for HPC.
+        storeLoss = False  # Turn off fast pass for HPC.
 
         if args.submodel == "signalEncoder":
             if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
@@ -141,7 +142,7 @@ if __name__ == "__main__":
     modelInfoClass = compileModelInfo()
 
     # Specify training parameters
-    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel)
+    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useParamsHPC)
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
     submodelsSaving = modelParameters.getSubmodelsSaving(submodel)
     numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)

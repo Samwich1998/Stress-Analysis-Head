@@ -74,8 +74,8 @@ if __name__ == "__main__":
     # Add arguments for the signal encoder prediction
     parser.add_argument('--signalEncoderWaveletType', type=str, default='bior2.4', help='The wavelet type for the wavelet transform: bior3.7, db3, dmey, etc')
     parser.add_argument('--numSigLiftedChannels', type=int, default=32, help='The number of channels to lift to during signal encoding. Range: (16, 64, 16)')
-    parser.add_argument('--numSigEncodingLayers', type=int, default=4, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
-    parser.add_argument('--numExpandedSignals', type=int, default=4, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
+    parser.add_argument('--numSigEncodingLayers', type=int, default=2, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
+    parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')
     parser.add_argument('--expansionFactor', type=float, default=1.5, help='The expansion factor of the autoencoder')

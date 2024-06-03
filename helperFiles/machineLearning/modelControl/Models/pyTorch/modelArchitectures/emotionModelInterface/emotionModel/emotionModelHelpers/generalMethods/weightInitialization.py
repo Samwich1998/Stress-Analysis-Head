@@ -16,7 +16,7 @@ class weightInitialization:
         elif layerType == 'conv1D_gausInit':
             self.custom_kernel_initialization(modelParam)
         elif layerType == 'pointwise':
-            self.pointwise_uniform_weights(modelParam)
+            self.custom_kernel_initialization(modelParam)
         else:
             modelParam.reset_parameters()
 
@@ -78,6 +78,10 @@ class weightInitialization:
         # Taken from pytorch default documentation: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L44-L48
         # Pytorch default for linear layers.
         nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
+
+        if nonlinearity == 'conv1d':
+            print(m.weight.mean(dim=-1), m.weight.size())
+
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
             bound = 1 / math.sqrt(fan_in) if fan_in != 0 else 0
@@ -208,13 +212,14 @@ class weightInitialization:
         """
         # Get the parameters of the conv layer
         num_output_channels, num_input_channels, kernel_size = conv_layer.weight.size()
-        variance = 1 / (3 * kernel_size)
+        variance = 2 / (num_input_channels + num_output_channels)
         weight = conv_layer.weight
         center = kernel_size // 2
 
         # Fill the kernel with a normal distribution centered at the center
         distanceToCenter = (torch.arange(kernel_size, dtype=weight.dtype, device=weight.device) - center) / kernel_size / 2
         kernel = torch.exp(-0.5 * distanceToCenter.pow(2) / variance)  # Normal distribution centered at the center of the kernel.
+        kernel = kernel + torch.randn(kernel_size)*math.sqrt(variance)
         kernel = kernel / kernel.abs().sum()
 
         # Normalize the kernel.

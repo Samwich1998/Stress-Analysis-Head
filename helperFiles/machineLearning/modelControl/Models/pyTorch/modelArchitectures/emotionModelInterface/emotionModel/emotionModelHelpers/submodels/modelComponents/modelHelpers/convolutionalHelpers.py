@@ -169,21 +169,21 @@ class convolutionalHelpers(abnormalConvolutions):
         for i in range(len(numChannels) - 1):
 
             # If adding a standard convolutional layer.
-            if convType in ['conv1D', 'pointwise', 'depthwise']:
+            if convType.split("_")[0] in ['conv1D', 'pointwise', 'depthwise']:
                 layer = nn.Conv1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
                                   padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='reflect', bias=addBias)
 
             # If adding a transposed convolutional layer.
-            elif convType == 'transConv1D':
+            elif convType.split("_")[0] == 'transConv1D':
                 layer = nn.ConvTranspose1d(in_channels=numChannels[i], out_channels=numChannels[i + 1], kernel_size=kernel_sizes[i], stride=strides[i],
                                            padding=paddings[i], dilation=dilations[i], groups=groups[i], padding_mode='zeros', bias=addBias, output_padding=0)
 
             else:
                 # If the convolutional type is not recognized.
-                raise ValueError("Convolution type must be in ['conv1D', 'pointwise', 'depthwise', 'transConv1D']")
+                raise ValueError("Convolution type must be in ['conv1D', 'conv1D_encoding', 'pointwise', 'depthwise', 'transConv1D']")
 
             # Initialize the weights of the convolutional layer.
-            layer = self.weightInitialization.initialize_weights(layer, activationMethod=activationType, layerType='conv')
+            layer = self.weightInitialization.initialize_weights(layer, activationMethod=activationType, layerType=convType)
             layers.append(layer)
 
             # Get the activation method.

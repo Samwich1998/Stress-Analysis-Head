@@ -6,19 +6,23 @@ import math
 
 class weightInitialization:
 
-    def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv'):
-        assert layerType in ['conv', 'fc'], "I have not considered this layer's initialization strategy yet."
+    def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
+        assert layerType in ['conv1D', 'conv1D_encoding', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         if activationMethod == 'selu':
-            if layerType == 'conv':
+            if layerType == 'conv1D':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
         elif activationMethod.startswith('boundedExp'):
-            if layerType == 'conv':
+            if layerType == 'conv1D':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
             elif layerType == 'fc':
                 self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='leaky_relu')
+            elif layerType == 'conv1D_encoding':
+                self.custom_kernel_initialization(modelParam)
+            elif layerType == 'pointwise':
+                self.pointwise_uniform_weights(modelParam)
         elif activationMethod == 'identity':
             print("Probably not a good idea to use identity activation for initialization.")
             self.identityFC(modelParam)
@@ -44,6 +48,18 @@ class weightInitialization:
                 param.data = signalEncoderModules.applySmoothing(param.data, smoothingKernel)
 
     # -------------------------- Layer Weights -------------------------- #
+
+    @staticmethod
+    def pointwise_uniform_weights(m):
+        # Calculate the bounds for the pointwise operation.
+        fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
+        bound = math.sqrt(1/fan_in)
+
+        # Set the weights for the pointwise operation.
+        nn.init.uniform_(m.weight, -bound, bound)
+        if m.bias is not None:
+            bound = 1 / math.sqrt(fan_in) if fan_in != 0 else 0
+            nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
     def identityFC(layer):
@@ -172,3 +188,40 @@ class weightInitialization:
         std = math.sqrt(2 / fan_in)
         nn.init.normal_(parameter, mean=0.0, std=std)
         return parameter
+
+    # -------------------------- Custom Kernels Weights -------------------------- #
+
+    @staticmethod
+    def custom_kernel_initialization(conv_layer, std=1):
+        """
+        Custom kernel initialization with a normal distribution that has a maximum
+        around the center and normalized by the number of input channels.
+        """
+        # Get the parameters of the conv layer
+        weight = conv_layer.weight
+        num_input_channels = weight.size(1)  # C_in
+        kernel_size = weight.size(2)  # For Conv1D
+
+        # Create a 1D kernel with a peak at the center
+        center = kernel_size // 2
+        kernel = torch.zeros(kernel_size, dtype=weight.dtype, device=weight.device)
+
+        # Fill the kernel with a normal distribution centered at the center
+        for i in range(kernel_size):
+            distance_to_center = torch.abs(torch.tensor(i, dtype=weight.dtype) - torch.tensor(center, dtype=weight.dtype))
+            kernel[i] = torch.exp(-distance_to_center)
+
+        # Normalize the kernel to have mean 0 and std specified
+        kernel = (kernel - kernel.mean()) / kernel.std() * std
+
+        # Create the final weight tensor by repeating the kernel across input and output channels
+        weight_np = kernel.repeat(conv_layer.out_channels, num_input_channels, 1)
+        weight_np = weight_np / num_input_channels  # Normalize by the number of input channels
+
+        # Assign the initialized weights to the conv layer
+        with torch.no_grad():
+            weight.copy_(weight_np)
+
+        # Initialize biases to zero if they exist
+        if conv_layer.bias is not None:
+            nn.init.constant_(conv_layer.bias, 0)

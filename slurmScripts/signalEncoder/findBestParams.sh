@@ -15,8 +15,8 @@ waveletTypes=( \
     'sym2' 'sym3' 'sym4' 'sym5' 'sym6' 'sym7' 'sym8' 'sym9' 'sym10' \
     'sym11' 'sym12' 'sym13' 'sym14' 'sym15' 'sym16' 'sym17' 'sym18' 'sym19' 'sym20' \
 )
-numSigLiftedChannels=32
-numSigEncodingLayers=2
+numSigLiftedChannels=48
+numSigEncodingLayers=3
 numExpandedSignals=2
 
 for waveletType in "${waveletTypes[@]}"

@@ -1,6 +1,5 @@
 # General
 import random
-
 import torch
 import math
 
@@ -14,9 +13,6 @@ from ..modelParameters import modelParameters
 from ......Helpers.lossFunctions import pytorchLossMethods
 from ......Helpers.lossFunctions import weightLoss
 
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Pytorch Pipeline ---------------------------- #
 
 class lossCalculations:
 
@@ -74,6 +70,24 @@ class lossCalculations:
         finalLoss = method(signalData).mean()
         return finalLoss
 
+    def calculatePositionalEncodingLoss(self, predictedIndexProbabilities):
+        # Extract the positional encoding information.
+        numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
+
+        # Reshape the data for the positional encoding loss.
+        targetClasses = torch.arange(numSignals, device=self.accelerator.device).long().repeat(numExperiments, 1).view(-1)
+        predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
+
+        # Calculate the positional encoding loss.
+        positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
+        if not self.useParamsHPC and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
+
+        # Weight the final loss based on the number of signals.
+        classWeights = self.generalMethods.minMaxScale_noInverse(targetClasses, scale=0.5, buffer=0) + 1.5
+        positionalEncodingLoss = (positionalEncodingLoss * classWeights).sum() / classWeights.sum()
+
+        return positionalEncodingLoss
+
     def calculateSignalEncodingLoss(self, allSignalData, allEncodedData, allReconstructedData, allPredictedIndexProbabilities, allDecodedPredictedIndexProbabilities, allSignalEncodingLayerLoss, allLabelsMask=None, reconstructionIndex=None):
         # Find the boolean flags for the data involved in the loss calculation.
         reconstructionDataMask = self.getReconstructionDataMask(allLabelsMask, reconstructionIndex)
@@ -100,13 +114,8 @@ class lossCalculations:
         if signalEncodingLayerLoss is not None: signalEncodingLayerLoss = signalEncodingLayerLoss.mean()
 
         # Positional encoding loss.
-        numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
-        predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
-        decodedPredictedIndexProbabilities = decodedPredictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
-        targetClasses = torch.arange(numSignals, device=signalData.device).long().repeat(numExperiments, 1).view(-1)
-        positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
-        decodedPositionalEncodingLoss = self.positionalEncoderLoss(decodedPredictedIndexProbabilities, targetClasses).mean()
-        if not self.useParamsHPC and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
+        decodedPositionalEncodingLoss = self.calculatePositionalEncodingLoss(decodedPredictedIndexProbabilities)
+        positionalEncodingLoss = self.calculatePositionalEncodingLoss(predictedIndexProbabilities)
 
         # Assert that nothing is wrong with the loss calculations.
         self.modelHelpers.assertVariableIntegrity(encodedSignalMeanLoss, variableName="encoded signal mean loss", assertGradient=False)

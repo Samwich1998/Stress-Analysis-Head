@@ -1,11 +1,5 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
-# Abstract class
 import abc
-# General
 import numpy as np
-# Plotting
 import matplotlib.pyplot as plt
 
 # Import Files
@@ -13,9 +7,6 @@ from .helperMethods.plottingMethods import plottingMethods  # Import files with 
 from .helperMethods.filteringProtocols import filteringMethods  # Import files with filtering methods
 from .helperMethods.universalProtocols import universalMethods  # Import files with general analysis methods
 
-
-# -------------------------------------------------------------------------- #
-# --------------------------- Global Model Class --------------------------- #
 
 class globalProtocol(abc.ABC):
 
@@ -98,12 +89,12 @@ class globalProtocol(abc.ABC):
         raise NotImplementedError("Must override in child")
 
     @abc.abstractmethod
-    def analyzeData(self):
+    def analyzeData(self, dataFinger):
         """ Create contract for child class method """
         raise NotImplementedError("Must override in child")
 
     @abc.abstractmethod
-    def filterData(self):
+    def filterData(self, timePoints, data):
         """ Create contract for child class method """
         raise NotImplementedError("Must override in child")
 

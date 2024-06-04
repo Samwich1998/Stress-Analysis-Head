@@ -6,4 +6,3 @@
 
 slurmScripts/signalEncoder/submitSignalEncoder_CPU.sh text eol=crlf
 slurmScripts/signalEncoder/submitSignalEncoder_GPU.sh text eol=crlf
-* text=auto

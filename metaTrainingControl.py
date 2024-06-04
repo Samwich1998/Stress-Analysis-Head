@@ -87,7 +87,7 @@ if __name__ == "__main__":
     modelInfoClass = compileModelInfo()
 
     # Specify training parameters
-    datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces = modelInfoClass.compileModelNames()  # Compile the model names.
+    datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces = modelParameters.compileModelNames()  # Compile the model names.
     numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useFinalParams)  # The number of epochs to plot and save the model.
     numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)  # The number of epochs to train the model.
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     # -------------------------- Model Compilation ------------------------- #
 
     # Compile the final modules.
-    allModels, allDataLoaders, allLossDataHolders, allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModelsFull(metaProtocolInterfaces, modelName, submodel, testSplitRatio, datasetNames, useFinalParams)
+    allModels, allDataLoaders, allLossDataHolders, allMetaModels, allMetaDataLoaders, allMetaLossDataHolders, _ = modelCompiler.compileModelsFull(metaProtocolInterfaces, modelName, submodel, testSplitRatio, datasetNames, useFinalParams)
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)  # Unify all the fixed weights in the models
 
     # -------------------------- Meta-model Training ------------------------- #

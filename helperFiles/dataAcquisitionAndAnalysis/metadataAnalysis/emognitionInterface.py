@@ -1,23 +1,15 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General Modules
 import os
 import json
 import numpy as np
 from datetime import datetime
-# Module to Sort Files in Order
 from natsort import natsorted
-# Modules to plot
 import matplotlib.pyplot as plt
 
 # Import excel data interface
 from .globalMetaAnalysis import globalMetaAnalysis
 
-# -------------------------------------------------------------------------- #
-# ------------------------- Extract Data from Excel ------------------------ #
-    
+
 class emognitionInterface(globalMetaAnalysis):
     
     def __init__(self):

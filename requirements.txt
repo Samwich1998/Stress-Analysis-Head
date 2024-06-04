@@ -8,7 +8,6 @@ hmmlearn
 ipython
 joblib
 keras
-lightgbm
 matplotlib
 mne
 natsort

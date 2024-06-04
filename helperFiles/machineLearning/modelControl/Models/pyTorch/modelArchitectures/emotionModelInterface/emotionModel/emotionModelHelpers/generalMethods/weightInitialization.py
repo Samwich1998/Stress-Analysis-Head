@@ -34,7 +34,7 @@ class weightInitialization:
     @staticmethod
     def smoothWeights(model, kernelSize=3):
         from ..submodels.modelComponents.signalEncoderHelpers.signalEncoderModules import signalEncoderModules
-        smoothingKernel = signalEncoderModules.smoothingKernel(kernelSize=kernelSize)
+        smoothingKernel = signalEncoderModules.getSmoothingKernel(kernelSize=kernelSize)
 
         for param in model.parameters():
             if param.requires_grad:

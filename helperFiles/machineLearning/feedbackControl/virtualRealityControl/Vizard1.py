@@ -1,4 +1,4 @@
-﻿import viz
+import viz
 import vizconnect
 import vizshape
 

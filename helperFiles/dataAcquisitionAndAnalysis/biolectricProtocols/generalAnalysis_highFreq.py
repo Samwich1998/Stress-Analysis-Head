@@ -1,19 +1,12 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # Basic Modules
 import scipy
 import numpy as np
 # Feature Extraction Modules
-import eeglib
 import antropy
 
 # Import Files
 from .globalProtocol import globalProtocol
 
-# ---------------------------------------------------------------------------#
-# ---------------------------------------------------------------------------#
 
 class generalProtocol_highFreq(globalProtocol):
     
@@ -177,7 +170,7 @@ class generalProtocol_highFreq(globalProtocol):
         katz_fd = antropy.katz_fd(standardizedData) # Same if standardized or not
         higuchi_fd = antropy.higuchi_fd(x=data.astype('float64'), kmax = 10)    # Numba. Same if standardized or not
         DFA = antropy.detrended_fluctuation(data)           # Numba. Same if standardized or not
-        LZC = eeglib.features.LZC(data)
+        LZC = antropy.lziv_complexity(data)
         
         # -------------------- Feature Extraction: Other ------------------- #
         

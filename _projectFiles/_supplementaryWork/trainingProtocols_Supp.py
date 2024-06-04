@@ -1,25 +1,17 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General Modules
 import os
 import sys
-import numpy as np
-# Module to Sort Files in Order
+
 import natsort
-# Data interface modules
+import numpy as np
 import openpyxl as xl
 
-# Import Files for Machine Learning
-from ...helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
 from ...helperFiles.dataAcquisitionAndAnalysis.excelProcessing.extractDataProtocols import extractData
 from ...helperFiles.dataAcquisitionAndAnalysis.excelProcessing.saveDataProtocols import saveExcelData
-from from ...helperFiles.machineLearning.featureAnalysis.featurePlotting import featurePlotting      # Functions for feature analysis
+from ...helperFiles.machineLearning.featureAnalysis.featurePlotting import featurePlotting  # Functions for feature analysis
+from ...helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
 
-# -------------------------------------------------------------------------- #
-# ---------------------- Extract Test Data from Excel ---------------------- #
-    
+
 class trainingProtocols(extractData):
     
     def __init__(self, biomarkerFeatureNames, biomarkerOrder, numberOfChannels, trainingDataExcelFolder, readData):

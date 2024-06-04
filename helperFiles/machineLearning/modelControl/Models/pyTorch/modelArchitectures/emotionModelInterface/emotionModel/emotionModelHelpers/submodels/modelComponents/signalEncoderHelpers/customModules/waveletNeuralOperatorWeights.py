@@ -12,7 +12,7 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
         super(waveletNeuralOperatorWeights, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, smoothingKernelSize, activationMethod,
                                                            encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useConvolutionFlag, independentChannels, skipConnectionProtocol)
         # Initialize wavelet neural operator parameters.
-        if self.smoothingKernelSize: self.smoothingKernel = self.smoothingKernel(kernelSize=self.smoothingKernelSize)  # Smoothing kernel for the Fourier neural operator.
+        if self.smoothingKernelSize: self.smoothingKernel = self.getSmoothingKernel(kernelSize=self.smoothingKernelSize)  # Smoothing kernel for the Fourier neural operator.
         if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
         self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.

@@ -17,7 +17,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # Positional encoding parameters.
         self.numEncodingStamps = 8  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings). Max: 256 signals -> 2**8.
         self.maxNumEncodedSignals = 2 ** self.numEncodingStamps  # The maximum number of signals that can be encoded.
-        self.smoothingKernel_forPosEnc = self.smoothingKernel(kernelSize=9)
+        self.smoothingKernel_forPosEnc = self.getSmoothingKernel(kernelSize=11)
 
         # Neural operator parameters.
         self.activationMethod = self.getActivationMethod_posEncoder()
@@ -26,12 +26,12 @@ class channelPositionalEncoding(signalEncoderModules):
         self.mode = 'zero'             # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.
-        self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
-                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='zero', useConvolutionFlag=False, independentChannels=True, skipConnectionProtocol='none')
-        self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
-                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='zero', useConvolutionFlag=False, independentChannels=True, skipConnectionProtocol='none')
-        self.minLowFrequencyShape = self.learnNeuralOperatorLayers.minLowFrequencyShape  # For me this was 49
-        self.lowFrequencyShape = self.learnNeuralOperatorLayers.lowFrequencyShape  # For me this was 124
+        self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=11,
+                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='none', useConvolutionFlag=False, independentChannels=True, skipConnectionProtocol='none')
+        self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=11,
+                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='none', useConvolutionFlag=False, independentChannels=True, skipConnectionProtocol='none')
+        self.minLowFrequencyShape = self.learnNeuralOperatorLayers.minLowFrequencyShape  # For me, this was 49
+        self.lowFrequencyShape = self.learnNeuralOperatorLayers.lowFrequencyShape  # For me, this was 124
 
         # A list of parameters to encode each signal.
         self.encodingStamp = nn.ParameterList()  # A list of learnable parameters for learnable signal positions.
@@ -40,10 +40,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # For each encoding bit.
         for stampInd in range(self.numEncodingStamps):
             # Assign a learnable parameter to the signal.
-            self.encodingStamp.append(self.positionalEncodingStamp(self.lowFrequencyShape, paramBound=signalMinMaxScale/10))
-            self.decodingStamp.append(-self.positionalEncodingStamp(self.lowFrequencyShape, paramBound=signalMinMaxScale/10))
-        self.encodingStampAttention = self.positionalEncodingStampAttention(self.lowFrequencyShape)
-        self.decodingStampAttention = self.positionalEncodingStampAttention(self.lowFrequencyShape)
+            self.encodingStamp.append(self.positionalEncodingStamp(self.lowFrequencyShape, stampInd=stampInd, signalMinMaxScale=signalMinMaxScale))
+            self.decodingStamp.append(-self.positionalEncodingStamp(self.lowFrequencyShape, stampInd=stampInd, signalMinMaxScale=signalMinMaxScale))
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt_indexPredictor = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)
@@ -53,14 +51,14 @@ class channelPositionalEncoding(signalEncoderModules):
     # -------------------- Learned Positional Encoding --------------------- #
 
     def addPositionalEncoding(self, inputData):
-        return self.positionalEncoding(inputData, self.encodingStamp, self.encodingStampAttention, self.learnNeuralOperatorLayers)
+        return self.positionalEncoding(inputData, self.encodingStamp, self.learnNeuralOperatorLayers)
 
     def removePositionalEncoding(self, inputData):
-        return self.positionalEncoding(inputData, self.decodingStamp, self.decodingStampAttention, self.unlearnNeuralOperatorLayers)
+        return self.positionalEncoding(inputData, self.decodingStamp, self.unlearnNeuralOperatorLayers)
 
-    def positionalEncoding(self, inputData, encodingStamp, encodingStampAttention, learnNeuralOperatorLayers):
+    def positionalEncoding(self, inputData, encodingStamp, learnNeuralOperatorLayers):
         # Initialize and learn an encoded stamp for each signal index.
-        finalStamp = self.compileStampEncoding(inputData, encodingStamp, encodingStampAttention)
+        finalStamp = self.compileStampEncoding(inputData, encodingStamp)
         positionEncodedData = self.applyNeuralOperator(inputData, finalStamp, learnNeuralOperatorLayers)
         
         return positionEncodedData
@@ -73,12 +71,12 @@ class channelPositionalEncoding(signalEncoderModules):
         assert numSignals <= self.maxNumEncodedSignals, "The number of signals exceeds the maximum encoding limit."
 
         # Apply the neural operator and the skip connection.
-        positionEncodedData = learnNeuralOperatorLayers(inputData, extraSkipConnection=0, lowFrequencyTerms=finalStamp, highFrequencyTerms=None) + inputData
+        positionEncodedData = learnNeuralOperatorLayers(torch.zeros_like(inputData), extraSkipConnection=0, lowFrequencyTerms=finalStamp, highFrequencyTerms=None) + inputData
         # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
         return positionEncodedData
 
-    def compileStampEncoding(self, inputData, encodingStamp, encodingStampAttention):
+    def compileStampEncoding(self, inputData, encodingStamp):
         # Extract the input data dimensions.
         batchSize, numSignals, signalDimension = inputData.size()
 
@@ -110,14 +108,6 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Normalize the final stamp.
         finalStamp = finalStamp / numStampsUsed.clamp(min=1).unsqueeze(0).unsqueeze(-1)
-
-        # Shape the final stamp.
-        finalStamp = encodingStampAttention(finalStamp)
-        finalStamp = self.applySmoothing(finalStamp, self.smoothingKernel_forPosEnc)
-        # finalStamp dim: batchSize, numSignals, lowFrequencyShape
-
-        # Zero-out frequencies that are not ALWAYS used.
-        finalStamp[self.minLowFrequencyShape:] = 0
 
         return finalStamp
 

@@ -1,7 +1,3 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,8 +9,6 @@ from tensorflow.keras.applications.resnet50 import preprocess_input
 from PIL import Image
 from natsort import natsorted
 
-# -------------------------------------------------------------------------- #
-# ----------------------- Quantify Image Similarities ---------------------- #
 
 class imageSimilarities:
     

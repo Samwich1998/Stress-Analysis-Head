@@ -32,6 +32,7 @@ class autoencoderVisualizations(globalPlottingProtocols):
         # Get the signals to plot.
         plottingSignals = np.arange(0, numSignalPlots)
         plottingSignals = np.concatenate((plottingSignals, np.sort(numSignals - plottingSignals - 1)))
+        assert plottingSignals[-1] == numSignals - 1, f"{plottingSignals} {numSignals}"
 
         batchInd = 0
         for signalInd in plottingSignals:
@@ -40,7 +41,7 @@ class autoencoderVisualizations(globalPlottingProtocols):
             plt.plot(comparisonSignal[batchInd, signalInd, :], 'tab:blue', linewidth=2, alpha=0.8, label="Reconstructed Signal")
             plt.xlabel("Points")
             plt.ylabel("Signal (AU)")
-            plt.title(f"{plotTitle}")
+            plt.title(f"{plotTitle.split('/')[-1]} - Signal {signalInd + 1}")
             plt.legend(loc="best")
             if self.saveDataFolder:
                 self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch} signalInd{signalInd}.pdf")

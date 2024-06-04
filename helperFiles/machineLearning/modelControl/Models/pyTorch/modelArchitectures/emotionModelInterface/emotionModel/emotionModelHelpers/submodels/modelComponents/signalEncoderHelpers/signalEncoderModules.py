@@ -88,18 +88,17 @@ class signalEncoderModules(convolutionalHelpers):
     def getActivationMethod_posEncoder():
         return "none"
 
-    def positionalEncodingStamp(self, stampLength=1, paramBound=1):
-        # Initialize the weights with a uniform distribution.
-        parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.weightInitialization.heNormalInit(parameter, stampLength/2)
+    @staticmethod
+    def positionalEncodingStamp(stampLength=1, stampInd=0, signalMinMaxScale=1):
+        # Create an array of values from 0 to stampLength - 1
+        x = torch.arange(stampLength, dtype=torch.float32)
+        amplitude = signalMinMaxScale/4
+        frequency = stampInd
 
-        return parameter
+        # Generate the sine wave
+        sine_wave = amplitude * torch.sin(2 * math.pi * frequency * x / stampLength)
 
-    def positionalEncodingStampAttention(self, stampLength=1):
-        return nn.Sequential(
-            # Neural architecture: self attention.
-            self.linearModel(numInputFeatures=stampLength, numOutputFeatures=stampLength, activationMethod='boundedExp_0_2'),
-        )
+        return sine_wave
 
     def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
         return nn.Sequential(
@@ -163,7 +162,7 @@ class signalEncoderModules(convolutionalHelpers):
         )
 
     @staticmethod
-    def smoothingKernel(kernelSize=3, averageWeights=None):
+    def getSmoothingKernel(kernelSize=3, averageWeights=None):
         if averageWeights is not None:
             assert len(averageWeights) == kernelSize, "The kernel size and the average weights must be the same size."
             averageWeights = torch.tensor(averageWeights, dtype=torch.float32)

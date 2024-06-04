@@ -1,10 +1,8 @@
-# PyTorch
-from torch import nn
 from torch.utils.checkpoint import checkpoint
+from torch import nn
 
-# Import machine learning files
-from .signalEncoderModules import signalEncoderModules
 from .customModules.waveletNeuralOperatorLayer import waveletNeuralOperatorLayer
+from .signalEncoderModules import signalEncoderModules
 
 
 class channelEncoding(signalEncoderModules):
@@ -13,17 +11,17 @@ class channelEncoding(signalEncoderModules):
         super(channelEncoding, self).__init__()
         # General parameters
         self.numSigLiftedChannels = numSigLiftedChannels  # The number of channels to lift to during signal encoding.
-        self.numSigEncodingLayers = numSigEncodingLayers    # The number of operator layers during signal encoding.
-        self.numCompressedSignals = numCompressedSignals    # Number of compressed signals.
-        self.numExpandedSignals = numExpandedSignals        # Number of expanded signals.
-        self.expansionFactor = expansionFactor              # Expansion factor for the model.
-        self.sequenceBounds = sequenceBounds                # The minimum and maximum sequence length.
+        self.numSigEncodingLayers = numSigEncodingLayers  # The number of operator layers during signal encoding.
+        self.numCompressedSignals = numCompressedSignals  # Number of compressed signals.
+        self.numExpandedSignals = numExpandedSignals  # Number of expanded signals.
+        self.expansionFactor = expansionFactor  # Expansion factor for the model.
+        self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
 
         # Neural operator parameters.
         self.numDecompositions = min(5, waveletNeuralOperatorLayer.max_decompositions(signal_length=self.sequenceBounds[0], wavelet_name=waveletType))  # Number of decompositions for the waveletType transform.
         self.activationMethod = self.getActivationMethod_channelEncoder()
         self.waveletType = waveletType  # wavelet type for the waveletType transform: bior, db3, dmey
-        self.mode = 'zero'              # Mode for the waveletType transform.
+        self.mode = 'zero'  # Mode for the waveletType transform.
 
         # initialize the heuristic method.
         self.heuristicCompressionModel = self.heuristicEncoding(inChannel=self.numExpandedSignals, outChannel=self.numCompressedSignals)
@@ -44,10 +42,12 @@ class channelEncoding(signalEncoderModules):
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
             # Create the spectral convolution layers.
-            self.compressedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
-                                                                                  addBiasTerm=False,  activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity'))
-            self.expandedNeuralOperatorLayers.append(waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode,
-                                                                                addBiasTerm=False, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity'))
+            self.compressedNeuralOperatorLayers.append(
+                waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
+                                           smoothingKernelSize=3, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity'))
+            self.expandedNeuralOperatorLayers.append(
+                waveletNeuralOperatorLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False,
+                                           smoothingKernelSize=3, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity'))
 
             # Create the processing layers.
             self.compressedProcessingLayers.append(self.signalPostProcessing(inChannel=self.numSigLiftedChannels, bottleneckChannel=self.numCompressedSignals))

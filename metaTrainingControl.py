@@ -1,18 +1,16 @@
-# General
+
 import os
-import sys
-import time
-import warnings
-import argparse
-from accelerate import DataLoaderConfiguration
-
-
 # Set specific environmental parameters.
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "True"  # Only an issue on some platforms. Ideally, delete this.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging (1 = INFO, 2 = WARNING and ERROR, 3 = ERROR only)
 os.environ["TORCH_COMPILE_DEBUG"] = "1"
 
-# Hugging Face
+# General
+import argparse
+import sys
+import time
+import warnings
 import accelerate
 import torch
 
@@ -45,7 +43,8 @@ torch.backends.cudnn.benchmark = False  # If True: Enable cuDNN's auto-tuner to 
 if __name__ == "__main__":
     # Define the accelerator parameters.
     accelerator = accelerate.Accelerator(
-        dataloader_config=DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
+        dataloader_config=accelerate.DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
+        cpu=torch.backends.mps.is_available(),  # Whether to use the CPU. MPS is NOT fully compatible yet.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
         gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"

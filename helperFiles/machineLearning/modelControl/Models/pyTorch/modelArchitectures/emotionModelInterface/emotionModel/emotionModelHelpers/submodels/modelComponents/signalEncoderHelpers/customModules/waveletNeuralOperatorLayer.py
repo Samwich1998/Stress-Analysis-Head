@@ -7,8 +7,10 @@ from .waveletNeuralOperatorWeights import waveletNeuralOperatorWeights
 
 class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none", encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='CNN'):
-        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod, encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useConvolutionFlag, independentChannels, skipConnectionProtocol)
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, smoothingKernelSize=0, activationMethod="none",
+                 encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='CNN'):
+        super(waveletNeuralOperatorLayer, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, smoothingKernelSize, activationMethod,
+                                                         encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useConvolutionFlag, independentChannels, skipConnectionProtocol)
 
     def forward(self, inputData, extraSkipConnection=0, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Apply the wavelet neural operator and the skip connection.
@@ -48,6 +50,11 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
         # Perform wavelet reconstruction.
         reconstructedData = self.idwt((lowFrequency, highFrequencies))
         # reconstructedData dimension: batchSize, numOutputSignals, sequenceLength
+
+        # Add smoothing to the signals if necessary.
+        if self.smoothingKernelSize:
+            reconstructedData = self.applySmoothing(reconstructedData, self.smoothingKernel)
+            # reconstructedData dimension: batchSize, numOutputSignals, sequenceLength
 
         # Remove the padding.
         reconstructedData = reconstructedData[:, :, -sequenceLength:]

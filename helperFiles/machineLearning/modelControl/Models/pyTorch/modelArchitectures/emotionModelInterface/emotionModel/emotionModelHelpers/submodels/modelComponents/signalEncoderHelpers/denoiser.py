@@ -14,8 +14,8 @@ class denoiser(signalEncoderModules):
         self.denoiseSignals = self.denoiserModel()
 
         # Allow the final signals to denoise at the end.
-        self.smoothingKernel_forPosPreds = self.smoothingKernel(kernelSize=3)
-        self.smoothingKernel_forSigEnc = self.smoothingKernel(kernelSize=5)
+        self.smoothingKernel_forPosPreds = self.smoothingKernel(kernelSize=5)
+        self.smoothingKernel_forSigEnc = self.smoothingKernel(kernelSize=3)
 
     def applySmoothing_forPosPreds(self, inputData):
         return self.applySmoothing(inputData, self.smoothingKernel_forPosPreds)

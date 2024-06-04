@@ -13,11 +13,17 @@ class signalEncoderModules(convolutionalHelpers):
     def __init__(self):
         super(signalEncoderModules, self).__init__()
 
+    def linearModel(self, numInputFeatures=1, numOutputFeatures=1, activationMethod='none'):
+        return nn.Sequential(
+            self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
+            self.getActivationMethod(activationMethod),
+        )
+
     # ------------------- Wavelet Neural Operator Architectures ------------------- #
 
     def neuralWeightIndependentModel(self, numInputFeatures=1, numOutputFeatures=1):
         return nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
+            self.linearModel(numInputFeatures=numInputFeatures, numOutputFeatures=numOutputFeatures, activationMethod='none'),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, finalFrequencyDim=46):
@@ -85,9 +91,15 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(self, stampLength=1, paramBound=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.weightInitialization.kaimingUniformInit(parameter, a=math.sqrt(5), fan_in=paramBound, nonlinearity='leaky_relu')
+        parameter = self.weightInitialization.heNormalInit(parameter, stampLength/2)
 
         return parameter
+
+    def positionalEncodingStampAttention(self, stampLength=1):
+        return nn.Sequential(
+            # Neural architecture: self attention.
+            self.linearModel(numInputFeatures=stampLength, numOutputFeatures=stampLength, activationMethod='boundedExp_0_2'),
+        )
 
     def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
         return nn.Sequential(
@@ -102,7 +114,8 @@ class signalEncoderModules(convolutionalHelpers):
             ),
 
             # Neural architecture: self attention.
-            self.weightInitialization.initialize_weights(nn.Linear(numFeatures, numClasses), activationMethod='boundedExp_0_2', layerType='fc'),
+            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=numClasses, activationMethod='boundedExp_0_2'),
+            self.linearModel(numInputFeatures=numClasses, numOutputFeatures=numClasses, activationMethod='boundedExp_0_2'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -142,9 +155,9 @@ class signalEncoderModules(convolutionalHelpers):
         return independentModelCNN(
             ResNet(
                 module=nn.Sequential(
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=5, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
                     self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=5, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
                 )
             ), useCheckpoint=False,
         )

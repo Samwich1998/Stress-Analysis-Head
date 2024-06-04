@@ -35,7 +35,7 @@ from ..signalEncoderModules import signalEncoderModules
 
 class waveletNeuralHelpers(signalEncoderModules):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none",
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, smoothingKernelSize=0, activationMethod="none",
                  encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=False, independentChannels=False, skipConnectionProtocol='CNN'):
         super(waveletNeuralHelpers, self).__init__()
         # Fourier neural operator parameters.
@@ -43,9 +43,11 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.encodeLowFrequencyProtocol = encodeLowFrequencyProtocol  # The low-frequency encoding protocol to use.
         self.skipConnectionProtocol = skipConnectionProtocol  # The skip connection protocol to use.
         self.independentChannels = independentChannels  # Whether to treat each channel independently.
+        self.smoothingKernelSize = smoothingKernelSize  # The size of the smoothing kernel.
         self.useConvolutionFlag = useConvolutionFlag  # Whether to use a convolutional neural network for the decomposition.
         self.numDecompositions = numDecompositions  # Maximum number of decompositions to apply.
         self.numOutputSignals = numOutputSignals  # Number of output signals.
+        self.activationMethod = activationMethod  # The activation method to use.
         self.numInputSignals = numInputSignals  # Number of input signals.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
         self.addBiasTerm = addBiasTerm  # Whether to add bias terms to the output.
@@ -55,10 +57,13 @@ class waveletNeuralHelpers(signalEncoderModules):
         self.assertValidParams()
 
         # Decide on the frequency encoding protocol.
-        self.encodeHighFrequencies = encodeHighFrequencyProtocol in ['highFreq', 'allFreqs']  # Whether to encode the high frequencies.
-        self.encodeLowFrequency = encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs']  # Whether to encode the low-frequency signal.
+        self.encodeHighFrequencies = encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'zero']  # Whether to encode the high frequencies.
+        self.encodeLowFrequency = encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'zero']  # Whether to encode the low-frequency signal.
         self.encodeLowFrequencyFull = encodeHighFrequencyProtocol == 'allFreqs'  # Whether to encode the high frequencies into the low-frequency signal.
         self.encodeHighFrequencyFull = encodeLowFrequencyProtocol == 'allFreqs'  # Whether to encode the low-frequency signal into the high-frequency signal.
+        # Initialize flags to remove the high and low frequencies.
+        self.removeHighFrequencies = encodeHighFrequencyProtocol == 'zero'  # Whether to remove the high frequencies.
+        self.removeLowFrequency = encodeLowFrequencyProtocol == 'zero'  # Whether to remove the low-frequency signal.
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)
@@ -68,11 +73,15 @@ class waveletNeuralHelpers(signalEncoderModules):
         lowFrequency, highFrequencies = self.dwt(torch.randn(1, 1, sequenceBounds[1]))
         self.highFrequenciesShapes = [highFrequency.size(-1) for highFrequency in highFrequencies]  # Optimally: maxSequenceLength / decompositionLayer**2
         self.lowFrequencyShape = lowFrequency.size(-1)  # Optimally: maxSequenceLength / numDecompositions**2
+        # Get the expected output shapes (hard to calculate by hand).
+        lowFrequency, highFrequencies = self.dwt(torch.randn(1, 1, sequenceBounds[0]))
+        self.minHighFrequenciesShapes = [highFrequency.size(-1) for highFrequency in highFrequencies]  # Optimally: maxSequenceLength / decompositionLayer**2
+        self.minLowFrequencyShape = lowFrequency.size(-1)  # Optimally: maxSequenceLength / numDecompositions**2
 
     def assertValidParams(self):
         # Assert that the frequency protocol is valid.
-        assert self.encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'none'], "The high-frequency encoding protocol must be 'highFreq', 'allFreqs', 'none'."
-        assert self.encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'none'], "The low-frequency encoding protocol must be 'lowFreq', 'allFreqs', 'none'."
+        assert self.encodeHighFrequencyProtocol in ['highFreq', 'allFreqs', 'zero', 'none'], "The high-frequency encoding protocol must be 'highFreq', 'allFreqs', 'none'."
+        assert self.encodeLowFrequencyProtocol in ['lowFreq', 'allFreqs', 'zero', 'none'], "The low-frequency encoding protocol must be 'lowFreq', 'allFreqs', 'none'."
 
         if self.useConvolutionFlag:
             # Assert the validity of the CNN model.
@@ -99,4 +108,4 @@ class waveletNeuralHelpers(signalEncoderModules):
 
     @staticmethod
     def zero(x):
-        return 0
+        return torch.zeros_like(x)

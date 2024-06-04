@@ -39,7 +39,7 @@ class signalEncoderVisualizations(globalPlottingProtocols):
             self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch}.pdf")
         plt.show()
 
-    def plotOneSignalEncoding(self, allEncodedData, referenceEncodedData=None, epoch=0, plotTitle="Signal Encoding", numSignalPlots=1):
+    def plotOneSignalEncoding(self, allEncodedData, referenceEncodedData=None, epoch=0, plotTitle="Signal Encoding", numSignalPlots=1, plotIndOffset=0):
         batchSize, numCondensedSignals, compressedLength = allEncodedData.shape
         # allEncodedData dimension: batchSize, numCondensedSignals, compressedLength
 
@@ -48,11 +48,13 @@ class signalEncoderVisualizations(globalPlottingProtocols):
         plottingSignals = np.concatenate((plottingSignals, np.sort(numCondensedSignals - plottingSignals - 1)))
 
         batchInd = 0
-        for signalInd in plottingSignals:
+        for plotInd in range(len(plottingSignals)):
+            signalInd = plottingSignals[plotInd]
+
             # Plot the signal reconstruction.
-            plt.plot(allEncodedData[batchInd, signalInd], self.colorOrder[signalInd], label=f"batchInd{batchInd}-signalInd{signalInd}", linewidth=2, alpha=1)
+            plt.plot(allEncodedData[batchInd, signalInd], c=self.colorOrder[plotInd+plotIndOffset], label=f"batchInd{batchInd}-signalInd{signalInd}", linewidth=2, alpha=1)
             if referenceEncodedData is not None:
-                plt.plot(allEncodedData[batchInd, signalInd], self.colorOrder[signalInd], label=f"batchInd{batchInd}-signalInd{signalInd}", linewidth=1, alpha=0.6)
+                plt.plot(referenceEncodedData[batchInd, signalInd], c=self.colorOrder[plotInd+plotIndOffset], label=f"Ref-batchInd{batchInd}-signalInd{signalInd}", linewidth=1, alpha=0.6)
         plt.legend()
 
         plt.xlabel("Encoding Dimension (Points)")

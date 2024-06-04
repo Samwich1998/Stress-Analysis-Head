@@ -7,15 +7,16 @@ from .waveletNeuralHelpers import waveletNeuralHelpers
 
 class waveletNeuralOperatorWeights(waveletNeuralHelpers):
 
-    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, activationMethod="none",
+    def __init__(self, numInputSignals, numOutputSignals, sequenceBounds, numDecompositions=2, waveletType='db3', mode='zero', addBiasTerm=False, smoothingKernelSize=0, activationMethod="none",
                  encodeLowFrequencyProtocol=0, encodeHighFrequencyProtocol=0, useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='CNN'):
-        super(waveletNeuralOperatorWeights, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, activationMethod,
+        super(waveletNeuralOperatorWeights, self).__init__(numInputSignals, numOutputSignals, sequenceBounds, numDecompositions, waveletType, mode, addBiasTerm, smoothingKernelSize, activationMethod,
                                                            encodeLowFrequencyProtocol, encodeHighFrequencyProtocol, useConvolutionFlag, independentChannels, skipConnectionProtocol)
         # Initialize wavelet neural operator parameters.
-        self.activationFunction = self.getActivationMethod(activationType=activationMethod)  # Activation function for the Fourier neural operator.
+        if self.smoothingKernelSize: self.smoothingKernel = self.smoothingKernel(kernelSize=self.smoothingKernelSize)  # Smoothing kernel for the Fourier neural operator.
         if self.addBiasTerm: self.operatorBiases = self.neuralBiasParameters(numChannels=numOutputSignals)  # Bias terms for the Fourier neural operator.
         self.highFrequenciesWeights, self.fullHighFrequencyWeights = self.getHighFrequencyWeights()  # Learnable parameters for the high-frequency signal.
         self.lowFrequencyWeights, self.fullLowFrequencyWeights = self.getLowFrequencyWeights()  # Learnable parameters for the low-frequency signal.
+        self.activationFunction = self.getActivationMethod(activationType=activationMethod)  # Activation function for the Fourier neural operator.
         self.skipConnectionModel = self.getSkipConnectionProtocol(skipConnectionProtocol)  # Skip connection model for the Fourier neural operator.
 
     def getSkipConnectionProtocol(self, skipConnectionProtocol):
@@ -41,8 +42,12 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
         if self.encodeHighFrequencies:
             highFrequenciesWeights = nn.ParameterList()
             for highFrequenciesInd in range(len(self.highFrequenciesShapes)):
-                highFrequenciesWeights.append(self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd],
-                                                                             finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd], lowFreqSignal=False))
+                highFrequencyParam = self.zero
+                if not self.removeHighFrequencies:
+                    highFrequencyParam = self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd],
+                                                                        finalFrequencyDim=self.highFrequenciesShapes[highFrequenciesInd], lowFreqSignal=False)
+                # Store the high-frequency weights.
+                highFrequenciesWeights.append(highFrequencyParam)
 
         if self.encodeHighFrequencyFull:
             fullHighFrequencyWeights = nn.ParameterList()
@@ -58,7 +63,9 @@ class waveletNeuralOperatorWeights(waveletNeuralHelpers):
         lowFrequencyWeights = None
 
         if self.encodeLowFrequency:
-            lowFrequencyWeights = self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape, finalFrequencyDim=self.lowFrequencyShape, lowFreqSignal=True)
+            lowFrequencyWeights = self.zero
+            if not self.removeLowFrequency:
+                lowFrequencyWeights = self.getNeuralWeightParameters(inChannel=self.numInputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape, finalFrequencyDim=self.lowFrequencyShape, lowFreqSignal=True)
 
         if self.encodeLowFrequencyFull:
             fullLowFrequencyWeights = self.getNeuralWeightParameters(inChannel=self.numOutputSignals, outChannel=self.numOutputSignals, initialFrequencyDim=self.lowFrequencyShape + sum(self.highFrequenciesShapes),

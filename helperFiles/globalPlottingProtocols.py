@@ -15,7 +15,7 @@ class globalPlottingProtocols:
         plt.ion()  # prevent memory leaks; Reverse: plt.ion()
 
         # Specify the color order.
-        self.colorOrder = plt.get_cmap('tab10').colors
+        self.colorOrder = ['k', 'tab:blue', 'tab:brown', 'tab:red', 'tab:green', 'tab:purple', 'tab:pink', 'tab:orange']
 
     def heatmap(self, data, saveDataPath=None, title=None, xlabel=None, ylabel=None):
         # Plot the heatmap

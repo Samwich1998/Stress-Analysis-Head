@@ -206,28 +206,28 @@ class modelVisualizations(globalPlottingProtocols):
             if submodel == "signalEncoder":
                 with torch.no_grad():
                     # Calculate the positional encoding.
-                    positionEncodedTrainingData = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.addPositionalEncoding(trainingSignalData[0:2, 0:2, :].to(self.accelerator.device))
-                    positionEncodedTTestingData = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.addPositionalEncoding(testingSignalData[0:2, 0:2, :].to(self.accelerator.device))
+                    positionEncodedTrainingData = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.addPositionalEncoding(trainingSignalData.to(self.accelerator.device))
+                    positionEncodedTTestingData = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.addPositionalEncoding(testingSignalData.to(self.accelerator.device))
 
                 # Plot the encoding dimension.
-                self.signalEncoderViz.plotOneSignalEncoding(testingEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Signal Encoding", numSignalPlots=1)
-                self.signalEncoderViz.plotOneSignalEncoding(trainingEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Signal Encoding", numSignalPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(testingEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Signal Encoding", numSignalPlots=2, plotIndOffset=1)
+                self.signalEncoderViz.plotOneSignalEncoding(trainingEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Signal Encoding", numSignalPlots=2, plotIndOffset=1)
 
                 # Plot the encoding example.
                 self.signalEncoderViz.plotSignalEncodingMap(model, testingEncodedData.detach().cpu(), testingSignalData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Signal Map", numBatchPlots=1)
                 self.signalEncoderViz.plotSignalEncodingMap(model, trainingEncodedData.detach().cpu(), trainingSignalData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Signal Encoding Map", numBatchPlots=1)
 
                 # Plot the positional encoding example.
-                self.signalEncoderViz.plotOneSignalEncoding(testingPredictedIndexProbabilities.detach().cpu(), testingDecodedPredictedIndexProbabilities.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Positional Encoding Distribution", numSignalPlots=1)
-                self.signalEncoderViz.plotOneSignalEncoding(trainingPredictedIndexProbabilities.detach().cpu(), trainingDecodedPredictedIndexProbabilities.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Positional Encoding Distribution", numSignalPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(testingPredictedIndexProbabilities.detach().softmax(dim=-1).cpu(), testingDecodedPredictedIndexProbabilities.detach().softmax(dim=-1).cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Positional Encoding Distribution", numSignalPlots=1, plotIndOffset=0)
+                self.signalEncoderViz.plotOneSignalEncoding(trainingPredictedIndexProbabilities.detach().softmax(dim=-1).cpu(), trainingDecodedPredictedIndexProbabilities.detach().softmax(dim=-1).cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Positional Encoding Distribution", numSignalPlots=1, plotIndOffset=0)
 
                 # Plot the positional encoding example.
-                self.signalEncoderViz.plotOneSignalEncoding(positionEncodedTrainingData.detach().cpu(), trainingSignalData[0:2, 0:2, :].detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Positional Encoding Distribution", numSignalPlots=1)
-                self.signalEncoderViz.plotOneSignalEncoding(positionEncodedTTestingData.detach().cpu(), testingSignalData[0:2, 0:2, :].detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Positional Encoding Distribution", numSignalPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(positionEncodedTrainingData.detach().cpu(), trainingSignalData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Positional Encoding Reconstruction", numSignalPlots=1, plotIndOffset=1)
+                self.signalEncoderViz.plotOneSignalEncoding(positionEncodedTTestingData.detach().cpu(), testingSignalData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Positional Encoding Reconstruction", numSignalPlots=1, plotIndOffset=1)
 
             # Plot the autoencoder results.
-            self.autoencoderViz.plotEncoder(testingSignalData.detach().cpu(), testingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Test Reconstruction", numSignalPlots=2)
-            self.autoencoderViz.plotEncoder(trainingSignalData.detach().cpu(), trainingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Training Reconstruction", numSignalPlots=2)
+            self.autoencoderViz.plotEncoder(testingSignalData.detach().cpu(), testingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Test Reconstruction", numSignalPlots=1)
+            self.autoencoderViz.plotEncoder(trainingSignalData.detach().cpu(), trainingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Training Reconstruction", numSignalPlots=1)
 
             # Dont keep plotting untrained models.
             if submodel == "signalEncoder": return None

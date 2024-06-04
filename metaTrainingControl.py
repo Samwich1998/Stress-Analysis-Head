@@ -1,3 +1,4 @@
+""" Written by Samuel Solomon: https://scholar.google.com/citations?user=9oq12oMAAAAJ&hl=en """
 
 import os
 # Set specific environmental parameters.
@@ -6,13 +7,15 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "True"  # Only an issue on some platforms. 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging (1 = INFO, 2 = WARNING and ERROR, 3 = ERROR only)
 os.environ["TORCH_COMPILE_DEBUG"] = "1"
 
-# General
-import argparse
-import sys
-import time
 import warnings
+# Suppress specific PyTorch warnings.
+warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU.")
+
+# General
 import accelerate
+import argparse
 import torch
+import time
 
 # Import files for machine learning
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.modelParameters import modelParameters
@@ -21,19 +24,6 @@ from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelIn
 from helperFiles.machineLearning.modelControl.Models.pyTorch.Helpers.modelMigration import modelMigration
 from helperFiles.machineLearning.featureAnalysis.featureImportance import featureImportance  # Import feature analysis files.
 from helperFiles.machineLearning.dataInterface.compileModelData import compileModelData  # Methods to organize model data.
-
-# Import meta-analysis files.
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.emognitionInterface import emognitionInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.dapperInterface import dapperInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.amigosInterface import amigosInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.wesadInterface import wesadInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.caseInterface import caseInterface
-
-# Add the directory of the current file to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# Suppress specific PyTorch warnings about MPS fallback
-warnings.filterwarnings("ignore", message="The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU.")
 
 # Configure cuDNN and PyTorch's global settings.
 torch.backends.cudnn.deterministic = True  # If False: allow non-deterministic algorithms in cuDNN, which can enhance performance but reduce reproducibility.
@@ -60,7 +50,6 @@ if __name__ == "__main__":
     storeLoss = False  # If you want to record any loss values.
     fastPass = True  # If you want to only plot/train 240 points. No effect on training.
 
-    # ---------------------------------------------------------------------- #
     # ----------------------- Parse Model Parameters ----------------------- #
 
     # Create the parser
@@ -85,55 +74,12 @@ if __name__ == "__main__":
     # Parse the arguments
     args = parser.parse_args()
 
-    # Organize the input information into a dictionary.
-    userInputParams = {
-        # Assign general model parameters
-        'optimizerType': args.optimizerType,  # The optimizerType used during training convergence.
-        'deviceListed': args.deviceListed,  # The device we are running the platform on.
-        'submodel': args.submodel,  # The component of the model we are training.
-        # Assign signal encoder parameters
-        'signalEncoderWaveletType': args.signalEncoderWaveletType,  # The wavelet type for the wavelet transform.
-        'numSigLiftedChannels': args.numSigLiftedChannels,  # The number of channels to lift to during signa; encoding.
-        'numSigEncodingLayers': args.numSigEncodingLayers,  # The number of operator layers during signal encoding.
-        'numExpandedSignals': args.numExpandedSignals,  # The number of signals to group when you begin compression or finish expansion.
-        # Assign autoencoder parameters
-        'compressionFactor': args.compressionFactor,  # The compression factor of the autoencoder.
-        'expansionFactor': args.expansionFactor,  # The expansion factor of the autoencoder.
-        # Assign emotion prediction parameters
-        'numInterpreterHeads': args.numInterpreterHeads,  # The number of ways to interpret a set of physiological signals.
-        'numBasicEmotions': args.numBasicEmotions,  # The number of basic emotions (basis states of emotions).
-        'sequenceLength': args.sequenceLength,  # The maximum number of time series points to consider.
-    }
-
-    # Relay the inputs to the user.
-    print("System Arguments:", userInputParams, flush=True)
-    submodel = args.submodel
-
-    # Self-check the hpc parameters.
-    if userInputParams['deviceListed'].startswith("HPC") and useFinalParams:
-        accelerator.gradient_accumulation_steps = 16
-        storeLoss = True  # Turn on loss storage for HPC.
-        fastPass = False  # Turn off fast pass for HPC.
-
-        fastPass = True  # Turn off fast pass for HPC.
-        storeLoss = False
-
-        if args.submodel == "signalEncoder":
-            if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
-                accelerator.gradient_accumulation_steps = 16
-            if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 1:
-                accelerator.gradient_accumulation_steps = 8
-            if args.numSigLiftedChannels <= 16 and args.numSigEncodingLayers <= 2:
-                accelerator.gradient_accumulation_steps = 8
-
-        print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
-
-    # ---------------------------------------------------------------------- #
     # --------------------------- Setup Training --------------------------- #
 
-    # Specify shared model parameters.
-    # Possible models: ["trainingInformation", "signalEncoderModel", "autoencoderModel", "signalMappingModel", "specificEmotionModel", "sharedEmotionModel"]
-    sharedModelWeights = ["signalEncoderModel", "autoencoderModel", "sharedEmotionModel"]
+    # Organize all the model parameters.
+    sharedModelWeights = modelParameters.getSharedModels()  # The shared model weights.
+    userInputParams, submodel = modelParameters.compileParameters(args)  # The user input parameters and the submodel.
+    accelerator, storeLoss, fastPass = modelParameters.setParamsHPC(args, accelerator, userInputParams, storeLoss, fastPass, useFinalParams)  # Set the HPC parameters.
 
     # Initialize the model information classes.
     modelCompiler = compileModelData(submodel, userInputParams, accelerator)
@@ -141,66 +87,24 @@ if __name__ == "__main__":
     modelInfoClass = compileModelInfo()
 
     # Specify training parameters
-    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useFinalParams)
+    datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces = modelInfoClass.compileModelNames()  # Compile the model names.
+    numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useFinalParams)  # The number of epochs to plot and save the model.
+    numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)  # The number of epochs to train the model.
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
-    submodelsSaving = modelParameters.getSubmodelsSaving(submodel)
-    numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)
+    submodelsSaving = modelParameters.getSubmodelsSaving(submodel)  # The submodels to save.
 
     # Initialize helper classes
-    trainingProtocols = trainingProtocolHelpers(accelerator, sharedModelWeights, submodelsSaving)
-    modelMigration = modelMigration(accelerator)
-    featureAnalysis = featureImportance("")
+    trainingProtocols = trainingProtocolHelpers(accelerator, sharedModelWeights, submodelsSaving)  # Initialize the training protocols.
+    modelMigration = modelMigration(accelerator)  # Initialize the model migration class.
+    featureAnalysis = featureImportance("")  # Initialize the feature analysis class.
 
-    # ---------------------------------------------------------------------- #
-    # ------------------------- Feature Compilation ------------------------ #
-
-    # Specify the metadata analysis options.
-    caseProtocolClass = caseInterface()
-    wesadProtocolClass = wesadInterface()
-    amigosProtocolClass = amigosInterface()
-    dapperProtocolClass = dapperInterface()
-    emognitionProtocolClass = emognitionInterface()
-    # Specify which metadata analyses to compile
-    metaProtocolInterfaces = [wesadProtocolClass, emognitionProtocolClass, amigosProtocolClass, dapperProtocolClass, caseProtocolClass]
-    metaDatasetNames = ["wesad", "emognition", "amigos", "dapper", "case"]
-    datasetNames = ['empatch']
-    allDatasetNames = metaDatasetNames + datasetNames
-    # Assert the integrity of dataset collection.
-    assert len(metaProtocolInterfaces) == len(metaDatasetNames)
-    assert len(datasetNames) == 1
-
-    # Compile the metadata together.
-    metaRawFeatureTimesHolders, metaRawFeatureHolders, metaRawFeatureIntervals, metaRawFeatureIntervalTimes, \
-        metaAlignedFeatureTimes, metaAlignedFeatureHolder, metaAlignedFeatureIntervals, metaAlignedFeatureIntervalTimes, \
-        metaSubjectOrder, metaExperimentalOrder, metaActivityNames, metaActivityLabels, metaFinalFeatures, metaFinalLabels, metaFeatureLabelTypes, metaFeatureNames, metaSurveyQuestions, \
-        metaSurveyAnswersList, metaSurveyAnswerTimes, metaNumQuestionOptions, metaDatasetNames = modelCompiler.compileMetaAnalyses(metaProtocolInterfaces, loadCompiledData=True)
-    # Compile the project data together
-    allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
-        allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
-        subjectOrder, experimentalOrder, activityNames, activityLabels, allFinalFeatures, allFinalLabels, featureLabelTypes, featureNames, surveyQuestions, surveyAnswersList, \
-        surveyAnswerTimes, numQuestionOptions = modelCompiler.compileProjectAnalysis(loadCompiledData=True)
-
-    # ---------------------------------------------------------------------- #
     # -------------------------- Model Compilation ------------------------- #
 
-    # Compile the meta-learning modules.
-    allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModels(metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
-                                                                                            metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None,
-                                                                                            useFinalParams=useFinalParams, random_state=42)
     # Compile the final modules.
-    allModels, allDataLoaders, allLossDataHolders = modelCompiler.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
-                                                                                [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, useFinalParams=useFinalParams, random_state=42)
-    # Create the meta-loss models and data loaders.
-    allMetaLossDataHolders.extend(allLossDataHolders)
+    allModels, allDataLoaders, allLossDataHolders, allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = modelCompiler.compileModelsFull(metaProtocolInterfaces, modelName, submodel, testSplitRatio, datasetNames, useFinalParams)
+    unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)  # Unify all the fixed weights in the models
 
-    # Clean up the code.
-    del metaRawFeatureTimesHolders, metaRawFeatureHolders, metaRawFeatureIntervals, metaRawFeatureIntervalTimes, metaAlignedFeatureTimes, metaAlignedFeatureHolder, metaAlignedFeatureIntervals, metaAlignedFeatureIntervalTimes, metaSubjectOrder, \
-        metaExperimentalOrder, metaActivityNames, metaActivityLabels, metaFinalFeatures, metaFinalLabels, metaFeatureLabelTypes, metaFeatureNames, metaSurveyQuestions, metaSurveyAnswersList, metaSurveyAnswerTimes, metaNumQuestionOptions
-    del allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
-        subjectOrder, experimentalOrder, activityNames, activityLabels, allFinalFeatures, allFinalLabels, featureLabelTypes, featureNames, surveyQuestions, surveyAnswersList, surveyAnswerTimes, numQuestionOptions
-
-    # Unify all the fixed weights in the models
-    unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)
+    # -------------------------- Meta-model Training ------------------------- #
 
     # Store the initial loss information.
     trainingProtocols.calculateLossInformation(unifiedLayerData, allMetaLossDataHolders, allMetaModels, allModels, submodel, metaDatasetNames, fastPass, storeLoss, stepScheduler=True)
@@ -230,35 +134,36 @@ if __name__ == "__main__":
         endEpochTime = time.time()
 
         print("Total epoch time:", endEpochTime - startEpochTime)
-    exit()
 
-    # Unify all the fixed weights in the models
-    unifiedLayerData = modelMigration.copyModelWeights(modelPipeline, sharedModelWeights)
-    modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
-    modelMigration.unifyModelWeights(allModels, sharedModelWeights, unifiedLayerData)
+    # -------------------------- Empatch Training ------------------------- #
 
-    # SHAP analysis on the metalearning models.
-    featureAnalysis = _featureImportance.featureImportance(modelCompiler.saveTrainingData)
-
-    # For each metatraining model.
-    for modelInd in metaModelIndices:
-        dataLoader = allMetaDataLoaders[modelInd]
-        modelPipeline = allMetaModels[modelInd]
-        # Place model in eval mode.
-        modelPipeline.model.eval()
-
-        # Extract all the data.
-        allData, allLabels, allTrainingMasks, allTestingMasks = dataLoader.dataset.getAll()
-
-        # Stop gradient tracking.
-        with torch.no_grad():
-            # Convert time-series to features.
-            compressedData, encodedData, transformedData, signalFeatures, subjectInds = modelPipeline.model.compileSignalFeatures(
-                allData, fullDataPass=False)
-
-        # Reshape the signal features to match the SHAP format
-        reshapedSignalFeatures = signalFeatures.view(len(signalFeatures), -1)
-        # reshapedSignalFeatures.view(signalFeatures.shape)
-
-        featureAnalysis.shapAnalysis(modelPipeline.model, reshapedSignalFeatures, allLabels,
-                                     featureNames=modelPipeline.featureNames, modelType="", shapSubfolder="")
+    # # Unify all the fixed weights in the models
+    # unifiedLayerData = modelMigration.copyModelWeights(modelPipeline, sharedModelWeights)
+    # modelMigration.unifyModelWeights(allMetaModels, sharedModelWeights, unifiedLayerData)
+    # modelMigration.unifyModelWeights(allModels, sharedModelWeights, unifiedLayerData)
+    #
+    # # SHAP analysis on the metalearning models.
+    # featureAnalysis = _featureImportance.featureImportance(modelCompiler.saveTrainingData)
+    #
+    # # For each metatraining model.
+    # for modelInd in metaModelIndices:
+    #     dataLoader = allMetaDataLoaders[modelInd]
+    #     modelPipeline = allMetaModels[modelInd]
+    #     # Place model in eval mode.
+    #     modelPipeline.model.eval()
+    #
+    #     # Extract all the data.
+    #     allData, allLabels, allTrainingMasks, allTestingMasks = dataLoader.dataset.getAll()
+    #
+    #     # Stop gradient tracking.
+    #     with torch.no_grad():
+    #         # Convert time-series to features.
+    #         compressedData, encodedData, transformedData, signalFeatures, subjectInds = modelPipeline.model.compileSignalFeatures(
+    #             allData, fullDataPass=False)
+    #
+    #     # Reshape the signal features to match the SHAP format
+    #     reshapedSignalFeatures = signalFeatures.view(len(signalFeatures), -1)
+    #     # reshapedSignalFeatures.view(signalFeatures.shape)
+    #
+    #     featureAnalysis.shapAnalysis(modelPipeline.model, reshapedSignalFeatures, allLabels,
+    #                                  featureNames=modelPipeline.featureNames, modelType="", shapSubfolder="")

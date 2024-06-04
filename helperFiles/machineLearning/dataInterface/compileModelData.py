@@ -144,6 +144,31 @@ class compileModelData(compileModelDataHelpers):
 
     # -------------------- Machine Learning Preparation -------------------- #
 
+    def compileModelsFull(self, metaProtocolInterfaces, modelName, submodel, testSplitRatio, datasetNames, useFinalParams=False):
+        # Compile the metadata together.
+        metaRawFeatureTimesHolders, metaRawFeatureHolders, metaRawFeatureIntervals, metaRawFeatureIntervalTimes, \
+            metaAlignedFeatureTimes, metaAlignedFeatureHolder, metaAlignedFeatureIntervals, metaAlignedFeatureIntervalTimes, \
+            metaSubjectOrder, metaExperimentalOrder, metaActivityNames, metaActivityLabels, metaFinalFeatures, metaFinalLabels, metaFeatureLabelTypes, metaFeatureNames, metaSurveyQuestions, \
+            metaSurveyAnswersList, metaSurveyAnswerTimes, metaNumQuestionOptions, metaDatasetNames = self.compileMetaAnalyses(metaProtocolInterfaces, loadCompiledData=True)
+
+        # Compile the project data together
+        allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
+            allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
+            subjectOrder, experimentalOrder, activityNames, activityLabels, allFinalFeatures, allFinalLabels, featureLabelTypes, featureNames, surveyQuestions, surveyAnswersList, \
+            surveyAnswerTimes, numQuestionOptions = self.compileProjectAnalysis(loadCompiledData=True)
+
+        # Compile the meta-learning modules.
+        allMetaModels, allMetaDataLoaders, allMetaLossDataHolders = self.compileModels(metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
+                                                                                       metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining=True, specificInfo=None,
+                                                                                       useFinalParams=useFinalParams, random_state=42)
+        # Compile the final modules.
+        allModels, allDataLoaders, allLossDataHolders = self.compileModels([allAlignedFeatureIntervals], [surveyAnswersList], [surveyQuestions], [activityLabels], [activityNames], [numQuestionOptions], [subjectOrder],
+                                                                           [featureNames], datasetNames, modelName, submodel, testSplitRatio, metaTraining=False, specificInfo=None, useFinalParams=useFinalParams, random_state=42)
+        # Create the meta-loss models and data loaders.
+        allMetaLossDataHolders.extend(allLossDataHolders)
+
+        return allModels, allDataLoaders, allLossDataHolders, allMetaModels, allMetaDataLoaders, allMetaLossDataHolders, metaDatasetNames
+
     def compileModels(self, metaAlignedFeatureIntervals, metaSurveyAnswersList, metaSurveyQuestions, metaActivityLabels, metaActivityNames, metaNumQuestionOptions,
                       metaSubjectOrder, metaFeatureNames, metaDatasetNames, modelName, submodel, testSplitRatio, metaTraining, specificInfo=None, useFinalParams=False, random_state=42):
         # Initialize relevant holders.

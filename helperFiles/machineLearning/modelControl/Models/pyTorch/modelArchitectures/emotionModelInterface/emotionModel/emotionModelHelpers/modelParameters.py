@@ -15,6 +15,13 @@ class modelParameters:
         self.generalMethods = generalMethods()
 
     @staticmethod
+    def getSharedModels():
+        # Possible models: ["trainingInformation", "signalEncoderModel", "autoencoderModel", "signalMappingModel", "specificEmotionModel", "sharedEmotionModel"]
+        sharedModelWeights = ["signalEncoderModel", "autoencoderModel", "sharedEmotionModel"]
+
+        return sharedModelWeights
+
+    @staticmethod
     def getModelInfo(submodel, specificInfo=None):
         # Base case: information hard-coded.
         if specificInfo is not None:
@@ -117,6 +124,58 @@ class modelParameters:
         maxBatchSize = min(maxBatchSize, numSignals)  # Ensure the maximum batch size is not larger than the number of signals.
 
         return maxBatchSize
+
+    @staticmethod
+    def compileParameters(args):
+        # Organize the input information into a dictionary.
+        userInputParams = {
+            # Assign general model parameters
+            'optimizerType': args.optimizerType,  # The optimizerType used during training convergence.
+            'deviceListed': args.deviceListed,  # The device we are running the platform on.
+            'submodel': args.submodel,  # The component of the model we are training.
+            # Assign signal encoder parameters
+            'signalEncoderWaveletType': args.signalEncoderWaveletType,  # The wavelet type for the wavelet transform.
+            'numSigLiftedChannels': args.numSigLiftedChannels,  # The number of channels to lift to during signa; encoding.
+            'numSigEncodingLayers': args.numSigEncodingLayers,  # The number of operator layers during signal encoding.
+            'numExpandedSignals': args.numExpandedSignals,  # The number of signals to group when you begin compression or finish expansion.
+            # Assign autoencoder parameters
+            'compressionFactor': args.compressionFactor,  # The compression factor of the autoencoder.
+            'expansionFactor': args.expansionFactor,  # The expansion factor of the autoencoder.
+            # Assign emotion prediction parameters
+            'numInterpreterHeads': args.numInterpreterHeads,  # The number of ways to interpret a set of physiological signals.
+            'numBasicEmotions': args.numBasicEmotions,  # The number of basic emotions (basis states of emotions).
+            'sequenceLength': args.sequenceLength,  # The maximum number of time series points to consider.
+        }
+
+        # Relay the inputs to the user.
+        print("System Arguments:", userInputParams, flush=True)
+        submodel = args.submodel
+
+        return userInputParams, submodel
+
+    @staticmethod
+    def setParamsHPC(args, accelerator, userInputParams, storeLoss, fastPass, useFinalParams):
+        # Self-check the hpc parameters.
+        if userInputParams['deviceListed'].startswith("HPC") and useFinalParams:
+            accelerator.gradient_accumulation_steps = 16
+            storeLoss = True  # Turn on loss storage for HPC.
+            fastPass = False  # Turn off fast pass for HPC.
+
+            if args.submodel == "signalEncoder":
+                if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 4:
+                    accelerator.gradient_accumulation_steps = 16
+                if args.numSigLiftedChannels <= 32 and args.numSigEncodingLayers <= 1:
+                    accelerator.gradient_accumulation_steps = 8
+                if args.numSigLiftedChannels <= 16 and args.numSigEncodingLayers <= 2:
+                    accelerator.gradient_accumulation_steps = 8
+
+            # CPU settings
+            if userInputParams['deviceListed'].endswith("CPU"):
+                accelerator.gradient_accumulation_steps = 16
+
+            print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
+
+        return accelerator, storeLoss, fastPass
 
     @staticmethod
     def getNumEpochs(submodel):

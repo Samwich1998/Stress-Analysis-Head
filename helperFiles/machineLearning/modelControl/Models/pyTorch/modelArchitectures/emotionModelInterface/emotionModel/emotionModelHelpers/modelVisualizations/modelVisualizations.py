@@ -1,8 +1,8 @@
 # General
-import os
-
-# Pytorch
+import matplotlib.pyplot as plt
+import matplotlib
 import torch
+import os
 
 # Import files for machine learning
 from ..emotionDataInterface import emotionDataInterface
@@ -22,6 +22,9 @@ class modelVisualizations(globalPlottingProtocols):
         self.generalTimeWindow = generalTimeWindow
         self.accelerator = accelerator
         self.saveDataFolder = None
+
+        # Plotting settings.
+        plt.ion()
 
         # Initialize helper classes.
         self.dataInterface = emotionDataInterface()
@@ -201,21 +204,30 @@ class modelVisualizations(globalPlottingProtocols):
             # ------------------- Signal Encoding Plots -------------------- # 
 
             if submodel == "signalEncoder":
+                with torch.no_grad():
+                    # Calculate the positional encoding.
+                    positionEncodedTrainingData = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.addPositionalEncoding(trainingSignalData[0:2, 0:2, :].to(self.accelerator.device))
+                    positionEncodedTTestingData = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.addPositionalEncoding(testingSignalData[0:2, 0:2, :].to(self.accelerator.device))
+
                 # Plot the encoding dimension.
-                self.signalEncoderViz.plotOneSignalEncoding(testingEncodedData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Test Signal Encoding", numBatchPlots=1)
-                self.signalEncoderViz.plotOneSignalEncoding(trainingEncodedData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Training Signal Encoding", numBatchPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(testingEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Signal Encoding", numSignalPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(trainingEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Signal Encoding", numSignalPlots=1)
 
                 # Plot the encoding example.
-                self.signalEncoderViz.plotSignalEncodingMap(model, testingEncodedData.detach().cpu(), testingSignalData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Test Signal Map", numBatchPlots=1)
-                self.signalEncoderViz.plotSignalEncodingMap(model, trainingEncodedData.detach().cpu(), trainingSignalData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Training Signal Encoding Map", numBatchPlots=1)
+                self.signalEncoderViz.plotSignalEncodingMap(model, testingEncodedData.detach().cpu(), testingSignalData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Signal Map", numBatchPlots=1)
+                self.signalEncoderViz.plotSignalEncodingMap(model, trainingEncodedData.detach().cpu(), trainingSignalData.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Signal Encoding Map", numBatchPlots=1)
 
-                # Plot all encoding dimensions.
-                # self.signalEncoderViz.plotSignalEncoding(testingEncodedData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/Test Signal Encoding Full Dimension")
-                # self.signalEncoderViz.plotSignalEncoding(trainingEncodedData.detach().cpu(), currentEpoch, plotTitle="signalEncoding/All Training Signal Encoding Full Dimension")
+                # Plot the positional encoding example.
+                self.signalEncoderViz.plotOneSignalEncoding(testingPredictedIndexProbabilities.detach().cpu(), testingDecodedPredictedIndexProbabilities.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Positional Encoding Distribution", numSignalPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(trainingPredictedIndexProbabilities.detach().cpu(), trainingDecodedPredictedIndexProbabilities.detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Positional Encoding Distribution", numSignalPlots=1)
+
+                # Plot the positional encoding example.
+                self.signalEncoderViz.plotOneSignalEncoding(positionEncodedTrainingData.detach().cpu(), trainingSignalData[0:1, 0:1, :].detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Test Positional Encoding Distribution", numSignalPlots=1)
+                self.signalEncoderViz.plotOneSignalEncoding(positionEncodedTTestingData.detach().cpu(), testingSignalData[0:1, 0:1, :].detach().cpu(), epoch=currentEpoch, plotTitle="signalEncoding/Training Positional Encoding Distribution", numSignalPlots=1)
 
             # Plot the autoencoder results.
-            self.autoencoderViz.plotAutoencoder(testingSignalData.detach().cpu(), testingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Test Reconstruction", numSignalPlots=1)
-            self.autoencoderViz.plotAutoencoder(trainingSignalData.detach().cpu(), trainingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Training Reconstruction", numSignalPlots=1)
+            self.autoencoderViz.plotEncoder(testingSignalData.detach().cpu(), testingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Test Reconstruction", numSignalPlots=2)
+            self.autoencoderViz.plotEncoder(trainingSignalData.detach().cpu(), trainingReconstructedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Signal Encoding Training Reconstruction", numSignalPlots=2)
 
             # Dont keep plotting untrained models.
             if submodel == "signalEncoder": return None
@@ -223,17 +235,17 @@ class modelVisualizations(globalPlottingProtocols):
             # --------------------- Autoencoder Plots ---------------------- # 
 
             if submodel == "autoencoder":
-                # Reconstruct the initial data.
                 with torch.no_grad():
+                    # Reconstruct the initial data.
                     numSignalForwardPath = model.signalEncoderModel.encodeSignals.simulateSignalPath(numSignals, targetNumSignals=model.numEncodedSignals)[0]
                     _, _, propagatedReconstructedTestingData, _ = model.signalEncoderModel.reconstructEncodedData(testingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)
                     _, _, propagatedReconstructedTrainingData, _ = model.signalEncoderModel.reconstructEncodedData(trainingReconstructedEncodedData.to(self.accelerator.device), numSignalForwardPath, signalEncodingLayerLoss=None, calculateLoss=False)
 
                 # Check the autoencoder propagated error.
-                self.autoencoderViz.plotAutoencoder(testingSignalData.detach().cpu(), propagatedReconstructedTestingData.detach().cpu(), epoch=currentEpoch,
-                                                    plotTitle="signalReconstruction/Reconstructed Signal Encoded Data from Autoencoder", numSignalPlots=1)
-                self.autoencoderViz.plotAutoencoder(trainingSignalData.detach().cpu(), propagatedReconstructedTrainingData.detach().cpu(), epoch=currentEpoch,
-                                                    plotTitle="signalReconstruction/Reconstructed Signal Encoded Data from Autoencoder", numSignalPlots=1)
+                self.autoencoderViz.plotEncoder(testingSignalData.detach().cpu(), propagatedReconstructedTestingData.detach().cpu(), epoch=currentEpoch,
+                                                plotTitle="signalReconstruction/Reconstructed Signal Encoded Data from Autoencoder", numSignalPlots=2)
+                self.autoencoderViz.plotEncoder(trainingSignalData.detach().cpu(), propagatedReconstructedTrainingData.detach().cpu(), epoch=currentEpoch,
+                                                plotTitle="signalReconstruction/Reconstructed Signal Encoded Data from Autoencoder", numSignalPlots=2)
 
                 batchInd = 0
                 numDistortedPlots = 2
@@ -254,8 +266,8 @@ class modelVisualizations(globalPlottingProtocols):
                     self.autoencoderViz.plotAllSignalComparisons(distortedSignals[0].detach().cpu(), reconstructedDistortedEncodedSignals[0].detach().cpu(), trueSignal[0][0].detach().cpu(), epoch=currentEpoch, signalInd=distortedSignalInd, plotTitle="signalReconstruction/Distorted Autoencoding Training Data")
 
             # Plot the autoencoder results.
-            self.autoencoderViz.plotAutoencoder(testingEncodedData.detach().cpu(), testingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Autoencoder Test Reconstruction", numSignalPlots=1)
-            self.autoencoderViz.plotAutoencoder(trainingEncodedData.detach().cpu(), trainingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Autoencoder Training Reconstruction", numSignalPlots=1)
+            self.autoencoderViz.plotEncoder(testingEncodedData.detach().cpu(), testingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Autoencoder Test Reconstruction", numSignalPlots=1)
+            self.autoencoderViz.plotEncoder(trainingEncodedData.detach().cpu(), trainingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Autoencoder Training Reconstruction", numSignalPlots=1)
 
             # Visualize autoencoding signal reconstruction.
             self.autoencoderViz.plotSignalComparison(testingEncodedData.detach().cpu(), testingCompressedData.detach().cpu(), epoch=currentEpoch, plotTitle="autoencoder/Autoencoding Test Compression", numSignalPlots=1)
@@ -276,11 +288,11 @@ class modelVisualizations(globalPlottingProtocols):
                                                    plotTitle="trainingLosses/Manifold Projection Loss")
 
                 # Plot the common latent space.
-                # self.latentEncoderViz.plotLatentSpace(allLatentData, allLatentData, currentEpoch, plotTitle = "Latent Space PCA", numSignalPlots = 8)
+                # self.latentEncoderViz.plotLatentSpace(allLatentData, allLatentData, epoch=currentEpoch, plotTitle = "Latent Space PCA", numSignalPlots = 8)
 
             # Plot the autoencoder results.
-            self.autoencoderViz.plotAutoencoder(testingEncodedData.detach().cpu(), testingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Manifold Test Reconstruction", numSignalPlots=1)
-            self.autoencoderViz.plotAutoencoder(trainingEncodedData.detach().cpu(), trainingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Manifold Training Reconstruction", numSignalPlots=1)
+            self.autoencoderViz.plotEncoder(testingEncodedData.detach().cpu(), testingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Manifold Test Reconstruction", numSignalPlots=1)
+            self.autoencoderViz.plotEncoder(trainingEncodedData.detach().cpu(), trainingReconstructedEncodedData.detach().cpu(), epoch=currentEpoch, plotTitle="signalReconstruction/Manifold Training Reconstruction", numSignalPlots=1)
 
             # Dont keep plotting untrained models.
             if submodel == "emotionPrediction": return None
@@ -295,7 +307,7 @@ class modelVisualizations(globalPlottingProtocols):
 
             # Activity plotting.
             # predictedActivityLabels = allActivityDistributions.argmax(dim=1).int()
-            # self.plotPredictedMatrix(activityTrainingLabels, activityTestingLabels, predictedActivityLabels[activityTrainingMask], predictedActivityLabels[activityTestingMask], self.numActivities, currentEpoch, "Activities")
+            # self.plotPredictedMatrix(activityTrainingLabels, activityTestingLabels, predictedActivityLabels[activityTrainingMask], predictedActivityLabels[activityTestingMask], self.numActivities, epoch=currentEpoch, "Activities")
             # self.plotTrainingLosses(self.trainingLosses_activities, self.testingLosses_activities, plotTitle = "Activity Loss (Cross Entropy)")
 
             # Get the valid emotion indices (ones with training points).
@@ -330,6 +342,6 @@ class modelVisualizations(globalPlottingProtocols):
             # self.plotDistributions(trueTrainingEmotions, predictedTrainingEmotions, self.allEmotionClasses[validEmotionInd], plotTitle = "Training Emotion Distributions")
             # # self.plotPredictions(trainingEmotionLabels, testingEmotionLabels, predictedTrainingEmotionClasses,
             # #                       predictedTestingEmotionClasses, self.allEmotionClasses[validEmotionInd], emotionName)
-            # self.plotPredictedMatrix(trainingEmotionLabels, testingEmotionLabels, predictedTrainingEmotionClasses, predictedTestingEmotionClasses, self.allEmotionClasses[validEmotionInd], currentEpoch, emotionName)
+            # self.plotPredictedMatrix(trainingEmotionLabels, testingEmotionLabels, predictedTrainingEmotionClasses, predictedTestingEmotionClasses, self.allEmotionClasses[validEmotionInd], epoch=currentEpoch, emotionName)
             # # Plot model convergence curves.
             # self.plotTrainingLosses(self.trainingLosses_emotions[validEmotionInd], self.testingLosses_emotions[validEmotionInd], plotTitle = "Emotion Convergence Loss (KL)")

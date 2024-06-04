@@ -23,14 +23,18 @@ class autoencoderVisualizations(globalPlottingProtocols):
     # ---------------------------------------------------------------------- #
     # --------------------- Visualize Model Parameters --------------------- #
 
-    def plotAutoencoder(self, initialSignal, comparisonSignal, epoch, plotTitle="Autoencoder Prediction", numSignalPlots=1):
+    def plotEncoder(self, initialSignal, comparisonSignal, epoch, plotTitle="Encoder Prediction", numSignalPlots=1):
         # Assert the integrity of the incoming data
         assert initialSignal.shape[0:2] == comparisonSignal.shape[0:2], f"{initialSignal.shape} {comparisonSignal.shape}"
         batchSize, numSignals, numEncodedPoints = comparisonSignal.shape
         if batchSize == 0: return None
 
+        # Get the signals to plot.
+        plottingSignals = np.arange(0, numSignalPlots)
+        plottingSignals = np.concatenate((plottingSignals, np.sort(numSignals - plottingSignals - 1)))
+
         batchInd = 0
-        for signalInd in range(numSignals):
+        for signalInd in plottingSignals:
             # Plot the signal reconstruction.
             plt.plot(initialSignal[batchInd, signalInd, :], 'k', linewidth=2, alpha=0.5, label="Initial Signal")
             plt.plot(comparisonSignal[batchInd, signalInd, :], 'tab:blue', linewidth=2, alpha=0.8, label="Reconstructed Signal")
@@ -41,9 +45,6 @@ class autoencoderVisualizations(globalPlottingProtocols):
             if self.saveDataFolder:
                 self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch} signalInd{signalInd}.pdf")
             plt.show()
-
-            # There are too many signals to plot.
-            if signalInd + 1 == numSignalPlots: break
 
     def plotSignalComparison(self, originalSignal, comparisonSignal, epoch, plotTitle, numSignalPlots=1):
         """ originalSignal dimension: batchSize, numSignals, numTotalPoints """

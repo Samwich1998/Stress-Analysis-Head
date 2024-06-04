@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch
 import math
 
+from torch.nn.init import calculate_gain
+
 
 class weightInitialization:
 
@@ -145,9 +147,12 @@ class weightInitialization:
         return bias
 
     @staticmethod
-    def kaimingUniformInit(parameter, a=math.sqrt(5), nonlinearity='relu'):
-        parameter = nn.init.kaiming_uniform_(parameter, a=a, mode='fan_in', nonlinearity=nonlinearity)
-        return parameter
+    def kaimingUniformInit(parameter, a=math.sqrt(5), fan_in=1, nonlinearity='leaky_relu'):
+        gain = calculate_gain(nonlinearity, a)
+        std = gain / math.sqrt(fan_in)
+        bound = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
+        with torch.no_grad():
+            return parameter.uniform_(-bound, bound)
 
     @staticmethod
     def xavierUniformInit(parameter, fan_in, fan_out):
@@ -205,31 +210,40 @@ class weightInitialization:
         return averageKernel
 
     @staticmethod
-    def custom_kernel_initialization(conv_layer):
+    def custom_kernel_initialization(conv_layer, activation='conv1d'):
         """
-        Custom kernel initialization with a normal distribution that has a maximum
-        around the center and normalized by the number of input channels.
+        Custom kernel initialization with a normal distribution centered around the kernel's middle
+        and normalized by the number of input and output channels.
         """
         # Get the parameters of the conv layer
         num_output_channels, num_input_channels, kernel_size = conv_layer.weight.size()
-        variance = 2 / (num_input_channels + num_output_channels)
         weight = conv_layer.weight
+        device = weight.device
+        dtype = weight.dtype
+
+        # Determine the gain based on the activation function
+        gain = nn.init.calculate_gain(activation)
+
+        # Calculate variance considering the kernel size
+        variance = 2 / (num_input_channels + num_output_channels)
+        variance = variance * 3 / kernel_size
         center = kernel_size // 2
 
-        # Fill the kernel with a normal distribution centered at the center
-        distanceToCenter = (torch.arange(kernel_size, dtype=weight.dtype, device=weight.device) - center) / kernel_size / 2
-        kernel = torch.exp(-0.5 * distanceToCenter.pow(2) / variance)  # Normal distribution centered at the center of the kernel.
-        kernel = kernel + torch.randn(kernel_size)*math.sqrt(variance)
+        # Create a 1D tensor for distance to center calculation
+        distance_to_center = (torch.arange(kernel_size, dtype=dtype, device=device) - center).float() / kernel_size
+
+        # Generate the Gaussian kernel centered at the middle
+        kernel = torch.exp(-0.5 * distance_to_center.pow(2) / variance)
+        kernel = kernel + torch.randn(kernel_size, device=device) * math.sqrt(variance)
         kernel = kernel / kernel.abs().sum()
 
-        # Normalize the kernel.
-        normalizationFactor = 2 / (num_input_channels + num_output_channels)
-        normalizationFactor = normalizationFactor / kernel_size
-        kernel = kernel * normalizationFactor
+        # Normalize the kernel using the calculated gain
+        normalization_factor = gain * variance / 3
+        kernel = kernel * normalization_factor
 
-        # Create the final weight tensor by repeating the kernel across input and output channels
-        weight_np = kernel.repeat(num_output_channels, num_input_channels, 1)
+        # Repeat the kernel across input and output channels
+        kernel = kernel.view(1, 1, kernel_size).repeat(num_output_channels, num_input_channels, 1)
 
         # Assign the initialized weights to the conv layer
         with torch.no_grad():
-            weight.copy_(weight_np)
+            weight.copy_(kernel)

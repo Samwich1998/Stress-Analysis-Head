@@ -120,6 +120,8 @@ class emotionPipeline(emotionPipelineHelpers):
 
                         # Perform the forward pass through the model.
                         encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = model.signalEncoding(augmentedSignalData, initialSignalData, decodeSignals=True, calculateLoss=self.calculateFullLoss, trainingFlag=True)
+                        # decodedPredictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodedSignals
+                        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodedSignals
                         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
                         # reconstructedData dimension: batchSize, numSignals, sequenceLength
                         # signalEncodingLayerLoss dimension: batchSize
@@ -143,7 +145,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.2 < encodedSignalMinMaxLoss:
+                        if 0.25 < encodedSignalMinMaxLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalMinMaxLoss
                         if 0.01 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.25*signalEncodingTrainingLayerLoss

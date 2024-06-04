@@ -1,3 +1,5 @@
+import math
+
 import torch.nn.functional as F
 from torch import nn
 import torch
@@ -41,7 +43,7 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Detailed coefficients tend to look like low-frequency waves.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
         )
 
     def independentNeuralWeightCNN(self, inChannel=2, outChannel=1):
@@ -83,7 +85,7 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(self, stampLength=1, paramBound=1):
         # Initialize the weights with a uniform distribution.
         parameter = nn.Parameter(torch.randn(stampLength))
-        parameter = self.weightInitialization.uniformInitialization(parameter, bound=paramBound)
+        parameter = self.weightInitialization.kaimingUniformInit(parameter, a=math.sqrt(5), fan_in=paramBound, nonlinearity='leaky_relu')
 
         return parameter
 

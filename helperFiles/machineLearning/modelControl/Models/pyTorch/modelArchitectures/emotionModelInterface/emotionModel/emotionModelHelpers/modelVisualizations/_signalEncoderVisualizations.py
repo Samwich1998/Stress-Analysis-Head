@@ -2,6 +2,8 @@
 import matplotlib.pyplot as plt
 import math
 
+import numpy as np
+
 # Visualization protocols
 from ..........globalPlottingProtocols import globalPlottingProtocols
 
@@ -37,16 +39,29 @@ class signalEncoderVisualizations(globalPlottingProtocols):
             self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch}.pdf")
         plt.show()
 
-    def plotOneSignalEncoding(self, allEncodedData, epoch, plotTitle="Signal Encoding", numBatchPlots=1):
+    def plotOneSignalEncoding(self, allEncodedData, referenceEncodedData=None, epoch=0, plotTitle="Signal Encoding", numSignalPlots=1):
         batchSize, numCondensedSignals, compressedLength = allEncodedData.shape
-        # allEncodedData dimension: batchSize, numCondensedSignals, compressedLength  
+        # allEncodedData dimension: batchSize, numCondensedSignals, compressedLength
 
-        for batchInd in range(batchSize):
+        # Get the signals to plot.
+        plottingSignals = np.arange(0, numSignalPlots)
+        plottingSignals = np.concatenate((plottingSignals, np.sort(numCondensedSignals - plottingSignals - 1)))
+
+        batchInd = 0
+        for signalInd in plottingSignals:
             # Plot the signal reconstruction.
-            plt.plot(allEncodedData[batchInd, 0], 'k', linewidth=2, alpha=1)
-            plt.plot(allEncodedData[batchInd, 1], 'tab:blue', linewidth=2, alpha=1)
-            plt.plot(allEncodedData[batchInd, 2], 'tab:red', linewidth=2, alpha=1)
-            plt.plot(allEncodedData[batchInd, 3], 'tab:green', linewidth=2, alpha=1)
+            plt.plot(allEncodedData[batchInd, 0], 'k', label=f"batchInd{batchInd}-signalInd0", linewidth=2, alpha=1)
+            plt.plot(allEncodedData[batchInd, 1], 'tab:blue', label=f"batchInd{batchInd}-signalInd1", linewidth=2, alpha=1)
+            plt.plot(allEncodedData[batchInd, -2], 'tab:red', label=f"batchInd{batchInd}-signalInd-2", linewidth=2, alpha=1)
+            plt.plot(allEncodedData[batchInd, -1], 'tab:green', label=f"batchInd{batchInd}-signalInd-1", linewidth=2, alpha=1)
+
+            if referenceEncodedData is not None:
+                # Plot the signal reconstruction.
+                plt.plot(referenceEncodedData[batchInd, 0], 'k', label=f"Ref-batchInd{batchInd}-signalInd0", linewidth=1, alpha=0.6)
+                plt.plot(referenceEncodedData[batchInd, 1], 'tab:blue', label=f"Ref-batchInd{batchInd}-signalInd1", linewidth=1, alpha=0.6)
+                plt.plot(referenceEncodedData[batchInd, -2], 'tab:red', label=f"Ref-batchInd{batchInd}-signalInd-2", linewidth=1, alpha=0.6)
+                plt.plot(referenceEncodedData[batchInd, -1], 'tab:green', label=f"Ref-batchInd{batchInd}-signalInd-1", linewidth=1, alpha=0.6)
+            plt.legend()
 
             plt.xlabel("Encoding Dimension (Points)")
             plt.ylabel("Signal (AU)")
@@ -56,7 +71,7 @@ class signalEncoderVisualizations(globalPlottingProtocols):
             plt.show()
 
             # There are too many signals to plot.
-            if batchInd + 1 == numBatchPlots: break
+            if batchInd + 1 == numSignalPlots: break
 
     def plotSignalEncodingMap(self, model, allEncodedData, allSignalData, epoch, plotTitle="Signal Encoding", numBatchPlots=1):
         batchSize, numSignals, signalDimension = allSignalData.shape

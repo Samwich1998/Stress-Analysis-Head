@@ -162,6 +162,8 @@ class emotionModelHead(globalModel):
         t1 = time.time()
         # Forward pass through the signal encoder to reduce to a common signal number.
         encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoderModel(signalData, initialSignalData, decodeSignals, calculateLoss, trainingFlag)
+        # decodedPredictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodedSignals
+        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodedSignals
         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
         # reconstructedData dimension: batchSize, numSignals, sequenceLength
         # signalEncodingLayerLoss dimension: batchSize

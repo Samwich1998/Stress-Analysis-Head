@@ -4,7 +4,6 @@ import collections
 import numpy as np
 from scipy import stats
 from copy import deepcopy
-import sys
 
 # Modules for Plotting
 import seaborn as sns

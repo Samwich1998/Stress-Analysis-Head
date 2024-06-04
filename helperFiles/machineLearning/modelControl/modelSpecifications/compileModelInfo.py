@@ -3,12 +3,6 @@ import torch
 import math
 import os
 
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.amigosInterface import amigosInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.caseInterface import caseInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.dapperInterface import dapperInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.emognitionInterface import emognitionInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.wesadInterface import wesadInterface
-
 
 class compileModelInfo:
 
@@ -218,17 +212,4 @@ class compileModelInfo:
 
         return activityName
 
-    @staticmethod
-    def compileModelNames():
-        # Specify which metadata analyses to compile
-        metaProtocolInterfaces = [wesadInterface(), emognitionInterface(), amigosInterface(), dapperInterface(), caseInterface()]
-        metaDatasetNames = ["wesad", "emognition", "amigos", "dapper", "case"]
-        datasetNames = ['empatch']
-        allDatasetNames = metaDatasetNames + datasetNames
-
-        # Assert the integrity of dataset collection.
-        assert len(metaProtocolInterfaces) == len(metaDatasetNames)
-        assert len(datasetNames) == 1
-
-        return datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces
 # -------------------------------------------------------------------------- #

@@ -12,7 +12,10 @@ class globalPlottingProtocols:
         # Setup matplotlib
         self.saveDataFolder = None
         plt.rcdefaults()
-        plt.ioff()  # prevent memory leaks; Reverse: plt.ion()
+        plt.ion()  # prevent memory leaks; Reverse: plt.ion()
+
+        # Specify the color order.
+        self.colorOrder = plt.get_cmap('tab10').colors
 
     def heatmap(self, data, saveDataPath=None, title=None, xlabel=None, ylabel=None):
         # Plot the heatmap

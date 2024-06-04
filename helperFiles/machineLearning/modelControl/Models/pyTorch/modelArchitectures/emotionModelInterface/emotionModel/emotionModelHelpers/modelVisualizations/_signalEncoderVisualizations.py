@@ -50,28 +50,17 @@ class signalEncoderVisualizations(globalPlottingProtocols):
         batchInd = 0
         for signalInd in plottingSignals:
             # Plot the signal reconstruction.
-            plt.plot(allEncodedData[batchInd, 0], 'k', label=f"batchInd{batchInd}-signalInd0", linewidth=2, alpha=1)
-            plt.plot(allEncodedData[batchInd, 1], 'tab:blue', label=f"batchInd{batchInd}-signalInd1", linewidth=2, alpha=1)
-            plt.plot(allEncodedData[batchInd, -2], 'tab:red', label=f"batchInd{batchInd}-signalInd-2", linewidth=2, alpha=1)
-            plt.plot(allEncodedData[batchInd, -1], 'tab:green', label=f"batchInd{batchInd}-signalInd-1", linewidth=2, alpha=1)
-
+            plt.plot(allEncodedData[batchInd, signalInd], self.colorOrder[signalInd], label=f"batchInd{batchInd}-signalInd{signalInd}", linewidth=2, alpha=1)
             if referenceEncodedData is not None:
-                # Plot the signal reconstruction.
-                plt.plot(referenceEncodedData[batchInd, 0], 'k', label=f"Ref-batchInd{batchInd}-signalInd0", linewidth=1, alpha=0.6)
-                plt.plot(referenceEncodedData[batchInd, 1], 'tab:blue', label=f"Ref-batchInd{batchInd}-signalInd1", linewidth=1, alpha=0.6)
-                plt.plot(referenceEncodedData[batchInd, -2], 'tab:red', label=f"Ref-batchInd{batchInd}-signalInd-2", linewidth=1, alpha=0.6)
-                plt.plot(referenceEncodedData[batchInd, -1], 'tab:green', label=f"Ref-batchInd{batchInd}-signalInd-1", linewidth=1, alpha=0.6)
-            plt.legend()
+                plt.plot(allEncodedData[batchInd, signalInd], self.colorOrder[signalInd], label=f"batchInd{batchInd}-signalInd{signalInd}", linewidth=1, alpha=0.6)
+        plt.legend()
 
-            plt.xlabel("Encoding Dimension (Points)")
-            plt.ylabel("Signal (AU)")
-            plt.title(f"{plotTitle}")
-            if self.saveDataFolder:
-                self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch} batchInd{batchInd}.pdf")
-            plt.show()
-
-            # There are too many signals to plot.
-            if batchInd + 1 == numSignalPlots: break
+        plt.xlabel("Encoding Dimension (Points)")
+        plt.ylabel("Signal (AU)")
+        plt.title(f"{plotTitle}")
+        if self.saveDataFolder:
+            self.displayFigure(self.saveDataFolder + f"{plotTitle} epochs{epoch} batchInd{batchInd}.pdf")
+        plt.show()
 
     def plotSignalEncodingMap(self, model, allEncodedData, allSignalData, epoch, plotTitle="Signal Encoding", numBatchPlots=1):
         batchSize, numSignals, signalDimension = allSignalData.shape

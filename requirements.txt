@@ -42,7 +42,6 @@ torchsummary
 torchvision
 torchviz
 transformers
-viz
 webdriver-manager
 xgboost
 PyObjC

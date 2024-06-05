@@ -235,7 +235,7 @@ class weightInitialization:
         kernel = kernel / kernel.abs().sum()
 
         # Normalize the kernel using the calculated gain
-        normalization_factor = gain * variance
+        normalization_factor = gain * variance / kernel_size
         kernel = kernel * normalization_factor
 
         # Repeat the kernel across input and output channels

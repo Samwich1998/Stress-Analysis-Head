@@ -1,6 +1,3 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # General Modules
 import time
 import math
@@ -26,9 +23,6 @@ from .humanMachineInterface.featureOrganization import featureOrganization
 # Import plotting protocols
 from .dataVisualization.biolectricPlottingProtocols import plottingProtocols
 
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Global Function ----------------------------- #
 
 class streamingHead(featureOrganization):
 
@@ -151,7 +145,7 @@ class streamingHead(featureOrganization):
     def recordData(self, maxVolt=3.3, adcResolution=4096):
         # Read in at least one point
         rawReadsList = []
-        while (int(self.mainArduino.in_waiting) > 0 or len(rawReadsList) == 0):
+        while int(self.mainArduino.in_waiting) > 0 or len(rawReadsList) == 0:
             rawReadsList.append(self.arduinoRead.readline(ser=self.mainArduino))
 
         # Parse the Data

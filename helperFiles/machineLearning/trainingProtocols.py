@@ -1,7 +1,6 @@
 # General
 import os
 import re
-import sys
 import scipy
 import numpy as np
 import pandas as pd

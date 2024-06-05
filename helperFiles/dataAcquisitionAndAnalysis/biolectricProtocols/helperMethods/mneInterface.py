@@ -121,13 +121,6 @@ class mneInterface:
 
     # --------------------- Feature Extraction Methods --------------------- #
 
-    def hjorthComplexity(self, data):
-        w_freqs = np.power(freqs, 4)
-        complexity = np.sum(np.multiply(psd, w_freqs), axis=-1)
-        if normalize:
-            complexity = np.divide(complexity, np.sum(psd, axis=-1))
-        return complexity
-
     def extractFeatures(self, data, standardizedData, normalizedData):
         # Specify the general parameters.
         expanded_data = np.expand_dims(data, axis=0)
@@ -143,7 +136,7 @@ class mneInterface:
         # Fast singular feature extraction that is amplitude-dependant.
         rms = mne_features.univariate.compute_rms(normalizedData)[0]  # Amplitude-dependant. Averages 30.4 μs.
 
-        mne_features.univariate.compute_svd_entropy(expanded_data, tau=2, emb=10)[0]
+        svd_entropy = mne_features.univariate.compute_svd_entropy(expanded_data, tau=2, emb=10)[0]
 
         # Slow singular feature extraction: averages 3.4 ms.
         spect_edge_freq = mne_features.univariate.compute_spect_edge_freq(self.samplingFreq, expanded_data, ref_freq=None, edge=None, psd_method='welch', psd_params=self.psd_params)[0]  # Averages 763 μs.
@@ -158,5 +151,4 @@ class mneInterface:
 
         # Unpack compressed features.
 
-        return decorr_time, energy_freq_bands, higuchi_fd, hjorth_complexity, hjorth_complexity_spect, hjorth_mobility, hjorth_mobility_spect, \
-            katz_fd, line_length, pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, hjorth_activity, zero_crossings
+        return decorr_time, energy_freq_bands, higuchi_fd, katz_fd, line_length, pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, zero_crossings

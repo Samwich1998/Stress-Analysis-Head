@@ -1,0 +1,33 @@
+{
+  "surveyInstructions": [
+    "Read each statement and select the appropriate response to indicate how you feel right now, that is, at this very moment. There are no right or wrong answers. Do not spend too much time on any one statement but give the answer which seems to describe your present feelings best."
+  ],
+  "questions": [
+    "I feel calm",
+    "I feel secure",
+    "I am tense",
+    "I feel strained",
+    "I feel at ease",
+    "I feel upset",
+    "I am presently worrying over possible misfortunes",
+    "I feel satisfied",
+    "I feel frightened",
+    "I feel comfortable",
+    "I feel self-confident",
+    "I feel nervous",
+    "I am jittery",
+    "I feel indecisive",
+    "I am relaxed",
+    "I feel content",
+    "I am worried",
+    "I feel confused",
+    "I feel steady",
+    "I feel pleasant"
+  ],
+  "answerChoices": [
+    "Not at all",
+    "A little",
+    "Somewhat",
+    "Very Much So"
+  ]
+}

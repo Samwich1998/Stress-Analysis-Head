@@ -31,7 +31,7 @@ if __name__ == "__main__":
     extractFeaturesFrom = ["eog"] # A list with all the biomarkers from streamingOrder for feature extraction
 
     # Compile Feature Names
-    featureNamesFolder = "../../Helper Files/Machine Learning/_Compiled Feature Names/All Features/"
+    featureNamesFolder = "../../Helper Files/Machine Learning/_Compiled Feature Names/allFeatures/"
     featureNames, indivisualFeatureNames, biomarkerOrder, = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
     eogFeatureNames = indivisualFeatureNames[0]
     

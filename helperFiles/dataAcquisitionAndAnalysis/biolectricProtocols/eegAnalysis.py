@@ -1,12 +1,7 @@
-# Basic Modules
-import mne
-import mne_features
+import numpy as np
 import scipy
 import sklearn
-import numpy as np
-import antropy
 
-# Import Files
 from .globalProtocol import globalProtocol
 from .helperMethods.mneInterface import mneInterface
 

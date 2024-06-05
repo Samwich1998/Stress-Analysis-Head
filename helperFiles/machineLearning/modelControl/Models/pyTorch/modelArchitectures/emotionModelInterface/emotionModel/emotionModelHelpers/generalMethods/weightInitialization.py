@@ -209,8 +209,7 @@ class weightInitialization:
 
         return averageKernel
 
-    @staticmethod
-    def custom_kernel_initialization(conv_layer, activation='conv1d'):
+    def custom_kernel_initialization(self, conv_layer, activation='conv1d'):
         """
         Custom kernel initialization with a normal distribution centered around the kernel's middle
         and normalized by the number of input and output channels.
@@ -226,7 +225,6 @@ class weightInitialization:
 
         # Calculate variance considering the kernel size
         variance = 2 / (num_input_channels + num_output_channels)
-        variance = variance * 3 / kernel_size
         center = kernel_size // 2
 
         # Create a 1D tensor for distance to center calculation
@@ -234,15 +232,18 @@ class weightInitialization:
 
         # Generate the Gaussian kernel centered at the middle
         kernel = torch.exp(-0.5 * distance_to_center.pow(2) / variance)
-        kernel = kernel + torch.randn(kernel_size, device=device) * math.sqrt(variance)
         kernel = kernel / kernel.abs().sum()
 
         # Normalize the kernel using the calculated gain
-        normalization_factor = gain * variance / 3
+        normalization_factor = gain * variance
         kernel = kernel * normalization_factor
 
         # Repeat the kernel across input and output channels
         kernel = kernel.view(1, 1, kernel_size).repeat(num_output_channels, num_input_channels, 1)
+
+        # Add random initialization to the kernel.
+        self.kaiming_uniform_weights(conv_layer, a=math.sqrt(5), nonlinearity='selu')
+        kernel = 0.2*kernel + 0.8*conv_layer.weight
 
         # Assign the initialized weights to the conv layer
         with torch.no_grad():

@@ -1,0 +1,67 @@
+{
+  "surveyInstructions": [
+    "optional instructions here"
+  ],
+  "surveyQuestions": {
+      "Race": {
+          "Dropdown": [[
+            "Asian",
+            "White",
+            "Hispanic or Latino",
+            "Black or African American",
+            "Middle Eastern or North African",
+            "American Indian and Alaska Native",
+            "Native Hawaiian and Other Pacific Islander",
+            "Two or more races"
+        ]]
+      },
+      "Assigned sex": {
+          "Dropdown": [[
+            "Male",
+            "Female",
+            "Intersex"
+        ]]
+      },
+        "Gender Identity": {
+            "Dropdown": [[
+              "Male",
+              "Female", 
+              "Non-binary",
+              "Transgender/Trans woman",
+              "Transgender/Trans man",
+              "None of These"
+          ]]
+        },
+      "Highest Attained Education": {
+          "Dropdown": [[
+            "Doctoral degree",
+            "Professional degree",
+            "Master's degree",
+            "Bachelor's degree",
+            "Associates  degree",
+            "Regular high school diploma",
+            "GED or alternative credential",
+            "None"
+        ]]
+      },
+      "Age": {
+          "Textbox_Int": [[
+            "Age (Years)"
+        ]]
+      },
+      "Weight": {
+          "Textbox_Int": [[
+            "Weight (lbs)"
+        ]]
+      },
+      "Height": {
+          "Textbox_Int": [
+          [
+            "Height (ft)"
+        ],
+          [
+            "Height (in)"
+        ]]
+      }
+  }
+}

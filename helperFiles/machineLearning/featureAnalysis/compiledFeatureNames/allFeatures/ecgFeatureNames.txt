@@ -1,0 +1,5 @@
+finalFeatures = []
+
+finalFeatures.extend([QRSWaveLength, QLength, SLength, PreRWavePeakTime, PostRWavePeakTime])
+finalFeatures.extend([QRDer, RSDer, QRSWaveDer, QRSVariance, QRSWaveSkew, QRSWaveKurt, netDirectionQRS])
+finalFeatures.extend([QAreaBelow, SAreaBelow, ratioDirectionQRS, ratioQSArea])

@@ -830,7 +830,7 @@ fig.savefig('../Del Sarah/PANAS.png', dpi=300, bbox_inches='tight')
 plt.show()
 # -----------
 
-# --------- Scale by All Features
+# --------- Scale by allFeatures
 from scipy import stats
 import matplotlib.pyplot as plt
 signalData = np.array(signalData); signalLabels = np.array(signalLabels)

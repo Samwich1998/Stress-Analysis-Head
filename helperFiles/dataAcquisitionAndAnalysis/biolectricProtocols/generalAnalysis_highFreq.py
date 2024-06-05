@@ -2,7 +2,7 @@
 import scipy
 import numpy as np
 # Feature Extraction Modules
-import antropy
+# import antropy
 
 # Import Files
 from .globalProtocol import globalProtocol

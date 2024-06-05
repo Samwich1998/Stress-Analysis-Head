@@ -1,7 +1,3 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
 # Basic Modules
 import scipy
 import numpy as np
@@ -12,15 +8,13 @@ import matplotlib.pyplot as plt
 # Import Files
 from .globalProtocol import globalProtocol
 
-# --------------------------------------------------------------------------- #
-# ------------------ User Can Edit (Global Variables) ----------------------- #
 
 class eogProtocol(globalProtocol):
     
     def __init__(self, numPointsPerBatch = 3000, moveDataFinger = 10, numChannels = 2, plottingClass = None, readData = None):
         # Filter parameters.
         self.dataPointBuffer = 0          # A prepended buffer of data for filtering. Represents possible bad filtering points; Units: Points
-        self.cutOffFreq = [.5, 15]        # Optimal LPF Cutoff in Literatrue is 6-8 or 20 Hz (Max 35 or 50); I Found 20 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
+        self.cutOffFreq = [.5, 15]        # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 20 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
         # High-pass filter parameters.
         self.stopband_edge = 10          # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, you can choose a higher stopband edge frequency. If you need to preserve the signal more, you can choose a lower stopband edge frequency.
         self.passband_ripple = 0.1       # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, you can choose a lower passband ripple. If you need to preserve the signal more, you can choose a higher passband ripple.
@@ -32,7 +26,7 @@ class eogProtocol(globalProtocol):
         # Eye Angle Determination Parameters
         self.voltagePositionBuffer = 100  # A Prepended Buffer to Find the Current Average Voltage; Units: Points
         self.minVoltageMovement = 0.05    # The Minimum Voltage Change Required to Register an Eye Movement; Units: Volts
-        self.predictEyeAngleGap = 5       # The Number of Points Between Each Eye Gaze Prediction; Will Backcaluclate if moveDataFinger > predictEyeAngleGap; Units: Points
+        self.predictEyeAngleGap = 5       # The Number of Points Between Each Eye Gaze Prediction; Will Back-calculate if moveDataFinger > predictEyeAngleGap; Units: Points
         self.steadyStateEye = 3.3/2       # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
 
         # Calibration Angles
@@ -74,7 +68,7 @@ class eogProtocol(globalProtocol):
     def setSamplingFrequencyParams(self):
         # Set Blink Parameters
         self.minPoints_halfBaseline = max(1, int(self.samplingFreq*0.015))  # The Minimum Points in the Left/Right Baseline
-        self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq*20)) # cutOffFreq = 0.1, use 20 seconds; cutOffFreq = 0.01, use 60 seconds; cutOffFreq = 0.05, use 20 seconds        
+        self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq*20))  # cutOffFreq = 0.1, use 20 seconds; cutOffFreq = 0.01, use 60 seconds; cutOffFreq = 0.05, use 20 seconds
     
     # ---------------------------------------------------------------------- #
     # ------------------------- Data Analysis Begins ----------------------- #

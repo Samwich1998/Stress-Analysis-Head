@@ -429,7 +429,7 @@ class plotData:
                 self.clearFigure(singleAlignedFig, None)
                 
             # -------------------------------------------------------------- #
-            # ---------------------- Plot All Features --------------------- #
+            # ---------------------- Plot allFeatures --------------------- #
             
             plottingFeatureNames = ["blinkDuration_EOG", 
                                     "alphaPower_EEG", 

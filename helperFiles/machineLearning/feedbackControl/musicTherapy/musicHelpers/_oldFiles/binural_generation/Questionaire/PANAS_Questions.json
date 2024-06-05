@@ -1,0 +1,24 @@
+{
+  "surveyInstructions": [
+    "This scale consists of a number of words that describe different feelings and emotions. Read each item and then select the answer choice which reflects the degree that you feel each emotion/feeling right now, that is at the present moment."
+  ],
+  "questions": [
+    "Upset",
+    "Hostile",
+    "Alert",
+    "Ashamed",
+    "Inspired",
+    "Nervous",
+    "Determined",
+    "Attentive",
+    "Active",
+    "Afraid"
+  ],
+  "answerChoices": [
+    "Very slightly or not at all",
+    "A little",
+    "Moderately",
+    "Quite a bit",
+    "Extremely"
+  ]
+}

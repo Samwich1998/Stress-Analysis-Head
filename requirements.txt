@@ -44,6 +44,5 @@ torchviz
 transformers
 webdriver-manager
 xgboost
-PyObjC
 mne_features
 mne

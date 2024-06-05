@@ -49,7 +49,7 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Detailed coefficients tend to look like low-frequency waves.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='none', numLayers=None, addBias=False),
         )
 
     def independentNeuralWeightCNN(self, inChannel=2, outChannel=1):
@@ -92,7 +92,7 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(stampLength=1, stampInd=0, signalMinMaxScale=1):
         # Create an array of values from 0 to stampLength - 1
         x = torch.arange(stampLength, dtype=torch.float32)
-        amplitude = signalMinMaxScale/4
+        amplitude = signalMinMaxScale/2
         frequency = stampInd
 
         # Generate the sine wave
@@ -114,7 +114,7 @@ class signalEncoderModules(convolutionalHelpers):
 
             # Neural architecture: self attention.
             self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=numClasses, activationMethod='boundedExp_0_2'),
-            self.linearModel(numInputFeatures=numClasses, numOutputFeatures=numClasses, activationMethod='boundedExp_0_2'),
+            self.linearModel(numInputFeatures=numClasses, numOutputFeatures=numClasses, activationMethod='none'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -122,7 +122,7 @@ class signalEncoderModules(convolutionalHelpers):
     def liftingOperator(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: lifting operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
         )
 
     @staticmethod
@@ -140,6 +140,7 @@ class signalEncoderModules(convolutionalHelpers):
         return nn.Sequential(
             # Convolution architecture: projection operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
     def heuristicEncoding(self, inChannel=1, outChannel=2):

@@ -77,6 +77,8 @@ if __name__ == "__main__":
     userInputParams, submodel = modelParameters.compileParameters(args)  # The user input parameters and the submodel.
     accelerator, storeLoss, fastPass = modelParameters.setParamsHPC(args, accelerator, userInputParams, storeLoss, fastPass, useFinalParams)  # Set the HPC parameters.
 
+    fastPass = True
+
     # Initialize the model information classes.
     modelCompiler = compileModelData(submodel, userInputParams, accelerator)
     modelParameters = modelParameters(userInputParams, accelerator)

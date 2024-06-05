@@ -46,3 +46,4 @@ webdriver-manager
 xgboost
 mne_features
 mne
+lightgbm

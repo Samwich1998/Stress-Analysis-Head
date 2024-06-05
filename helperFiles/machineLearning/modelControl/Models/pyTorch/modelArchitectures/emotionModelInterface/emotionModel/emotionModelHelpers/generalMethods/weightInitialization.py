@@ -232,10 +232,10 @@ class weightInitialization:
 
         # Generate the Gaussian kernel centered at the middle
         kernel = torch.exp(-0.5 * distance_to_center.pow(2) / variance)
-        kernel = kernel / kernel.abs().sum()
+        kernel = kernel / kernel.abs().sum() / kernel_size
 
         # Normalize the kernel using the calculated gain
-        normalization_factor = gain * variance / kernel_size
+        normalization_factor = gain * variance
         kernel = kernel * normalization_factor
 
         # Repeat the kernel across input and output channels

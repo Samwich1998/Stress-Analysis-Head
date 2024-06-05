@@ -24,9 +24,9 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
 
     # Protocol switches: only the first true variably executes.
-    readDataFromExcel = False  # Analyze Data from Excel File called 'currentFilename' on Sheet Number 'testSheetNum'
-    streamData = True  # Stream in Data from the Board and Analyze.
-    trainModel = False  # Train Model with ALL Data in 'collectedDataFolder'.
+    readDataFromExcel = False  # For SINGLE FILE analysis. Analyze Data from Excel File called 'currentFilename' on Sheet Number 'testSheetNum'
+    streamData = False  # Stream in Data from the Board and Analyze.
+    trainModel = True  # Train Model with ALL Data in 'collectedDataFolder'.
 
     # User options during the run: any number can be true.
     useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
@@ -34,9 +34,9 @@ if __name__ == "__main__":
     useTherapyData = True  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
-    userName = "Josh".replace(" ", "")
-    trialName = "HeatingPad"
-    date = "2024-05-30"
+    userName = "Jayden".replace(" ", "")
+    trialName = "BinaururalBeats"
+    date = "2024-06-04"
 
     # Specify experimental parameters.
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     saveInputs = saveDataProtocols.saveExcelData()
 
     # Get the reading/saving information.
-    numPointsPerBatch, moveDataFinger = inputParameterClass.getPlottingParams(analyzeBatches= plotStreamedData or useModelPredictions)
+    numPointsPerBatch, moveDataFinger = inputParameterClass.getPlottingParams(analyzeBatches=plotStreamedData)
     collectedDataFolder, currentFilename = inputParameterClass.getSavingInformation(date, trialName, userName)
 
     # Compile all the protocol information.
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     boardSerialNum, maxVolt, adcResolution, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams(boardSerialNum)
     soundInfoFile, dataFolder, playGenres = inputParameterClass.getModelParameters()
     saveRawFeatures, testSheetNum = inputParameterClass.getExcelParams()
+    modelClasses = []
 
     # Initialize instance to analyze the data
     readData = streamingProtocols.streamingProtocols(boardSerialNum, modelClasses, actionControl, numPointsPerBatch, moveDataFinger,
@@ -79,7 +80,7 @@ if __name__ == "__main__":
             streamingThread = threading.Thread(target=readData.streamArduinoData, args=(maxVolt, adcResolution, stopTimeStreaming, currentFilename), daemon=True)
             streamingThread.start()
             # Open the questionnaire GUI.
-            folderPath = "./therapyHelperFiles/surveyInformation/"
+            folderPath = "./helperFiles/surveyInformation/"
             stressQuestionnaire = stressQuestionnaireGUI(readData, folderPath)
             # When the streaming stops, close the GUI/Thread.
             stressQuestionnaire.finishedRun()

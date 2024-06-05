@@ -1,3 +1,4 @@
+import antropy
 import numpy as np
 import scipy
 import sklearn
@@ -173,7 +174,7 @@ class eegProtocol(globalProtocol):
 
         # ------------------- Feature Extraction: MNE ------------------- #
 
-        self.mneInterface.extractFeatures(data, standardized_data, powerSpectrumDensityNormalized)
+        decorr_time, energy_freq_bands, higuchi_fd, katz_fd, line_length, pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, num_zerocross = self.mneInterface.extractFeatures(data, standardized_data, powerSpectrumDensityNormalized)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 

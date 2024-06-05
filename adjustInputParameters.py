@@ -60,7 +60,7 @@ class adjustInputParameters:
         numPointsPerBatch = 4000  # The Number of Data Points to Display to the User at a Time.
         moveDataFinger = 400  # The Minimum Number of NEW Data Points to Plot/Analyze in Each Batch;
 
-        if analyzeBatches:
+        if not analyzeBatches:
             # If displaying all data, read in all the Excel data (max per sheet) at once
             numPointsPerBatch = 2048576
             moveDataFinger = 1048100

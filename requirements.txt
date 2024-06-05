@@ -1,4 +1,5 @@
 accelerate
+antropy
 dill
 hmmlearn
 joblib

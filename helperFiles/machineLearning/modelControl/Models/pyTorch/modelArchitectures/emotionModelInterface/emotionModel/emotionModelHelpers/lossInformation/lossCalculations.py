@@ -84,7 +84,7 @@ class lossCalculations:
 
         # Weight the final loss based on the number of signals.
         classWeights = self.generalMethods.minMaxScale_noInverse(targetPositionIndices, scale=0.5, buffer=0) + 1.5
-        positionalEncodingLoss = (positionalEncodingLoss * classWeights).sum() / classWeights.sum()
+        positionalEncodingLoss = (positionalEncodingLoss * classWeights).sum() / classWeights.sum() / numSignals
 
         return positionalEncodingLoss
 

@@ -143,7 +143,7 @@ class channelPositionalEncoding(signalEncoderModules):
         # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
 
         # Predict the signal index.
-        predictedIndexProbabilities = self.posIndexPredictor(lowFrequency)
-        # predictedIndexProbabilities dimension: batchSize, numInputSignals, maxNumEncodingSignals
+        predictedIndexProbabilities = self.posIndexPredictor(lowFrequency).squeeze(-1)
+        # predictedIndexProbabilities dimension: batchSize, numInputSignals
 
         return predictedIndexProbabilities

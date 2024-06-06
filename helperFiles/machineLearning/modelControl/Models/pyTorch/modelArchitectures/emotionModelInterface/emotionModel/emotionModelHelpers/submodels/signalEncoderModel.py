@@ -100,7 +100,7 @@ class signalEncoderModel(globalModel):
         # signalData dimension: batchSize, numSignals, sequenceLength
 
         # Create placeholders for the final variables.
-        decodedPredictedIndexProbabilities = torch.ones((batchSize, numSignals, self.maxNumEncodedSignals), device=signalData.device)
+        decodedPredictedIndexProbabilities = torch.ones((batchSize, numSignals), device=signalData.device)
         denoisedReconstructedData = torch.zeros_like(signalData, device=signalData.device)
         signalEncodingLoss = torch.zeros((batchSize,), device=signalData.device)
         # denoisedReconstructedData dimension: batchSize, numSignals, sequenceLength
@@ -128,8 +128,8 @@ class signalEncoderModel(globalModel):
         # Learn how to add positional encoding to each signal's position.
         positionEncodedData = self.encodeSignals.positionalEncodingInterface.addPositionalEncoding(signalData)
         predictedIndexProbabilities = self.predictPositionClasses(positionEncodedData)  # Predict the positional encoding index.
-        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
         # positionEncodedData dimension: batchSize, numSignals, sequenceLength
+        # predictedIndexProbabilities dimension: batchSize, numSignals
 
         # Compress the signal space into numEncodedSignals.
         encodedData, numSignalForwardPath, signalEncodingLayerLoss = self.encodeSignals(signalData=positionEncodedData, targetNumSignals=numEncodedSignals, signalEncodingLayerLoss=None, calculateLoss=calculateLoss, forward=True)
@@ -184,7 +184,7 @@ class signalEncoderModel(globalModel):
         # Predict the positional encoding index.
         predictedIndexProbabilities = self.encodeSignals.positionalEncodingInterface.predictSignalIndex(positionEncodedData)
         predictedIndexProbabilities = self.encodeSignals.denoiseSignals.applySmoothing_forPosPreds(predictedIndexProbabilities)  # Smooth over the encoding space.
-        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodingSignals
+        # predictedIndexProbabilities dimension: batchSize, numSignals
 
         return predictedIndexProbabilities
 

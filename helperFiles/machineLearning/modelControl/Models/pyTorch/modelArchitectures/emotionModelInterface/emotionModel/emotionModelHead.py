@@ -162,8 +162,8 @@ class emotionModelHead(globalModel):
         t1 = time.time()
         # Forward pass through the signal encoder to reduce to a common signal number.
         encodedData, reconstructedData, predictedIndexProbabilities, decodedPredictedIndexProbabilities, signalEncodingLayerLoss = self.signalEncoderModel(signalData, initialSignalData, decodeSignals, calculateLoss, trainingFlag)
-        # decodedPredictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodedSignals
-        # predictedIndexProbabilities dimension: batchSize, numSignals, maxNumEncodedSignals
+        # decodedPredictedIndexProbabilities dimension: batchSize, numSignals
+        # predictedIndexProbabilities dimension: batchSize, numSignals
         # encodedData dimension: batchSize, numEncodedSignals, sequenceLength
         # reconstructedData dimension: batchSize, numSignals, sequenceLength
         # signalEncodingLayerLoss dimension: batchSize
@@ -267,8 +267,8 @@ class emotionModelHead(globalModel):
         batch_size, numSignals, _ = dataLoader.dataset.features.size()
 
         # Preallocate tensors for the signal encoder.
-        decodedPredictedIndexProbabilities = torch.zeros((batch_size, numSignals, self.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals), device=dataLoader.dataset.features.device)
-        predictedIndexProbabilities = torch.zeros((batch_size, numSignals, self.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals), device=dataLoader.dataset.features.device)
+        decodedPredictedIndexProbabilities = torch.zeros((batch_size, numSignals), device=dataLoader.dataset.features.device)
+        predictedIndexProbabilities = torch.zeros((batch_size, numSignals), device=dataLoader.dataset.features.device)
         encodedData = torch.zeros((batch_size, self.numEncodedSignals, timeWindow), device=dataLoader.dataset.features.device)
         reconstructedData = torch.zeros((batch_size, numSignals, timeWindow), device=dataLoader.dataset.features.device)
         # Preallocate tensors for the autoencoder.

@@ -89,9 +89,9 @@ class signalEncoderModules(convolutionalHelpers):
         return "none"
 
     @staticmethod
-    def positionalEncodingStamp(stampLength=1, frequency=0, signalMinMaxScale=1):
+    def positionalEncodingStamp(stampLength=1, frequency=torch.tensor(0), signalMinMaxScale=1):
         # Create an array of values from 0 to stampLength - 1
-        x = torch.arange(stampLength, dtype=torch.float32)
+        x = torch.arange(stampLength, dtype=torch.float32, device=frequency.device)
         amplitude = signalMinMaxScale/2
 
         # Generate the sine wave

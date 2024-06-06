@@ -40,7 +40,7 @@ class signalEncoderVisualizations(globalPlottingProtocols):
         plt.show()
 
     def plotOneSignalEncoding(self, allEncodedData, referenceEncodedData=None, epoch=0, plotTitle="Signal Encoding", numSignalPlots=1, plotIndOffset=0):
-        numCondensedSignals = allEncodedData(1)
+        numCondensedSignals = allEncodedData.size(1)
 
         # Get the signals to plot.
         plottingSignals = np.arange(0, numSignalPlots)

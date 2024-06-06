@@ -243,7 +243,7 @@ class weightInitialization:
 
         # Add random initialization to the kernel.
         self.kaiming_uniform_weights(conv_layer, a=math.sqrt(5), nonlinearity='selu')
-        kernel = 0.2*kernel + 0.8*conv_layer.weight
+        kernel = 0.1*kernel + 0.9*conv_layer.weight
 
         # Assign the initialized weights to the conv layer
         with torch.no_grad():

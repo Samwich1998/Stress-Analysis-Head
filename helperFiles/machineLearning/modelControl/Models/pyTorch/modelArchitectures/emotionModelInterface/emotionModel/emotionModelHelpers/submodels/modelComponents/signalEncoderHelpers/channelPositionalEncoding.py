@@ -27,10 +27,10 @@ class channelPositionalEncoding(signalEncoderModules):
         self.mode = 'zero'             # Mode for the wavelet transform.
 
         # Create the spectral convolution layers.
-        self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=11,
-                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='none', useConvolutionFlag=False, independentChannels=True, skipConnectionProtocol='none')
-        self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=11,
-                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='none', useConvolutionFlag=False, independentChannels=True, skipConnectionProtocol='none')
+        self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=0,
+                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='none')
+        self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=0,
+                                                                    activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='none', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='none')
         self.minLowFrequencyShape = self.learnNeuralOperatorLayers.minLowFrequencyShape  # For me, this was 49
         self.lowFrequencyShape = self.learnNeuralOperatorLayers.lowFrequencyShape  # For me, this was 124
 
@@ -48,7 +48,9 @@ class channelPositionalEncoding(signalEncoderModules):
     def addPositionalEncoding(self, inputData):
         # Compile the encoding stamp.
         encodingStamp = self.compileStampWaveforms(self.learnPosFrequencies)
-        posEncodedData = self.positionalEncoding(inputData, encodingStamp, self.learnNeuralOperatorLayers)
+        posEncodedData = self.positionalEncoding(torch.zeros_like(inputData), encodingStamp, self.learnNeuralOperatorLayers)
+        # Add the positional encoding to the data.
+        posEncodedData = posEncodedData + inputData
 
         return posEncodedData
 
@@ -56,6 +58,8 @@ class channelPositionalEncoding(signalEncoderModules):
         # Compile the decoding stamp.
         decodingStamp = self.compileStampWaveforms(self.unlearnPosFrequencies)
         originalData = self.positionalEncoding(inputData, decodingStamp, self.unlearnNeuralOperatorLayers)
+        # Add the positional encoding to the data.
+        originalData = originalData + inputData
 
         return originalData
 
@@ -74,7 +78,7 @@ class channelPositionalEncoding(signalEncoderModules):
         assert numSignals <= self.maxNumEncodedSignals, "The number of signals exceeds the maximum encoding limit."
 
         # Apply the neural operator and the skip connection.
-        positionEncodedData = learnNeuralOperatorLayers(torch.zeros_like(inputData), extraSkipConnection=0, lowFrequencyTerms=finalStamp, highFrequencyTerms=None) + inputData
+        positionEncodedData = learnNeuralOperatorLayers(inputData, extraSkipConnection=0, lowFrequencyTerms=finalStamp, highFrequencyTerms=None)
         # positionEncodedData dimension: batchSize, numSignals, signalDimension
 
         return positionEncodedData

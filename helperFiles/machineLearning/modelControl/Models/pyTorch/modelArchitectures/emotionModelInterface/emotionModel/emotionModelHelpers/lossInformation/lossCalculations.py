@@ -70,30 +70,12 @@ class lossCalculations:
         finalLoss = method(signalData).mean()
         return finalLoss
 
-    def calculatePositionalEncodingLoss2(self, predictedIndexProbabilities):
-        # Extract the positional encoding information.
-        numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
-
-        # Reshape the data for the positional encoding loss.
-        targetClasses = torch.arange(numSignals, device=self.accelerator.device).long().repeat(numExperiments, 1).view(-1)
-        predictedIndexProbabilities = predictedIndexProbabilities.view(numExperiments*numSignals, maxNumEncodedSignals)
-
-        # Calculate the positional encoding loss.
-        positionalEncodingLoss = self.positionalEncoderLoss(predictedIndexProbabilities, targetClasses).mean()
-        if not self.useFinalParams and random.random() < 0.01: self.errorPerClass(predictedIndexProbabilities, targetClasses)
-
-        # Weight the final loss based on the number of signals.
-        classWeights = self.generalMethods.minMaxScale_noInverse(targetClasses, scale=0.5, buffer=0) + 1.5
-        positionalEncodingLoss = (positionalEncodingLoss * classWeights).sum() / classWeights.sum()
-
-        return positionalEncodingLoss
-
     def calculatePositionalEncodingLoss(self, predictedPositionIndices):
         # Extract the positional encoding information.
         batchSize, numSignals = predictedPositionIndices.size()
 
         # Reshape the data for the positional encoding loss.
-        targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device).repeat(batchSize, 1)
+        targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device, dtype=torch.float32).repeat(batchSize, 1)
         # targetPositionIndices dim: batchSize, numSignals
 
         # Calculate the positional encoding loss.

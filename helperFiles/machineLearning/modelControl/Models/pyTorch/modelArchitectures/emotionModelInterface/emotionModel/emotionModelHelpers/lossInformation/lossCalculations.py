@@ -93,7 +93,7 @@ class lossCalculations:
         batchSize, numSignals = predictedPositionIndices.size()
 
         # Reshape the data for the positional encoding loss.
-        targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device).long().repeat(batchSize, 1)
+        targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device).repeat(batchSize, 1)
         # targetPositionIndices dim: batchSize, numSignals
 
         # Calculate the positional encoding loss.

@@ -12,6 +12,7 @@ class channelPositionalEncoding(signalEncoderModules):
     def __init__(self, waveletType, sequenceBounds=(90, 300), signalMinMaxScale=1):
         super(channelPositionalEncoding, self).__init__()
         # General parameters.
+        self.signalMinMaxScale = signalMinMaxScale  # The minimum and maximum signal values.
         self.sequenceBounds = sequenceBounds  # The minimum and maximum sequence length.
 
         # Positional encoding parameters.
@@ -33,28 +34,30 @@ class channelPositionalEncoding(signalEncoderModules):
         self.minLowFrequencyShape = self.learnNeuralOperatorLayers.minLowFrequencyShape  # For me, this was 49
         self.lowFrequencyShape = self.learnNeuralOperatorLayers.lowFrequencyShape  # For me, this was 124
 
-        # A list of parameters to encode each signal.
-        self.encodingStamp = nn.ParameterList()  # A list of learnable parameters for learnable signal positions.
-        self.decodingStamp = nn.ParameterList()  # A list of learnable parameters for learnable signal positions.
-
-        # For each encoding bit.
-        for stampInd in range(self.numEncodingStamps):
-            # Assign a learnable parameter to the signal.
-            self.encodingStamp.append(self.positionalEncodingStamp(self.lowFrequencyShape, stampInd=stampInd, signalMinMaxScale=signalMinMaxScale))
-            self.decodingStamp.append(-self.positionalEncodingStamp(self.lowFrequencyShape, stampInd=stampInd, signalMinMaxScale=signalMinMaxScale))
+        # Positional encoding parameters.
+        self.learnPosFrequencies = self.getFrequencyParams(self.numEncodingStamps)
+        self.unlearnPosFrequencies = self.getFrequencyParams(self.numEncodingStamps)
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt_indexPredictor = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)
-        self.posIndexPredictor = self.predictedPosEncodingIndex(numFeatures=self.lowFrequencyShape, numClasses=self.maxNumEncodedSignals)
+        self.posIndexPredictor = self.predictedPosEncodingIndex(numFeatures=self.lowFrequencyShape)
 
     # ---------------------------------------------------------------------- #
     # -------------------- Learned Positional Encoding --------------------- #
 
     def addPositionalEncoding(self, inputData):
-        return self.positionalEncoding(inputData, self.encodingStamp, self.learnNeuralOperatorLayers)
+        # Compile the encoding stamp.
+        encodingStamp = self.compileStampWaveforms(self.learnPosFrequencies)
+        posEncodedData = self.positionalEncoding(inputData, encodingStamp, self.learnNeuralOperatorLayers)
+
+        return posEncodedData
 
     def removePositionalEncoding(self, inputData):
-        return self.positionalEncoding(inputData, self.decodingStamp, self.unlearnNeuralOperatorLayers)
+        # Compile the decoding stamp.
+        decodingStamp = self.compileStampWaveforms(self.unlearnPosFrequencies)
+        originalData = self.positionalEncoding(inputData, decodingStamp, self.unlearnNeuralOperatorLayers)
+
+        return originalData
 
     def positionalEncoding(self, inputData, encodingStamp, learnNeuralOperatorLayers):
         # Initialize and learn an encoded stamp for each signal index.
@@ -110,6 +113,17 @@ class channelPositionalEncoding(signalEncoderModules):
         finalStamp = finalStamp / numStampsUsed.clamp(min=1).unsqueeze(0).unsqueeze(-1)
 
         return finalStamp
+
+    def compileStampWaveforms(self, learnPosFrequencies):
+        # Initialize the encoding stamp.
+        encodingStamp = []
+
+        # For each encoding bit.
+        for stampInd in range(self.numEncodingStamps):
+            # Assign a learnable parameter to the signal.
+            encodingStamp.append(self.positionalEncodingStamp(self.lowFrequencyShape, frequency=learnPosFrequencies[stampInd], signalMinMaxScale=self.signalMinMaxScale))
+
+        return encodingStamp
 
     def predictSignalIndex(self, inputData):
         # Extract the input data dimensions.

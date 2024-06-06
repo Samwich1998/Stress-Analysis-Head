@@ -89,32 +89,38 @@ class signalEncoderModules(convolutionalHelpers):
         return "none"
 
     @staticmethod
-    def positionalEncodingStamp(stampLength=1, stampInd=0, signalMinMaxScale=1):
+    def positionalEncodingStamp(stampLength=1, frequency=0, signalMinMaxScale=1):
         # Create an array of values from 0 to stampLength - 1
         x = torch.arange(stampLength, dtype=torch.float32)
         amplitude = signalMinMaxScale/2
-        frequency = stampInd
 
         # Generate the sine wave
         sine_wave = amplitude * torch.sin(2 * math.pi * frequency * x / stampLength)
 
         return sine_wave
 
-    def predictedPosEncodingIndex(self, numFeatures=2, numClasses=1):
+    def getFrequencyParams(self, numEncodingStamps=8):
+        # Initialize the weights with a normal distribution.
+        parameter = nn.Parameter(torch.randn(numEncodingStamps))
+        parameter = self.weightInitialization.heUniformInit(parameter, fan_in=numEncodingStamps)
+
+        return parameter
+
+    def predictedPosEncodingIndex(self, numFeatures=2):
         return nn.Sequential(
             independentModelCNN(
                 useCheckpoint=False,
                 module=nn.Sequential(
                     # Convolution architecture: feature engineering
-                    self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=True),
-                    self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='boundedExp_0_2', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='boundedExp_0_2', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='boundedExp_0_2', activationType='boundedExp_0_2', numLayers=None, addBias=False),
                 ),
             ),
 
             # Neural architecture: self attention.
-            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=numClasses, activationMethod='boundedExp_0_2'),
-            self.linearModel(numInputFeatures=numClasses, numOutputFeatures=numClasses, activationMethod='none'),
+            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=numFeatures, activationMethod='boundedExp_0_2'),
+            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=1, activationMethod='none'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #

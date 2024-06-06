@@ -45,7 +45,7 @@ class lossCalculations:
         # Initialize the loss function WITHOUT the class weights.
         self.activityClassificationLoss = pytorchLossMethods(lossType=self.activityClass_lossType, class_weights=None).loss_fn
         self.emotionClassificationLoss = pytorchLossMethods(lossType=self.emotionDist_lossType, class_weights=None).loss_fn
-        self.positionalEncoderLoss = pytorchLossMethods(lossType="CrossEntropyLoss", class_weights=None).loss_fn
+        self.positionalEncoderLoss = pytorchLossMethods(lossType="MeanSquaredError", class_weights=None).loss_fn
         self.reconstructionLoss = pytorchLossMethods(lossType="MeanSquaredError", class_weights=None).loss_fn
 
     # ---------------------------------------------------------------------- #
@@ -70,7 +70,7 @@ class lossCalculations:
         finalLoss = method(signalData).mean()
         return finalLoss
 
-    def calculatePositionalEncodingLoss(self, predictedIndexProbabilities):
+    def calculatePositionalEncodingLoss2(self, predictedIndexProbabilities):
         # Extract the positional encoding information.
         numExperiments, numSignals, maxNumEncodedSignals = predictedIndexProbabilities.size()
 
@@ -84,6 +84,24 @@ class lossCalculations:
 
         # Weight the final loss based on the number of signals.
         classWeights = self.generalMethods.minMaxScale_noInverse(targetClasses, scale=0.5, buffer=0) + 1.5
+        positionalEncodingLoss = (positionalEncodingLoss * classWeights).sum() / classWeights.sum()
+
+        return positionalEncodingLoss
+
+    def calculatePositionalEncodingLoss(self, predictedPositionIndices):
+        # Extract the positional encoding information.
+        batchSize, numSignals = predictedPositionIndices.size()
+
+        # Reshape the data for the positional encoding loss.
+        targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device).long().repeat(batchSize, 1)
+        # targetPositionIndices dim: batchSize, numSignals
+
+        # Calculate the positional encoding loss.
+        positionalEncodingLoss = self.positionalEncoderLoss(predictedPositionIndices, targetPositionIndices).mean()
+        if not self.useFinalParams and random.random() < 0.01: self.errorPerClass(predictedPositionIndices, targetPositionIndices)
+
+        # Weight the final loss based on the number of signals.
+        classWeights = self.generalMethods.minMaxScale_noInverse(targetPositionIndices, scale=0.5, buffer=0) + 1.5
         positionalEncodingLoss = (positionalEncodingLoss * classWeights).sum() / classWeights.sum()
 
         return positionalEncodingLoss

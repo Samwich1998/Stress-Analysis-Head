@@ -15,10 +15,10 @@ class weightInitialization:
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
         elif layerType == 'fc':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
-        elif layerType == 'conv1D_gausInit':
-            self.custom_kernel_initialization(modelParam)
-        elif layerType == 'pointwise':
-            self.custom_kernel_initialization(modelParam)
+        #elif layerType == 'conv1D_gausInit':
+        #    self.custom_kernel_initialization(modelParam)
+        #elif layerType == 'pointwise':
+        #    self.custom_kernel_initialization(modelParam)
         else:
             modelParam.reset_parameters()
 

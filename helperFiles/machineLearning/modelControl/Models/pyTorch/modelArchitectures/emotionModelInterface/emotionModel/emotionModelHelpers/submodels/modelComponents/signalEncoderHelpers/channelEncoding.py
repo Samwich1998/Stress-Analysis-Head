@@ -47,6 +47,10 @@ class channelEncoding(signalEncoderModules):
         self.projectingCompressionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numCompressedSignals)
         self.projectingExpansionModel = self.projectionOperator(inChannel=self.numSigLiftedChannels, outChannel=self.numExpandedSignals)
 
+        # Initialize final models.
+        self.finalCompressionModel = self.finalChannelModel(inChannel=self.numCompressedSignals)
+        self.finalExpansionModel = self.finalChannelModel(inChannel=self.numExpandedSignals)
+
     def addModelBlock(self):
         # Create the spectral convolution layers.
         compressedNeuralOperatorLayer, compressedPostProcessingLayer = self.initializeNeuralLayer(numInputSignals=self.numSigLiftedChannels, numOutputSignals=self.numSigLiftedChannels, bottleneckChannel=self.numCompressedSignals)
@@ -75,24 +79,27 @@ class channelEncoding(signalEncoderModules):
     # ----------------------- Signal Encoding Methods ---------------------- #
 
     def compressionAlgorithm(self, inputData):
-        return self.applyChannelEncoding(inputData, self.heuristicCompressionModel, self.liftingCompressionModel, self.compressedNeuralOperatorLayers, self.compressedProcessingLayers, self.projectingCompressionModel)
+        return self.applyChannelEncoding(inputData, self.heuristicCompressionModel, self.liftingCompressionModel, self.compressedNeuralOperatorLayers, self.compressedProcessingLayers, self.projectingCompressionModel, self.finalCompressionModel)
 
     def expansionAlgorithm(self, inputData):
-        return self.applyChannelEncoding(inputData, self.heuristicExpansionModel, self.liftingExpansionModel, self.expandedNeuralOperatorLayers, self.expandedProcessingLayers, self.projectingExpansionModel)
+        return self.applyChannelEncoding(inputData, self.heuristicExpansionModel, self.liftingExpansionModel, self.expandedNeuralOperatorLayers, self.expandedProcessingLayers, self.projectingExpansionModel, self.finalExpansionModel)
 
-    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, projectingModel):
+    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, processingLayers, projectingModel, finalChannelModel):
         # Learn the initial signal.
         processedData = liftingModel(inputData)
         # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
+            # Save the initial layer of the signal.
+            initialData = processedData.clone()
+
             # Apply the neural operator and the skip connection.
             processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, 0, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
+            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False) + initialData
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.
@@ -100,7 +107,11 @@ class channelEncoding(signalEncoderModules):
         # processedData dimension: batchSize, numOutputSignals, signalDimension
 
         # Add the heuristic model as a baseline.
-        processedData = processedData + heuristicModel(inputData)
+        processedData = heuristicModel(inputData) + processedData
+        # processedData dimension: batchSize, numOutputSignals, signalDimension
+
+        # Apply the final channel model.
+        processedData = finalChannelModel(processedData) + processedData
         # processedData dimension: batchSize, numOutputSignals, signalDimension
 
         return processedData

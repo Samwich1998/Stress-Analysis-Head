@@ -43,7 +43,7 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightHighCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Detailed coefficients tend to look like delta spikes ... I think kernel_size of 1 is optimal.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
     def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
@@ -113,7 +113,7 @@ class signalEncoderModules(convolutionalHelpers):
                 module=nn.Sequential(
                     # Convolution architecture: feature engineering
                     self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+                    # self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
                     self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
                 ),
             ),
@@ -137,22 +137,26 @@ class signalEncoderModules(convolutionalHelpers):
 
     def signalPostProcessing(self, inChannel=2, bottleneckChannel=2):
         return nn.Sequential(
-            # Convolution architecture: feature engineering. Keep kernel_sizes as 1 for faster (?) convergence. THe purpose of kernel_sizes as 3 is to prevent gibbs phenomenon.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            # Convolution architecture: feature engineering. Keep kernel_sizes as 1 for faster (?) convergence. The purpose of kernel_sizes as 3 is to prevent gibbs phenomenon.
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=1,  dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
         return nn.Sequential(
             # Convolution architecture: projection operator. Keep kernel_sizes as 1 for an interpretable encoding space and faster (?) convergence.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
     def heuristicEncoding(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: heuristic operator.
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='none', numLayers=None, addBias=False),
+        )
+
+    def finalChannelModel(self, inChannel=2):
+        return nn.Sequential(
+            self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
     # ----------------------- Denoiser Architectures ----------------------- #

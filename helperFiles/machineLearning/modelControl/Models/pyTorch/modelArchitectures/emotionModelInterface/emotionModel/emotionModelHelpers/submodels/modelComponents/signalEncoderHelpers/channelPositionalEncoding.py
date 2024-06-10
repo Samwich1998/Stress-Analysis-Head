@@ -18,7 +18,6 @@ class channelPositionalEncoding(signalEncoderModules):
         # Positional encoding parameters.
         self.numEncodingStamps = 8  # The number of binary bits in the encoding (010 = 2 signals; 3 encodings). Max: 256 signals -> 2**8.
         self.maxNumEncodedSignals = 2 ** self.numEncodingStamps  # The maximum number of signals that can be encoded.
-        self.smoothingKernel_forPosEnc = self.getSmoothingKernel(kernelSize=11)
 
         # Neural operator parameters.
         self.activationMethod = self.getActivationMethod_posEncoder()

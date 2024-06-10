@@ -32,15 +32,6 @@ class weightInitialization:
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
 
-    @staticmethod
-    def smoothWeights(model, kernelSize=3):
-        from ..submodels.modelComponents.signalEncoderHelpers.signalEncoderModules import signalEncoderModules
-        smoothingKernel = signalEncoderModules.getSmoothingKernel(kernelSize=kernelSize)
-
-        for param in model.parameters():
-            if param.requires_grad:
-                param.data = signalEncoderModules.applySmoothing(param.data, smoothingKernel)
-
     # -------------------------- Layer Weights -------------------------- #
 
     @staticmethod

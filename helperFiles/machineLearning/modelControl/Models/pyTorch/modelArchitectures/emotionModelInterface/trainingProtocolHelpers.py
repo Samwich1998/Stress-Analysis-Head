@@ -74,11 +74,8 @@ class trainingProtocolHelpers:
 
             with torch.no_grad():
                 # Calculate and store all the training and testing losses of the untrained model.
-                if storeLoss:
-                    modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
-                if stepScheduler:
-                    modelPipeline.constrainedScheduler.step()  # Update the learning rate.
-                    modelPipeline.scheduler.step()  # Update the learning rate.
+                if storeLoss: modelPipeline.organizeLossInfo.storeTrainingLosses(submodel, modelPipeline, lossDataLoader, fastPass)
+                if stepScheduler: modelPipeline.scheduler.step()  # Update the learning rate.
         t2 = time.time()
         self.accelerator.print("Total loss calculation time:", t2 - t1)
 

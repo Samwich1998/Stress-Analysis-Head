@@ -103,11 +103,11 @@ class modelParameters:
     @staticmethod
     def getNumEpochs(submodel):
         if submodel == "signalEncoder":
-            return 1000, 5  # numEpoch, numConstrainedEpochs
+            return 10, 1000  # numConstrainedEpochs, numEpoch
         elif submodel == "autoencoder":
-            return 1000, 5  # numEpoch, numConstrainedEpochs
+            return 10, 1000  # numConstrainedEpochs, numEpoch
         elif submodel == "emotionPrediction":
-            return 1000, 5  # numEpoch, numConstrainedEpochs
+            return 10, 1000  # numConstrainedEpochs, numEpoch
         else:
             raise Exception()
 
@@ -218,10 +218,7 @@ class modelParameters:
         saveFullModel = False
 
         # Determine if we should save or plot the model.
-        if epoch < numConstrainedEpochs:
-            plotSteps = True
-        elif epoch == numConstrainedEpochs:
-            saveFullModel = True
+        if epoch <= numConstrainedEpochs:
             plotSteps = True
         else:
             saveFullModel = (epoch % numEpoch_toSaveFull == 0)

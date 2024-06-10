@@ -79,7 +79,7 @@ class emotionPipeline(emotionPipelineHelpers):
                         batchData = batchData[trainingColumn]
                         if batchData.size(0) == 0:
                             if self.accelerator.sync_gradients:
-                                self.backpropogateModel(constrainedTraining)
+                                self.backpropogateModel()
                             continue  # We are not training on any points (or need to refresh training)
 
                     # Separate the data into signal, demographic, and subject identifier information.
@@ -239,29 +239,21 @@ class emotionPipeline(emotionPipelineHelpers):
                     t1 = time.time()
                     # Calculate the gradients.
                     self.accelerator.backward(finalLoss)  # Calculate the gradients.
-                    self.backpropogateModel(constrainedTraining)
+                    self.backpropogateModel()  # Backpropagate the gradient.
                     t2 = time.time(); self.accelerator.print(f"Backprop {self.datasetName} {numPointsAnalyzed}:", t2 - t1)
             # Finalize all the parameters.
-            if not constrainedTraining:
-                self.scheduler.step()  # Update the learning rate.
-            else:
-                self.constrainedScheduler.step()  # Update the learning rate.
+            self.scheduler.step()  # Update the learning rate.
 
         # Prepare the model/data for evaluation.
         self.setupTrainingFlags(self.model, trainingFlag=False)  # Set all models into evaluation mode.
         self.accelerator.wait_for_everyone()  # Wait before continuing.
 
-    def backpropogateModel(self, constrainedTraining):
+    def backpropogateModel(self):
         # Clip the gradients if they are too large.
         if self.accelerator.sync_gradients:
             self.accelerator.clip_grad_norm_(self.model.parameters(), 20)  # Apply gradient clipping: Small: <1; Medium: 5-10; Large: >20
 
-        if constrainedTraining:
-            self.constrainedOptimizer.step()
-            self.constrainedOptimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
-            self.accelerator.print("LR:", self.constrainedScheduler.get_last_lr())
-        else:
-            # Backpropagation the gradient.
-            self.optimizer.step()  # Adjust the weights.
-            self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
-            self.accelerator.print("LR:", self.scheduler.get_last_lr())
+        # Backpropagation the gradient.
+        self.optimizer.step()  # Adjust the weights.
+        self.optimizer.zero_grad()  # Zero your gradients to restart the gradient tracking.
+        self.accelerator.print("LR:", self.scheduler.get_last_lr())

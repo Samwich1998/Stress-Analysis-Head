@@ -27,8 +27,6 @@ class emotionPipelineHelpers:
         self.modelID = modelID  # A unique integer identifier for this model.
 
         # Pre-initialize later parameters.
-        self.constrainedScheduler = None
-        self.constrainedOptimizer = None
         self.optimizer = None
         self.scheduler = None
         self.model = None
@@ -88,13 +86,13 @@ class emotionPipelineHelpers:
         trainingInformation, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel = self.getDistributedModels(model=None, submodel=None)
 
         # Initialize the optimizer and scheduler.
-        self.constrainedOptimizer, self.constrainedScheduler, self.optimizer, self.scheduler = self.optimizerMethods.addOptimizer(submodel, self.model, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel)
+        self.optimizer, self.scheduler = self.optimizerMethods.addOptimizer(submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel)
 
     def acceleratorInterface(self, dataLoader=None):
         if dataLoader is None:
-            self.constrainedOptimizer, self.constrainedScheduler, self.optimizer, self.scheduler, self.model = self.accelerator.prepare(self.constrainedOptimizer, self.constrainedScheduler, self.optimizer, self.scheduler, self.model)
+            self.optimizer, self.scheduler, self.model = self.accelerator.prepare(self.optimizer, self.scheduler, self.model)
         else:
-            self.constrainedOptimizer, self.constrainedScheduler, self.optimizer, self.scheduler, self.model, dataLoader = self.accelerator.prepare(self.constrainedOptimizer, self.constrainedScheduler, self.optimizer, self.scheduler, self.model, dataLoader)
+            self.optimizer, self.scheduler, self.model, dataLoader = self.accelerator.prepare(self.optimizer, self.scheduler, self.model, dataLoader)
 
         return dataLoader
 

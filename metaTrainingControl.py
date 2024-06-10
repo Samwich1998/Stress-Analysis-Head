@@ -87,7 +87,7 @@ if __name__ == "__main__":
     # Specify training parameters
     datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces = modelParameters.compileModelNames()  # Compile the model names.
     numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useFinalParams)  # The number of epochs to plot and save the model.
-    numEpochs, numConstrainedEpochs = modelParameters.getNumEpochs(submodel)  # The number of epochs to train the model.
+    numConstrainedEpochs, numEpochs = modelParameters.getNumEpochs(submodel)  # The number of epochs to train the model.
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
     submodelsSaving = modelParameters.getSubmodelsSaving(submodel)  # The submodels to save.
 

@@ -1,6 +1,7 @@
 # General
 import torch.optim as optim
 import transformers
+from torch.optim.lr_scheduler import SequentialLR
 
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.modelParameters import modelParameters
 
@@ -40,20 +41,17 @@ class optimizerMethods:
 
         return modelParams
 
-    def addOptimizer(self, submodel, model, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):
+    def addOptimizer(self, submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel):
         # Get the model parameters.
         modelParams = self.getModelParams(submodel, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel)
-        constrainedModelParams = [{'params': model.parameters()}]
 
         # Set the optimizer.
-        constrainedOptimizer = self.setOptimizer(constrainedModelParams, lr=1E-4, weight_decay=0, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
-        optimizer = self.setOptimizer(modelParams, lr=5E-5, weight_decay=1E-10, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
+        optimizer = self.setOptimizer(modelParams, lr=1E-4, weight_decay=1E-6, submodel=submodel, optimizerType=self.userInputParams["optimizerType"])
 
         # Set the learning rate scheduler.
-        constrainedScheduler = self.getLearningRateScheduler(submodel, constrainedOptimizer, constrainedFlag=True)
-        scheduler = self.getLearningRateScheduler(submodel, optimizer, constrainedFlag=False)
+        scheduler = self.getLearningRateScheduler(submodel, optimizer)
 
-        return constrainedOptimizer, constrainedScheduler, optimizer, scheduler
+        return optimizer, scheduler
 
     def setOptimizer(self, params, lr, weight_decay, submodel, optimizerType):
         if submodel == "signalEncoder":
@@ -79,21 +77,25 @@ class optimizerMethods:
             assert False, "No optimizer initialized"
 
     @staticmethod
-    def getLearningRateScheduler(submodel, optimizer, constrainedFlag=False):
+    def getLearningRateScheduler(submodel, optimizer):
         # Options:
         # Slow ramp up: transformers.get_constant_schedule_with_warmup(optimizer=self.optimizer, num_warmup_steps=30)
-        # Cosine waveform: optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=20, eta_min=1e-8, last_epoch=-1, verbose=False)
+        # Cosine waveform: optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=20, eta_min=1e-8, last_epoch=-1)
         # Reduce on plateau (need further editing of loop): optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
         # Defined lambda function: optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lambda_function); lambda_function = lambda epoch: (epoch/50) if epoch < -1 else 1
         # torch.optim.lr_scheduler.constrainedLR(optimizer, start_factor=0.3333333333333333, end_factor=1.0, total_iters=5, last_epoch=-1)
-
-        if constrainedFlag:
-            numConstrainedEpochs = modelParameters.getNumEpochs(submodel)[1]
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=numConstrainedEpochs)
+        # Get the number of epochs for the model.
+        numConstrainedEpochs, numEpoch = modelParameters.getNumEpochs(submodel)
 
         # Train the autoencoder
         if submodel == "signalEncoder":
-            return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
+            return SequentialLR(
+                optimizer=optimizer, last_epoch=-1,
+                schedulers=[
+                    transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=numConstrainedEpochs),
+                    optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5, eta_min=1e-5, last_epoch=-1),
+                ], milestones=[numConstrainedEpochs],
+            )
         elif submodel == "autoencoder":
             return transformers.get_constant_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=20)
         elif submodel == "emotionPrediction":

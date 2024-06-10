@@ -21,6 +21,7 @@ class weightInitialization:
         #    self.custom_kernel_initialization(modelParam)
         else:
             modelParam.reset_parameters()
+        modelParam.reset_parameters()
 
         return modelParam
 

@@ -28,7 +28,7 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Create the spectral convolution layers.
         self.unlearnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=0,
-                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='none', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='none')
+                                                                      activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq', encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='none')
         self.learnNeuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=1, numOutputSignals=1, sequenceBounds=sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType, mode=self.mode, addBiasTerm=False, smoothingKernelSize=0,
                                                                     activationMethod=self.activationMethod, encodeLowFrequencyProtocol='none', encodeHighFrequencyProtocol='none', useConvolutionFlag=True, independentChannels=True, skipConnectionProtocol='none')
         self.minLowFrequencyShape = self.learnNeuralOperatorLayers.minLowFrequencyShape  # For me, this was 49

@@ -28,6 +28,7 @@ class lossCalculations:
 
         # Positional encoder information.
         self.maxNumEncodedSignals = model.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals  # The number of classes in the positional encoder.
+        self.posEncWeightScale = 1  # The scale for the positional encoding loss.
 
         # Initialize helper classes.
         self.dataInterface = emotionDataInterface()
@@ -73,11 +74,10 @@ class lossCalculations:
     def calculatePositionalEncodingLoss(self, predictedPositionIndices):
         # Extract the positional encoding information.
         batchSize, numSignals = predictedPositionIndices.size()
-        posEncWeightScale = 16
 
         # Reshape the data for the positional encoding loss.
         targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device, dtype=torch.float32).repeat(batchSize, 1)
-        targetPositionIndices = self.generalMethods.minMaxScale_noInverse(targetPositionIndices, scale=0.5*posEncWeightScale, buffer=0) + 0.5*posEncWeightScale
+        targetPositionIndices = self.generalMethods.minMaxScale_noInverse(targetPositionIndices, scale=0.5*self.posEncWeightScale, buffer=0) + 0.5*self.posEncWeightScale
         # targetPositionIndices dim: batchSize, numSignals
 
         # Calculate the positional encoding loss.

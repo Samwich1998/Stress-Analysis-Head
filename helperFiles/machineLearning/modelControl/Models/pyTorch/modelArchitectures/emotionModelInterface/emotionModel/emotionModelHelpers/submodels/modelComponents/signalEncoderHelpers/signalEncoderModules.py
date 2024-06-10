@@ -43,13 +43,13 @@ class signalEncoderModules(convolutionalHelpers):
     def neuralWeightHighCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Detailed coefficients tend to look like delta spikes ... I think kernel_size of 1 is optimal.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
         )
 
     def neuralWeightLowCNN(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Detailed coefficients tend to look like low-frequency waves.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
         )
 
     def independentNeuralWeightCNN(self, inChannel=2, outChannel=1):
@@ -92,7 +92,7 @@ class signalEncoderModules(convolutionalHelpers):
     def positionalEncodingStamp(stampLength=1, frequency=torch.tensor(0), signalMinMaxScale=1):
         # Create an array of values from 0 to stampLength - 1
         x = torch.arange(stampLength, dtype=torch.float32, device=frequency.device)
-        amplitude = signalMinMaxScale/2
+        amplitude = signalMinMaxScale
 
         # Generate the sine wave
         sine_wave = amplitude * torch.sin(2 * math.pi * frequency * x / stampLength)
@@ -108,19 +108,10 @@ class signalEncoderModules(convolutionalHelpers):
 
     def predictedPosEncodingIndex(self, numFeatures=2):
         return nn.Sequential(
-            independentModelCNN(
-                useCheckpoint=False,
-                module=nn.Sequential(
-                    # Convolution architecture: feature engineering
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-                    # self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 4], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-                    self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[4, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-                ),
-            ),
-
             # Neural architecture: self attention.
-            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=numFeatures, activationMethod='boundedExp_0_2'),
-            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=1, activationMethod='none'),
+            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=int(numFeatures/2), activationMethod='boundedExp_0_2'),
+            self.linearModel(numInputFeatures=int(numFeatures/2), numOutputFeatures=int(numFeatures/4), activationMethod='boundedExp_0_2'),
+            self.linearModel(numInputFeatures=int(numFeatures/4), numOutputFeatures=1, activationMethod='none'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #
@@ -138,8 +129,8 @@ class signalEncoderModules(convolutionalHelpers):
     def signalPostProcessing(self, inChannel=2, bottleneckChannel=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Keep kernel_sizes as 1 for faster (?) convergence. The purpose of kernel_sizes as 3 is to prevent gibbs phenomenon.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=1,  dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=1,  dilations=1, groups=1, strides=1, convType='pointwise', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):
@@ -151,7 +142,7 @@ class signalEncoderModules(convolutionalHelpers):
     def heuristicEncoding(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: heuristic operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_gausInit', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise', activationType='none', numLayers=None, addBias=False),
         )
 
     def finalChannelModel(self, inChannel=2):

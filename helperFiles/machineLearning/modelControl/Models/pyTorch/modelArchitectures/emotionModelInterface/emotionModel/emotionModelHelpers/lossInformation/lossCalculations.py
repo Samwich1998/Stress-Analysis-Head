@@ -81,7 +81,7 @@ class lossCalculations:
         # targetPositionIndices dim: batchSize, numSignals
 
         # Calculate the positional encoding loss.
-        positionalEncodingLoss = self.positionalEncoderLoss(predictedPositionIndices, targetPositionIndices/256).mean()
+        positionalEncodingLoss = self.positionalEncoderLoss(predictedPositionIndices, targetPositionIndices).mean()
         if not self.useFinalParams and random.random() < 0.01: self.errorPerClass(predictedPositionIndices, targetPositionIndices)
 
         # Weight the final loss based on the number of signals.
@@ -300,22 +300,22 @@ class lossCalculations:
     # ---------------------------------------------------------------------- #
     # ----------------------- Standardization Losses ----------------------- #
 
-    @staticmethod
-    def errorPerClass(output, target):
-        # Calculate the error per class
-        num_classes = output.size(1)
-        class_errors = torch.zeros(num_classes)
-        output = output.detach().argmax(dim=-1)
+    def errorPerClass(self, output, target):
+        with torch.no_grad():
+            # Calculate the error per class
+            batchSize, num_classes = output.size()
+            class_errors = torch.zeros(num_classes)
+            uniqueClasses = torch.unique(target[0], return_inverse=False, return_counts=False, dim=-1, sorted=True)
 
-        for i in range(num_classes):
-            # Mask for the current class
-            class_mask = (target == i)
-            if class_mask.sum() > 0:
-                error = output[class_mask] - target[class_mask]
-                class_errors[i] = error.float().abs().mean()
+            for i in range(len(uniqueClasses)):
+                # Mask for the current class
+                class_mask = (target[0] == uniqueClasses[i])
 
-        print("Loss per class:", class_errors)
-        print("Final classes:", output[0:num_classes])
+                if True in class_mask:
+                    class_errors[i] = self.positionalEncoderLoss(output[:, class_mask], target[:, class_mask]).mean() * (num_classes-1)**2
+
+            print("Loss per class:", class_errors)
+            print("Final classes:", output[0:2])
 
     @staticmethod
     def gradient_penalty(inputs, outputs, dims):

@@ -18,7 +18,7 @@ class weightInitialization:
         if linearity == 'conv1D':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
         elif linearity == 'pointwise':
-            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d')
+            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=1)
         elif linearity == 'fc':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         else:
@@ -26,10 +26,7 @@ class weightInitialization:
         
         # Apply the extra gain to the weights
         if layerType.split("_")[-1] == 'WNO':
-            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d')
-
-            # with torch.no_grad():  # Ensure we do not track this operation in the computational graph
-            #     modelParam.weight *= 1/3
+            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=1/2)
 
         return modelParam
 
@@ -87,8 +84,8 @@ class weightInitialization:
             nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
-    def initialize_weights_xavier(m, nonlinearity='relu'):
-        gain = nn.init.calculate_gain(nonlinearity=nonlinearity)
+    def initialize_weights_xavier(m, nonlinearity='relu', extraGain=1.0):
+        gain = nn.init.calculate_gain(nonlinearity=nonlinearity) * extraGain
         nn.init.xavier_uniform_(m.weight, gain=gain)
 
         if hasattr(m, 'bias') and m.bias is not None:

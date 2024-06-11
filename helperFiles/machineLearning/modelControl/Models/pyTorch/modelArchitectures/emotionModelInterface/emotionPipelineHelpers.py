@@ -77,10 +77,6 @@ class emotionPipelineHelpers:
         assert len(self.emotionNames) == len(self.allEmotionClasses), f"Found {len(self.emotionNames)} emotions with {len(self.allEmotionClasses)} classes specified."
         assert len(self.activityNames) == self.numActivities, f"Found {len(self.activityNames)} activities with {self.numActivities} classes specified."
 
-    def resetModel(self):
-        # Reset the model's parameters (to python default values).
-        self.weightInitialization.reset_weights(self.model)
-
     def compileOptimizer(self, submodel):
         # Get the models, while considering whether they are distributed or not.
         trainingInformation, signalEncoderModel, autoencoderModel, signalMappingModel, sharedEmotionModel, specificEmotionModel = self.getDistributedModels(model=None, submodel=None)

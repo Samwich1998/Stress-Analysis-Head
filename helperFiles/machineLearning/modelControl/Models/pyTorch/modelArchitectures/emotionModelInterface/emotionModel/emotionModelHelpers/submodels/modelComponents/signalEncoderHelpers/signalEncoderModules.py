@@ -58,7 +58,7 @@ class signalEncoderModules(convolutionalHelpers):
 
         if inChannel != outChannel:
             # Convolution architecture: feature engineering, condense the number of channels, so we can add a resnet.
-            layers.append(self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False))
+            layers.append(self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='pointwise_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False))
         # Convolution architecture: feature engineering. Detailed coefficients tend to look like delta spikes or high-frequency noise.
         layers.append(self.convolutionalFilters_resNetBlocks(numResNets=1, numBlocks=4, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False))
 

@@ -15,11 +15,7 @@ class weightInitialization:
 
         # Extract the linearity of the layer.
         linearity = layerType.split("_")[0]
-
         extraGain = 1.0
-        # Apply the extra gain to the weights
-        # if layerType.split("_")[-1] == 'WNO':
-        #     extraGain = math.sqrt(1/3.0)
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
@@ -29,7 +25,7 @@ class weightInitialization:
         elif linearity == 'pointwise':
             self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'fc':
-            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='linear', extraGain=extraGain)
         else:
             modelParam.reset_parameters()
 

@@ -16,9 +16,6 @@ class weightInitialization:
         # Apply the extra gain to the weights
         if layerType.split("_")[-1] == 'WNO':
             extraGain = math.sqrt(1/6.0)
-            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=extraGain)
-
-            return modelParam
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
@@ -92,7 +89,7 @@ class weightInitialization:
             nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
-    def initialize_weights_xavier(m, nonlinearity='relu', extraGain=1.0):
+    def xavier_uniform_weights(m, nonlinearity='relu', extraGain=1.0):
         gain = nn.init.calculate_gain(nonlinearity=nonlinearity) * extraGain
         nn.init.xavier_uniform_(m.weight, gain=gain)
 

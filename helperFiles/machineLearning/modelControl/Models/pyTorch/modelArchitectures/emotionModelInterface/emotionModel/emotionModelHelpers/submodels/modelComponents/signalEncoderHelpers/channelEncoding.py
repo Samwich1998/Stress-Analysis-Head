@@ -66,7 +66,7 @@ class channelEncoding(signalEncoderModules):
 
     def initializeNeuralLayer(self, numLiftedChannels, numInitialChannels, numFinalChannels):
         # Create the spectral convolution layers.
-        liftingLayers = self.liftingOperator(inChannel=numInitialChannels, outChannel=numLiftedChannels)
+        liftingLayers = self.liftingOperatorLayer(inChannel=numInitialChannels, outChannel=numLiftedChannels)
         neuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=numLiftedChannels, numOutputSignals=numLiftedChannels, sequenceBounds=self.sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType,
                                                           mode=self.mode, addBiasTerm=False, smoothingKernelSize=0, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq',
                                                           encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='none')

@@ -93,7 +93,7 @@ class channelEncoding(signalEncoderModules):
         for modelInd in range(self.numSigEncodingLayers):
             # Apply the neural operator and the skip connection.
             liftedLayerData = checkpoint(liftingLayers[modelInd], inputData, use_reentrant=False)  # Apply the lifting operator to maintain self-attention.
-            processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, liftedLayerData/2, use_reentrant=False)
+            processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, liftedLayerData, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.

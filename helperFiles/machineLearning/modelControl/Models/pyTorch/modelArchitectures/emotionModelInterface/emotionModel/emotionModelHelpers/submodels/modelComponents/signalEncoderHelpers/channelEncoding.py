@@ -74,7 +74,7 @@ class channelEncoding(signalEncoderModules):
         # Create the spectral convolution layers.
         neuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=numInputSignals, numOutputSignals=numOutputSignals, sequenceBounds=self.sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType,
                                                           mode=self.mode, addBiasTerm=False, smoothingKernelSize=0, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq',
-                                                          encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='identity')
+                                                          encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='none')
 
         # Create the post-processing layers.
         signalPostProcessing = self.signalPostProcessing(inChannel=numInputSignals, bottleneckChannel=bottleneckChannel)
@@ -105,7 +105,7 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
+            # processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.

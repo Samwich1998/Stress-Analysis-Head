@@ -53,8 +53,8 @@ class channelEncoding(signalEncoderModules):
 
     def addModelBlock(self):
         # Create the spectral convolution layers.
-        compressedNeuralOperatorLayer, compressedLiftingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numCompressedSignals, numFinalChannels=self.numExpandedSignals)
-        expandedNeuralOperatorLayer, expandedLiftingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numExpandedSignals, numFinalChannels=self.numCompressedSignals)
+        compressedNeuralOperatorLayer, compressedLiftingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numExpandedSignals, numFinalChannels=self.numCompressedSignals)
+        expandedNeuralOperatorLayer, expandedLiftingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numCompressedSignals, numFinalChannels=self.numExpandedSignals)
 
         # Create the spectral convolution layers.
         self.compressedNeuralOperatorLayers.append(compressedNeuralOperatorLayer)

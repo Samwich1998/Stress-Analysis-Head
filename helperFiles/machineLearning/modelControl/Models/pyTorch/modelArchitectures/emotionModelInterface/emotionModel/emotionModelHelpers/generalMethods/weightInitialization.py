@@ -14,8 +14,16 @@ class weightInitialization:
         #     Symmetric activations: self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
 
         # Extract the linearity of the layer.
-        linearity = layerType.split("_")[0]
+        layerInformation = layerType.split("_")
+        linearity = layerInformation[0]
+
+        gainInformation = None
+        if len(layerInformation) == 2:
+            gainInformation = layerInformation[1]
+
         extraGain = 1.0
+        if gainInformation == "WNO":
+            extraGain = math.sqrt(1/3)
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."

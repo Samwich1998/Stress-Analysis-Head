@@ -10,7 +10,7 @@ class weightInitialization:
 
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
         # Extract the linearity of the layer.
-        linearity, _ = layerType.split("_")
+        linearity = layerType.split("_")[0]
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
@@ -25,7 +25,7 @@ class weightInitialization:
             modelParam.reset_parameters()
         
         # Apply the extra gain to the weights
-        if layerType.split("_")[1] == 'WNO':
+        if layerType.split("_")[-1] == 'WNO':
             with torch.no_grad():  # Ensure we do not track this operation in the computational graph
                 modelParam.weight *= 0.5
 

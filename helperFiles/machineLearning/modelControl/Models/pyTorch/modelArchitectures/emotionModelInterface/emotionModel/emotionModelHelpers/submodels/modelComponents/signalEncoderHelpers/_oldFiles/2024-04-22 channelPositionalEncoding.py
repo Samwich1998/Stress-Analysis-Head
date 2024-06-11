@@ -111,12 +111,12 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Pad the data to the maximum sequence length.
         inputData = torch.nn.functional.pad(inputData, (self.sequenceBounds[1] - sequenceLength, 0), mode='constant', value=0)
-        # inputData dimension: batchSize, numInputSignals, maxSequenceLength
+        # inputData dimension: batchSize, numLiftedChannels, maxSequenceLength
 
         # Perform wavelet decomposition.
         lowFrequency, bandFrequencies = self.dwt(inputData)  # Note: each channel is treated independently.
-        # bandFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, bandFrequenciesShapes[decompositionLayer]
-        # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
+        # bandFrequencies[decompositionLayer] dimension: batchSize, numLiftedChannels, bandFrequenciesShapes[decompositionLayer]
+        # lowFrequency dimension: batchSize, numLiftedChannels, lowFrequencyShape
 
         # Create a new tensor with information about the initial sequence.
         sequenceInformation = torch.ones((batchSize, numInputSignals, 1), device=inputData.device) * sequenceLength / self.sequenceBounds[1]
@@ -167,12 +167,12 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Pad the data to the maximum sequence length.
         inputData = torch.nn.functional.pad(inputData, (self.sequenceBounds[1] - sequenceLength, 0), mode='constant', value=0)
-        # inputData dimension: batchSize, numInputSignals, maxSequenceLength
+        # inputData dimension: batchSize, numLiftedChannels, maxSequenceLength
 
         # Perform wavelet decomposition.
         lowFrequency, bandFrequencies = self.dwt(inputData)  # Note: each channel is treated independently.
-        # bandFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, bandFrequenciesShapes[decompositionLayer]
-        # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
+        # bandFrequencies[decompositionLayer] dimension: batchSize, numLiftedChannels, bandFrequenciesShapes[decompositionLayer]
+        # lowFrequency dimension: batchSize, numLiftedChannels, lowFrequencyShape
 
         # Create a new tensor with information about the initial sequence.
         sequenceInformation = torch.ones((batchSize, numInputSignals, 1), device=inputData.device) * sequenceLength / self.sequenceBounds[1]
@@ -186,7 +186,7 @@ class channelPositionalEncoding(signalEncoderModules):
             bandFrequencies[bandFrequencyInd] = torch.einsum('oin,bin->bon', self.bandFrequenciesWeights[bandFrequencyInd], bandFrequencies[bandFrequencyInd])[:, :, 0:-1]
         lowFrequency = torch.einsum('oin,bin->bon', self.lowFrequencyWeights, lowFrequency)[:, :, 0:-1]
         # 'oin,bin->bon' = weights.size(), frequencies.size() -> finalFrequencies.size()
-        # b = batchSize, i = numInputSignals, o = numOutputSignals, n = nFreqModes
+        # b = batchSize, i = numLiftedChannels, o = numOutputSignals, n = nFreqModes
 
         # Perform wavelet reconstruction.
         reconstructedData = self.idwt((lowFrequency, bandFrequencies))

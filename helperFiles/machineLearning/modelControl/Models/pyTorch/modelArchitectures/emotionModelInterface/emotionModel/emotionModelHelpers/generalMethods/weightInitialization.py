@@ -27,7 +27,7 @@ class weightInitialization:
         # Apply the extra gain to the weights
         if layerType.split("_")[-1] == 'WNO':
             with torch.no_grad():  # Ensure we do not track this operation in the computational graph
-                modelParam.weight *= 1/3
+                modelParam.weight *= 1
 
         return modelParam
 

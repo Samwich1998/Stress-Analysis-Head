@@ -133,15 +133,15 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Pad the data to the maximum sequence length.
         inputData = torch.nn.functional.pad(inputData, pad=(self.sequenceBounds[1] - sequenceLength, 0), mode='constant', value=0)
-        # inputData dimension: batchSize, numInputSignals, maxSequenceLength
+        # inputData dimension: batchSize, numLiftedChannels, maxSequenceLength
 
         # Perform wavelet decomposition.
         lowFrequency, _ = self.dwt_indexPredictor(inputData)  # Note: each channel is treated independently here.
-        # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
-        # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
+        # highFrequencies[decompositionLayer] dimension: batchSize, numLiftedChannels, highFrequenciesShapes[decompositionLayer]
+        # lowFrequency dimension: batchSize, numLiftedChannels, lowFrequencyShape
 
         # Predict the signal index.
         predictedIndexProbabilities = self.posIndexPredictor(lowFrequency).squeeze(-1)
-        # predictedIndexProbabilities dimension: batchSize, numInputSignals
+        # predictedIndexProbabilities dimension: batchSize, numLiftedChannels
 
         return predictedIndexProbabilities

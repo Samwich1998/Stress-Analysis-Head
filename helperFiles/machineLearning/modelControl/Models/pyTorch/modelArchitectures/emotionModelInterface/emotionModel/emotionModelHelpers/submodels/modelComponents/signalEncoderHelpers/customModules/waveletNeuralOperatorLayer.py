@@ -30,12 +30,12 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
 
         # Pad the data to the maximum sequence length.
         inputData = torch.nn.functional.pad(inputData, pad=(self.sequenceBounds[1] - sequenceLength, 0), mode='constant', value=0)
-        # inputData dimension: batchSize, numInputSignals, maxSequenceLength
+        # inputData dimension: batchSize, numLiftedChannels, maxSequenceLength
 
         # Perform wavelet decomposition.
         lowFrequency, highFrequencies = self.dwt(inputData)  # Note: each channel is treated independently here.
-        # highFrequencies[decompositionLayer] dimension: batchSize, numInputSignals, highFrequenciesShapes[decompositionLayer]
-        # lowFrequency dimension: batchSize, numInputSignals, lowFrequencyShape
+        # highFrequencies[decompositionLayer] dimension: batchSize, numLiftedChannels, highFrequenciesShapes[decompositionLayer]
+        # lowFrequency dimension: batchSize, numLiftedChannels, lowFrequencyShape
 
         # Mix each frequency decomposition, separating high and low frequencies.
         lowFrequency, highFrequencies = self.mixSeperatedFrequencyComponents(lowFrequency, highFrequencies, lowFrequencyTerms, highFrequencyTerms)
@@ -70,7 +70,7 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
     def mixSeperatedFrequencyComponents(self, lowFrequency, highFrequencies, lowFrequencyTerms=None, highFrequencyTerms=None):
         # Set up the equation to apply the weights.
         equationString = 'oin,bin->bon'  # The equation to apply the weights.
-        # b = batchSize, i = numInputSignals, o = numOutputSignals, n = signalDimension
+        # b = batchSize, i = numLiftedChannels, o = numOutputSignals, n = signalDimension
         # 'oin,bin->bon' = weights.size(), frequencies.size() -> frequencies.size()
 
         if self.encodeHighFrequencies or highFrequencyTerms is not None:
@@ -123,7 +123,7 @@ class waveletNeuralOperatorLayer(waveletNeuralOperatorWeights):
         if frequencyTerms is not None:
             # Apply the learned wavelet coefficients.
             frequencies = frequencies + frequencyTerms
-            # frequencies dimension: batchSize, numInputSignals, frequencyDimension
+            # frequencies dimension: batchSize, numLiftedChannels, frequencyDimension
 
         if weights is not None:
             if self.independentChannels or self.useConvolutionFlag:

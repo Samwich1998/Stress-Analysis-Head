@@ -141,11 +141,11 @@ class signalEncoderModules(convolutionalHelpers):
     def getActivationMethod_channelEncoder():
         return 'boundedExp_0_2'
 
-    def signalPostProcessing(self, inChannel=2, bottleneckChannel=2):
+    def signalPostProcessing(self, inChannel=2, bottleneckChannels=2):
         return nn.Sequential(
             # Convolution architecture: feature engineering. Keep kernel_sizes as 1 for faster (?) convergence. The purpose of kernel_sizes as 3 is to prevent gibbs phenomenon.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannel], kernel_sizes=3,  dilations=1, groups=1, strides=1, convType='conv1D_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False),
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, bottleneckChannels], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[bottleneckChannels, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D_WNO', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 
     def projectionOperator(self, inChannel=2, outChannel=1):

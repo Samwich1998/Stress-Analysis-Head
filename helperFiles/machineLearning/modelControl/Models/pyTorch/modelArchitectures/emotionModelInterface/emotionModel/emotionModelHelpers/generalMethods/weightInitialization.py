@@ -9,6 +9,10 @@ from torch.nn.init import calculate_gain
 class weightInitialization:
 
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
+        #  Options:
+        #     Asymmetric activations: self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
+        #     Symmetric activations: self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
+
         # Extract the linearity of the layer.
         linearity = layerType.split("_")[0]
 
@@ -21,13 +25,10 @@ class weightInitialization:
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         if linearity == 'conv1D':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
             self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'pointwise':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
             self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'fc':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear', extraGain=extraGain)
             self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
         else:
             modelParam.reset_parameters()

@@ -18,7 +18,7 @@ class weightInitialization:
         if linearity == 'conv1D':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
         elif linearity == 'pointwise':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
+            self.initialize_weights_xavier(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
         elif linearity == 'fc':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         else:
@@ -85,8 +85,9 @@ class weightInitialization:
             nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
-    def initialize_weights_xavier(m):
-        nn.init.xavier_normal_(m.weight, gain=1)
+    def initialize_weights_xavier(m, a=math.sqrt(5), nonlinearity='relu'):
+        gain = nn.init.calculate_gain(nonlinearity=nonlinearity)
+        nn.init.xavier_normal_(m.weight, gain=gain)
 
         if hasattr(m, 'bias') and m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)

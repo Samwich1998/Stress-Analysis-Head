@@ -105,7 +105,7 @@ class channelEncoding(signalEncoderModules):
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
             # Apply non-linearity to the processed data.
-            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False) + processedData
+            processedData = checkpoint(processingLayers[modelInd], processedData, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
 
         # Learn the final signal.
@@ -114,7 +114,7 @@ class channelEncoding(signalEncoderModules):
 
         # Add the heuristic model as a baseline.
         processedData = heuristicModel(inputData) + processedData
-        processedData = finalChannelModel(processedData) + processedData
+        processedData = finalChannelModel(processedData)  # Synthesize the information together.
         # processedData dimension: batchSize, numOutputSignals, signalDimension
 
         return processedData

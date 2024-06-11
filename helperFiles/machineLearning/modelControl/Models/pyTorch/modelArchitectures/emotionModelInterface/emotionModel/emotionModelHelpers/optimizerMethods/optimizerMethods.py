@@ -21,7 +21,7 @@ class optimizerMethods:
         if submodel in ["autoencoder", "emotionPrediction"]:
             modelParams.append(
                 # Specify the model parameters for the autoencoder.
-                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-10, 'lr': 5E-5})
+                {'params': autoencoderModel.parameters(), 'weight_decay': 1E-6, 'lr': 1E-4})
         if submodel == "emotionPrediction":
             modelParams.extend([
                 # Specify the model parameters for the signal mapping.

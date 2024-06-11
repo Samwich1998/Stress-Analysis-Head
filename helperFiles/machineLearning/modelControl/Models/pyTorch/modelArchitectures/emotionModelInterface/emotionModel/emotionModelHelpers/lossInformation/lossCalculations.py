@@ -76,7 +76,7 @@ class lossCalculations:
         batchSize, numSignals = predictedPositionIndices.size()
 
         # Reshape the data for the positional encoding loss.
-        targetPositionIndices = torch.arange(numSignals, device=self.accelerator.device, dtype=torch.float32).repeat(batchSize, 1)
+        targetPositionIndices = torch.arange(numSignals, device=predictedPositionIndices.device, dtype=torch.float32).repeat(batchSize, 1)
         targetPositionIndices = self.generalMethods.minMaxScale_noInverse(targetPositionIndices, scale=0.5*self.posEncWeightScale, buffer=0) + 0.5*self.posEncWeightScale
         # targetPositionIndices dim: batchSize, numSignals
 

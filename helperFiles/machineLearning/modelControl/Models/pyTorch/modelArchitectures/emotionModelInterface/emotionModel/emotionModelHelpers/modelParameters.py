@@ -142,7 +142,7 @@ class modelParameters:
             if userInputParams['deviceListed'].endswith("CPU"):
                 accelerator.gradient_accumulation_steps = 16
 
-            print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, flush=True)
+            print("HPC Parameters:", storeLoss, fastPass, accelerator.gradient_accumulation_steps, accelerator.device, flush=True)
 
         return accelerator, storeLoss, fastPass
 

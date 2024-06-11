@@ -15,7 +15,7 @@ class weightInitialization:
         extraGain = 1.0
         # Apply the extra gain to the weights
         if layerType.split("_")[-1] == 'WNO':
-            extraGain = math.sqrt(1/3.0)
+            extraGain = math.sqrt(1/6.0)
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."

@@ -23,6 +23,7 @@ PyQt5-sip
 PyQt5-stubs
 pyserial
 pysr
+pytz
 pytorch-wavelets
 Requests
 scikit-learn

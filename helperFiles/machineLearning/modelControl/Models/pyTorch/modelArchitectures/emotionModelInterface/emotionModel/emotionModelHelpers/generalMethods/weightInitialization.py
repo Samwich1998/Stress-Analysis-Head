@@ -23,7 +23,6 @@ class weightInitialization:
         if linearity == 'conv1D':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'pointwise':
-            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=extraGain)
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'fc':
             self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear', extraGain=extraGain)

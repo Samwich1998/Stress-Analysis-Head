@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Specify the module parameters
-#SBATCH --time=7-00:00:00   # Total runtime. Maximum 9-10 days
+#SBATCH --time=3-00:00:00   # Total runtime. Maximum 9-10 days
 #SBATCH --gres=gpu:p100:1   # Number of GPUs on the node. Maximum of 4
 #SBATCH --mem-per-cpu=24G
 #SBATCH --partition=gpu     # Specify the GPU partition (May change)

@@ -1,8 +1,6 @@
 #!/bin/bash
 
-numLiftedChannelsStart=64   # Absolute minimum is 16 or 32.
-numLiftedChannelsStep=-16
-numLiftedChannelsEnd=16     # Memory limited from 48-96.
+numLiftedChannelsList=(8 16 32 48)
 # Total: 4
 
 numExpandedSignalsStart=6   # Minimum 4; Maximum 6
@@ -15,7 +13,7 @@ numEncodingLayersStep=-1
 numEncodingLayersEnd=0      # Memory limited from 10-12.
 # Total: 9
 
-for numLiftedChannels in $(seq $numLiftedChannelsStart $numLiftedChannelsStep $numLiftedChannelsEnd)
+for numLiftedChannels in "${numLiftedChannelsList[@]}"
 do
   for numExpandedSignals in $(seq $numExpandedSignalsStart $numExpandedSignalsStep $numExpandedSignalsEnd)
   do

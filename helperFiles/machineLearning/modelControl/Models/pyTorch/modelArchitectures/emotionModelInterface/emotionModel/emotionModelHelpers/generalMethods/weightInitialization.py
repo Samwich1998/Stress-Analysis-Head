@@ -86,10 +86,12 @@ class weightInitialization:
 
     @staticmethod
     def initialize_weights_xavier(m):
-        if hasattr(m, 'weight'):
-            nn.init.xavier_uniform_(m.weight)
+        nn.init.xavier_normal_(m.weight, gain=1)
+
         if hasattr(m, 'bias') and m.bias is not None:
-            nn.init.zeros_(m.bias)
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in != 0 else 0
+            nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
     def initialize_weights_lecun(m):

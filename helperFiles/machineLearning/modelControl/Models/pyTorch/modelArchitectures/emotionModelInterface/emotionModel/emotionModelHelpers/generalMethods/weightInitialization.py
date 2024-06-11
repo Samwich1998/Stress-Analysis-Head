@@ -9,20 +9,25 @@ from torch.nn.init import calculate_gain
 class weightInitialization:
 
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
-        assert layerType in ['conv1D', 'conv1D_WNO', 'conv1D_gausInit', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
+        # Extract the linearity of the layer.
+        linearity, _ = layerType.split("_")
 
-        if layerType == 'conv1D':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extra_gain=1.0)
-        elif layerType == 'fc':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear', extra_gain=1.0)
-        elif layerType == 'conv1D_gausInit':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extra_gain=1.0)
-        elif layerType == 'conv1D_WNO':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extra_gain=0.5)
-        elif layerType == 'pointwise':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extra_gain=1.0)
+        # Assert the validity of the input parameters.
+        assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
+
+        if linearity == 'conv1D':
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
+        elif linearity == 'pointwise':
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
+        elif linearity == 'fc':
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         else:
             modelParam.reset_parameters()
+        
+        # Apply the extra gain to the weights
+        if layerType.split("_")[1] == 'WNO':
+            with torch.no_grad():  # Ensure we do not track this operation in the computational graph
+                modelParam.weight *= 0.5
 
         return modelParam
 
@@ -69,14 +74,10 @@ class weightInitialization:
             nn.init.zeros_(m.bias)
 
     @staticmethod
-    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu', extra_gain=1.0):
+    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu'):
         # Taken from pytorch default documentation: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L44-L48
         # Pytorch default for linear layers.
         nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
-
-        # Apply the extra gain to the weights
-        with torch.no_grad():  # Ensure we do not track this operation in the computational graph
-            m.weight *= extra_gain
 
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)

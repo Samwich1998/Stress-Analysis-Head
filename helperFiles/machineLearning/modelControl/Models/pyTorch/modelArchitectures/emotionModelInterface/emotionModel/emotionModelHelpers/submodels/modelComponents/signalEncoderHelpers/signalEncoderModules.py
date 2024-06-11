@@ -13,9 +13,9 @@ class signalEncoderModules(convolutionalHelpers):
     def __init__(self):
         super(signalEncoderModules, self).__init__()
 
-    def linearModel(self, numInputFeatures=1, numOutputFeatures=1, activationMethod='none'):
+    def linearModel(self, numInputFeatures=1, numOutputFeatures=1, activationMethod='none', layerType='fc'):
         return nn.Sequential(
-            self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType='fc'),
+            self.weightInitialization.initialize_weights(nn.Linear(numInputFeatures, numOutputFeatures), activationMethod='none', layerType=layerType),
             self.getActivationMethod(activationMethod),
         )
 
@@ -23,7 +23,7 @@ class signalEncoderModules(convolutionalHelpers):
 
     def neuralWeightIndependentModel(self, numInputFeatures=1, numOutputFeatures=1):
         return nn.Sequential(
-            self.linearModel(numInputFeatures=numInputFeatures, numOutputFeatures=numOutputFeatures, activationMethod='none'),
+            self.linearModel(numInputFeatures=numInputFeatures, numOutputFeatures=numOutputFeatures, activationMethod='none', layerType='fc_WNO'),
         )
 
     def neuralWeightParameters(self, inChannel=1, outChannel=2, finalFrequencyDim=46):
@@ -123,10 +123,10 @@ class signalEncoderModules(convolutionalHelpers):
 
         return nn.Sequential(
             # Neural architecture: self attention.
-            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=int(numFeatures/2), activationMethod='boundedExp_0_2'),
-            self.linearModel(numInputFeatures=int(numFeatures/2), numOutputFeatures=int(numFeatures/4), activationMethod='boundedExp_0_2'),
-            self.linearModel(numInputFeatures=int(numFeatures/4), numOutputFeatures=int(numFeatures/8), activationMethod='boundedExp_0_2'),
-            self.linearModel(numInputFeatures=int(numFeatures/8), numOutputFeatures=1, activationMethod='boundedExp_0_2'),
+            self.linearModel(numInputFeatures=numFeatures, numOutputFeatures=int(numFeatures/2), activationMethod='boundedExp_0_2', layerType='fc'),
+            self.linearModel(numInputFeatures=int(numFeatures/2), numOutputFeatures=int(numFeatures/4), activationMethod='boundedExp_0_2', layerType='fc'),
+            self.linearModel(numInputFeatures=int(numFeatures/4), numOutputFeatures=int(numFeatures/8), activationMethod='boundedExp_0_2', layerType='fc'),
+            self.linearModel(numInputFeatures=int(numFeatures/8), numOutputFeatures=1, activationMethod='boundedExp_0_2', layerType='fc'),
         )
 
     # ------------------- Signal Encoding Architectures ------------------- #

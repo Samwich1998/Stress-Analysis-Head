@@ -72,6 +72,7 @@ class channelEncoding(signalEncoderModules):
 
     def initializeNeuralLayer(self, numInputSignals, numOutputSignals, bottleneckChannel):
         # Create the spectral convolution layers.
+        liftingLayers = self.liftingOperator(inChannel=bottleneckChannel, outChannel=bottleneckChannel)
         neuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=numInputSignals, numOutputSignals=numOutputSignals, sequenceBounds=self.sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType,
                                                           mode=self.mode, addBiasTerm=False, smoothingKernelSize=0, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq',
                                                           encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='none')

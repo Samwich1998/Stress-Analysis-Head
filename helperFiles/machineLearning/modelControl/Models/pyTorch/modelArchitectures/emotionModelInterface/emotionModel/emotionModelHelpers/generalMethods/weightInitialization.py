@@ -12,13 +12,13 @@ class weightInitialization:
         assert layerType in ['conv1D', 'conv1D_gausInit', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         if layerType == 'conv1D':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
         elif layerType == 'fc':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
         elif layerType == 'conv1D_gausInit':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
         elif layerType == 'pointwise':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='selu')
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
         else:
             modelParam.reset_parameters()
 
@@ -71,9 +71,6 @@ class weightInitialization:
         # Taken from pytorch default documentation: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L44-L48
         # Pytorch default for linear layers.
         nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
-
-        if nonlinearity == 'conv1d':
-            print(m.weight.mean(dim=-1), m.weight.size())
 
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)

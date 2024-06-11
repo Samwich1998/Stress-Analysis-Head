@@ -35,7 +35,6 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Positional encoding parameters.
         self.learnPosFrequencies = self.getFrequencyParams(self.numEncodingStamps)
-        self.unlearnPosFrequencies = self.getFrequencyParams(self.numEncodingStamps)
 
         # Initialize the wavelet decomposition and reconstruction layers.
         self.dwt_indexPredictor = DWT1DForward(J=self.numDecompositions, wave=self.waveletType, mode=self.mode)
@@ -47,24 +46,23 @@ class channelPositionalEncoding(signalEncoderModules):
     def addPositionalEncoding(self, inputData):
         # Compile the encoding stamp.
         encodingStamp = self.compileStampWaveforms(self.learnPosFrequencies)
-        posEncodedData = self.positionalEncoding(torch.zeros_like(inputData), encodingStamp, self.learnNeuralOperatorLayers)
+
         # Add the positional encoding to the data.
+        posEncodedData = self.positionalEncoding(torch.zeros_like(inputData), finalStamp=encodingStamp, learnNeuralOperatorLayers=self.learnNeuralOperatorLayers)
         posEncodedData = posEncodedData + inputData
 
         return posEncodedData
 
     def removePositionalEncoding(self, inputData):
-        # Compile the decoding stamp.
-        decodingStamp = self.compileStampWaveforms(self.unlearnPosFrequencies)
-        originalData = self.positionalEncoding(inputData, decodingStamp, self.unlearnNeuralOperatorLayers)
-        # Add the positional encoding to the data.
+        # Learn how to remove the positional encoding from the data.
+        originalData = self.positionalEncoding(inputData, finalStamp=None, learnNeuralOperatorLayers=self.unlearnNeuralOperatorLayers)
         originalData = originalData + inputData
 
         return originalData
 
-    def positionalEncoding(self, inputData, encodingStamp, learnNeuralOperatorLayers):
+    def positionalEncoding(self, inputData, finalStamp, learnNeuralOperatorLayers):
         # Initialize and learn an encoded stamp for each signal index.
-        finalStamp = self.compileStampEncoding(inputData, encodingStamp)
+        if finalStamp is not None: finalStamp = self.compileStampEncoding(inputData, finalStamp)
         positionEncodedData = self.applyNeuralOperator(inputData, finalStamp, learnNeuralOperatorLayers)
         
         return positionEncodedData
@@ -114,6 +112,7 @@ class channelPositionalEncoding(signalEncoderModules):
 
         # Normalize the final stamp.
         finalStamp = finalStamp / numStampsUsed.clamp(min=1).unsqueeze(0).unsqueeze(-1)
+        # finalStamp dim: batchSize, numSignals, lowFrequencyShape
 
         return finalStamp
 

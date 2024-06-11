@@ -289,4 +289,7 @@ class modelParameters:
         print("System Arguments:", userInputParams, flush=True)
         submodel = args.submodel
 
+        # Assert the integrity of the model parameters.
+        assert args.numExpandedSignals <= args.numSigLiftedChannels
+
         return userInputParams, submodel

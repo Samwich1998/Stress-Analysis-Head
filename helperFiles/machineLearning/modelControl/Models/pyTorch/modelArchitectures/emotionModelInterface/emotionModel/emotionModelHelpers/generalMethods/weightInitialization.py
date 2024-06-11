@@ -26,8 +26,10 @@ class weightInitialization:
         
         # Apply the extra gain to the weights
         if layerType.split("_")[-1] == 'WNO':
-            with torch.no_grad():  # Ensure we do not track this operation in the computational graph
-                modelParam.weight *= 1/3
+            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d')
+
+            # with torch.no_grad():  # Ensure we do not track this operation in the computational graph
+            #     modelParam.weight *= 1/3
 
         return modelParam
 

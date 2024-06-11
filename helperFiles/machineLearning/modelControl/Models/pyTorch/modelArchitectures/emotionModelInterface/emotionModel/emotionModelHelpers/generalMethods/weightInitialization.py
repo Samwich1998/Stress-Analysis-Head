@@ -12,21 +12,22 @@ class weightInitialization:
         # Extract the linearity of the layer.
         linearity = layerType.split("_")[0]
 
+        extraGain = 1.0
+        # Apply the extra gain to the weights
+        if layerType.split("_")[-1] == 'WNO':
+            extraGain = 1/2
+
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         if linearity == 'conv1D':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d')
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'pointwise':
-            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=1)
+            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=extraGain)
         elif linearity == 'fc':
-            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear')
+            self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='linear', extraGain=extraGain)
         else:
             modelParam.reset_parameters()
-        
-        # Apply the extra gain to the weights
-        if layerType.split("_")[-1] == 'WNO':
-            self.initialize_weights_xavier(modelParam, nonlinearity='conv1d', extraGain=1/2)
 
         return modelParam
 
@@ -73,10 +74,14 @@ class weightInitialization:
             nn.init.zeros_(m.bias)
 
     @staticmethod
-    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu'):
+    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu', extraGain=1.0):
         # Taken from pytorch default documentation: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L44-L48
         # Pytorch default for linear layers.
         nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
+
+        # Apply the extra gain to the weights
+        with torch.no_grad():  # Ensure we do not track this operation in the computational graph
+            m.weight *= extraGain
 
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)

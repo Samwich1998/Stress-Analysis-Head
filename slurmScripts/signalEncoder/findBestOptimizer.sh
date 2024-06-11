@@ -1,7 +1,7 @@
 #!/bin/bash
 
 optimizers=('Adadelta' 'Adam' 'AdamW' 'NAdam' 'RAdam' 'Adamax' 'ASGD' 'RMSprop' 'Rprop' 'SGD')
-numSigLiftedChannels=32
+numSigLiftedChannels=16
 numSigEncodingLayers=4
 numExpandedSignals=2
 waveletType='bior3.7'

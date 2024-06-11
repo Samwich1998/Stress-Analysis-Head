@@ -14,7 +14,7 @@ waveletTypes=( \
     'sym2' 'sym3' 'sym4' 'sym5' 'sym6' 'sym7' 'sym8' 'sym9' 'sym10' \
     'sym11' 'sym12' 'sym13' 'sym14' 'sym15' 'sym16' 'sym17' 'sym18' 'sym19' 'sym20' \
 )
-numSigLiftedChannels=32
+numSigLiftedChannels=16
 numSigEncodingLayers=4
 numExpandedSignals=2
 optimizer='AdamW'

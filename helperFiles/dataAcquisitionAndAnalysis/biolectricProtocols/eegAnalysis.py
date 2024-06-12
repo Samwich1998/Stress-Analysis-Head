@@ -23,9 +23,9 @@ class eegProtocol(globalProtocol):
         self.cutOffFreq = [0.05, 50]  # Band pass filter frequencies.
         self.dataPointBuffer = 0  # The number of previous analyzed points. Used as a buffer for filtering.
         # High-pass filter parameters.
-        self.stopband_edge = 1  # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, you can choose a higher stopband-edge frequency. If you need to preserve the signal more, you can choose a lower stopband-edge frequency.
-        self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, you can choose a lower passband ripple. If you need to preserve the signal more, you can choose a higher passband ripple.
-        self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, you can choose a higher stopband attenuation. If you need to preserve the signal more, you can choose a lower stopband attenuation.
+        self.stopband_edge = 1  # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, choose a higher stopband-edge frequency. If you need to preserve the signal more, choose a lower stopband-edge frequency.
+        self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, choose a lower passband ripple. If you need to preserve the signal more, choose a higher passband ripple.
+        self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, choose a higher stopband attenuation. If you need to preserve the signal more, choose a lower stopband attenuation.
 
         # Initialize helper classes.
         self.mneInterface = mneInterface()
@@ -174,13 +174,19 @@ class eegProtocol(globalProtocol):
 
         # ------------------- Feature Extraction: MNE ------------------- #
 
-        decorr_time, energy_freq_bands, higuchi_fd, katz_fd, line_length, pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, num_zerocross = self.mneInterface.extractFeatures(data, standardized_data, powerSpectrumDensityNormalized)
+        (decorr_time, energy_freq_bands, higuchi_fd, katz_fd, line_length,
+         pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, num_zerocross)\
+            = self.mneInterface.extractFeatures(data, standardized_data, powerSpectrumDensityNormalized)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
         # Calculate the hjorth parameters
-        hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance = self.universalMethods.hjorthParameters(timePoints, data, firstDeriv=None, secondDeriv=None, standardized_data=standardized_data)
-        hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD = self.universalMethods.hjorthParameters(powerSpectrumDensityFreqs, powerSpectrumDensityNormalized, firstDeriv=None, secondDeriv=None, standardized_data=powerSpectrumDensityNormalized)
+        hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance \
+            = self.universalMethods.hjorthParameters(timePoints, data, firstDeriv=None, secondDeriv=None, standardized_data=standardized_data)
+
+        # Calculate the hjorth parameters
+        hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD \
+            = self.universalMethods.hjorthParameters(powerSpectrumDensityFreqs, powerSpectrumDensityNormalized, firstDeriv=None, secondDeriv=None, standardized_data=powerSpectrumDensityNormalized)
 
         # ------------------- Feature Extraction: Entropy ------------------ #
 

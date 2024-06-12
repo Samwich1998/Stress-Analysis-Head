@@ -1,13 +1,16 @@
-**__pycache__/
-__oldFiles/
-*.DS_Store
-*.cache
-**.out
+**/*__pycache__/
+**/*__oldFiles/
+**/*_oldFiles/
+**/*.DS_Store
+**/*.cache
+**/*.out
 .idea/
 venv/
-*.pyc
-*~
-*$
+**/*.pyc
+**/*~
+**/*$
+**/*.wav
+**/*.png
 
 helperFiles/**/.*
 _projectFiles/**/.*

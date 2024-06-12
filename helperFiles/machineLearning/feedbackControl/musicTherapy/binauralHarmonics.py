@@ -14,7 +14,7 @@ class binauralBeatsAdjustment:
         self.base_frequency = base_frequency_choice
         self.brain_wave_states = brain_wave_states_choices
         self.brain_wave_states_harmonic = {'low_delta': 1, 'mid_delta': 2, 'high_delta': 3, 'low_theta': 4, 'high_theta': 6, 'low_alpha': 8,
-                                           'high_alpha': 12, 'low_beta': 16, 'high_beta': 24, 'gamma': 32, 'large': 200}
+                                           'high_alpha': 12, 'low_beta': 16, 'high_beta': 24, 'gamma': 32}
 
         """ crown: connection with the divine, third_eye: intuition, throat: communication, heart: love, solar: power, sacral: creativity, root: survival"""
         self.base_frequency_name = {'crown': 963, 'third_eye': 852, 'throat': 741, 'heart': 639, 'solar': 528, 'sacral': 417, 'root': 396}
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     )
 
     base_freq_name = 'sacral'  # Base frequency name
-    brain_wave_state_harmonics = ['low_alpha', 'gamma', 'large']  # Multiple brain wave state harmonics
+    brain_wave_state_harmonics = ['low_alpha', 'gamma']  # Multiple brain wave state harmonics
     duration_ms = 30000  # Duration units: ms
     volume = -20  # Volume adjustment : dB decreasing
 

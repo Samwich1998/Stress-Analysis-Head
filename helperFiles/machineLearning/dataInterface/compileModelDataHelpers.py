@@ -358,7 +358,7 @@ class compileModelDataHelpers:
         # TODO: THIS IS TEMP ON 6/11 IF YOU SEE THIS AFTER AHHHHHH. TELL SAM
         featureNames = featureNames[:len(allSignalData[0])]
         while len(featureNames) != len(allSignalData[0]):
-            featureNames.append("AHH")
+            featureNames = np.concatenate((featureNames, "AAHHHHHH"), axis=0)
 
         # For each set of signals.
         for batchInd in range(len(allSignalData)):

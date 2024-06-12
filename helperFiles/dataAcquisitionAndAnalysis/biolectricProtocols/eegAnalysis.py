@@ -4,7 +4,6 @@ import scipy
 import sklearn
 
 from .globalProtocol import globalProtocol
-from .helperMethods.mneInterface import mneInterface
 
 
 class eegProtocol(globalProtocol):
@@ -26,9 +25,6 @@ class eegProtocol(globalProtocol):
         self.stopband_edge = 1  # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, choose a higher stopband-edge frequency. If you need to preserve the signal more, choose a lower stopband-edge frequency.
         self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, choose a lower passband ripple. If you need to preserve the signal more, choose a higher passband ripple.
         self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, choose a higher stopband attenuation. If you need to preserve the signal more, choose a lower stopband attenuation.
-
-        # Initialize helper classes.
-        self.mneInterface = mneInterface()
 
     def resetAnalysisVariables(self):
         # General parameters 
@@ -168,15 +164,13 @@ class eegProtocol(globalProtocol):
         standardized_data = self.universalMethods.standardizeData(data)
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
-        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq)
+        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 4))
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
         # Note: we are removing the DC component from the power spectrum density.
 
         # ------------------- Feature Extraction: MNE ------------------- #
 
-        (decorr_time, energy_freq_bands, higuchi_fd, katz_fd, line_length,
-         pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, num_zerocross)\
-            = self.mneInterface.extractFeatures(data, standardized_data, powerSpectrumDensityNormalized)
+        decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp = self.mneInterface.extractFeatures(standardized_data, self.samplingFreq)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
@@ -194,8 +188,10 @@ class eegProtocol(globalProtocol):
         spectral_entropy = self.universalMethods.spectral_entropy(powerSpectrumDensityNormalized, normalizePSD=False)  # Spectral entropy: amplitude-independent if using normalized PSD
         perm_entropy = antropy.perm_entropy(standardized_data, order=3, delay=1, normalize=True)  # Permutation entropy: same if standardized or not
         svd_entropy = antropy.svd_entropy(standardized_data, order=3, delay=1, normalize=True)  # Singular value decomposition entropy: same if standardized or not
+        # sample_entropy = antropy.sample_entropy(data, order=2, metric="chebyshev")       # Sample entropy
+        # app_entropy = antropy.app_entropy(data, order=2, metric="chebyshev")             # Approximate sample entropy
 
-        # ------------------- Feature Extraction: Extra ------------------ #
+        # ------------------- Feature Extraction: Fractals ------------------ #
 
         # Fractal analysis
         DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
@@ -204,24 +200,29 @@ class eegProtocol(globalProtocol):
         # -------------------- Feature Extraction: Other ------------------- #
 
         # Calculate the band wave powers
-        deltaPower, thetaPower, alphaPower, betaPower, gammaPower = self.universalMethods.bandPower(powerSpectrumDensity, powerSpectrumDensityFreqs, bands=[(0.5, 4), (4, 8), (8, 12), (12, 30), (30, 100)])
-        muPower, beta1Power, beta2Power, beta3Power, smrPower = self.universalMethods.bandPower(powerSpectrumDensity, powerSpectrumDensityFreqs, bands=[(8, 13), (13, 16), (16, 20), (20, 28), (13, 15)])
+        deltaPower, thetaPower, alphaPower, betaPower, gammaPower = self.universalMethods.bandPower(powerSpectrumDensity, powerSpectrumDensityFreqs, bands=[(0.5, 4), (4, 8), (8, 12), (12, 30), (30, 100)], relative=True)
+        muPower, beta1Power, beta2Power, beta3Power, smrPower = self.universalMethods.bandPower(powerSpectrumDensity, powerSpectrumDensityFreqs, bands=[(8, 13), (13, 16), (16, 20), (20, 28), (13, 15)], relative=True)
         # Calculate band wave power ratios
         engagementLevelEst = betaPower / (alphaPower + thetaPower)
 
+        # Number of zero-crossings
+        num_zerocross = antropy.num_zerocross(data)
+
         # Frequency Domain Features
-        meanFrequency = np.sum(powerSpectrumDensityFreqs * powerSpectrumDensity) / np.sum(powerSpectrumDensity)
+        meanFrequency = np.sum(powerSpectrumDensityFreqs * powerSpectrumDensityNormalized)
 
         # ------------------------------------------------------------------ #
 
         finalFeatures = []
+        # Feature Extraction: MNE
+        finalFeatures.extend([decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp])
         # Feature Extraction: Hjorth
         finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance])
         finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD])
         # Feature Extraction: Entropy
-        finalFeatures.extend([perm_entropy, spectral_entropy, svd_entropy])
+        finalFeatures.extend([spectral_entropy, perm_entropy, svd_entropy])
         # Feature Extraction: Fractal
-        finalFeatures.extend([katz_fd, higuchi_fd, DFA, LZC])
+        finalFeatures.extend([DFA, LZC])
         # Feature Extraction: Other
         finalFeatures.extend([deltaPower, thetaPower, alphaPower, betaPower, gammaPower])
         finalFeatures.extend([muPower, beta1Power, beta2Power, beta3Power, smrPower])

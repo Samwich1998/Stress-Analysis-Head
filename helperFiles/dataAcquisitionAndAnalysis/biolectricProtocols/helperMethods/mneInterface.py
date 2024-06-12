@@ -92,69 +92,22 @@ class mneInterface:
         n_fft = int(samplingFreq * 8)
         n_overlap = n_per_seg // 2
 
-        # # Reset the feature extraction parameters: n_per_seg
-        # self.paramsMNE['hjorth_complexity_spect__psd_params']['welch_n_per_seg'] = n_per_seg
-        # self.paramsMNE['hjorth_mobility_spect__psd_params']['welch_n_per_seg'] = n_per_seg
-        # self.paramsMNE['spect_edge_freq__psd_params']['welch_n_per_seg'] = n_per_seg
-        # self.paramsMNE['pow_freq_bands__psd_params']['welch_n_per_seg'] = n_per_seg
-        # self.paramsMNE['spect_entropy__psd_params']['welch_n_per_seg'] = n_per_seg
-        # self.paramsMNE['spect_slope__psd_params']['welch_n_per_seg'] = n_per_seg
-        #
-        # # Reset the feature extraction parameters: n_fft
-        # self.paramsMNE['hjorth_complexity_spect__psd_params']['welch_n_fft'] = n_fft
-        # self.paramsMNE['hjorth_mobility_spect__psd_params']['welch_n_fft'] = n_fft
-        # self.paramsMNE['spect_edge_freq__psd_params']['welch_n_fft'] = n_fft
-        # self.paramsMNE['pow_freq_bands__psd_params']['welch_n_fft'] = n_fft
-        # self.paramsMNE['spect_entropy__psd_params']['welch_n_fft'] = n_fft
-        # self.paramsMNE['spect_slope__psd_params']['welch_n_fft'] = n_fft
-        #
-        # # Reset the feature extraction parameters: overlap
-        # self.paramsMNE['hjorth_complexity_spect__psd_params']['welch_n_overlap'] = n_overlap
-        # self.paramsMNE['hjorth_mobility_spect__psd_params']['welch_n_overlap'] = n_overlap
-        # self.paramsMNE['spect_edge_freq__psd_params']['welch_n_overlap'] = n_overlap
-        # self.paramsMNE['pow_freq_bands__psd_params']['welch_n_overlap'] = n_overlap
-        # self.paramsMNE['spect_entropy__psd_params']['welch_n_overlap'] = n_overlap
-        # self.paramsMNE['spect_slope__psd_params']['welch_n_overlap'] = n_overlap
-        #
-        # # Reset the feature extraction parameters: individual
-        # self.psd_params = {'welch_n_per_seg': int(self.samplingFreq * 4), 'welch_n_fft': int(self.samplingFreq * 8), 'welch_n_overlap': 0}
+        # Reset the feature extraction parameters: individual
+        self.psd_params = {'welch_n_per_seg': n_per_seg, 'welch_n_fft': n_fft, 'welch_n_overlap': n_overlap}
 
     # --------------------- Feature Extraction Methods --------------------- #
 
-    def extractFeatures(self, data, standardizedData, normalizedData):
+    @staticmethod
+    def extractFeatures(standardized_data, samplingFreq):
         # Specify the general parameters.
-        standardizedData = np.expand_dims(standardizedData, axis=0)
-        normalizedData = np.expand_dims(normalizedData, axis=0)
-        expanded_data = np.expand_dims(data, axis=0)
+        standardizedData = np.expand_dims(standardized_data, axis=0)
 
         # Fast singular feature extraction that is amplitude-invariant.
-        zero_crossings = mne_features.univariate.compute_zero_crossings(standardizedData, threshold=2.220446049250313e-16)[0]  # Must be mean centered to be amplitude-invariant. Averages 33.2 μs.
-        decorr_time = mne_features.univariate.compute_decorr_time(self.samplingFreq, expanded_data)[0]  # Amplitude-invariant. Averages 89.3 μs.
-        higuchi_fd = mne_features.univariate.compute_higuchi_fd(expanded_data, kmax=10)[0]  # Amplitude-invariant. Averages 12 μs.
-        katz_fd = mne_features.univariate.compute_katz_fd(expanded_data)[0]  # Amplitude-invariant. Averages 37 μs.
+        decorr_time = mne_features.univariate.compute_decorr_time(samplingFreq, standardizedData)[0]  # Amplitude-invariant. Averages 89.3 μs.
+        higuchi_fd = mne_features.univariate.compute_higuchi_fd(standardizedData, kmax=10)[0]  # Amplitude-invariant. Averages 12 μs. Antropy is just as fast.
+        katz_fd = mne_features.univariate.compute_katz_fd(standardizedData)[0]  # Amplitude-invariant. Averages 37 μs. Antropy is faster.
         # Fast singular feature extraction that is amplitude-linear-dependant.
         line_length = mne_features.univariate.compute_line_length(standardizedData)[0]  # Amplitude-linear-dependant when standardized. Averages 16.9 μs.
         ptp_amp = mne_features.univariate.compute_ptp_amp(standardizedData)[0]  # Amplitude-linear-dependant when standardized. Averages 5.25 μs.
-        # Fast singular feature extraction that is amplitude-dependant.
-        rms = mne_features.univariate.compute_rms(normalizedData)[0]  # Amplitude-dependant. Averages 30.4 μs.
 
-        svd_entropy = mne_features.univariate.compute_svd_entropy(expanded_data, tau=2, emb=10)[0]
-
-        # Slow singular feature extraction: averages 3.4 ms.
-        # spect_edge_freq = mne_features.univariate.compute_spect_edge_freq(self.samplingFreq, expanded_data, ref_freq=None, edge=None, psd_method='welch', psd_params=self.psd_params)[0]  # Averages 763 μs.
-        # spect_entropy = mne_features.univariate.compute_spect_entropy(self.samplingFreq, expanded_data, psd_method='welch', psd_params=self.psd_params)[0]  # Averages 739 μs.
-        # # Slow compact feature extraction.
-        # pow_freq_bands = mne_features.univariate.compute_pow_freq_bands(self.samplingFreq, expanded_data, freq_bands=self.frequencyBands, normalize=True, ratios=None,
-        #                                                                 ratios_triu=False, psd_method='welch', log=False, psd_params=self.psd_params)  # Averages 865 μs.
-        # pow_freq_bands dimension: len(frequencyBands)
-
-        # Extremely slow compact feature extraction.
-        # energy_freq_bands = mne_features.univariate.compute_energy_freq_bands(self.samplingFreq, expanded_data, freq_bands=self.frequencyBands, deriv_filt=True)  # Averages 20.9 ms.
-        energy_freq_bands = 1
-        spect_edge_freq = 1
-        spect_entropy = 1
-        pow_freq_bands = 1
-
-        # Unpack compressed features.
-
-        return decorr_time, energy_freq_bands, higuchi_fd, katz_fd, line_length, pow_freq_bands, ptp_amp, rms, spect_edge_freq, spect_entropy, zero_crossings
+        return decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp

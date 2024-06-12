@@ -41,35 +41,47 @@ class universalMethods:
         return activity, mobility, complexity, firstDerivVariance, secondDerivVariance
 
     @staticmethod
-    def calculatePSD(data, samplingFreq):
+    def calculatePSD(data, samplingFreq, nperseg):
         # Calculate the power spectrum density parameters.
-        nperseg = int(samplingFreq * 4)
         noverlap = nperseg // 2
         nfft = nperseg * 2
 
         # Calculate the power spectrum density.
         powerSpectrumDensityFreqs, powerSpectrumDensity = scipy.signal.welch(data, fs=samplingFreq, window='hann', nperseg=nperseg, noverlap=noverlap, nfft=nfft,
                                                                              detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean')
+
         # Normalize the power spectrum density.
-        powerSpectrumDensityNormalized = powerSpectrumDensity / np.sum(powerSpectrumDensity[1:])
+        normalizationFactor = np.sum(powerSpectrumDensity[1:])
+        powerSpectrumDensityNormalized = powerSpectrumDensity / normalizationFactor if normalizationFactor != 0 else powerSpectrumDensity
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
 
         return powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized
 
     @staticmethod
     def standardizeData(data):
-        return (data - np.mean(data)) / np.std(data, ddof=1)
+        standardDeviation = np.std(data, ddof=1)
+
+        if standardDeviation == 0:
+            return np.zeros_like(data)
+
+        return (data - np.mean(data)) / standardDeviation
 
     @staticmethod
-    def bandPower(powerSpectrumDensity, powerSpectrumDensityFreqs, bands):
+    def bandPower(powerSpectrumDensity, powerSpectrumDensityFreqs, bands, relative=True):
+        # Set up the initial parameters.
+        dFreq = powerSpectrumDensityFreqs[1] - powerSpectrumDensityFreqs[0]
         bandPowers = []
+
         for freqBand in bands:
             # Find the indices corresponding to the band of interest
             idx_band = np.logical_and(powerSpectrumDensityFreqs >= freqBand[0], powerSpectrumDensityFreqs <= freqBand[1])
             assert idx_band.sum() != 0, f"You do not have enough sampling frequency to view this band: {freqBand}"
 
             # Calculate the power in the band of interest
-            power = scipy.integrate.simps(y=powerSpectrumDensity[idx_band], x=powerSpectrumDensityFreqs[idx_band])
+            power = scipy.integrate.simpson(y=powerSpectrumDensity[idx_band], dx=dFreq, even='simpson', axis=-1)
+
+            if relative:
+                power /= scipy.integrate.simpson(y=powerSpectrumDensity, dx=dFreq, even='simpson', axis=-1)
 
             bandPowers.append(power)
 
@@ -79,7 +91,7 @@ class universalMethods:
     def spectral_entropy(powerSpectrumDensity, normalizePSD=True):
         if normalizePSD:
             # Normalize the power spectrum density
-            powerSpectrumDensityNormalized = powerSpectrumDensity / np.sum(powerSpectrumDensity[:, 1:])
+            powerSpectrumDensityNormalized = powerSpectrumDensity / np.sum(powerSpectrumDensity[1:])
         else:
             powerSpectrumDensityNormalized = powerSpectrumDensity
 

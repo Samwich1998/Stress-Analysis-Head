@@ -1,8 +1,6 @@
-# Basic Modules
+import numpy as np
 import antropy
 import scipy
-import numpy as np
-# import antropy
 
 # Import Files
 from .globalProtocol import globalProtocol
@@ -18,6 +16,11 @@ class edaProtocol(globalProtocol):
         self.secondsPerFeature = 1  # The duration of time that passes between each feature.
         self.featureTimeWindow_Tonic = 60  # The duration of time that each feature considers.
         self.featureTimeWindow_Phasic = 15  # The duration of time that each feature considers.
+        self.startFeatureTimePointer_Phasic = []  # The start pointer of the feature window interval.
+        self.startFeatureTimePointer_Tonic = []  # The start pointer of the feature window interval.
+        self.minPointsPerBatchPhasic = 0  # The minimum number of points required to extract features.
+        self.minPointsPerBatchTonic = 0  # The minimum number of points required to extract features.
+
         # Filter Parameters
         self.tonicFrequencyCutoff = 0.05  # Maximum tonic component frequency.
         self.dataPointBuffer = 5000  # A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
@@ -28,8 +31,8 @@ class edaProtocol(globalProtocol):
 
     def resetAnalysisVariables(self):
         # General parameters
-        self.startFeatureTimePointer_Tonic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
         self.startFeatureTimePointer_Phasic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
+        self.startFeatureTimePointer_Tonic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
 
     def checkParams(self):
         assert self.featureTimeWindow_Tonic < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
@@ -64,7 +67,7 @@ class edaProtocol(globalProtocol):
             # Filter the data and remove bad indices
             filteredTime, filteredData, goodIndicesMask = self.filterData(timePoints, dataBuffer, removePoints=True)
 
-            # Seperate the tonic (baseline) from the phasic (peaks) data
+            # Separate the tonic (baseline) from the phasic (peaks) data
             tonicComponent, phasicComponent = self.splitPhasicTonic(filteredData)
             # --------------------------------------------------------------- #
 
@@ -81,14 +84,14 @@ class edaProtocol(globalProtocol):
                     # Find the start window pointer and get the data.
                     self.startFeatureTimePointer_Tonic[channelIndex] = self.findStartFeatureWindow(self.startFeatureTimePointer_Tonic[channelIndex], featureTime, self.featureTimeWindow_Tonic)
                     self.startFeatureTimePointer_Phasic[channelIndex] = self.findStartFeatureWindow(self.startFeatureTimePointer_Phasic[channelIndex], featureTime, self.featureTimeWindow_Phasic)
-                    # Compile the well-fromed data in the feature interval.
+                    # Compile the well-formed data in the feature interval.
                     intervalTimesTonic, intervalTonicData = self.compileBatchData(filteredTime, tonicComponent, goodIndicesMask, startFilterPointer, self.startFeatureTimePointer_Tonic[channelIndex], channelIndex)
                     intervalTimesPhasic, intervalPhasicData = self.compileBatchData(filteredTime, phasicComponent, goodIndicesMask, startFilterPointer, self.startFeatureTimePointer_Phasic[channelIndex], channelIndex)
 
                     # Only extract features if enough information is provided.
                     if self.minPointsPerBatchTonic < len(intervalTimesTonic) and self.minPointsPerBatchPhasic < len(intervalTimesPhasic):
                         # Calculate the features in this window.
-                        finalFeatures = self.extractfinalFeatures(intervalTimesTonic, intervalTonicData)
+                        finalFeatures = self.extractFinalFeatures(intervalTimesTonic, intervalTonicData)
                         finalFeatures.extend(self.extractPhasicFeatures(intervalTimesPhasic, intervalPhasicData))
                         # Keep track of the new features.
                         self.readData.averageFeatures([featureTime], [finalFeatures], self.featureTimes[channelIndex],
@@ -124,7 +127,6 @@ class edaProtocol(globalProtocol):
     def filterData(self, timePoints, data, removePoints=False):
         # Filter the data: LPF and moving average (Savgol) filter
         filteredData = self.filteringMethods.bandPassFilter.butterFilter(data, self.cutOffFreq[1], self.samplingFreq, order=1, filterType='low')
-        #filteredData = scipy.signal.savgol_filter(filteredData, max(int(self.samplingFreq*5), 3), 1, mode='nearest', deriv=0)
         goodIndicesMask = np.full_like(data, True, dtype=bool)
         filteredTime = timePoints.copy()
 
@@ -157,29 +159,27 @@ class edaProtocol(globalProtocol):
 
         return intervalTimes, intervalData
 
-    def extractfinalFeatures(self, timePoints, data):
-        # ------------------------------------------------------------------ #  
+    @staticmethod
+    def extractFinalFeatures(timePoints, data):
+
         # ----------------------- Data Preprocessing ----------------------- #
 
         standardDeviation = np.std(data, ddof=1)
 
         # Normalize the data
         if standardDeviation <= 1e-10:
-            # print(f'extractfinalFeatures Standard Deviation = 0. All data = {data[0]}')
-            standardizedData = (data - np.mean(data))
-
+            standardized_data = (data - np.mean(data))
         else:
-            standardizedData = (data - np.mean(data)) / standardDeviation
+            standardized_data = (data - np.mean(data)) / standardDeviation
 
         # Calculate the derivatives
-        firstDerivative = np.gradient(standardizedData, timePoints)
+        firstDerivative = np.gradient(standardized_data, timePoints)
         secondDerivative = np.gradient(firstDerivative, timePoints)
 
         # Get the baseline data
         baselineX = timePoints - timePoints[0]
         baselineY = data - data[0]
 
-        # ------------------------------------------------------------------ #  
         # ----------------------- Features from Data ----------------------- #
 
         # General Shape Parameters
@@ -208,13 +208,6 @@ class edaProtocol(globalProtocol):
         secondDerivativeStdDev = np.std(secondDerivative, ddof=1)
         secondDerivativePower = scipy.integrate.simpson(secondDerivative ** 2, timePoints) / (baselineX[-1] - baselineX[0])
 
-        # ------------------------------------------------------------------ #  
-        # ----------------- Features from Normalized Data ------------------ #
-
-        # Linear fit.
-        signalSlope, slopeIntercept = np.polyfit(baselineX, baselineY, 1)
-
-        # ------------------------------------------------------------------ #  
         # ----------------------- Organize Features ------------------------ #
 
         finalFeatures = []
@@ -226,96 +219,64 @@ class edaProtocol(globalProtocol):
         finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
         finalFeatures.extend([secondDerivativeMean, secondDerivativeStdDev, secondDerivativePower])
 
-        # Add normalized features
-        finalFeatures.extend([signalSlope, slopeIntercept])
-
         return finalFeatures
 
     def extractPhasicFeatures(self, timePoints, data):
-        # ------------------------------------------------------------------ #  
+
         # ----------------------- Data Preprocessing ----------------------- #
 
         # Normalize the data
-        standardDeviation = np.std(data, ddof=1)
-        if standardDeviation <= 1e-10:
-            # print(f'extractPhasicFeatures: Standard Deviation = 0. All data = {data[0]}')
-            standardizedData = (data - np.mean(data))
+        standardized_data = self.universalMethods.standardizeData(data)
+        if all(standardized_data == 0):
+            return [0 for _ in range(23)]
 
-        else:
-            standardizedData = (data - np.mean(data)) / np.std(data, ddof=1)
+        # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
+        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 10))
+        # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
+        # Note: we are removing the DC component from the power spectrum density.
 
-        # Calculate the power spectral density (PSD) of the signal. USE STANDARDIZED DATA
-        powerSpectrumDensityFreqs, powerSpectrumDensity = scipy.signal.welch(standardizedData, fs=self.samplingFreq, window='hann',
-                                                                             nperseg=int(self.samplingFreq * 10), noverlap=None,
-                                                                             nfft=None, detrend='constant', return_onesided=True,
-                                                                             scaling='density', axis=-1, average='mean')
-        if standardDeviation <= 1e-10:
-            powerSpectrumDensity_Normalized = powerSpectrumDensity
-        else:
-            # print(powerSpectrumDensity, standardDeviation)
-            powerSpectrumDensity_Normalized = powerSpectrumDensity / np.sum(powerSpectrumDensity)
+        # ------------------- Feature Extraction: MNE ------------------- #
 
-        # ------------------------------------------------------------------ #  
+        decorr_time, higuchi_fd, _, line_length, ptp_amp = self.mneInterface.extractFeatures(standardized_data, self.samplingFreq)
+
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
         # Calculate the hjorth parameters
-        hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance \
-            = self.universalMethods.hjorthParameters(timePoints, data)
-        hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD \
-            = self.universalMethods.hjorthParameters(powerSpectrumDensityFreqs, powerSpectrumDensity_Normalized)
+        hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance = self.universalMethods.hjorthParameters(timePoints, data, firstDeriv=None, secondDeriv=None, standardized_data=standardized_data)
+        hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD = self.universalMethods.hjorthParameters(powerSpectrumDensityFreqs, powerSpectrumDensityNormalized, firstDeriv=None, secondDeriv=None, standardized_data=powerSpectrumDensityNormalized)
 
-        # ------------------------------------------------------------------ #  
         # ------------------- Feature Extraction: Entropy ------------------ #
 
         # Entropy calculation
-        perm_entropy = antropy.perm_entropy(standardizedData, order=3, delay=1, normalize=True)  # Permutation entropy: same if standardized or not
-        if standardDeviation <= 1e-10:
-            spectral_entropy = 0
-            svd_entropy = 0
-        else:
-            spectral_entropy = -np.sum(powerSpectrumDensity_Normalized * np.log2(powerSpectrumDensity_Normalized)) / np.log2(len(powerSpectrumDensity_Normalized))  # Spectral entropy = - np.sum(psd * log(psd)) / np.log(len(psd)
-            svd_entropy = antropy.svd_entropy(standardizedData, order=3, delay=1, normalize=True)  # Singular value decomposition entropy: same if standardized or not
+        spectral_entropy = self.universalMethods.spectral_entropy(powerSpectrumDensityNormalized, normalizePSD=False)  # Spectral entropy: amplitude-independent if using normalized PSD
+        perm_entropy = antropy.perm_entropy(standardized_data, order=3, delay=1, normalize=True)  # Permutation entropy: same if standardized or not
+        # sample_entropy = antropy.sample_entropy(data, order=2, metric="chebyshev")       # Sample entropy
+        # app_entropy = antropy.app_entropy(data, order=2, metric="chebyshev")             # Approximate sample entropy
 
-        # Feature that take too long to process.
-        # app_entropy = antropy.app_entropy(data, order = 2, metric="chebyshev")             # Approximate sample entropy
-        # sample_entropy = antropy.sample_entropy(data, order = 2, metric="chebyshev")       # Sample entropy
-
-        # ------------------------------------------------------------------ #  
-        # ------------------- Feature Extraction: Fractal ------------------ #
+        # ------------------- Feature Extraction: Fractals ------------------ #
 
         # Fractal analysis
-        if standardDeviation <= 1e-10:
-            katz_fd = 0
-        else:
-            katz_fd = antropy.katz_fd(standardizedData)  # Same if standardized or not
-
-        higuchi_fd = antropy.higuchi_fd(x=data.astype('float64'), kmax=5)  # Numba. Same if standardized or not
         DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
         LZC = antropy.lziv_complexity(data)
 
-        katz_fd = 0
-        svd_entropy = 0
-
-        # ------------------------------------------------------------------ #  
         # -------------------- Feature Extraction: Other ------------------- #
 
-        # Frequency Features
+        # Number of zero-crossings
         num_zerocross = antropy.num_zerocross(data)
-        if standardDeviation <= 1e-10:
-            meanFrequency = 0
-        else:
-            meanFrequency = np.sum(powerSpectrumDensityFreqs * powerSpectrumDensity) / np.sum(powerSpectrumDensity)
+        meanFrequency = np.sum(powerSpectrumDensityFreqs * powerSpectrumDensityNormalized)
 
         # ------------------------------------------------------------------ #
 
         finalFeatures = []
+        # Feature Extraction: MNE
+        finalFeatures.extend([decorr_time, higuchi_fd, line_length, ptp_amp])
         # Feature Extraction: Hjorth
         finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance])
         finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD])
         # Feature Extraction: Entropy
-        finalFeatures.extend([perm_entropy, spectral_entropy, svd_entropy])
+        finalFeatures.extend([spectral_entropy, perm_entropy])
         # Feature Extraction: Fractal
-        finalFeatures.extend([katz_fd, higuchi_fd, DFA, LZC])
+        finalFeatures.extend([DFA, LZC])
         # Feature Extraction: Other
         finalFeatures.extend([num_zerocross, meanFrequency])
 

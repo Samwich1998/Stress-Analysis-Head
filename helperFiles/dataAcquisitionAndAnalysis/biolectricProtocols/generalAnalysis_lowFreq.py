@@ -135,89 +135,49 @@ class generalProtocol_lowFreq(globalProtocol):
 
         return intervalTimes, intervalData
     
-    # ---------------------------------------------------------------------- #
     # --------------------- Feature Extraction Methods --------------------- #
     
     def extractFeatures(self, timePoints, data):
-        # ------------------------------------------------------------------ #  
+
         # ----------------------- Data Preprocessing ----------------------- #
         
-        # Standardize the data
-        standardDeviation = np.std(data, ddof=1)
-        
         # Normalize the data
-        if standardDeviation == 0:
-            # print(f'extractfinalFeatures Standard Deviation = 0. All data = {data[0]}')
-            standardizedData = (data - np.mean(data))
-            
-        else: standardizedData = (data - np.mean(data))/standardDeviation
-                
-        # Calculate the power spectral density (PSD) of the signal. USE STANDARDIZED DATA
-        powerSpectrumDensityFreqs, powerSpectrumDensity = scipy.signal.welch(standardizedData, fs=self.samplingFreq, window='hann',
-                                                                             nperseg=int(self.samplingFreq*4), noverlap=None,
-                                                                             nfft=None, detrend='constant', return_onesided=True,
-                                                                             scaling='density', axis=-1, average='mean')
+        standardized_data = self.universalMethods.standardizeData(data)
+        if all(standardized_data == 0):
+            return [0 for _ in range(23)]
         
         # Get the baseline data
         baselineX = timePoints - timePoints[0]
-        baselineY = data - data[0]
-        
+
         # Calculate the derivatives
-        firstDerivative = np.gradient(standardizedData, timePoints)
-        secondDerivative = np.gradient(firstDerivative, timePoints)
-        
+        firstDerivative = np.gradient(standardized_data, timePoints)
+
         # ------------------------------------------------------------------ #  
         # ----------------------- Features from Data ----------------------- #
         
-        # General Shape Parametersx
+        # General Shape Parameters
+        signalPower = scipy.integrate.simpson(data ** 2, timePoints) / (baselineX[-1] - baselineX[0])
+        signalArea = scipy.integrate.simpson(data, timePoints) / (baselineX[-1] - baselineX[0])
+        signalRange = max(data) - min(data)
+        standardDeviation = np.std(data, ddof=1)
         mean = np.mean(data)
-    
-        # Other Parameters
-        if standardDeviation == 0:
-            signalRange = 0
-            arcLength = 0
-            signalPower = 0
-            signalArea = 0
-        else:
-            signalRange = max(data) - min(data)
-            arcLength = np.mean(np.sqrt(1 + firstDerivative**2))
-            signalPower = scipy.integrate.simpson(data ** 2, timePoints) / (baselineX[-1] - baselineX[0])
-            signalArea = scipy.integrate.simpson(data, timePoints) / (baselineX[-1] - baselineX[0])
-        
-        # ------------------------------------------------------------------ #  
+
         # -------------------- Features from Derivatives ------------------- #
         
         # First derivative features
         firstDerivativeMean = np.mean(firstDerivative)
         firstDerivativeStdDev = np.std(firstDerivative, ddof=1)
         firstDerivativePower = scipy.integrate.simpson(firstDerivative ** 2, timePoints) / (baselineX[-1] - baselineX[0])
-    
-        # Second derivative features
-        secondDerivativeMean = np.mean(secondDerivative)
-        secondDerivativeStdDev = np.std(secondDerivative, ddof=1)
-        secondDerivativePower = scipy.integrate.simpson(secondDerivative ** 2, timePoints) / (baselineX[-1] - baselineX[0])
-                
-        # ------------------------------------------------------------------ #  
-        # ----------------- Features from Normalized Data ------------------ #
-        
-        # Linear fit.
-        signalSlope, slopeIntercept = np.polyfit(baselineX, baselineY, 1)
-    
-        # ------------------------------------------------------------------ #  
+
         # ----------------------- Organize Features ------------------------ #
         
         finalFeatures = []
         # Add peak shape parameters
         finalFeatures.extend([mean, standardDeviation])
-        finalFeatures.extend([signalRange, arcLength, signalPower, signalArea])
-        
+        finalFeatures.extend([signalRange, signalPower, signalArea])
         # Add derivative features
         finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
-        finalFeatures.extend([secondDerivativeMean, secondDerivativeStdDev, secondDerivativePower])
-        
-        # Add normalized features
-        finalFeatures.extend([signalSlope, slopeIntercept])
-        
+
         return finalFeatures
     
     

@@ -7,15 +7,14 @@ finalFeatures.extend([signalRange, signalArea])
 finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
 finalFeatures.extend([secondDerivativeMean, secondDerivativeStdDev, secondDerivativePower])
 
-# Add normalized features
-finalFeatures.extend([signalSlope, slopeIntercept])
-
+# Feature Extraction: MNE
+finalFeatures.extend([decorr_time, higuchi_fd, line_length, ptp_amp])
 # Feature Extraction: Hjorth
 finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance])
 finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD])
 # Feature Extraction: Entropy
-finalFeatures.extend([perm_entropy, spectral_entropy, svd_entropy])
+finalFeatures.extend([spectral_entropy, perm_entropy])
 # Feature Extraction: Fractal
-finalFeatures.extend([katz_fd, higuchi_fd, DFA, LZC])
+finalFeatures.extend([DFA, LZC])
 # Feature Extraction: Other
 finalFeatures.extend([num_zerocross, meanFrequency])

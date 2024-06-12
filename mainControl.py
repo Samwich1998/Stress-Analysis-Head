@@ -31,7 +31,7 @@ if __name__ == "__main__":
     # User options during the run: any number can be true.
     useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
     plotStreamedData = False  # Graph the data to show incoming signals.
-    useTherapyData = True  # Use the Therapy Data folder for any files.
+    useTherapyData = False  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
     userName = "Jayden".replace(" ", "")

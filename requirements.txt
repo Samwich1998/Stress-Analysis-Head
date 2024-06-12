@@ -1,3 +1,7 @@
+ pip
+ setuptools
+ wheel
+
 accelerate
 antropy
 dill

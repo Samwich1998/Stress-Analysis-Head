@@ -32,7 +32,7 @@ if __name__ == "__main__":
         dataloader_config=accelerate.DataLoaderConfiguration(split_batches=True),  # Whether to split batches across devices or not.
         cpu=torch.backends.mps.is_available(),  # Whether to use the CPU. MPS is NOT fully compatible yet.
         step_scheduler_with_optimizer=False,  # Whether to wrap the optimizer in a scheduler.
-        gradient_accumulation_steps=16,  # The number of gradient accumulation steps.
+        gradient_accumulation_steps=8,  # The number of gradient accumulation steps.
         mixed_precision="no",  # FP32 = "no", BF16 = "bf16", FP16 = "fp16", FP8 = "fp8"
     )
 
@@ -57,8 +57,8 @@ if __name__ == "__main__":
     parser.add_argument('--deviceListed', type=str, default=accelerator.device.type, help='The device we are running the platform on')
     # Add arguments for the signal encoder prediction
     parser.add_argument('--signalEncoderWaveletType', type=str, default='bior3.7', help='The wavelet type for the wavelet transform: bior3.7, db3, dmey, etc')
-    parser.add_argument('--numSigLiftedChannels', type=int, default=16, help='The number of channels to lift to during signal encoding. Range: (8, 16, 32, 48)')
-    parser.add_argument('--numSigEncodingLayers', type=int, default=4, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
+    parser.add_argument('--numSigLiftedChannels', type=int, default=48, help='The number of channels to lift to during signal encoding. Range: (8, 16, 32, 48)')
+    parser.add_argument('--numSigEncodingLayers', type=int, default=0, help='The number of operator layers during signal encoding. Range: (0, 6, 1)')
     parser.add_argument('--numExpandedSignals', type=int, default=2, help='The number of expanded signals in the encoder. Range: (2, 6, 1)')
     # Add arguments for the autoencoder
     parser.add_argument('--compressionFactor', type=float, default=1.5, help='The compression factor of the autoencoder')

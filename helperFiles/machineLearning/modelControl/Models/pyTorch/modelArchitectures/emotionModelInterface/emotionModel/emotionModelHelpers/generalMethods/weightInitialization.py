@@ -16,24 +16,31 @@ class weightInitialization:
         # Extract the linearity of the layer.
         layerInformation = layerType.split("_")
         linearity = layerInformation[0]
+        normalizationGain = 0.75
+
+        # Assert the validity of the input parameters.
+        assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         gainInformation = None
         if len(layerInformation) == 2:
             gainInformation = layerInformation[1]
 
-        normalizationGain = 0.75  # Used by SELU for normalization.
-        if gainInformation == "WNO":
-            normalizationGain = 0.75 * math.sqrt(1/3)
-
-        # Assert the validity of the input parameters.
-        assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
+        linearityGain = 1.0
+        if linearity in ['conv1D', 'pointwise']:
+            # Calculate the gain for the layer's linearity component.
+            outChannels, inChannels, kernelSize = modelParam.weight.size()
+            linearityGain = math.sqrt(min(outChannels, inChannels) / max(outChannels, inChannels) / kernelSize)
+            if gainInformation == "WNO": linearityGain = linearityGain * math.sqrt(1 / kernelSize)
+        elif linearity == 'fc':
+            outFeatures, inFeatures = modelParam.weight.size()
+            linearityGain = math.sqrt(min(outFeatures, inFeatures) / max(outFeatures, inFeatures))
 
         if linearity == 'conv1D':
-            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain*linearityGain)
         elif linearity == 'pointwise':
-            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain*linearityGain)
         elif linearity == 'fc':
-            self.xavier_uniform_weights(modelParam, nonlinearity='linear', normalizationGain=normalizationGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='linear', normalizationGain=normalizationGain*linearityGain)
         else:
             modelParam.reset_parameters()
 

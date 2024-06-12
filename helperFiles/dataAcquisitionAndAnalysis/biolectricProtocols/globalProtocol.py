@@ -20,8 +20,16 @@ class globalProtocol(abc.ABC):
         self.featureAverageWindow = None  # The number of seconds before each feature to average the features together. Set in streamData if collecting features.
         self.analysisType = analysisType
         self.numChannels = numChannels  # Number of Bioelectric Signals
-        self.collectFeatures = False  # This flag will be changed by user if desired (NOT here).
+        self.collectFeatures = False  # User will change this flag if desired (NOT here).
         self.readData = readData
+
+        # Feature parameters.
+        self.lastAnalyzedDataInd = None
+        self.compiledFeatures = None
+        self.featureTimes = None
+        self.samplingFreq = None
+        self.rawFeatures = None
+        self.data = None
 
         # Prepare the Program to Begin Data Analysis
         self.checkAllParams()  # Check to See if the User's Input Parameters Make Sense
@@ -41,12 +49,13 @@ class globalProtocol(abc.ABC):
 
     def resetGlobalVariables(self):
         # Data to Read in
-        self.data = [[], [[] for channelIndex in range(self.numChannels)]]
+        self.data = [[], [[] for _ in range(self.numChannels)]]
+
         # Reset Feature Extraction
-        self.rawFeatures = [[] for channelIndex in range(self.numChannels)]  # Raw features extraction at the current timepoint.
-        self.featureTimes = [[] for channelIndex in range(self.numChannels)]  # The time of each feature.
-        self.compiledFeatures = [[] for channelIndex in range(self.numChannels)]  # FINAL compiled features at the current timepoint. Could be average of last x features.
-        self.lastAnalyzedDataInd = np.array([0 for channelIndex in range(self.numChannels)])  # The index of the last point analyzed. 
+        self.rawFeatures = [[] for _ in range(self.numChannels)]  # Raw features extraction at the current timepoint.
+        self.featureTimes = [[] for _ in range(self.numChannels)]  # The time of each feature.
+        self.compiledFeatures = [[] for _ in range(self.numChannels)]  # FINAL compiled features at the current timepoint. Could be average of last x features.
+        self.lastAnalyzedDataInd = np.array([0 for _ in range(self.numChannels)])  # The index of the last point analyzed.
 
         # General parameters
         self.samplingFreq = None  # The Average Number of Points Steamed Into the Arduino Per Second; Depends on the User's Hardware; If NONE Given, Algorithm will Calculate Based on Initial Data
@@ -62,7 +71,7 @@ class globalProtocol(abc.ABC):
         self.checkParams()
 
     def setSamplingFrequency(self, startFilterPointer):
-        # Caluclate the Sampling Frequency
+        # Calculate the Sampling Frequency
         self.samplingFreq = len(self.data[0][startFilterPointer:-1]) / (self.data[0][-1] - self.data[0][startFilterPointer])
         print(f"\n\tSetting {self.analysisType} Sampling Frequency to {self.samplingFreq}")
         print("\tIf this protocol runs longer than", self.moveDataFinger / self.samplingFreq, ", the analysis will NOT be in real-time")

@@ -10,8 +10,8 @@ class weightInitialization:
 
     def initialize_weights(self, modelParam, activationMethod='selu', layerType='conv1D'):
         #  Options:
-        #     Asymmetric activations: self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', extraGain=extraGain)
-        #     Symmetric activations: self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
+        #     Asymmetric activations: self.kaiming_uniform_weights(modelParam, a=math.sqrt(5), nonlinearity='conv1d', normalizationGain=normalizationGain)
+        #     Symmetric activations: self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain)
 
         # Extract the linearity of the layer.
         layerInformation = layerType.split("_")
@@ -21,19 +21,19 @@ class weightInitialization:
         if len(layerInformation) == 2:
             gainInformation = layerInformation[1]
 
-        extraGain = 0.75
+        normalizationGain = 0.75  # Used by SELU for normalization.
         if gainInformation == "WNO":
-            extraGain = 0.75 * math.sqrt(1/3)
+            normalizationGain = 0.75 * math.sqrt(1/3)
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."
 
         if linearity == 'conv1D':
-            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain)
         elif linearity == 'pointwise':
-            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', extraGain=extraGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='conv1d', normalizationGain=normalizationGain)
         elif linearity == 'fc':
-            self.xavier_uniform_weights(modelParam, nonlinearity='linear', extraGain=extraGain)
+            self.xavier_uniform_weights(modelParam, nonlinearity='linear', normalizationGain=normalizationGain)
         else:
             modelParam.reset_parameters()
 
@@ -82,14 +82,14 @@ class weightInitialization:
             nn.init.zeros_(m.bias)
 
     @staticmethod
-    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu', extraGain=1.0):
+    def kaiming_uniform_weights(m, a=math.sqrt(5), nonlinearity='relu', normalizationGain=1.0):
         # Taken from pytorch default documentation: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L44-L48
         # Pytorch default for linear layers.
         nn.init.kaiming_uniform_(m.weight, a=a, mode='fan_in', nonlinearity=nonlinearity)
 
         # Apply the extra gain to the weights
         with torch.no_grad():  # Ensure we do not track this operation in the computational graph
-            m.weight *= extraGain
+            m.weight *= normalizationGain
 
         if m.bias is not None:
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
@@ -97,8 +97,8 @@ class weightInitialization:
             nn.init.uniform_(m.bias, -bound, bound)
 
     @staticmethod
-    def xavier_uniform_weights(m, nonlinearity='relu', extraGain=1.0):
-        gain = nn.init.calculate_gain(nonlinearity=nonlinearity) * extraGain
+    def xavier_uniform_weights(m, nonlinearity='relu', normalizationGain=1.0):
+        gain = nn.init.calculate_gain(nonlinearity=nonlinearity) * normalizationGain
         nn.init.xavier_uniform_(m.weight, gain=gain)
 
         if hasattr(m, 'bias') and m.bias is not None:

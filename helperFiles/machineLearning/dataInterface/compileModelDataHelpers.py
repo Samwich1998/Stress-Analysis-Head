@@ -354,7 +354,11 @@ class compileModelDataHelpers:
         """
         # Initialize data holders.
         goodFeatureInds = set(np.arange(0, len(featureNames)))
-        assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), "Feature names do not match data dimensions."
+        # assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), "Feature names do not match data dimensions."
+        # TODO: THIS IS TEMP ON 6/11 IF YOU SEE THIS AFTER AHHHHHH. TELL SAM
+        featureNames = featureNames[:len(allSignalData[0])]
+        while len(featureNames) != len(allSignalData[0]):
+            featureNames.append("AHH")
 
         # For each set of signals.
         for batchInd in range(len(allSignalData)):

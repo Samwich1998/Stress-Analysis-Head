@@ -309,7 +309,7 @@ class soundController(compileMtgJamendo):
 
 if __name__ == "__main__":
     # Specify the MTG-Jamendo dataset path
-    dataFolder = './Organized Sounds/MTG-Jamendo/'
+    dataFolder = './organizedSounds/MTG-Jamendo/'
     soundInfoFile = 'raw_30s_cleantags_50artists.tsv'
     # Initialize the classes
     soundManager = soundController(dataFolder, soundInfoFile)  # Controls the music playing
@@ -341,7 +341,7 @@ if __name__ == "__main__":
 
     if True:
         # Initialize the class
-        generatedSoundsFolder = "./Organized Sounds/Generated Sounds/"
+        generatedSoundsFolder = "./organizedSounds/generatedSounds/"
         generateSoundController = generateSound(musicFolder=generatedSoundsFolder)  # Generates music to play
 
         # Make a new sound

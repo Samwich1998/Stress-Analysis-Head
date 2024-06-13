@@ -1,19 +1,11 @@
-# General
 import os
-import sys
 import scipy
 import numpy as np
 import pandas as pd
-# Module to Sort Files in Order
 from natsort import natsorted
-
-# Add the directory of the current file to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append('./../../')
 
 # Import excel data interface
 from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.globalMetaAnalysis import globalMetaAnalysis
-# from .globalMetaAnalysis import globalMetaAnalysis
 
 
 class amigosInterface(globalMetaAnalysis):
@@ -47,7 +39,7 @@ class amigosInterface(globalMetaAnalysis):
         # GSR/ECG Processing Notes:
         #       The data was downsampled to 128Hz.
         #       ECG was low-pass filtered with 60Hz cut-off frequency.
-        #       GSR was reencoded to obtain skin conductance, and then GSR was calculated and low-pass filtered with 60Hz cut-off frequency.
+        #       GSR was re-encoded to obtain skin conductance, and then GSR was calculated and low-pass filtered with 60Hz cut-off frequency.
         #       The trials were reordered from presentation order to video number (See video_list) order.
         self.streamingOrder.extend(['ECG Right', 'ECG Left', 'GSR'])
 
@@ -255,7 +247,7 @@ if __name__ == "__main__":
         streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = amigosAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         amigosAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                            streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='amigos', reanalyzeData=False, showPlots=False)
+                                            streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='amigos', reanalyzeData=True, showPlots=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.

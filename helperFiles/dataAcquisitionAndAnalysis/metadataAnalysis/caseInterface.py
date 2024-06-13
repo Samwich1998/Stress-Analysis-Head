@@ -1,22 +1,13 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
-# General Modules
 import os
 import numpy as np
 import pandas as pd
 import scipy
-# Module to Sort Files in Order
 from natsort import natsorted
-# Modules to plot
 import matplotlib.pyplot as plt
 
 # Import excel data interface
-from .globalMetaAnalysis import globalMetaAnalysis
+from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.globalMetaAnalysis import globalMetaAnalysis
 
-
-# -------------------------------------------------------------------------- #
-# ------------------------- Extract Data from Excel ------------------------ #
 
 class caseInterface(globalMetaAnalysis):
 
@@ -57,7 +48,7 @@ class caseInterface(globalMetaAnalysis):
 
     def aggregateSurveysPerTrial(self, surveys):
         # surveys are pandas df only containing the responses per given trial
-        return [scipy.stats.trim_mean(surveys[question], 0.1) for question in self.surveyQuestions]
+        return [scipy.stats.trim_mean(surveys[question], proportiontocut=0.1) for question in self.surveyQuestions]
 
     def getData(self, showPlots=False):
         # Initialize data holders.

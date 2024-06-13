@@ -1,8 +1,7 @@
-# General Modules
 import os
 import itertools
-import numpy as np
 import concurrent.futures
+
 # Import interface for extracting feature names
 from ...machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames  # Import Files for extracting feature names
 
@@ -121,7 +120,7 @@ class globalMetaAnalysis(handlingExcelFormat):
         # Check if the features have already been extracted.        
         saveFeatureFile = self.savedFeatureFolder + subjectName + self.saveFeatureFile_Appended
         if os.path.exists(saveFeatureFile) and not reanalyzeData:
-            print("\tNot reanalyzing file");
+            print("\tNot reanalyzing file")
             return None
 
         # Get the flattened versions.
@@ -182,37 +181,3 @@ class globalMetaAnalysis(handlingExcelFormat):
         return allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes
-
-    # --------------------------- General Methods -------------------------- #
-
-    @staticmethod
-    def resampleSignal(timePoints, signalData, newSamplingFreq):
-        signalData = np.asarray(signalData).T  # Getting signalData into the format: numSignals, numPoints
-        # Create a time interval to interpolate the features.
-        newInterpolatedTimes = np.arange(timePoints[0], timePoints[-1] + 1 / newSamplingFreq, 1 / newSamplingFreq)
-        alignedData = np.zeros((len(signalData), len(newInterpolatedTimes)))
-
-        interpolate = True
-        alignmentPointer = 0
-        # Check which feature times to add
-        for dataInd in range(len(newInterpolatedTimes)):
-            interpTime = newInterpolatedTimes[dataInd]
-
-            # Find the time right before currentTime
-            while interpolate and timePoints[alignmentPointer] <= interpTime:
-                alignmentPointer += 1  # Look at the next point
-                # If no time before AND after currentTime, you cant interpolate in between
-                if alignmentPointer == len(timePoints):
-                    print("Extrapolation is not a good option")
-                    interpolate = False
-                    break
-
-            if interpolate:
-                # Specify the variables
-                t1, t2 = timePoints[alignmentPointer - 1], timePoints[alignmentPointer]
-                y1, y2 = signalData[:, alignmentPointer - 1], signalData[:, alignmentPointer]
-
-            # Linearly connect the line to get the next value
-            alignedData[:, dataInd] = (y1 + ((y2 - y1) / (t2 - t1)) * (interpTime - t1))
-
-        return newInterpolatedTimes, alignedData

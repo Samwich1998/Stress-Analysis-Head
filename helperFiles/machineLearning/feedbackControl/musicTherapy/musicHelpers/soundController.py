@@ -55,7 +55,7 @@ if __name__ == "__main__":
     soundManager = soundController()  # Controls the music playing
 
     # Initialize the class
-    generatedSoundsFolder = "./Organized Sounds/Generated Sounds/"
+    generatedSoundsFolder = "./organizedSounds/generatedSounds/"
     generateSoundController = generateSound(musicFolder=generatedSoundsFolder)  # Generates music to play
 
     # Make a new sound

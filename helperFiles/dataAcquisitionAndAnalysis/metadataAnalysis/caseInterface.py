@@ -269,7 +269,7 @@ if __name__ == "__main__":
         streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = caseAnalysisClass.getStreamingInfo()
         # # Analyze and save the metadata features
         caseAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                          streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=True)
+                                          streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.

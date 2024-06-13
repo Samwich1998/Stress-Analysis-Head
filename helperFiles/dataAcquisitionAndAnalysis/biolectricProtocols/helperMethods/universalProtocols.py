@@ -95,6 +95,10 @@ class universalMethods:
         else:
             powerSpectrumDensityNormalized = powerSpectrumDensity
 
+        # If the power spectrum density is zero, the spectral entropy is zero.
+        if np.all(powerSpectrumDensityNormalized == 0):
+            return 0
+
         # Calculate the spectral entropy
         spectralEntropy = -np.sum(np.multiply(powerSpectrumDensityNormalized, np.log2(powerSpectrumDensityNormalized)), axis=-1)
 

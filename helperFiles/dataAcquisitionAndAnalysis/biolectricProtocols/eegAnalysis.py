@@ -162,6 +162,8 @@ class eegProtocol(globalProtocol):
 
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
+        if all(standardized_data == 0):
+            return [0 for _ in range(33)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
         powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 4))

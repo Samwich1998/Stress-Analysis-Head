@@ -25,7 +25,7 @@ clear all;
 %$ Navigate to the case_dataset root directory
 %$ NOTE: please set this up for your case e.g.
 %$ cd /home/<USER>/Documents/case_Dataset   
-cd ../
+cd /Users/karan/Documents/pewo/affectComp/case_dataset
 
 % verbose mode on (True) or off (False)
 verbose = true;

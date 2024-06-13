@@ -29,7 +29,7 @@ clear all;
 %$ Navigate to the case_dataset root directory
 %$ NOTE: please set this up for your case e.g.
 %$ cd /home/<USER>/Documents/case_Dataset   
-cd ../
+cd /Users/karan/Documents/pewo/affectComp/case_dataset
 
 % load files for labelling created in s01_extractViddata.m
 %$ loading variable vidsDuration from vids_dur_num.mat

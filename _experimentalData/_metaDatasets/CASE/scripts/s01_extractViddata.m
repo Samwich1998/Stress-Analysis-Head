@@ -34,9 +34,8 @@ clear all;
 
 %$ Navigate to the case_dataset root directory
 %$ NOTE: please set this up for your case e.g.
-%$ cd /home/<USER>/Documents/case_Dataset 
-caseDirectory = pwd + "/../";
-cd ../ 
+%$ cd /home/<USER>/Documents/case_Dataset   
+cd /Users/karan/Documents/pewo/affectComp/case_dataset
 
 
 %-------videos_duration.txt converted to num version: videos_duration_num.mat-------

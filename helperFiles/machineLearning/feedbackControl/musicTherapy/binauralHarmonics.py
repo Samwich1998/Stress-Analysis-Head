@@ -17,7 +17,7 @@ class binauralBeatsAdjustment:
                                            'high_alpha': 12, 'low_beta': 16, 'high_beta': 24, 'gamma': 32}
 
         """ crown: connection with the divine, third_eye: intuition, throat: communication, heart: love, solar: power, sacral: creativity, root: survival"""
-        self.base_frequency_name = {'crown': 963, 'third_eye': 852, 'throat': 741, 'heart': 639, 'solar': 528, 'sacral': 417, 'root': 396}
+        self.base_frequency_name = {'crown': 963, 'third_eye': 852, 'throat': 741, 'heart': 639, 'solar': 528, 'sacral': 417, 'root': 396, 'base': 400}
 
     def get_base_frequency(self, base_frequency_name):
         assert base_frequency_name in self.base_frequency_name, f"Base frequency name {base_frequency_name} not found in the dict"
@@ -135,14 +135,17 @@ if __name__ == "__main__":
         path_to_wave_files=wave_samples_dir
     )
 
-    base_freq_name = 'sacral'  # Base frequency name
-    brain_wave_state_harmonics = ['low_alpha', 'gamma']  # Multiple brain wave state harmonics
-    duration_ms = 30000  # Duration units: ms
+    base_freq_name = 'crown'  # Base frequency name
+    brain_wave_state_harmonics = ['gamma']  # Multiple brain wave state harmonics
+    duration_ms = 600000  # Duration units: ms (10 minutes = 600000ms)
     volume = -20  # Volume adjustment : dB decreasing
+
+    # for white noise only:
+    noBaseSound = AudioSegment.silent(duration=duration_ms)
 
     # Create combined binaural beats
     binaural_beat = generator.create_binaural_beats(base_freq_name, brain_wave_state_harmonics, duration_ms, volume)
     sound_overlay = generator.sound_overlay_stereo_beats(binaural_beat, white_noise_volume=10)
 
-    binaural_beat.export("binaural_beats3.wav", format="wav")
-    sound_overlay.export("combined_binaural_beat_with_sound_overlay.wav", format="wav")
+    #binaural_beat.export("binaural_beats_crown_gamma.wav", format="wav")
+    sound_overlay.export("combined_crown_gamma.wav", format="wav")

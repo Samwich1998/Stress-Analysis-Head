@@ -67,7 +67,7 @@ class streamingHead(featureOrganization):
         for analysisInd in range(len(self.analysisOrder)):
             biomarkerType = self.analysisOrder[analysisInd]
             # Organize the streaming channels by their respective biomarker.
-            self.numChannelDist[analysisInd] = (streamingOrder == biomarkerType).sum()
+            self.numChannelDist[analysisInd] = np.sum(streamingOrder == biomarkerType)
             self.channelDist[analysisInd] = np.where(streamingOrder == biomarkerType)[0]
 
             # Check that we segmented the channels correctly.

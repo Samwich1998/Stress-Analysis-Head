@@ -11,6 +11,8 @@ venv/
 **/*$
 **/*.wav
 **/*.png
+**/*.jpg
+**/*.mp3
 
 helperFiles/**/.*
 _projectFiles/**/.*
@@ -18,16 +20,16 @@ _experimentalData/**/.*
 .__projectFiles
 ._helperFiles
 
-helperFiles/machineLearning/feedbackControl/musicTherapy/_compiledSounds/
 _projectFiles/_supplementaryWork/Machine Learning Predictions/finalFigures/*
+
+# Machine learning control files and folders
+helperFiles/machineLearning/modelControl/Models/pyTorch/modelArchitectures/emotionModelInterface/dataAnalysis/trainingFigures/
 helperFiles/machineLearning/modelControl/_finalModels/storedModels/
 helperFiles/machineLearning/modelControl/_finalModels/emotionModel/
-helperFiles/machineLearning/modelControl/Models/pyTorch/modelArchitectures/emotionModelInterface/dataAnalysis/trainingFigures/
 
 # Feedback control files and folders
-helperFiles/machineLearning/feedbackControl/musicTherapy/_compiledSounds/GTZAN/*
-helperFiles/machineLearning/feedbackControl/musicTherapy/_compiledSounds/MTG-Jamendo/a*
 helperFiles/machineLearning/feedbackControl/virtualRealityControl/Virtual Images/horror.osgb
+helperFiles/machineLearning/feedbackControl/musicTherapy/musicHelpers/organizedSounds/_compiledSounds/
 
 # Supplementary information
 _projectFiles/_supplementaryWork/Signal Data and Features/Figures/Feature Time Windows/
@@ -36,7 +38,6 @@ _projectFiles/_backgroundInfo/
 _projectFiles/_figurePlans/
 
 # Compiled Dataset
-_experimentalData/allSensors/_oldFiles/
 _experimentalData/_compiledData/_*
 
 # Unused Metadatasets

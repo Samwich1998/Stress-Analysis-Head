@@ -1,13 +1,13 @@
 finalFeatures = []
 # Feature Extraction: MNE
-finalFeatures.extend([decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp])
+finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
 # Feature Extraction: Hjorth
-finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance])
-finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD])
+finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
+finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD])
 # Feature Extraction: Entropy
 finalFeatures.extend([spectral_entropy, perm_entropy, svd_entropy])
 # Feature Extraction: Fractal
-finalFeatures.extend([DFA, LZC])
+finalFeatures.extend([DFA])
 # Feature Extraction: Other
 finalFeatures.extend([deltaPower, thetaPower, alphaPower, betaPower, gammaPower])
 finalFeatures.extend([muPower, beta1Power, beta2Power, beta3Power, smrPower])

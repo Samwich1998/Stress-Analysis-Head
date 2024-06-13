@@ -49,32 +49,32 @@ class trainingProtocols(extractData):
         self.modelInfoClass = compileModelInfo()
         self.analyzeFeatures = featurePlotting(self.trainingFolder + "dataAnalysis/", overwrite=False)
 
-    def streamTrainingData(self, featureAverageWindows, plotTrainingData=False, reanalyzeData=False, extendedTime=False, metaTraining=False):
+    def streamTrainingData(self, featureAverageWindows, plotTrainingData=False, reanalyzeData=False, extendedTime=False, metaTraining=False, reverseOrder=False):
         # Hold time series analysis of features.
-        allRawFeatureIntervals = [];
+        allRawFeatureIntervals = []
         allRawFeatureIntervalTimes = []
-        allAlignedFeatureIntervals = [];
+        allAlignedFeatureIntervals = []
         allAlignedFeatureIntervalTimes = []
         # Hold features extraction information.
-        allRawFeatureHolders = [];
+        allRawFeatureHolders = []
         allRawFeatureTimesHolders = []
-        allAlignedFeatureHolder = [];
+        allAlignedFeatureHolder = []
         allAlignedFeatureTimes = []
         # Hold survey information
-        surveyQuestions = [];
+        surveyQuestions = []
         subjectInformationQuestions = []
-        surveyAnswersList = [];
+        surveyAnswersList = []
         surveyAnswerTimes = []
         # Hold experimental information.
-        subjectOrder = [];
+        subjectOrder = []
         experimentalOrder = []
-        # Final parameters for ML;
+        # Final parameters for ML
         allFinalFeatures = []
 
         # ------------------------------------------------------------------ #
         # ---------------------- Collect Training Data --------------------- #
         # For each file in the training folder.
-        for excelFile in natsorted(os.listdir(self.trainingFolder)):
+        for excelFile in natsorted(os.listdir(self.trainingFolder), reverse=reverseOrder):
             # Only analyze Excel files with the training signals.
             if not excelFile.endswith(".xlsx") or excelFile.startswith(("~", ".")):
                 continue
@@ -142,7 +142,7 @@ class trainingProtocols(extractData):
             # -------------------- Compile Raw Features -------------------- #
             # Setup the compilation variables
             allRawFeatureTimesHolders.append(rawFeatureTimesHolder)
-            allRawFeatureHolders.append(rawFeatureHolder);
+            allRawFeatureHolders.append(rawFeatureHolder)
             compiledFeatureHolders = []
 
             # Average the features across a sliding window at each timePoint
@@ -203,7 +203,7 @@ class trainingProtocols(extractData):
             assert len(experimentTimes) == len(currentSurveyAnswerTimes), print(experimentTimes, currentSurveyAnswerTimes)
 
             ### TODO: Sort the features with their correct labels.
-            currentFinalFeatures = [];
+            currentFinalFeatures = []
             badExperimentalInds = []
             # For each experiment performed in the trial.
             for experimentInd in range(len(experimentTimes)):
@@ -247,10 +247,8 @@ class trainingProtocols(extractData):
                     allAlignedFeatureIntervalTimes[-1].extend([alignedFeatureTimes[startStimuliInd:endStimuliInd] for _ in range(len(rawFeatures[0]))])
 
                 if experimentInd == -10:
-                    baseline = finalFeatures.copy()
                     badExperimentalInds.append(experimentInd)
                 else:
-                    # finalFeatures = np.asarray(finalFeatures) - np.asarray(baseline)
                     # Record the features
                     allFinalFeatures.append(finalFeatures)
                     currentFinalFeatures.append(finalFeatures)
@@ -262,17 +260,16 @@ class trainingProtocols(extractData):
                     else:
                         subjectOrder.append(" ".join(excelFileName.split(" ")[1:]))
 
-            ### TODO:  REMOVE OTHER BAD DATA LIEK ALIGNED/RAW
-            # currentSurveyAnswersList = np.asarray(currentSurveyAnswersList)
-            # currentSurveyAnswersList -= currentSurveyAnswersList[0]
             # Remove indices where no features were collected.
             for experimentInd in sorted(badExperimentalInds, reverse=True):
                 del currentSurveyAnswerTimes[experimentInd]
                 currentSurveyAnswersList = np.delete(currentSurveyAnswersList, experimentInd, axis=0)
 
                 # -------------------------------------------------------------- #
+
             # -------------------- Plot the features ------------------- #
-            if plotTrainingData or False:  # or "Exercise Trial Hyunah" in excelFile or "Exercise Trial MQ" in excelFile:
+
+            if plotTrainingData or False:
                 # Plot the feature correlation to each emotion/stress score.
                 # if not metaTraining:
                 #     self.analyzeFeatures.plotPsychCorrelation(currentFinalFeatures, currentSurveyAnswersList, self.featureNames, folderName = excelFileName + "/mentalStateCorrelation/")
@@ -300,23 +297,23 @@ class trainingProtocols(extractData):
                         # Plot the correlation across features
                         # self.analyzeFeatures.correlationMatrix(alignedFeatures, self.featureNames, folderName = "correlationMatrix/") # Hurts Plotting Style
 
-            # -------------------------------------------------------------- #
             # ------------------ Organize Information ------------------ #
+
             # Save the survey labels.
             surveyAnswersList.extend(currentSurveyAnswersList)
             surveyAnswerTimes.append(currentSurveyAnswerTimes)
 
             # -------------------------------------------------------------- #
 
-        # ------------------------------------------------------------------ #
         # ---------------------- Compile Training Data --------------------- #
+
         # Organize the final labels for the features
         featureLabelTypes, allFinalLabels = [], []
         if not metaTraining:
             featureLabelTypes, allFinalLabels = self.modelInfoClass.extractFinalLabels(surveyAnswersList, allFinalLabels)
 
-        # ------------------------------------------------------------------ #
         # -------------------- Plot Training Information ------------------- #
+
         if plotTrainingData or False:
             print("\nPlotting All Subject Information")
             # plot the feature correlation to each emotion/stress score.
@@ -350,7 +347,7 @@ class trainingProtocols(extractData):
         # Read in the training file with the raw data,
         WB = load_workbook(dataFile, data_only=True, read_only=True)
 
-        allRawFeatureTimesHolders = [];
+        allRawFeatureTimesHolders = []
         allRawFeatureHolders = []
 
         # Extract and analyze the raw data.
@@ -368,7 +365,7 @@ class trainingProtocols(extractData):
             self.readData.streamExcelData(compiledRawData, experimentTimes, experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, surveyQuestions, currentSubjectInformationAnswers, subjectInformationQuestions, dataFile)
             # Extract information from the streamed data
             allRawFeatureTimesHolders.append(self.readData.rawFeatureTimesHolder.copy())
-            allRawFeatureHolders.append(self.readData.rawFeatureHolder.copy());
+            allRawFeatureHolders.append(self.readData.rawFeatureHolder.copy())
             # Remove all previous information from this trial
             self.readData.resetGlobalVariables()
 
@@ -379,7 +376,7 @@ class trainingProtocols(extractData):
         # For each EEG Feature
         for featureInd in range(len(self.biomarkerFeatureNames[biomarkerInd])):
 
-            heatMap = [];
+            heatMap = []
             finalTimePoints = np.arange(max(allRawFeatureTimesHolders, key=lambda x: x[biomarkerInd][0])[biomarkerInd][0], min(allRawFeatureTimesHolders, key=lambda x: x[biomarkerInd][-1])[biomarkerInd][-1], 0.1)
             # For each feature-variation within a certain time window
             for trialInd in range(len(allRawFeatureHolders)):
@@ -411,7 +408,7 @@ class trainingProtocols(extractData):
             sns.set(rc={'figure.figsize': (7, 9)})
             plt.xlabel("Time (Seconds)")
             plt.ylabel("Sliding Window Size")
-            fig = ax.get_figure();
+            fig = ax.get_figure()
             fig.savefig(self.biomarkerFeatureNames[biomarkerInd][featureInd] + "Sliding Window.png", dpi=300)
             plt.show()
 

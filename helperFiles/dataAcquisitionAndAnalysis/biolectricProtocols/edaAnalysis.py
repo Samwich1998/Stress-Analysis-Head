@@ -178,7 +178,6 @@ class edaProtocol(globalProtocol):
 
         # Get the baseline data
         baselineX = timePoints - timePoints[0]
-        baselineY = data - data[0]
 
         # ----------------------- Features from Data ----------------------- #
 
@@ -203,11 +202,6 @@ class edaProtocol(globalProtocol):
         firstDerivativeStdDev = np.std(firstDerivative, ddof=1)
         firstDerivativePower = scipy.integrate.simpson(firstDerivative ** 2, timePoints) / (baselineX[-1] - baselineX[0])
 
-        # Second derivative features
-        secondDerivativeMean = np.mean(secondDerivative)
-        secondDerivativeStdDev = np.std(secondDerivative, ddof=1)
-        secondDerivativePower = scipy.integrate.simpson(secondDerivative ** 2, timePoints) / (baselineX[-1] - baselineX[0])
-
         # ----------------------- Organize Features ------------------------ #
 
         finalFeatures = []
@@ -217,7 +211,6 @@ class edaProtocol(globalProtocol):
 
         # Add derivative features
         finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
-        finalFeatures.extend([secondDerivativeMean, secondDerivativeStdDev, secondDerivativePower])
 
         return finalFeatures
 
@@ -228,7 +221,7 @@ class edaProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(20)]
+            return [0 for _ in range(16)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
         powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 10))
@@ -237,7 +230,7 @@ class edaProtocol(globalProtocol):
 
         # ------------------- Feature Extraction: MNE ------------------- #
 
-        decorr_time, higuchi_fd, _, line_length, ptp_amp = self.mneInterface.extractFeatures(standardized_data, self.samplingFreq)
+        higuchi_fd, katz_fd, ptp_amp = self.mneInterface.extractFeatures(standardized_data)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
@@ -257,7 +250,6 @@ class edaProtocol(globalProtocol):
 
         # Fractal analysis
         DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
-        LZC = antropy.lziv_complexity(data)
 
         # -------------------- Feature Extraction: Other ------------------- #
 
@@ -269,14 +261,14 @@ class edaProtocol(globalProtocol):
 
         finalFeatures = []
         # Feature Extraction: MNE
-        finalFeatures.extend([decorr_time, higuchi_fd, line_length, ptp_amp])
+        finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
         # Feature Extraction: Hjorth
-        finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance])
-        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD])
+        finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
+        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD])
         # Feature Extraction: Entropy
         finalFeatures.extend([spectral_entropy, perm_entropy])
         # Feature Extraction: Fractal
-        finalFeatures.extend([DFA, LZC])
+        finalFeatures.extend([DFA])
         # Feature Extraction: Other
         finalFeatures.extend([num_zerocross, meanFrequency])
 

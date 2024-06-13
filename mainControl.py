@@ -31,11 +31,11 @@ if __name__ == "__main__":
     # User options during the run: any number can be true.
     useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
     plotStreamedData = False  # Graph the data to show incoming signals.
-    useTherapyData = True  # Use the Therapy Data folder for any files.
+    useTherapyData = False  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
     userName = "Ruixiao".replace(" ", "")
-    trialName = "EEGBinaururalBeatsWhiteNoise"
+    trialName = "EEGBinauralBeatsWhiteNoise"
     date = "2024-06-12"
 
     # Specify experimental parameters.
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentalOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData)
+            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, reverseOrder=False)
         # Assert the validity of the feature extraction
         assert len(allAlignedFeatureHolder[0][0]) == len(featureNames), "Incorrect number of compiled features extracted"
         for analysisInd in range(len(allRawFeatureHolders[0])):

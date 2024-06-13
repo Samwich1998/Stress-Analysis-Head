@@ -142,7 +142,7 @@ class generalProtocol_highFreq(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(34)]
+            return [0 for _ in range(32)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
         powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 4))
@@ -151,7 +151,7 @@ class generalProtocol_highFreq(globalProtocol):
 
         # ------------------- Feature Extraction: MNE ------------------- #
 
-        decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp = self.mneInterface.extractFeatures(standardized_data, self.samplingFreq)
+        higuchi_fd, katz_fd, ptp_amp = self.mneInterface.extractFeatures(standardized_data)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
@@ -173,7 +173,6 @@ class generalProtocol_highFreq(globalProtocol):
         # Fractal analysis
         petrosian_fd = antropy.petrosian_fd(standardized_data, axis=-1)  # Amplitude-invariant. Averages 25 μs.
         DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
-        LZC = antropy.lziv_complexity(data)
 
         # -------------------- Feature Extraction: Other ------------------- #
 
@@ -193,14 +192,14 @@ class generalProtocol_highFreq(globalProtocol):
 
         finalFeatures = []
         # Feature Extraction: MNE
-        finalFeatures.extend([decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp])
+        finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
         # Feature Extraction: Hjorth
-        finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance])
-        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD])
+        finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
+        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD])
         # Feature Extraction: Entropy
         finalFeatures.extend([spectral_entropy, perm_entropy, svd_entropy])
         # Feature Extraction: Fractal
-        finalFeatures.extend([petrosian_fd, DFA, LZC])
+        finalFeatures.extend([petrosian_fd, DFA])
         # Feature Extraction: Other
         finalFeatures.extend([deltaPower, thetaPower, alphaPower, betaPower, gammaPower])
         finalFeatures.extend([muPower, beta1Power, beta2Power, beta3Power, smrPower])

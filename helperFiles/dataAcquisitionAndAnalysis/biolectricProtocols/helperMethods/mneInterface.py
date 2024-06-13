@@ -98,16 +98,14 @@ class mneInterface:
     # --------------------- Feature Extraction Methods --------------------- #
 
     @staticmethod
-    def extractFeatures(standardized_data, samplingFreq):
+    def extractFeatures(standardized_data):
         # Specify the general parameters.
         standardizedData = np.expand_dims(standardized_data, axis=0)
 
         # Fast singular feature extraction that is amplitude-invariant.
-        decorr_time = mne_features.univariate.compute_decorr_time(samplingFreq, standardizedData)[0]  # Amplitude-invariant. Averages 89.3 μs.
         higuchi_fd = mne_features.univariate.compute_higuchi_fd(standardizedData, kmax=10)[0]  # Amplitude-invariant. Averages 12 μs. Antropy is just as fast.
         katz_fd = mne_features.univariate.compute_katz_fd(standardizedData)[0]  # Amplitude-invariant. Averages 37 μs. Antropy is faster.
         # Fast singular feature extraction that is amplitude-linear-dependant.
-        line_length = mne_features.univariate.compute_line_length(standardizedData)[0]  # Amplitude-linear-dependant when standardized. Averages 16.9 μs.
         ptp_amp = mne_features.univariate.compute_ptp_amp(standardizedData)[0]  # Amplitude-linear-dependant when standardized. Averages 5.25 μs.
 
-        return decorr_time, higuchi_fd, katz_fd, line_length, ptp_amp
+        return higuchi_fd, katz_fd, ptp_amp

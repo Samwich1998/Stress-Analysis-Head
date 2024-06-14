@@ -44,11 +44,12 @@ class emotionPipelineHelpers:
 
         # Store model parameters.
         signalMinMaxScale = modelParameters.getSignalMinMaxScale()
+        timeWindows = modelParameters.getTimeWindows()
 
         # Initialize the emotion model.
         if modelName == "emotionModel":
             self.model = emotionModelHead(submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
-                                          emotionNames, activityNames, featureNames, numSubjects, datasetName, useFinalParams, debuggingResults)
+                                          timeWindows, emotionNames, activityNames, featureNames, numSubjects, datasetName, useFinalParams, debuggingResults)
         # Assert that the model has been initialized.
         assert hasattr(self, 'model'), f"Unknown Model Type Requested: {modelName}"
 

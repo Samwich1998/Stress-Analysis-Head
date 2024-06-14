@@ -18,10 +18,11 @@ from ..._globalPytorchModel import globalModel
 
 
 class emotionModelHead(globalModel):
-    def __init__(self, submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength,
-                 userInputParams, emotionNames, activityNames, featureNames, numSubjects, datasetName, useFinalParams, debuggingResults=False):
+    def __init__(self, submodel, accelerator, sequenceLength, signalMinMaxScale, maxNumSignals, numSubjectIdentifiers, demographicLength, userInputParams,
+                 timeWindows, emotionNames, activityNames, featureNames, numSubjects, datasetName, useFinalParams, debuggingResults=False):
         super(emotionModelHead, self).__init__()
         # General model parameters.
+        self.sequenceBounds = (timeWindows[0], timeWindows[-1])  # The minimum and maximum sequence length for the model.
         self.numSubjectIdentifiers = numSubjectIdentifiers  # The number of subject identifiers (subject index, etc.).
         self.demographicLength = demographicLength  # The amount of demographic information (age, weight, etc.). Subject index is not included.
         self.signalMinMaxScale = signalMinMaxScale  # The minimum and maximum values for the signals.
@@ -39,6 +40,7 @@ class emotionModelHead(globalModel):
         self.numSubjects = numSubjects  # The maximum number of subjects the model is training on.
         self.accelerator = accelerator  # Hugging face model optimizations.
         self.datasetName = datasetName  # The name of the dataset the model is training on.
+        self.timeWindows = timeWindows  # A list of all time windows to consider for the encoding.
 
         # Signal encoder parameters.
         self.signalEncoderWaveletType = userInputParams['signalEncoderWaveletType']         # The number of signals to group when you begin compression or finish expansion.
@@ -54,16 +56,12 @@ class emotionModelHead(globalModel):
         self.numBasicEmotions = userInputParams['numBasicEmotions']         # The number of basic emotions (basis states of emotions).
 
         # Tunable encoding parameters.
-        self.numEncodedSignals = 32  # The final number of signals to accept, encoding all signal information.
-        self.compressedLength = 32  # The final length of the compressed signal after the autoencoder.
+        self.numEncodedSignals = 16  # The final number of signals to accept, encoding all signal information.
+        self.compressedLength = 64  # The final length of the compressed signal after the autoencoder.
         # Feature parameters (code changes required if you change these!!!)
         self.numCommonSignals = 8    # The number of features from considering all the signals.
         self.numEmotionSignals = 8   # The number of common activity features to extract.
         self.numActivitySignals = 8  # The number of common activity features to extract.
-
-        # Specify the parameters for the time analysis.
-        self.timeWindows = [90, 120, 150, 180, 210, 240]  # A list of all time windows to consider for the encoding.
-        self.sequenceBounds = (self.timeWindows[0], self.timeWindows[-1])  # The minimum and maximum sequence length for the model.
 
         # Setup holder for the model's training information
         self.trainingInformation = trainingInformation()

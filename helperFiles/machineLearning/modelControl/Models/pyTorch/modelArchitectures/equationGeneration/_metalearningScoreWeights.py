@@ -123,7 +123,7 @@ class pytorchPipeline:
             # If the layer should be saved.
             if layerName.split(".")[0] in self.saveWeightInfo:
                 # Save the layer (bias and weight indivisually)
-                layerInfo[layerName] = layerParams.data
+                layerInfo[layerName] = layerParams.channelData
                 
         return layerInfo
                 
@@ -138,7 +138,7 @@ class pytorchPipeline:
                 # If the layer should be saved.
                 if layerName.split(".")[0] in self.saveWeightInfo:
                     assert layerName in layerInfo, print(layerName, layerInfo)
-                    layerParams.data = layerInfo[layerName]
+                    layerParams.channelData = layerInfo[layerName]
         
     def addOptimizer(self):
         # Define the optimizer

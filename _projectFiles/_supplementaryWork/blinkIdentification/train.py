@@ -58,7 +58,7 @@ class trainModel:
                 optimizer.step()
 
                 # Convert outputs to predictions
-                _, predicted = torch.max(outputs.data, 1)
+                _, predicted = torch.max(outputs.channelData, 1)
                 all_preds.extend(predicted.tolist())
                 all_labels.extend(labels.tolist())
 
@@ -86,7 +86,7 @@ class trainModel:
         with torch.no_grad():
             for inputs, labels in self.test_loader:
                 outputs = self.model(inputs)
-                _, predicted = torch.max(outputs.data, 1)
+                _, predicted = torch.max(outputs.channelData, 1)
                 all_val_preds.extend(predicted.tolist())
                 all_val_labels.extend(labels.tolist())
         return all_val_labels, all_val_preds

@@ -1,4 +1,3 @@
-# Import helper files.
 from helperFiles.machineLearning.featureAnalysis.compiledFeatureNames.compileFeatureNames import compileFeatureNames
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo
 from helperFiles.machineLearning.machineLearningInterface import machineLearningInterface
@@ -19,17 +18,17 @@ class adjustInputParameters:
         # Specify biomarker information.
         streamingOrder = self.compileModelInfo.streamingOrder  # A List Representing the Order of the Sensors being Streamed in: ["eog", "eeg", "eda", "temp"]
         extractFeaturesFrom = streamingOrder if self.useModelPredictions else []  # A list with all the biomarkers from streamingOrder for feature extraction
-        allAverageIntervals = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
+        allAverageIntervals = self.compileModelInfo.featureAverageWindows  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
 
         # Compile feature names
-        featureNames, biomarkerFeatureNames, biomarkerOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+        featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
 
         featureAverageWindows = []
         # Compile feature average windows.
-        for biomarker in biomarkerOrder:
+        for biomarker in biomarkerFeatureOrder:
             featureAverageWindows.append(allAverageIntervals[streamingOrder.index(biomarker)])
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, featureNames, biomarkerFeatureNames
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames, extractFeaturesFrom
 
     def getSavingInformation(self, date, trialName, userName):
         # Specify the path to the collected data.
@@ -39,20 +38,20 @@ class adjustInputParameters:
         return collectedDataFolder, currentFilename
 
     def getStreamingParams(self, boardSerialNum):
+        # Arduino Streaming Parameters.
+        voltageRange = (0, 3.3)
+        adcResolution = 4096
+
         # Assert that you are using this protocol.
         if not self.streamData:
-            return None, None, None, None, None
+            return None, voltageRange, adcResolution, None, None
         print("\tSetting streaming parameters.")
-
-        # Arduino Streaming Parameters.
-        adcResolution = 4096
-        maxVolt = 3.3
 
         # Streaming flags.
         recordQuestionnaire = not self.plotStreamedData  # Only use one GUI: questionnaire or streaming
         saveRawSignals = True  # Saves the Data in 'readData.data' in an Excel Named 'saveExcelName'
 
-        return boardSerialNum, maxVolt, adcResolution, saveRawSignals, recordQuestionnaire
+        return boardSerialNum, voltageRange, adcResolution, saveRawSignals, recordQuestionnaire
 
     @staticmethod
     def getPlottingParams(analyzeBatches=False):
@@ -82,7 +81,7 @@ class adjustInputParameters:
     def getMachineLearningParams(self, featureNames, collectedDataFolder):
         # Train or test the machine learning modules
         if not self.useModelPredictions:
-            return None, None, None, None, None
+            return None, [], None, None, None
 
         print("\tSetting model parameters.")
 

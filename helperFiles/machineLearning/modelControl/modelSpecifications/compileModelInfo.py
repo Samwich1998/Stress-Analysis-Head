@@ -17,6 +17,10 @@ class compileModelInfo:
         self.predictionOrder = ["Positive Affect", "Negative Affect", "State Anxiety"]
         self.streamingOrder = ["eog", "eeg", "eda", "temp"]
 
+        # Hardcoded feature information.
+        self.featureAverageWindows = [60, 30, 30, 30]  # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60  Old: [120, 75, 90, 45]
+        self.newSamplingFreq = 1  # The new sampling frequency for the data.
+
         # Specify what each model is predicting
         self.predictionBounds = ((5, 25), (5, 25), (20, 80))
         self.predictionWeights = [0.1, 0.1, 0.8]
@@ -83,7 +87,7 @@ class compileModelInfo:
     def getTrainingDataFolder(useTherapyData):
         # Get the correct data folder name.
         dataFolderName = "_finalTherapyData" if useTherapyData else "_finalDataset"
-        return f"./_experimentalData/allSensors/{dataFolderName}/"
+        return f"./_experimentalData/_empatchDataset/{dataFolderName}/"
 
     @staticmethod
     def calculateStandardErrorMeasurement(standardDeviation, reliability):

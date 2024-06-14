@@ -47,7 +47,7 @@ class TextFeedback:
         if imageResponse != None:
             currentChat['content'].append({
                     "type": "image_url",
-                    "image_url": {"url": imageResponse.data[0].url, "detail": "low"},
+                    "image_url": {"url": imageResponse.channelData[0].url, "detail": "low"},
             })
         
         return currentChat

@@ -17,24 +17,35 @@ from .globalProtocol import globalProtocol
 
 class ecgProtocol(globalProtocol):
 
-    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, numChannels=2, plottingClass=None, readData=None):
+    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
+        super().__init__("ecg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
+        self.initializingTimeWindow = 5
         self.secondsPerFeature = 1  # The duration of time that passes between each feature.
         self.featureTimeWindow = 2  # The duration of time that each feature considers;
-        self.initializingTimeWindow = 5
+
         # Filter parameters.
         self.cutOffFreq = [None, 150]  # Band pass filter frequencies.
-        self.dataPointBuffer = 0  # The number of previouy analyzed points. Used as a buffer for filtering.
         self.debug = False
-        # Initialize common model class
-        super().__init__("ecg", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
+
+        # Holder parameters.
+        self.startFeatureTimePointer = None  # The start pointer of the feature window interval.
+        self.minPointsPerBatch = None  # The minimum number of points required to analyze a batch of data.
+        self.lastRPeak = None
+
+        # Finalize the protocol parameters.
+        self.resetAnalysisVariables()
+        self.checkParams()
 
     def resetAnalysisVariables(self):
+        self.resetGlobalVariables()
+
         # General parameters 
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
 
     def checkParams(self):
-        pass
+        self.checkGlobalParams()
+        assert self.numChannels == 1, "The ECG protocol now only supports one channel of data due tp feature alignment issues."
 
     def setSamplingFrequencyParams(self):
         maxBufferSeconds = max(self.featureTimeWindow, int(self.samplingFreq * 0.1))
@@ -53,8 +64,8 @@ class ecgProtocol(globalProtocol):
             # ---------------------- Filter the Data ----------------------- #    
             # Find the starting/ending points of the data to analyze
             startFilterPointer = max(dataFinger - self.dataPointBuffer, 0)
-            dataBuffer = np.array(self.data[1][channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
-            timePoints = np.array(self.data[0][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            dataBuffer = np.array(self.channelData[channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            timePoints = np.array(self.timePoints[startFilterPointer:dataFinger + self.numPointsPerBatch])
 
             # Get the Sampling Frequency from the First Batch (If Not Given)
             if not self.samplingFreq:
@@ -73,10 +84,13 @@ class ecgProtocol(globalProtocol):
 
             # ---------------------- Feature Extraction --------------------- #
             if self.collectFeatures:
+                # Initialize the new raw features and times.
+                newFeatureTimes, newRawFeatures = [], []
+
                 # Extract features across the dataset
-                while self.lastAnalyzedDataInd[channelIndex] < len(self.data[0]):
+                while self.lastAnalyzedDataInd[channelIndex] < len(self.timePoints):
                     # while self.lastAnalyzedDataInd[channelIndex] < 200*self.samplingFreq:
-                    featureTime = self.data[0][self.lastAnalyzedDataInd[channelIndex]]
+                    featureTime = self.timePoints[self.lastAnalyzedDataInd[channelIndex]]
 
                     # Find the start window pointer.
                     self.startFeatureTimePointer[channelIndex] = self.findStartFeatureWindow(self.startFeatureTimePointer[channelIndex], featureTime, self.featureTimeWindow)
@@ -86,16 +100,21 @@ class ecgProtocol(globalProtocol):
                     # Only extract features if enough information is provided.
                     if self.minPointsPerBatch < len(intervalTimes):
                         # Calculate and save the features in this window.
-                        self.lastRPeak, peakFeatureTimes, finalFeatures = self.extractFeatures(intervalTimes, intervalData, self.lastRPeak)
-                        # For every peak found in the time window, save the respective peak features
-                        # for peakInd in range(len(finalFeatures)):
-                        self.readData.averageFeatures(peakFeatureTimes, finalFeatures, self.featureTimes[channelIndex],
-                                                      self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+                        self.lastRPeak, featureTimes, finalFeatures = self.extractFeatures(intervalTimes, intervalData, self.lastRPeak)
+
+                        # Keep track of the new features.
+                        newRawFeatures.extend(finalFeatures)
+                        newFeatureTimes.extend(featureTimes)
+
                         # Feature Time Pointer becomes index of the last R peak found in the time window
-                        # This is to ensure every peak is analyzed
                         self.startFeatureTimePointer[channelIndex] = int(self.lastRPeak)
+
                     # Keep track of which data has been analyzed 
                     self.lastAnalyzedDataInd[channelIndex] += int(self.samplingFreq * self.secondsPerFeature)
+
+                # Compile the new raw features into a smoothened (averaged) feature.
+                self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+
             # -------------------------------------------------------------- #   
             if self.debug:
                 features = ['QRSWaveLength', 'QLength', 'SLength', 'PreRWavePeakTime', 'PostRWavePeakTime',
@@ -103,8 +122,8 @@ class ecgProtocol(globalProtocol):
                             'netDirectionQRS', 'QAreaBelow', 'SAreaBelow', 'ratioDirectionQRS', 'ratioQSArea']
 
                 for i, feature in enumerate(features):
-                    plt.scatter(self.featureTimes[channelIndex], [row[i] for row in self.compiledFeatures[channelIndex]], marker='o')
-                    plt.title(f'{feature}, N={len(self.featureTimes[channelIndex])}')
+                    plt.scatter(self.rawFeatureTimes[channelIndex], [row[i] for row in self.compiledFeatures[channelIndex]], marker='o')
+                    plt.title(f'{feature}, N={len(self.rawFeatureTimes[channelIndex])}')
                     plt.xlabel('Time (s)')
                     plt.show()
 
@@ -126,14 +145,14 @@ class ecgProtocol(globalProtocol):
 
                 # Plot a single feature.
                 if len(self.compiledFeatures[channelIndex]) != 0:
-                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.featureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 0])
+                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.rawFeatureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 0])
                     self.plottingMethods.featureDataPlotAxes[channelIndex].legend(["QRSWaveLength"], loc="upper left")
 
             # -------------------------------------------------------------- #   
 
     def filterData(self, timePoints, data, removePoints=False):
         # Find the bad points associated with motion artifacts
-        if removePoints and self.cutOffFreq[0] != None:
+        if removePoints and self.cutOffFreq[0] is not None:
             motionIndices = np.logical_or(data < 0.1, data > 3.15)
             motionIndices_Broadened = scipy.signal.savgol_filter(motionIndices, max(3, int(self.samplingFreq * 10)), 1, mode='nearest', deriv=0)
             goodIndicesMask = motionIndices_Broadened < 0.01
@@ -150,7 +169,7 @@ class ecgProtocol(globalProtocol):
 
     def findStartFeatureWindow(self, timePointer, currentTime, timeWindow):
         # Loop through until you find the first time in the window 
-        while self.data[0][timePointer] < currentTime - timeWindow:
+        while self.timePoints[timePointer] < currentTime - timeWindow:
             timePointer += 1
 
         return timePointer
@@ -397,7 +416,7 @@ class ecgProtocol(globalProtocol):
 
         # ------------------------------------------------------------------ #
         finalFeatures = []
-        peakFeatureTimes = []
+        featureTimes = []
 
         for peak in peakIndices:  # look around R to find P, Q, S, T
             PQRST = self.PQRSTDetection(timePoints[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)], data[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)], \
@@ -407,7 +426,7 @@ class ecgProtocol(globalProtocol):
                 features = self.extractPeakFeatures(timePoints, data, firstDer, secondDer, Q, R, S, QRSWave)
                 if features != None:
                     finalFeatures.append(features)
-                    peakFeatureTimes.append(timePoints[peak])
+                    featureTimes.append(timePoints[peak])
                 else:
                     if self.debug:
                         plt.plot(timePoints[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)], data[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)])
@@ -429,8 +448,8 @@ class ecgProtocol(globalProtocol):
 
             if self.debug:
                 # PLOTTING DATA 0.25 SEC AROUND AN R PEAK
-                if PQRST != None and features != None:
-                    peak = np.where(timePoints == peakFeatureTimes[-1])[0][0]
+                if PQRST is not None and features is not None:
+                    peak = np.where(timePoints == featureTimes[-1])[0][0]
                     plt.plot(timePoints[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)], data[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)], label='ECG Signal')
                     plt.axvline(Q, color='red', label='Q')
                     plt.axvline(R, color='black', label='R')
@@ -438,5 +457,5 @@ class ecgProtocol(globalProtocol):
                     plt.axvspan(QRSWave[0], QRSWave[1], color='grey', label='QRS')
                     plt.legend()
                     plt.show()
-        assert len(peakFeatureTimes) == len(finalFeatures)
-        return timePoints[peakIndices[-1]], peakFeatureTimes, finalFeatures
+        assert len(featureTimes) == len(finalFeatures)
+        return timePoints[peakIndices[-1]], featureTimes, finalFeatures

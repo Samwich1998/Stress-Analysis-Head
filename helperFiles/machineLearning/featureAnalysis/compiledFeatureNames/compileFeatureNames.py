@@ -15,10 +15,10 @@ class compileFeatureNames:
         self.extractDataInterface = extractData()
 
     def extractFeatureNames(self, extractFeaturesFrom):
-        extractFeaturesFrom = [featureType.lower() for featureType in extractFeaturesFrom]
+        extractFeaturesFrom = [featureType.lower() for featureType in extractFeaturesFrom]  # Does NOT have to be unique.
         # Compile feature names
         featureNames = []
-        biomarkerOrder = []
+        biomarkerFeatureOrder = []
         biomarkerFeatureNames = []
 
         # For each feature we are processing.
@@ -27,11 +27,15 @@ class compileFeatureNames:
             assert featureName in self.possibleFeatureNames, f"Unknown feature name: {featureName}"
 
             # Organize and store the feature name information.
-            self.getFeatures(featureName, biomarkerFeatureNames, featureNames, biomarkerOrder)
+            self.getFeatures(featureName, biomarkerFeatureNames, featureNames, biomarkerFeatureOrder)
 
-        return np.array(featureNames, dtype=str), biomarkerFeatureNames, biomarkerOrder
+        # Ensure the proper data structure.
+        biomarkerFeatureOrder = np.asarray(biomarkerFeatureOrder, dtype=str)
+        featureNames = np.asarray(featureNames, dtype=str)
 
-    def getFeatures(self, featureName, biomarkerFeatureNames, featureNames, biomarkerOrder):
+        return featureNames, biomarkerFeatureNames, biomarkerFeatureOrder
+
+    def getFeatures(self, featureName, biomarkerFeatureNames, featureNames, biomarkerFeatureOrder):
         # Specify the Paths to the EOG Feature Names
         featuresFile = self.featureNamesFolder + f"{featureName}FeatureNames.txt"
         # Extract the EOG Feature Names we are Using
@@ -39,4 +43,4 @@ class compileFeatureNames:
         # Create Data Structure to Hold the Features.
         biomarkerFeatureNames.append(currentFeatureNames)  # biomarkerFeatureNames dimensions: [numBiomarkers, numFeatures_perBiomarker]
         featureNames.extend(currentFeatureNames)  # featureNames dimensions: [numAllFeatures]
-        biomarkerOrder.append(featureName)  # biomarkerOrder dimensions: [numBiomarkers]
+        biomarkerFeatureOrder.append(featureName)  # biomarkerFeatureOrder dimensions: [numBiomarkers]

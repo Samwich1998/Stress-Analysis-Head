@@ -11,4 +11,4 @@ finalFeatures.extend([petrosian_fd, DFA])
 # Feature Extraction: Other
 finalFeatures.extend([deltaPower, thetaPower, alphaPower, betaPower, gammaPower])
 finalFeatures.extend([muPower, beta1Power, beta2Power, beta3Power, smrPower])
-finalFeatures.extend([engagementLevelEst, num_zerocross, meanFrequency])
+finalFeatures.extend([engagementLevelEst])

@@ -15,5 +15,3 @@ finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD,
 finalFeatures.extend([spectral_entropy, perm_entropy])
 # Feature Extraction: Fractal
 finalFeatures.extend([DFA])
-# Feature Extraction: Other
-finalFeatures.extend([num_zerocross, meanFrequency])

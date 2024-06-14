@@ -37,11 +37,11 @@ if __name__ == "__main__":
     allAverageIntervals = [60, 30, 30, 30] # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60
         
     # Compile feature names
-    featureNames, biomarkerFeatureNames, biomarkerOrder = _compileFeatureNames.compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+    featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = _compileFeatureNames.compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
     
     featureAverageWindows = []
     # Compile feature average windows.
-    for biomarker in biomarkerOrder:
+    for biomarker in biomarkerFeatureOrder:
         featureAverageWindows.append(allAverageIntervals[streamingOrder.index(biomarker)])
     # sys.exit()
         
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     readDatas = []; compiledRawDatas = []
     for testDataExcelFile in testDataExcelFiles:
         # Initialize instance to analyze the data
-        readData = streamingProtocols.streamingProtocols(None, [], None, 2048576, 1048100, streamingOrder, biomarkerOrder, featureAverageWindows, False)
+        readData = streamingProtocols.streamingProtocols(None, [], None, 2048576, 1048100, streamingOrder, [], featureAverageWindows, False)
         
         # Collect the Data from Excel
         compiledRawData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions = \
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # # featureTimeWindows = np.arange(4.5, 60, 0.01)  # Cant go lower than 4 (not equal to 4).
     # featureTimeWindows = np.arange(4.5, 20, 0.01)  # Cant go lower than 4 (not equal to 4).
     # plottingFeatureWindows.varyAnalysisParam(readDatas, compiledRawDatas, testDataExcelFiles, featureTimeWindows, 
-    #                                           featureAverageWindows, biomarkerOrder, biomarkerFeatureNames)
+    #                                           featureAverageWindows, biomarkerFeatureOrder, biomarkerFeatureNames)
     
     
 

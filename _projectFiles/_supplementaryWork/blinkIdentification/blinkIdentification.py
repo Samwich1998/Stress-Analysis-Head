@@ -90,8 +90,7 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------- #
     # ---------------------------------------------------------------------- #
     # Initialize instance to analyze the data
-    readData = streamingProtocols(None, [], None, numPointsPerBatch, moveDataFinger, streamingOrder, biomarkerOrder,
-                                  [0], False)
+    readData = streamingProtocols(None, [], None, numPointsPerBatch, moveDataFinger, streamingOrder, biomarkerOrder, [], (0, 3.3), False)
 
     # Extract the features from the training files and organize them.
     trainingClass = trainingProtocols(indivisualFeatureNames, biomarkerOrder, 1, dataExcelFolder, readData)

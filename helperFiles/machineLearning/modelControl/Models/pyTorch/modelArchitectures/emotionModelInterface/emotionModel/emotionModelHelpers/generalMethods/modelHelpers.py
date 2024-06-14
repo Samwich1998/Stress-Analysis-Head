@@ -81,21 +81,21 @@ class modelHelpers:
             autoencoderComponent = modelAttributes[1].split("_")[0]
 
             # If we have a CNN network
-            if autoencoderComponent in ["compressSignalsCNN"] and modelAttributes[-1] == 'weight' and len(layerParams.data.shape) == 3:
+            if autoencoderComponent in ["compressSignalsCNN"] and modelAttributes[-1] == 'weight' and len(layerParams.channelData.shape) == 3:
                 # layerParams Dim: numOutChannels, numInChannels/Groups, numInFeatures -> (1, 1, 15)
-                weightsCNN.append(layerParams.data.numpy().copy())
+                weightsCNN.append(layerParams.channelData.numpy().copy())
 
             # If we have an FC network
             if autoencoderComponent in ["compressSignalsFC"] and modelAttributes[-1] == 'weight':
                 # layerParams Dim: numOutFeatures, numInFeatures.
-                weightsFC.append(layerParams.data.numpy().copy())
+                weightsFC.append(layerParams.channelData.numpy().copy())
 
         return weightsCNN, weightsFC
 
     @staticmethod
     def printModelParams(model):
         for name, param in model.named_parameters():
-            print(name, param.data)
+            print(name, param.channelData)
 
     @staticmethod
     def getLastActivationLayer(lossType, predictingProb=False):
@@ -178,7 +178,7 @@ class modelHelpers:
 
                 # Constrain the spectral norm.
                 if maxSpectralNorm < spectralNorm != 0:
-                    layerParams.data = layerParams * (maxSpectralNorm / spectralNorm)
+                    layerParams.channelData = layerParams * (maxSpectralNorm / spectralNorm)
 
     @staticmethod
     def l2Normalization(model, maxNorm=2, checkOnly=False):
@@ -191,7 +191,7 @@ class modelHelpers:
             if maxNorm < paramNorm != 0:
                 print("You should fix this with weight initialization:", paramNorm, name)
                 if not checkOnly:
-                    layerParams.data = layerParams * (maxNorm / paramNorm)
+                    layerParams.channelData = layerParams * (maxNorm / paramNorm)
 
     @staticmethod
     def apply_spectral_normalization(model, max_spectral_norm=2, power_iterations=1):

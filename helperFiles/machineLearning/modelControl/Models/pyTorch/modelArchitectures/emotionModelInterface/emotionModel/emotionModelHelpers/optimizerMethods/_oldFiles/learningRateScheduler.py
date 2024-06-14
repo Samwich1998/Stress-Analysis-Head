@@ -36,9 +36,9 @@ class CustomLRScheduler:
             for name, param in model.named_parameters():
                 if param.requires_grad:
                     # Prepare the data for the model.
-                    originalParam = param.data.clone()  # Store the original parameters.
+                    originalParam = param.channelData.clone()  # Store the original parameters.
                     paramLosses = torch.zeros((self.numParamSamples - 1), device=data.device)  # Initialize the loss history.
-                    gradient_tensor = param.grad.data.detach().clone()
+                    gradient_tensor = param.grad.channelData.detach().clone()
 
                     # Decompose the gradient tensor, selecting the top 'k' components.
                     decomposedGradientTensorInfo = parafac(gradient_tensor, rank=self.numPrincipleComponents, n_iter_max=100, init='svd', svd='truncated_svd',
@@ -56,7 +56,7 @@ class CustomLRScheduler:
                     for sampleInd in range(1, self.numParamSamples + 1):
                         # Update the parameter along the direction of the principal components.
                         walkingDistance = sampleInd / self.numParamSamples  # Scaling factor for step size.
-                        param.data = originalParam + walkingDistance * reconstructed_grad
+                        param.channelData = originalParam + walkingDistance * reconstructed_grad
 
                         # Calculate the loss.
                         output = model(data)  # Forward pass.
@@ -82,7 +82,7 @@ class CustomLRScheduler:
                     finalParamDatas.append(originalParam + learningRate * reconstructed_grad)
 
                     # Reset the parameter to the original state.
-                    param.data = originalParam
+                    param.channelData = originalParam
 
         # Restore the original training state.
         model.train(original_training_state)

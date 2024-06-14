@@ -15,17 +15,19 @@ class empatchProtocols(extractData):
     def __init__(self, predictionOrder, predictionBounds, modelParameterBounds, therapyMethod="HeatingPad"):
         super().__init__()
         # General parameters.
-        self.trainingFolder = os.path.dirname(__file__) + "/../../../../../../_experimentalData/allSensors/_finalTherapyData/"
         self.modelParameterBounds = modelParameterBounds  # The bounds for the model parameters.
         self.predictionBounds = predictionBounds  # The bounds for the predictions.
         self.predictionOrder = predictionOrder  # The order of the predictions.
         self.therapyMethod = therapyMethod  # The therapy method to analyze.
 
         # Collected data parameters.
-        self.featureNames, self.biomarkerFeatureNames, self.biomarkerOrder = self.getFeatureInformation()
+        self.featureNames, self.biomarkerFeatureNames, self.biomarkerFeatureOrder = self.getFeatureInformation()
 
         # Initialize helper classes.
         self.compileModelInfo = compileModelInfo()
+
+        # Get the data folder.
+        self.trainingFolder = "/../../../../../../" + self.compileModelInfo.getTrainingDataFolder(useTherapyData=True)
 
         # Assert the validity of the input parameters.
         self.compileModelInfo.assertValidTherapyMethod(therapyMethod=self.therapyMethod)
@@ -33,9 +35,9 @@ class empatchProtocols(extractData):
     def getFeatureInformation(self):
         # Specify biomarker information.
         extractFeaturesFrom = self.compileModelInfo.streamingOrder  # A list with all the biomarkers from streamingOrder for feature extraction
-        featureNames, biomarkerFeatureNames, biomarkerOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+        featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
 
-        return featureNames, biomarkerFeatureNames, biomarkerOrder
+        return featureNames, biomarkerFeatureNames, biomarkerFeatureOrder
 
     def getTherapyData(self):
         # Initialize holders.
@@ -53,7 +55,7 @@ class empatchProtocols(extractData):
             # Extract the features from the Excel file.
             rawFeatureTimesHolder, rawFeatureHolder, _, experimentTimes, experimentNames, currentSurveyAnswerTimes, \
                 currentSurveyAnswersList, surveyQuestions, currentSubjectInformationAnswers, subjectInformationQuestions \
-                = self.getFeatures(self.biomarkerOrder, savedFeaturesFile, self.biomarkerFeatureNames, surveyQuestions=[], finalSubjectInformationQuestions=[])
+                = self.getFeatures(self.biomarkerFeatureOrder, savedFeaturesFile, self.biomarkerFeatureNames, surveyQuestions=[], finalSubjectInformationQuestions=[])
             # currentSurveyAnswersList: The user answers to the survey questions during the experiment. Dimensions: numExperiments, numSurveyQuestions
             # surveyQuestions: The questions asked in the survey. Dimensions: numSurveyQuestions = numEmotionsRecorded
             # currentSurveyAnswerTimes: The times the survey questions were answered. Dimensions: numExperiments

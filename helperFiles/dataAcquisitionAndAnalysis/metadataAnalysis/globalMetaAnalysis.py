@@ -32,11 +32,10 @@ class globalMetaAnalysis(handlingExcelFormat):
         self.compileFeatureNames = compileFeatureNames()
         self.analyzeFeatures = featurePlotting(self.trainingFolder + "dataAnalysis/", overwrite=False)
 
-    # ---------------------------------------------------------------------- #
     # ------------------ Interface with Training Protocols ----------------- #
 
     def extractFeatures(self, allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType="emognition", reanalyzeData=False, showPlots=True, analyzeSequentially=False):
+                        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType="emognition", reanalyzeData=False, showPlots=True, analyzeSequentially=False):
         # Prepare the data for each subject for parallel processing
         subjects_data = [
             (
@@ -48,7 +47,7 @@ class globalMetaAnalysis(handlingExcelFormat):
                 allSurveyAnswersList[i],
                 allContextualInfo[i],
                 streamingOrder,
-                biomarkerOrder,
+                biomarkerFeatureOrder,
                 featureAverageWindows,
                 filteringOrders,
                 interfaceType,
@@ -81,7 +80,7 @@ class globalMetaAnalysis(handlingExcelFormat):
             currentSurveyAnswersList,
             contextualInfo,
             streamingOrder,
-            biomarkerOrder,
+            biomarkerFeatureOrder,
             featureAverageWindows,
             filteringOrders,
             interfaceType,
@@ -90,42 +89,44 @@ class globalMetaAnalysis(handlingExcelFormat):
         ) = subject_data
 
         # Organize the data for streaming.
+        allBiomarkerFeatureOrders = []
         allFeatureAverageWindows = []
         biomarkerFeatureNames = []
         allStreamingOrders = []
-        allBiomarkerOrders = []
         allFilteringOrders = []
+        allFeaturesExtracting = []
         signalPointer = 0
 
         # Recompile considering the segmentation of the features.
         for segmentationInd in range(len(compiledData_eachFreq)):
             numSignals = len(compiledData_eachFreq[segmentationInd][1])
 
-            # Separate out the relevant signals
-            currentStreamingOrder = streamingOrder[signalPointer:signalPointer + numSignals]
-            currentBiomarkerOrder = biomarkerOrder[signalPointer:signalPointer + numSignals]
-            currentFilteringOrders = filteringOrders[signalPointer:signalPointer + numSignals]
+            # Separate out the relevant signals.
+            currentBiomarkerFeatureOrder = biomarkerFeatureOrder[signalPointer:signalPointer + numSignals]
             currentFeatureAverageWindows = featureAverageWindows[signalPointer:signalPointer + numSignals]
+            currentFilteringOrders = filteringOrders[signalPointer:signalPointer + numSignals]
+            currentStreamingOrder = streamingOrder[signalPointer:signalPointer + numSignals]
 
-            # Organize the biomarker order
-            currentFeatureNames, currentBiomarkerFeatureNames, currentBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(currentBiomarkerOrder)
+            # Organize the biomarker order.
+            currentFeatureNames, currentBiomarkerFeatureNames, currentBiomarkerFeatureOrder = self.compileFeatureNames.extractFeatureNames(currentBiomarkerFeatureOrder)
 
             # Organize the segmentation block
-            allStreamingOrders.append(currentStreamingOrder)
-            allBiomarkerOrders.append(currentBiomarkerOrder)
-            allFilteringOrders.append(currentFilteringOrders)
-            biomarkerFeatureNames.extend(currentBiomarkerFeatureNames)
+            allBiomarkerFeatureOrders.append(currentBiomarkerFeatureOrder)
             allFeatureAverageWindows.append(currentFeatureAverageWindows)
+            biomarkerFeatureNames.extend(currentBiomarkerFeatureNames)
+            allFeaturesExtracting.append(currentBiomarkerFeatureOrder)
+            allFilteringOrders.append(currentFilteringOrders)
+            allStreamingOrders.append(currentStreamingOrder)
 
-            # Reset for the next round
+            # Reset for the next round.
             signalPointer += numSignals
 
         # Stream the data.
-        self.streamData(subjectName, allStreamingOrders, allBiomarkerOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
-                        experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, biomarkerFeatureNames, reanalyzeData, showPlots=showPlots)
+        self.streamData(subjectName, allStreamingOrders, allBiomarkerFeatureOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
+                        experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, allFeaturesExtracting, biomarkerFeatureNames, reanalyzeData, showPlots=showPlots)
 
-    def streamData(self, subjectName, allStreamingOrders, allBiomarkerOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
-                   experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, biomarkerFeatureNames, reanalyzeData=False, showPlots=False):
+    def streamData(self, subjectName, allStreamingOrders, allBiomarkerFeatureOrders, allFeatureAverageWindows, allFilteringOrders, compiledData_eachFreq, experimentTimes,
+                   experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, contextualInfo, interfaceType, allFeaturesExtracting, biomarkerFeatureNames, reanalyzeData=False, showPlots=False):
         # Check if the features have already been extracted.        
         saveFeatureFile = self.savedFeatureFolder + subjectName + self.saveFeatureFile_Appended
         if os.path.exists(saveFeatureFile) and not reanalyzeData:
@@ -133,31 +134,33 @@ class globalMetaAnalysis(handlingExcelFormat):
             return None
 
         # Get the flattened versions.
-        biomarkerOrder = list(itertools.chain(*allBiomarkerOrders))
+        biomarkerFeatureOrderFull = list(itertools.chain(*allBiomarkerFeatureOrders))
 
         rawFeatureHolder = []
         rawFeatureTimesHolder = []
         # Organize the data for streaming.
         for compiledDataInd in range(len(compiledData_eachFreq)):
-            compiledRawData = compiledData_eachFreq[compiledDataInd]
-            currentStreamingOrder = allStreamingOrders[compiledDataInd]
-            currentBiomarkerOrder = allBiomarkerOrders[compiledDataInd]
-            currentFilteringOrders = allFilteringOrders[compiledDataInd]
+            currentBiomarkerFeatureOrder = allBiomarkerFeatureOrders[compiledDataInd]
             currentFeatureAverageWindows = allFeatureAverageWindows[compiledDataInd]
+            currentFeaturesExtracting = allFeaturesExtracting[compiledDataInd]
+            currentFilteringOrders = allFilteringOrders[compiledDataInd]
+            currentStreamingOrder = allStreamingOrders[compiledDataInd]
+            compiledRawData = compiledData_eachFreq[compiledDataInd]
 
             # Initialize instance to analyze the data
-            readData = streamingProtocols(None, [], None, 2048576, 1048100, currentStreamingOrder, currentBiomarkerOrder, currentFeatureAverageWindows, False)
+            readData = streamingProtocols(mainSerialNum=None, modelClasses=[], actionControl=None, numPointsPerBatch=2048576, moveDataFinger=1048100, streamingOrder=currentStreamingOrder,
+                                          extractFeaturesFrom=currentFeaturesExtracting, featureAverageWindows=currentFeatureAverageWindows, voltageRange=(None, None), plotStreamedData=False)
             readData.resetGlobalVariables()
             # Change filter of the analyses.
-            for analysisTypeInd in range(len(currentBiomarkerOrder)):
-                analysisType = currentBiomarkerOrder[analysisTypeInd]
+            for analysisTypeInd in range(len(currentBiomarkerFeatureOrder)):
+                analysisType = currentBiomarkerFeatureOrder[analysisTypeInd]
                 cutOffFreqs = currentFilteringOrders[analysisTypeInd]
 
                 readData.analysisProtocols[analysisType].cutOffFreq = cutOffFreqs
 
             # Extract and analyze the raw data.
             readData.streamExcelData(compiledRawData, experimentTimes, experimentNames, currentSurveyAnswerTimes,
-                                     currentSurveyAnswersList, self.surveyQuestions, [], [], interfaceType + " " + subjectName)
+                                     currentSurveyAnswersList, self.surveyQuestions, subjectInformationAnswers=[], subjectInformationQuestions=[], filePath=interfaceType + " " + subjectName)
             # Compile all the features from each signal
             rawFeatureHolder.extend(readData.rawFeatureHolder.copy())
             rawFeatureTimesHolder.extend(readData.rawFeatureTimesHolder.copy())
@@ -168,25 +171,26 @@ class globalMetaAnalysis(handlingExcelFormat):
                 self.analyzeFeatures.plotRawData(readData, compiledRawData, currentSurveyAnswerTimes, experimentTimes, experimentNames, currentStreamingOrder, folderName=interfaceType + " " + subjectName + "/rawSignals/")
 
         # Assert the integrity of data combination
-        assert len(rawFeatureHolder) == len(biomarkerOrder)
-        assert len(rawFeatureTimesHolder) == len(biomarkerOrder)
+        assert len(rawFeatureHolder) == len(biomarkerFeatureOrderFull)
+        assert len(rawFeatureTimesHolder) == len(biomarkerFeatureOrderFull)
 
         # Save the features to be analyzed in the future.
         trainingExcelFile = self.trainingFolder + subjectName + "/" + subjectName + ".xlsx"
-        self.saveInputs.saveRawFeatures(rawFeatureTimesHolder, rawFeatureHolder, biomarkerFeatureNames, biomarkerOrder, experimentTimes, experimentNames, currentSurveyAnswerTimes,
+        self.saveInputs.saveRawFeatures(rawFeatureTimesHolder, rawFeatureHolder, biomarkerFeatureNames, biomarkerFeatureOrderFull, experimentTimes, experimentNames, currentSurveyAnswerTimes,
                                         currentSurveyAnswersList, self.surveyQuestions, contextualInfo[1], contextualInfo[0], trainingExcelFile)
 
-    def trainingProtocolInterface(self, streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData=True, metaTraining=True):
+    def trainingProtocolInterface(self, streamingOrder, biomarkerFeatureOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData=True, metaTraining=True):
         # Initialize instance to train the data
-        readData = streamingProtocols(None, [], None, 2048576, 1048100, streamingOrder, biomarkerOrder, featureAverageWindows, False)
-        trainingInterface = trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerOrder, len(streamingOrder), self.savedFeatureFolder, readData)
+        readData = streamingProtocols(mainSerialNum=None, modelClasses=[], actionControl=None, numPointsPerBatch=2048576, moveDataFinger=1048100, streamingOrder=streamingOrder,
+                                      extractFeaturesFrom=biomarkerFeatureOrder, featureAverageWindows=featureAverageWindows, voltageRange=(None, None), plotStreamedData=False)
+        trainingInterface = trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerFeatureOrder, len(streamingOrder), self.savedFeatureFolder, readData)
 
         # Extract the features from the training files and organize them.
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
-            subjectOrder, experimentOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=False, metaTraining=metaTraining)
+            subjectOrder, experimentOrder, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
+            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=False, metaTraining=metaTraining, reverseOrder=False)
 
         return allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
-            subjectOrder, experimentOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes
+            subjectOrder, experimentOrder, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes

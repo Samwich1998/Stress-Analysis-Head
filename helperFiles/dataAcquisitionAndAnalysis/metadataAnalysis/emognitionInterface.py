@@ -290,24 +290,24 @@ class emognitionInterface(globalMetaAnalysis):
     def getStreamingInfo():
         # Feature information
         streamingOrder = ['lowFreq', 'temp', 'eda', 'lowFreq', 'lowFreq', 'lowFreq']
-        biomarkerOrder = ['lowFreq', 'temp', 'eda', 'lowFreq', 'lowFreq', 'lowFreq']
+        biomarkerFeatureOrder = ['lowFreq', 'temp', 'eda', 'lowFreq', 'lowFreq', 'lowFreq']
         filteringOrders = [[None, 20], [None, 0.1], [None, None], [None, 5], [None, 5], [None, None]]  # Sampling Freq: 64, 4, 4, 10, 10, 20 (Hz); Need 1/2 frequency at max.
         featureAverageWindows = [30, 30, 30, 30, 30, 30]  # ["BVP", 'TEMP', 'EDA', 'heartRate', 'PPInterval', 'BVPProcessed']
 
         # Feature information: MUSE
         # streamingOrder.extend(['eeg', 'eeg', 'eeg', 'eeg'])
-        # biomarkerOrder.extend(['eeg', 'eeg', 'eeg', 'eeg'])
+        # biomarkerFeatureOrder.extend(['eeg', 'eeg', 'eeg', 'eeg'])
         # filteringOrders.extend([[None, None], [None, None], [None, None], [None, None]])  # Sampling Freq: 256, 256, 256, 256 (Hz); Need 1/2 frequency at max.
         # featureAverageWindows.extend([30, 30, 30, 30]) # ['RAW_TP9', 'RAW_AF7', 'RAW_AF8', 'RAW_TP10']
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders
 
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
-        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
-        featureNames, biomarkerFeatureNames, biomarkerOrder = self.compileFeatureNames.extractFeatureNames(biomarkerOrder)
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
+        featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = self.compileFeatureNames.extractFeatureNames(biomarkerFeatureOrder)
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames
 
 
 if __name__ == "__main__":
@@ -322,18 +322,18 @@ if __name__ == "__main__":
         emognitionAllCompiledDatas, emognitionSubjectOrder, emognitionAllExperimentalTimes, emognitionAllExperimentalNames, \
             emognitionAllSurveyAnswerTimes, emognitionAllSurveyAnswersList, emognitionAllContextualInfo = emognitionAnalysisClass.getData(showPlots=False)
         # Compile the data: specific to the device worn.
-        emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders = emognitionAnalysisClass.getStreamingInfo()
+        emognitionStreamingOrder, emognitionBiomarkerFeatureOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders = emognitionAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         emognitionAnalysisClass.extractFeatures(emognitionAllCompiledDatas, emognitionSubjectOrder, emognitionAllExperimentalTimes, emognitionAllExperimentalNames, emognitionAllSurveyAnswerTimes, emognitionAllSurveyAnswersList, emognitionAllContextualInfo,
-                                                emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders, interfaceType='emognition', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
+                                                emognitionStreamingOrder, emognitionBiomarkerFeatureOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders, interfaceType='emognition', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.
-        emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionBiomarkerFeatureNames = emognitionAnalysisClass.compileTrainingInfo()
+        emognitionStreamingOrder, emognitionBiomarkerFeatureOrder, emognitionFeatureAverageWindows, emognitionFeatureNames, emognitionBiomarkerFeatureNames = emognitionAnalysisClass.compileTrainingInfo()
 
         plotTrainingData = False
         # Collected the training data.
         emognitionAllRawFeatureTimesHolders, emognitionAllRawFeatureHolders, emognitionAllRawFeatureIntervals, emognitionAllRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, emognitionAllAlignedFeatureHolder, emognitionAllAlignedFeatureIntervals, emognitionAllAlignedFeatureIntervalTimes, emognitionSubjectOrder, \
-            experimentOrder, emognitionActivityNames, emognitionActivityLabels, emognitionAllFinalFeatures, emognitionAllFinalLabels, emognitionFeatureLabelTypes, emognitionSurveyQuestions, emognitionSurveyAnswersList, emognitionSurveyAnswerTimes \
-            = emognitionAnalysisClass.trainingProtocolInterface(emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionBiomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            experimentOrder, emognitionActivityNames, emognitionActivityLabels, emognitionAllFinalLabels, emognitionFeatureLabelTypes, emognitionSurveyQuestions, emognitionSurveyAnswersList, emognitionSurveyAnswerTimes \
+            = emognitionAnalysisClass.trainingProtocolInterface(emognitionStreamingOrder, emognitionBiomarkerFeatureOrder, emognitionFeatureAverageWindows, emognitionFeatureNames, emognitionBiomarkerFeatureNames, plotTrainingData, metaTraining=True)

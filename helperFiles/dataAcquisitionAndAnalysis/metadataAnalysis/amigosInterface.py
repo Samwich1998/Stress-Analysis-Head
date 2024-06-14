@@ -39,12 +39,14 @@ class amigosInterface(globalMetaAnalysis):
         # GSR/ECG Processing Notes:
         #       The data was downsampled to 128Hz.
         #       ECG was low-pass filtered with 60Hz cut-off frequency.
-        #       GSR was re-encoded to obtain skin conductance, and then GSR was calculated and low-pass filtered with 60Hz cut-off frequency.
+        #       GSR was re-encoded to get skin conductance, and then GSR was calculated and low-pass filtered with 60Hz cut-off frequency.
         #       The trials were reordered from presentation order to video number (See video_list) order.
         self.streamingOrder.extend(['ECG Right', 'ECG Left', 'GSR'])
 
         # Specify which ones we are keeping
-        self.streamingOrder_keeping = ["AF3", 'F7', 'F3', 'F4', 'F8', 'AF4', 'ECG Right', 'ECG Left', 'GSR']
+        self.streamingOrder_keeping = ["AF3", 'F3', 'F4', 'AF4', 'ECG Right', 'GSR']
+        # The EEG electrodes were removed as we want to focus on the prefrontal cortex in the empatch studies.
+        # The ECG Left was removed as it is correlated and is less clear.
 
         # Initialize the global meta protocol.
         super().__init__(self.subjectFolders, self.surveyQuestions)  # Initialize meta analysis.
@@ -209,27 +211,36 @@ class amigosInterface(globalMetaAnalysis):
         return videoNames, (np.asarray(allExperimentalNamesAmigos, dtype=float) - 1).astype(int)
 
     def getStreamingInfo(self):
+        # Specify the number of EEG sensors.
+        numOtherSensors = len(np.where(np.array(self.streamingOrder_keeping) != 'eeg')[0])
+        numEEGSensors = len(self.streamingOrder_keeping) - numOtherSensors  # Remove ECG and GSR
+
         # Specify EEG sensors.
-        numEEGSensors = len(self.streamingOrder_keeping) - 3  # Remove ECG and GSR
         streamingOrderAmigos = ['eeg'] * numEEGSensors
-        biomarkerOrderAmigos = ['eeg'] * numEEGSensors
+        biomarkerFeatureOrderAmigos = ['eeg'] * numEEGSensors
         filteringOrdersAmigos = [[None, None]] * numEEGSensors  # Sampling Freq: 128 (Hz); Need 1/2 frequency at max.
         featureAverageWindowsAmigos = [30] * numEEGSensors  # ["EEG"]
 
         # Specify other sensors.
-        streamingOrderAmigos.extend(['ecg', 'ecg', 'eda'])
-        biomarkerOrderAmigos.extend(['ecg', 'ecg', 'eda'])
-        filteringOrdersAmigos.extend([[None, None], [None, None], [None, None]])  # Sampling Freq: 128 (Hz); Need 1/2 frequency at max.
-        featureAverageWindowsAmigos.extend([30, 30, 30])  # ["ECG", 'ECG', 'EDA']
+        streamingOrderAmigos.extend(['ecg', 'eda'])
+        biomarkerFeatureOrderAmigos.extend(['ecg', 'eda'])
+        filteringOrdersAmigos.extend([[None, None], [None, None]])  # Sampling Freq: 128 (Hz); Need 1/2 frequency at max.
+        featureAverageWindowsAmigos.extend([30, 30])  # ["ECG"', 'EDA']
 
-        return streamingOrderAmigos, biomarkerOrderAmigos, featureAverageWindowsAmigos, filteringOrdersAmigos
+        # Assert the validity of the data.
+        assert len(streamingOrderAmigos) == len(biomarkerFeatureOrderAmigos), "The streaming and biomarker orders are not the same length."
+        assert len(streamingOrderAmigos) == len(filteringOrdersAmigos), "The streaming and filtering orders are not the same length."
+        assert len(streamingOrderAmigos) == len(featureAverageWindowsAmigos), "The streaming and feature average windows are not the same length."
+        assert len(streamingOrderAmigos) == len(self.streamingOrder_keeping), "The streaming and keeping orders are not the same length."
+
+        return streamingOrderAmigos, biomarkerFeatureOrderAmigos, featureAverageWindowsAmigos, filteringOrdersAmigos
 
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
-        streamingOrderAmigos, biomarkerOrderAmigos, featureAverageWindowsAmigos, filteringOrderAmigos = self.getStreamingInfo()
-        featureNamesAmigos, biomarkerFeatureNamesAmigos, biomarkerOrderAmigos = self.compileFeatureNames.extractFeatureNames(biomarkerOrderAmigos)
+        streamingOrderAmigos, biomarkerFeatureOrderAmigos, featureAverageWindowsAmigos, filteringOrderAmigos = self.getStreamingInfo()
+        featureNamesAmigos, biomarkerFeatureNamesAmigos, biomarkerFeatureOrderAmigos = self.compileFeatureNames.extractFeatureNames(biomarkerFeatureOrderAmigos)
 
-        return streamingOrderAmigos, biomarkerOrderAmigos, featureAverageWindowsAmigos, biomarkerFeatureNamesAmigos
+        return streamingOrderAmigos, biomarkerFeatureOrderAmigos, featureAverageWindowsAmigos, featureNamesAmigos, biomarkerFeatureNamesAmigos
 
 
 if __name__ == "__main__":
@@ -244,17 +255,17 @@ if __name__ == "__main__":
         allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, \
             allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo = amigosAnalysisClass.getData()
         # Compile the data: specific to the device worn.
-        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = amigosAnalysisClass.getStreamingInfo()
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = amigosAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         amigosAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                            streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='amigos', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
+                                            streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType='amigos', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
     if trainingData:
         # Prepare the data to go through the training interface.
-        streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames = amigosAnalysisClass.compileTrainingInfo()
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames = amigosAnalysisClass.compileTrainingInfo()
 
         plotTrainingData = False
         # Collected the training data.
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, subjectOrder, \
-            experimentOrder, activityNames, activityLabels, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = amigosAnalysisClass.trainingProtocolInterface(streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            experimentOrder, activityNames, activityLabels, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
+            = amigosAnalysisClass.trainingProtocolInterface(streamingOrder, biomarkerFeatureOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData, metaTraining=True)

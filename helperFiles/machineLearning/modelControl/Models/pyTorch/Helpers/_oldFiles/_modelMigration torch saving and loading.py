@@ -52,7 +52,7 @@ class _modelMigration:
             # If the layer should be saved.
             if modelBlockType in sharedModelWeights:
                 # Save the layer (bias and weight indivisually)
-                layerInfo[layerName] = layerParams.data.clone()
+                layerInfo[layerName] = layerParams.channelData.clone()
                 
         return layerInfo
                 
@@ -68,7 +68,7 @@ class _modelMigration:
                 # If the layer should be saved.
                 if modelBlockType in sharedModelWeights:
                     assert layerName in layerInfo, print(layerName, layerInfo)
-                    layerParams.data = layerInfo[layerName].clone()
+                    layerParams.channelData = layerInfo[layerName].clone()
                     
     def changeGradTracking(self, allModels, sharedModelWeights, requires_grad = False):
         # For each model provided.

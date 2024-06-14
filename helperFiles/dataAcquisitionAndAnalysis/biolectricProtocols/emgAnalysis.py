@@ -1,8 +1,3 @@
-
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
-# Basic Modules
 import math
 import scipy
 import itertools
@@ -11,27 +6,26 @@ import numpy as np
 # Import Files
 from .globalProtocol import globalProtocol
 
-# ---------------------------------------------------------------------------#
-# ---------------------------------------------------------------------------#
 
+# DEPRECATED
 class emgProtocol(globalProtocol):
     
-    def __init__(self, numPointsPerBatch = 3000, moveDataFinger = 10, numChannels = 2, plottingClass = None, readData = None):
+    def __init__(self, numPointsPerBatch = 3000, moveDataFinger = 10, channelIndices=(), plottingClass = None, readData = None):
+        super().__init__("emg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Prediction Parameters
         self.gestureClasses = []
         
         # High Pass Filter Parameters
-        self.f1 = 100; self.f3 = 50;
-        self.Rp = 0.1; self.Rs = 30;
-        # Root Mean Squared (RMS) Parameters
-        self.rmsWindow = 400; self.stepSize = 10;  # self.rmsWindow = 400; self.stepSize = 10;
-        
+        self.f1 = 100; self.f3 = 50
+        self.Rp = 0.1; self.Rs = 30
+
         # Data Collection Parameters
+        self.rmsWindow = 400; self.stepSize = 10  # self.rmsWindow = 400; self.stepSize = 10;
         self.dataPointBuffer = max(self.rmsWindow + self.stepSize, 5000)  # Must be > rmsWindow + stepSize
         self.peakDetectionBuffer = 2000  # Buffer in Case Peaks are Only Half Formed at Edges
         self.numPointsRMS = 5*max(1 + math.floor((numPointsPerBatch - self.rmsWindow) / self.stepSize), 0)         # Number of Root Mean Squared Data (After HPF) to Plot
 
-        # Specify Figure Asthetics
+        # Specify Figure Aesthetics
         self.peakCurrentRightColorOrder = {
             0: "tab:red",
             1: "tab:purple",
@@ -40,12 +34,13 @@ class emgProtocol(globalProtocol):
             4: "tab:brown",
             5: "tab:green",
             6: "tab:gray",
-            7: "tab:cyan",
-            }
-        
-        # Initialize common model class
-        super().__init__("emg", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
-    
+            7: "tab:ocean",
+        }
+
+        # Finalize the protocol parameters.
+        self.resetAnalysisVariables()
+        self.checkParams()
+
     # TODO: [0 for _ in range(self.numChannels)] FOR CERTAIN VARIABLES
     def resetAnalysisVariables(self):        
         # Reset Mutable Variables
@@ -63,8 +58,9 @@ class emgProtocol(globalProtocol):
         self.previousDataRMS = [[] for _ in range(self.numChannels)]
             
     def checkParams(self):
-        assert self.moveDataFinger < self.numPointsPerBatch, "You are Analyzing Too Much Data in a Batch. 'moveDataFinger' MUST be Less than 'numPointsPerBatch'"
-        assert self.rmsWindow > self.stepSize, "'stepSize' Should NOT be Greater Than 'rmsWindow'. This Means You are JUMPING OVER Datapoints (Missing Point)."
+        self.checkGlobalParams()
+        assert self.stepSize < self.rmsWindow, "'stepSize' Should NOT be Greater Than 'rmsWindow'. This Means You are JUMPING OVER Datapoints (Missing Point)."
+        assert self.numChannels == 1, "The EMG protocol now only supports one channel of data due tp feature alignment issues."
                 
     def setSamplingFrequencyParams(self):
         self.Wp = 2*math.pi*self.f1/self.samplingFreq
@@ -87,8 +83,8 @@ class emgProtocol(globalProtocol):
             # ---------------------- Filter the Data ----------------------- #   
             # Find the starting/ending points of the data to analyze
             startFilterPointer = max(dataFinger - self.dataPointBuffer, 0)
-            dataBuffer = np.array(self.data[1][channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
-            timePoints = np.array(self.data[0][dataFinger:dataFinger + self.numPointsPerBatch])
+            dataBuffer = np.array(self.channelData[channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            timePoints = np.array(self.timePoints[dataFinger:dataFinger + self.numPointsPerBatch])
             
             # Find New Points That Need Filtering
             totalPreviousPointsRMS = max(1 + math.floor((dataFinger + len(timePoints) - self.moveDataFinger - self.rmsWindow) / self.stepSize), 0) if dataFinger else 0
@@ -351,7 +347,7 @@ class emgProtocol(globalProtocol):
             RMSData.append(np.linalg.norm(inputWindow, ord=2)/normalization)
             # Add to xData
             if channelIndex == 0:
-                self.xDataRMS.append(self.data[0][dataPointerRMS + i*stepSize + rmsWindow - 1])
+                self.xDataRMS.append(self.timePoints[dataPointerRMS + i * stepSize + rmsWindow - 1])
                  
         return RMSData    
 
@@ -419,8 +415,7 @@ class emgProtocol(globalProtocol):
                 print("\tSetting Group Width", self.groupWidthRMS)
             
             leftBaselines.append(xData[leftBaselineIndex])
-          #  print("INITIAL", xData[xPointer], leftBaselineIndex, xPointer, xData[leftBaselineIndex], self.data['timePoints'][-1])
-                
+
         # Return Features
         return peakFeatures, leftBaselines
     

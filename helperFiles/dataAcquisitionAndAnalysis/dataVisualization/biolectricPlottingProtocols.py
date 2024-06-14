@@ -12,9 +12,8 @@ class plottingProtocols:
         # plt.style.use('seaborn-poster')
 
         # Specify Figure aesthetics
-        figWidth = 25
-        figHeight = 15
-        self.fig, axes = plt.subplots(numChannels, 3, sharey=False, sharex=False, gridspec_kw={'hspace': 0},
+        figWidth, figHeight = 25, 15
+        self.fig, axes = plt.subplots(numChannels, ncols=3, sharey=False, sharex=False, gridspec_kw={'hspace': 0},
                                       figsize=(figWidth, figHeight))
         if numChannels == 1:
             axes = np.array([axes])
@@ -23,7 +22,7 @@ class plottingProtocols:
         # Distribute the axes to their respective sensor
         for biomarkerInd in range(len(analysisOrder)):
             biomarkerType = analysisOrder[biomarkerInd]
-            streamingChannels = channelDist[biomarkerInd]
+            streamingChannels = channelDist[biomarkerType]
             self.axes[biomarkerType] = axes[streamingChannels]
 
         # # Add experiment information to the plot
@@ -61,7 +60,3 @@ class plottingProtocols:
         self.fig.canvas.flush_events()
         self.fig.canvas.draw()
         self.fig.show()
-
-
-if __name__ == "__main__":
-    plottingProtocols(2, [1, 1], ['eeg', 'eog'])

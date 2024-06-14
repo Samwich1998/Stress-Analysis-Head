@@ -41,8 +41,9 @@ class universalMethods:
         return activity, mobility, complexity, firstDerivVariance, secondDerivVariance
 
     @staticmethod
-    def calculatePSD(data, samplingFreq, nperseg):
+    def calculatePSD(data, samplingFreq):
         # Calculate the power spectrum density parameters.
+        nperseg = int(samplingFreq * 2.5)
         noverlap = nperseg // 2
         nfft = nperseg * 2
 
@@ -51,8 +52,7 @@ class universalMethods:
                                                                              detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean')
 
         # Normalize the power spectrum density.
-        normalizationFactor = np.sum(powerSpectrumDensity[1:])
-        powerSpectrumDensityNormalized = powerSpectrumDensity / normalizationFactor if normalizationFactor != 0 else powerSpectrumDensity
+        powerSpectrumDensityNormalized = universalMethods.normalizePSD(powerSpectrumDensity)
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
 
         return powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized
@@ -88,21 +88,29 @@ class universalMethods:
         return bandPowers
 
     @staticmethod
-    def spectral_entropy(powerSpectrumDensity, normalizePSD=True):
-        if normalizePSD:
-            # Normalize the power spectrum density
-            powerSpectrumDensityNormalized = powerSpectrumDensity / np.sum(powerSpectrumDensity[1:])
-        else:
-            powerSpectrumDensityNormalized = powerSpectrumDensity
+    def spectral_entropy(powerSpectrumDensityNormalized, normalizePSD=True, tolerance=1e-15):
+        # Normalize the power spectrum density
+        if normalizePSD: powerSpectrumDensityNormalized = universalMethods.normalizePSD(powerSpectrumDensityNormalized)
 
         # If the power spectrum density is zero, the spectral entropy is zero.
         if np.all(powerSpectrumDensityNormalized == 0):
             return 0
 
         # Calculate the spectral entropy
-        spectralEntropy = -np.sum(np.multiply(powerSpectrumDensityNormalized, np.log2(powerSpectrumDensityNormalized)), axis=-1)
+        spectralEntropy = -np.sum(np.multiply(powerSpectrumDensityNormalized, np.log2(powerSpectrumDensityNormalized + tolerance)), axis=-1)
 
         return spectralEntropy
+
+    @staticmethod
+    def normalizePSD(powerSpectrumDensity):
+        # Normalize the power spectrum density.
+        powerSpectrumDensity = np.asarray(powerSpectrumDensity)
+        normalizationFactor = powerSpectrumDensity[1:].sum()
+
+        if normalizationFactor == 0:
+            return np.zeros_like(powerSpectrumDensity)
+
+        return powerSpectrumDensity / np.sum(powerSpectrumDensity[1:])
 
     # ------------------------- Formatting Arrays  ------------------------- #
 

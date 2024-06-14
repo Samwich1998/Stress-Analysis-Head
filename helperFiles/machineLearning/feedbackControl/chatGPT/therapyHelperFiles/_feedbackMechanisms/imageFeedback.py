@@ -103,4 +103,4 @@ class ImageFeedback:
         
     @staticmethod
     def getImageURL(response):
-        return response.data[0].url
+        return response.channelData[0].url

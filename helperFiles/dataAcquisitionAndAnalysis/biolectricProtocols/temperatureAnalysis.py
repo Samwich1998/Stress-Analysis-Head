@@ -7,30 +7,38 @@ from .globalProtocol import globalProtocol
 
 class tempProtocol(globalProtocol):
 
-    def __init__(self, numPointsPerBatch=2000, moveDataFinger=200, numChannels=1, plottingClass=None, readData=None):
+    def __init__(self, numPointsPerBatch=2000, moveDataFinger=200, channelIndices=(), plottingClass=None, readData=None):
+        super().__init__("temp", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
-        self.secondsPerFeature = 1  # The duration of time that passes between each feature.
-        self.featureTimeWindow = 60  # The duration of time that each feature considers; 5 - 15
+        self.featureTimeWindow = None  # The duration of time that each feature considers
+
         # High Pass Filter Parameters
-        self.dataPointBuffer = 5000  # A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
         self.cutOffFreq = [None, 0.1]  # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
 
         # Holder parameters.
         self.startFeatureTimePointer = None  # The start pointer of the feature window interval.
         self.minPointsPerBatch = None  # The minimum number of points per batch.
 
-        # Initialize common model class
-        super().__init__("temp", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
+        # Finalize the protocol parameters.
+        self.resetAnalysisVariables()
+        self.checkParams()
 
     def resetAnalysisVariables(self):
-        # General parameters 
+        self.resetGlobalVariables()
+
+        # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
+        self.featureTimeWindow = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers
 
     def checkParams(self):
+        self.checkGlobalParams()
+
+        # Assert that the buffer is large enough for the feature window.
         assert self.featureTimeWindow < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
 
     def setSamplingFrequencyParams(self):
         maxBufferSeconds = max(self.featureTimeWindow, 15)
+
         # Set Parameters
         self.lastAnalyzedDataInd[:] = int(self.samplingFreq * self.featureTimeWindow)
         self.minPointsPerBatch = int(self.samplingFreq * self.featureTimeWindow / 2)
@@ -44,11 +52,12 @@ class tempProtocol(globalProtocol):
         # Add incoming Data to Each Respective Channel's Plot
         for channelIndex in range(self.numChannels):
 
-            # ---------------------- Filter the Data ----------------------- #    
+            # ---------------------- Filter the Data ----------------------- #
+
             # Find the starting/ending points of the data to analyze
             startFilterPointer = max(dataFinger - self.dataPointBuffer, 0)
-            dataBuffer = np.array(self.data[1][channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
-            timePoints = np.array(self.data[0][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            dataBuffer = np.array(self.channelData[channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            timePoints = np.array(self.timePoints[startFilterPointer:dataFinger + self.numPointsPerBatch])
 
             # Get the Sampling Frequency from the First Batch (If Not Given)
             if not self.samplingFreq:
@@ -56,13 +65,16 @@ class tempProtocol(globalProtocol):
 
             # Filter the data and remove bad indices
             filteredTime, filteredData, goodIndicesMask = self.filterData(timePoints, dataBuffer, removePoints=True)
-            # --------------------------------------------------------------- #
 
             # ---------------------- Feature Extraction --------------------- #
+
             if self.collectFeatures:
+                # Initialize the new raw features and times.
+                newFeatureTimes, newRawFeatures = [], []
+
                 # Extract features across the dataset
-                while self.lastAnalyzedDataInd[channelIndex] < len(self.data[0]):
-                    featureTime = self.data[0][self.lastAnalyzedDataInd[channelIndex]]
+                while self.lastAnalyzedDataInd[channelIndex] < len(self.timePoints):
+                    featureTime = self.timePoints[self.lastAnalyzedDataInd[channelIndex]]
 
                     # Find the start window pointer
                     self.startFeatureTimePointer[channelIndex] = self.findStartFeatureWindow(self.startFeatureTimePointer[channelIndex], featureTime, self.featureTimeWindow)
@@ -73,14 +85,19 @@ class tempProtocol(globalProtocol):
                     if self.minPointsPerBatch < len(intervalTimes):
                         # Calculate and save the features in this window.
                         finalFeatures = self.extractFeatures(intervalTimes, intervalData)
-                        self.readData.averageFeatures([featureTime], [finalFeatures], self.featureTimes[channelIndex],
-                                                      self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+
+                        # Keep track of the new features.
+                        newRawFeatures.append(finalFeatures)
+                        newFeatureTimes.append(featureTime)
 
                     # Keep track of which data has been analyzed 
                     self.lastAnalyzedDataInd[channelIndex] += int(self.samplingFreq * self.secondsPerFeature)
-            # -------------------------------------------------------------- #  
+
+                # Compile the new raw features into a smoothened (averaged) feature.
+                self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
 
             # ------------------- Plot Biolectric Signals ------------------- #
+
             if self.plotStreamedData:
                 # Format the raw data:.
                 timePoints = timePoints[dataFinger - startFilterPointer:]  # Shared axis for all signals
@@ -98,7 +115,7 @@ class tempProtocol(globalProtocol):
 
                 # Plot a single feature.
                 if len(self.compiledFeatures[channelIndex]) != 0:
-                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.featureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 9])
+                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.rawFeatureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 9])
                     self.plottingMethods.featureDataPlotAxes[channelIndex].legend(["Signal Slope"], loc="upper left")
 
             # --------------------------------------------------------------- #   
@@ -110,9 +127,13 @@ class tempProtocol(globalProtocol):
         if removePoints:
             # Find the bad points associated with motion artifacts
             deriv = abs(np.gradient(filteredData, timePoints))
-            motionIndices = deriv > 1
-            motionIndices_Broadened = scipy.signal.savgol_filter(motionIndices, max(3, int(self.samplingFreq * 20)), 1, mode='nearest', deriv=0)
-            goodIndicesMask = motionIndices_Broadened < 0.01
+            motionIndices = 0.75 < deriv
+            motionIndices_Broadened = scipy.signal.savgol_filter(motionIndices, max(5, int(self.samplingFreq * 25)), polyorder=1, mode='nearest', deriv=0)
+            # Create a boolean mask using element-wise logical operations
+            goodIndicesMask = np.logical_or(
+                np.logical_or(motionIndices_Broadened < 0.01, 55 < data),
+                data < 10
+            )
         else:
             goodIndicesMask = np.full_like(data, True, dtype=bool)
 
@@ -127,7 +148,7 @@ class tempProtocol(globalProtocol):
 
     def findStartFeatureWindow(self, timePointer, currentTime, timeWindow):
         # Loop through until you find the first time in the window 
-        while self.data[0][timePointer] < currentTime - timeWindow:
+        while self.timePoints[timePointer] < currentTime - timeWindow:
             timePointer += 1
 
         return timePointer

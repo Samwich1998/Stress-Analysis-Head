@@ -11,16 +11,19 @@ from .globalProtocol import globalProtocol
 
 class eogProtocol(globalProtocol):
 
-    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, numChannels=2, plottingClass=None, readData=None):
+    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=2, plottingClass=None, readData=None, voltageRange=(0, 3.3)):
+        # Initialize the global protocol.
+        super().__init__("eog", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Filter parameters.
-        self.dataPointBuffer = 0  # A prepended buffer of data for filtering. Represents possible bad filtering points; Units: Points
         self.cutOffFreq = [.5, 15]  # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 20 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
+
         # High-pass filter parameters.
         self.stopband_edge = 10  # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, you can choose a higher stopband-edge frequency. If you need to preserve the signal more, you can choose a lower stopband-edge frequency.
         self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, you can choose a lower passband ripple. If you need to preserve the signal more, you can choose a higher passband ripple.
         self.stopband_attenuation = 20  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, you can choose a higher stopband attenuation. If you need to preserve the signal more, you can choose a lower stopband attenuation.
 
         # Blink Parameters
+        self.voltageRange = voltageRange  # The Voltage Range of the System; Units: Volts
         self.minPeakHeight_Volts = 0.05  # The Minimum Peak Height in Volts; Removes Small Oscillations
         self.debugBlinkDetection = False  # Debugging for Blink Detection
 
@@ -28,16 +31,16 @@ class eogProtocol(globalProtocol):
         self.voltagePositionBuffer = 100  # A Prepended Buffer to Find the Current Average Voltage; Units: Points
         self.minVoltageMovement = 0.05  # The Minimum Voltage Change Required to Register an Eye Movement; Units: Volts
         self.predictEyeAngleGap = 5  # The Number of Points Between Each Eye Gaze Prediction; Will Back-calculate if moveDataFinger > predictEyeAngleGap; Units: Points
-        self.steadyStateEye = 3.3 / 2  # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
 
         # Calibration Angles
-        self.calibrationAngles = [[-45, 0, 45] for _ in range(numChannels)]
-        self.calibrationVoltages = [[] for _ in range(numChannels)]
+        self.calibrationAngles = [[-45, 0, 45] for _ in range(self.numChannels)]
+        self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         # Pointers for Calibration
         self.calibrateChannelNum = 0  # The Current Channel We are Calibrating
         self.channelCalibrationPointer = 0  # A Pointer to the Current Angle Being Calibrated (A Pointer for Angle in self.calibrationAngles)
         # Calibration Function for Eye Angle
-        self.predictEyeAngle = [lambda x: (x - self.steadyStateEye) * 30] * numChannels
+        self.steadyStateEye = voltageRange[0] + (voltageRange[1] - voltageRange[0]) / 2  # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
+        self.predictEyeAngle = [lambda x: (x - self.steadyStateEye) * 30] * self.numChannels
 
         # Holder parameters.
         self.minPoints_halfBaseline = None
@@ -52,10 +55,10 @@ class eogProtocol(globalProtocol):
         self.blinksYLocs = None
         self.blinkTypes = None
 
-        # Initialize common model class
-        super().__init__("eog", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
+        # Finalize the protocol parameters.
+        self.resetAnalysisVariables()
+        self.checkParams()
 
-    # TODO: [0 for _ in range(self.numChannels)] FOR CERTAIN VARIABLES
     def resetAnalysisVariables(self):
         # Hold Past Information
         self.trailingAverageData = {}
@@ -77,7 +80,8 @@ class eogProtocol(globalProtocol):
         self.currentState = self.blinkTypes[0]
 
     def checkParams(self):
-        pass
+        self.checkGlobalParams()
+        assert self.numChannels == 1, "The EOG protocol now only supports one channel of data due tp feature alignment issues."
 
     def setSamplingFrequencyParams(self):
         # Set Blink Parameters
@@ -96,8 +100,11 @@ class eogProtocol(globalProtocol):
             # ---------------------- Filter the Data ----------------------- #    
             # Find the starting/ending points of the data to analyze.
             startFilterPointer = max(dataFinger - self.dataPointBuffer, 0)
-            dataBuffer = np.array(self.data[1][channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
-            timePoints = np.array(self.data[0][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            dataBuffer = np.array(self.channelData[channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            timePoints = np.array(self.timePoints[startFilterPointer:dataFinger + self.numPointsPerBatch])
+
+            # Assert that the data is within the expected voltage range.
+            assert np.max(dataBuffer) <= self.voltageRange[1] + 0.1 and self.voltageRange[0] - 0.1 <= np.min(dataBuffer), f"Data is not within the expected voltage range: {np.max(dataBuffer)} {np.min(dataBuffer)}"
 
             # Extract sampling frequency from the first batch of data.
             if not self.samplingFreq:
@@ -181,7 +188,7 @@ class eogProtocol(globalProtocol):
 
                 # Plot a single feature.
                 if len(self.compiledFeatures[channelIndex]) != 0:
-                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.featureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 24])
+                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.rawFeatureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 24])
                     self.plottingMethods.featureDataPlotAxes[channelIndex].legend(["Blink Duration"], loc="upper left")
 
         # -------------------- Update Virtual Reality  ---------------------- #
@@ -214,6 +221,9 @@ class eogProtocol(globalProtocol):
 
     def findBlinks(self, xData, yData, channelIndex, debugBlinkDetection=False):
 
+        # Initialize the new raw features and times.
+        newFeatureTimes, newRawFeatures = [], []
+
         # --------------------- Find and Analyze Blinks --------------------- #
 
         # Find all potential blinks (peaks) in the data.
@@ -224,8 +234,7 @@ class eogProtocol(globalProtocol):
             peakTimePoint = xData[peakInd]
 
             # Do not reanalyze a peak (waste of time).
-            if peakTimePoint <= self.data[0][self.lastAnalyzedDataInd[channelIndex]]:
-                continue
+            if peakTimePoint <= self.timePoints[self.lastAnalyzedDataInd[channelIndex]]: continue
 
             # ------------------ Find the Peak's Baselines ------------------ #
             # Calculate the baseline of the peak.
@@ -233,8 +242,7 @@ class eogProtocol(globalProtocol):
             rightBaselineIndex = self.universalMethods.findNearbyMinimum(yData, peakInd, binarySearchWindow=max(1, int(self.samplingFreq * 0.005)), maxPointsSearch=max(1, int(self.samplingFreq * 0.5)))
 
             # Wait to analyze peaks that are not fully formed. Additionally, filtering could affect boundary points.
-            if rightBaselineIndex >= len(xData) - max(1, int(self.samplingFreq * 0.1)):
-                break
+            if rightBaselineIndex >= len(xData) - max(1, int(self.samplingFreq * 0.1)): break
 
             # --------------------- Initial Peak Culling --------------------- #
 
@@ -277,8 +285,9 @@ class eogProtocol(globalProtocol):
             # Record the Blink's Location
             self.blinksXLocs.append(peakTimePoint)
             self.blinksYLocs.append(yData[peakInd])
-            # Keep track of the new features
-            self.readData.averageFeatures([peakTimePoint], [newFeatures], self.featureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+            # Store the Blink's Features
+            newFeatureTimes.append(peakTimePoint)
+            newRawFeatures.append(newFeatures)
 
             # ----------------- Singular or Multiple Blinks? ---------------- #
 
@@ -317,9 +326,12 @@ class eogProtocol(globalProtocol):
         if len(xData) != 0:
             self.lastAnalyzedDataInd[channelIndex] = self.findStartFeatureWindow(self.lastAnalyzedDataInd[channelIndex], xData[-1], 10)
 
+        # Compile the new raw features into a smoothened (averaged) feature.
+        self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+
     def findStartFeatureWindow(self, timePointer, currentTime, timeWindow):
         # Loop through until you find the first time in the window.
-        while self.data[0][timePointer] < currentTime - timeWindow:
+        while self.timePoints[timePointer] < currentTime - timeWindow:
             timePointer += 1
 
         return timePointer
@@ -417,22 +429,6 @@ class eogProtocol(globalProtocol):
             if debugBlinkDetection: print("\t\tBad Derivative Inds Order: Second Half")
             if debugBlinkDetection: print("\t\t\t", peakInd, velInds, accelInds, xData[peakInd])
             return []
-
-        # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
-        # plt.plot(xData, firstDeriv*0.8/max(firstDeriv), 'tab:red', linewidth=1)
-        # plt.plot(xData, secondDeriv*0.8/max(secondDeriv), 'tab:blue', linewidth=1)
-
-        # secondDeriv = np.array(secondDeriv)
-        # xData = np.array(xData)
-
-        # plt.plot(xData[velInds], (firstDeriv*0.8/max(firstDeriv))[velInds], 'ro', markersize=5)
-        # plt.plot(xData[accelInds], (secondDeriv*0.8/max(secondDeriv))[accelInds], 'bo', markersize=5)
-        # plt.plot(xData[peakBoundaries], (yData/max(yData))[peakBoundaries], 'ko', markersize=5)
-        # plt.legend(['Blink', 'firstDeriv', 'secondDeriv'])
-        # # plt.title("Accel Inds = " + str(len(accelInds_Trial)))
-        # plt.show()        
-        # sepInds = [peakBoundaries[0], accelInds[0], accelInds[1], peakInd, accelInds[2], peakBoundaries[1]]
-        # self.plotData(xData, yData, peakInd, velInds = velInds, accelInds = accelInds, sepInds = sepInds, title = "Dividing the Blink")
 
         # --------------------- Find the Blink's Endpoints ------------------ #
 
@@ -613,12 +609,6 @@ class eogProtocol(globalProtocol):
         if debugBlinkDetection:
             sepInds = [startBlinkInd, accelInds[0], accelInds[1], peakInd, accelInds[2], endBlinkInd]
             self.plotData(xData, yData, peakInd, velInds=velInds, accelInds=accelInds, sepInds=sepInds, title="Dividing the Blink")
-
-            # plt.plot(xData, yData/max(yData), 'k', linewidth=2)
-            # plt.plot(xData, firstDeriv*0.8/max(firstDeriv), 'r', linewidth=1)
-            # plt.plot(xData, secondDeriv*0.8/max(secondDeriv), 'b', linewidth=1)
-            # plt.legend(['Blink', 'firstDeriv', 'secondDeriv'])
-            # plt.show()
 
         return finalFeatures
 

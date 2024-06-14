@@ -4,6 +4,7 @@ import os
 
 # Set specific environmental parameters.
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging (1 = INFO, 2 = WARNING and ERROR, 3 = ERROR only)
 os.environ["TORCH_COMPILE_DEBUG"] = "1"
 
@@ -76,7 +77,6 @@ if __name__ == "__main__":
     sharedModelWeights = modelParameters.getSharedModels()  # The shared model weights.
     userInputParams, submodel = modelParameters.compileParameters(args)  # The user input parameters and the submodel.
     accelerator, storeLoss, fastPass = modelParameters.setParamsHPC(args, accelerator, userInputParams, storeLoss, fastPass, useFinalParams)  # Set the HPC parameters.
-
     fastPass = True
 
     # Initialize the model information classes.
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     modelInfoClass = compileModelInfo()
 
     # Specify training parameters
-    datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces = modelParameters.compileModelNames()  # Compile the model names.
+    datasetNames, metaDatasetNames, allDatasetNames = modelParameters.compileModelNames()  # Compile the model names.
     numEpoch_toPlot, numEpoch_toSaveFull = modelParameters.getEpochInfo(submodel, useFinalParams)  # The number of epochs to plot and save the model.
     numConstrainedEpochs, numEpochs = modelParameters.getNumEpochs(submodel)  # The number of epochs to train the model.
     trainingDate = modelCompiler.embedInformation(submodel, trainingDate)  # Embed training information into the name.
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     # -------------------------- Model Compilation ------------------------- #
 
     # Compile the final modules.
-    allModels, allDataLoaders, allLossDataHolders, allMetaModels, allMetaDataLoaders, allMetaLossDataHolders, _ = modelCompiler.compileModelsFull(metaProtocolInterfaces, modelName, submodel, testSplitRatio, datasetNames, useFinalParams)
+    allModels, allDataLoaders, allLossDataHolders, allMetaModels, allMetaDataLoaders, allMetaLossDataHolders, _ = modelCompiler.compileModelsFull(metaDatasetNames, modelName, submodel, testSplitRatio, datasetNames, useFinalParams)
     unifiedLayerData = modelMigration.copyModelWeights(allMetaModels[0], sharedModelWeights)  # Unify all the fixed weights in the models
 
     # -------------------------- Meta-model Training ------------------------- #

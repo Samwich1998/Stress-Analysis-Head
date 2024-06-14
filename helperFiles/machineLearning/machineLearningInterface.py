@@ -12,9 +12,6 @@ from ..dataAcquisitionAndAnalysis.excelProcessing.saveDataProtocols import saveE
 from .modelControl._modelControl import modelControl  # Import Files for extracting models
 
 
-# -------------------------------------------------------------------------- #
-# ------------------ Interface with Machine Learning Files ----------------- #
-
 class machineLearningInterface:
 
     def __init__(self, modelTypes, modelFile, allFeatureNames, trainingFolder):

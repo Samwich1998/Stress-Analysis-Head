@@ -240,18 +240,18 @@ class caseInterface(globalMetaAnalysis):
     def getStreamingInfo():
         # Feature information
         givenStreamingOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
-        givenBiomarkerOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
+        givenBiomarkerFeatureOrder = ['ecg', 'lowFreq', 'eda', 'lowFreq', 'temp']
         givenFilteringOrders = [[None, None], [None, 20], [None, 15], [None, 20], [None, 0.1]]  # Sampling Freq: 1000 (Hz); Need 1/2 frequency at max.
         givenFeatureAverageWindows = [30, 30, 30, 30, 30]  # ['ecg', 'bvp', 'gsr', 'rsp', 'skt']
 
-        return givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenFilteringOrders
+        return givenStreamingOrder, givenBiomarkerFeatureOrder, givenFeatureAverageWindows, givenFilteringOrders
 
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
-        givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenFilteringOrders = self.getStreamingInfo()
-        featureNames, givenBiomarkerFeatureNames, givenBiomarkerOrder = self.compileFeatureNames.extractFeatureNames(givenBiomarkerOrder)
+        givenStreamingOrder, givenBiomarkerFeatureOrder, givenFeatureAverageWindows, givenFilteringOrders = self.getStreamingInfo()
+        givenFeatureNames, givenBiomarkerFeatureNames, givenBiomarkerFeatureOrder = self.compileFeatureNames.extractFeatureNames(givenBiomarkerFeatureOrder)
 
-        return givenStreamingOrder, givenBiomarkerOrder, givenFeatureAverageWindows, givenBiomarkerFeatureNames
+        return givenStreamingOrder, givenBiomarkerFeatureOrder, givenFeatureAverageWindows, givenFeatureNames, givenBiomarkerFeatureNames
 
 
 if __name__ == "__main__":
@@ -266,18 +266,18 @@ if __name__ == "__main__":
         allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, \
             allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo = caseAnalysisClass.getData(showPlots=False)
         # Compile the data: specific to the device worn.
-        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = caseAnalysisClass.getStreamingInfo()
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = caseAnalysisClass.getStreamingInfo()
         # # Analyze and save the metadata features
         caseAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                          streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=False, analyzeSequentially=True)  # Requires a lot of memory if not sequential.
+                                          streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=False, analyzeSequentially=True)  # Requires a lot of memory if not sequential.
 
     if trainingData:
         # Prepare the data to go through the training interface.
-        streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames = caseAnalysisClass.compileTrainingInfo()
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames = caseAnalysisClass.compileTrainingInfo()
 
         plotTrainingData = False
         # Collected the training data.
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, subjectOrder, \
-            experimentOrder, activityNames, activityLabels, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = caseAnalysisClass.trainingProtocolInterface(streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            experimentOrder, activityNames, activityLabels, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
+            = caseAnalysisClass.trainingProtocolInterface(streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames, plotTrainingData, metaTraining=True)

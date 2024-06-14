@@ -189,17 +189,17 @@ class wesadInterface(globalMetaAnalysis):
     def getStreamingInfo():
         # respiBAN-specific information.
         streamingOrder = ['lowFreq', 'eda', 'temp', 'lowFreq']
-        biomarkerOrder = ['lowFreq', 'eda', 'temp', 'lowFreq']
+        biomarkerFeatureOrder = ['lowFreq', 'eda', 'temp', 'lowFreq']
         filteringOrders = [[None, 150], [None, 15], [None, 0.1], [None, 20]]  # Sampling Freq: 700, 700, 700, 700, 700 (Hz); Need 1/2 frequency at max.
         featureAverageWindows = [30, 30, 30, 30]  # ['ECG', 'EDA', 'Temp', 'Resp']
 
         # Add empatica-specific information
         streamingOrder.extend(['lowFreq', 'eda', 'temp'])
-        biomarkerOrder.extend(['lowFreq', 'eda', 'temp'])
+        biomarkerFeatureOrder.extend(['lowFreq', 'eda', 'temp'])
         filteringOrders.extend([[None, 20], [None, None], [None, 0.1]])  # Sampling Freq: 64, 4, 4 (Hz); Need 1/2 frequency at max.
         featureAverageWindows.extend([30, 30, 30])  # ['BVP', 'EDA', 'Temp']
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders
 
     def organizeSynchronizedData(self, synchronizedData, experimentTimes, showPlots=True):
         # Get the RespiBAN time points.
@@ -285,10 +285,10 @@ class wesadInterface(globalMetaAnalysis):
 
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
-        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
-        featureNames, biomarkerFeatureNames, biomarkerOrder = self.compileFeatureNames.extractFeatureNames(biomarkerOrder)
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
+        featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = self.compileFeatureNames.extractFeatureNames(biomarkerFeatureOrder)
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames
 
 
 if __name__ == "__main__":
@@ -304,18 +304,18 @@ if __name__ == "__main__":
             wesadAllSurveyAnswerTimes, wesadAllSurveyAnswersList, wesadAllContextualInfo = wesadAnalysisClass.getData()
         wesadAllCompiledDatas = wesadAnalysisClass.compileAllData(wesadAllSynchronizedData, wesadAllExperimentalTimes, showPlots=False)
         # Compile the data: specific to the device worn.
-        wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadFilteringOrders = wesadAnalysisClass.getStreamingInfo()
+        wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFilteringOrders = wesadAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         wesadAnalysisClass.extractFeatures(wesadAllCompiledDatas, wesadSubjectOrder, wesadAllExperimentalTimes, wesadAllExperimentalNames, wesadAllSurveyAnswerTimes, wesadAllSurveyAnswersList, wesadAllContextualInfo,
-                                           wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadFilteringOrders, interfaceType='wesad', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
+                                           wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFilteringOrders, interfaceType='wesad', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.
-        wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadBiomarkerFeatureNames = wesadAnalysisClass.compileTrainingInfo()
+        wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFeatureNames, wesadBiomarkerFeatureNames = wesadAnalysisClass.compileTrainingInfo()
 
         plotTrainingData = False
         # Collected the training data.
         wesadAllRawFeatureTimesHolders, wesadAllRawFeatureHolders, wesadAllRawFeatureIntervals, wesadAllRawFeatureIntervalTimes, \
             wesadAllAlignedFeatureTimes, wesadAllAlignedFeatureHolder, wesadAllAlignedFeatureIntervals, wesadAllAlignedFeatureIntervalTimes, wesadSubjectOrder, \
-            wesadExperimentOrder, wesadActivityNames, wesadActivityLabels, wesadAllFinalFeatures, wesadAllFinalLabels, wesadFeatureLabelTypes, wesadSurveyQuestions, wesadSurveyAnswersList, wesadSurveyAnswerTimes \
-            = wesadAnalysisClass.trainingProtocolInterface(wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadBiomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            wesadExperimentOrder, wesadActivityNames, wesadActivityLabels, wesadAllFinalLabels, wesadFeatureLabelTypes, wesadSurveyQuestions, wesadSurveyAnswersList, wesadSurveyAnswerTimes \
+            = wesadAnalysisClass.trainingProtocolInterface(wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFeatureNames, wesadBiomarkerFeatureNames, plotTrainingData, metaTraining=True)

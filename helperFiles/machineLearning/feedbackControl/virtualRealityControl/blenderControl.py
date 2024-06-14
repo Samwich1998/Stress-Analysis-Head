@@ -13,7 +13,7 @@ bpy.ops.wm.xr_session_start()
 bpy.ops.import_scene.gltf(filepath='horror.osgb')
 
 # Set environment position and scale
-env_obj = bpy.data.objects['horror']
+env_obj = bpy.channelData.objects['horror']
 env_obj.location = (0, 0, 0)
 env_obj.scale = (1, 1, 1)
 

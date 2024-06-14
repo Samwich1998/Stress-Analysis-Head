@@ -8,36 +8,43 @@ from .globalProtocol import globalProtocol
 
 class eegProtocol(globalProtocol):
 
-    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, numChannels=2, plottingClass=None, readData=None):
+    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
         # Initialize common model class
-        super().__init__("eeg", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
+        super().__init__("eeg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
 
         # Feature collection parameters
         self.startFeatureTimePointer = None  # The start pointer of the feature window interval.
-        self.secondsPerFeature = 1  # The duration of time that passes between each feature.
-        self.featureTimeWindow = 15  # The duration of time that each feature considers;
+        self.featureTimeWindow = None  # The duration of time that each feature considers
         self.minPointsPerBatch = None  # The minimum number of points that must be present in a batch to extract features.
 
         # Filter parameters.
         self.cutOffFreq = [0.05, 50]  # Band pass filter frequencies.
-        self.dataPointBuffer = 0  # The number of previous analyzed points. Used as a buffer for filtering.
+
         # High-pass filter parameters.
         self.stopband_edge = 1  # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, choose a higher stopband-edge frequency. If you need to preserve the signal more, choose a lower stopband-edge frequency.
         self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, choose a lower passband ripple. If you need to preserve the signal more, choose a higher passband ripple.
         self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, choose a higher stopband attenuation. If you need to preserve the signal more, choose a lower stopband attenuation.
 
+        # Finalize the protocol parameters.
+        self.resetAnalysisVariables()
+
     def resetAnalysisVariables(self):
-        # General parameters 
+        # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
+        self.featureTimeWindow = self.featureTimeWindow_highFreq  # The duration of time that each feature considers
+
+        # Finalize the protocol parameters.
+        self.resetGlobalVariables()
+        self.checkParams()
 
     def checkParams(self):
-        pass
+        self.checkGlobalParams()
 
     def setSamplingFrequencyParams(self):
         maxBufferSeconds = max(self.featureTimeWindow, 100)
         # Set Parameters
         self.lastAnalyzedDataInd[:] = int(self.samplingFreq * self.featureTimeWindow)
-        self.minPointsPerBatch = int(self.samplingFreq * self.featureTimeWindow * 3 / 4)
+        self.minPointsPerBatch = int(self.samplingFreq * self.featureTimeWindow * 4 / 5)
         self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq * maxBufferSeconds))  # cutOffFreq = 0.1, use 70 seconds; cutOffFreq = 0.01, use 400 seconds; cutOffFreq = 0.05, use 100 seconds
 
         # Set the sampling frequency for the MNE interface
@@ -50,11 +57,12 @@ class eegProtocol(globalProtocol):
         # Add incoming Data to Each Respective Channel's Plot
         for channelIndex in range(self.numChannels):
 
-            # ---------------------- Filter the Data ----------------------- #    
+            # ---------------------- Filter the Data ----------------------- #
+
             # Find the starting/ending points of the data to analyze
             startFilterPointer = max(dataFinger - self.dataPointBuffer, 0)
-            dataBuffer = np.array(self.data[1][channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
-            timePoints = np.array(self.data[0][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            dataBuffer = np.array(self.channelData[channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            timePoints = np.array(self.timePoints[startFilterPointer:dataFinger + self.numPointsPerBatch])
 
             # Get the Sampling Frequency from the First Batch (If Not Given)
             if not self.samplingFreq:
@@ -62,13 +70,16 @@ class eegProtocol(globalProtocol):
 
             # Filter the data and remove bad indices
             filteredTime, filteredData, goodIndicesMask = self.filterData(timePoints, dataBuffer, removePoints=True)
-            # -------------------------------------------------------------- #
 
             # ---------------------- Feature Extraction --------------------- #
+
             if self.collectFeatures:
+                # Initialize the new raw features and times.
+                newFeatureTimes, newRawFeatures = [], []
+
                 # Extract features across the dataset
-                while self.lastAnalyzedDataInd[channelIndex] < len(self.data[0]):
-                    featureTime = self.data[0][self.lastAnalyzedDataInd[channelIndex]]
+                while self.lastAnalyzedDataInd[channelIndex] < len(self.timePoints):
+                    featureTime = self.timePoints[self.lastAnalyzedDataInd[channelIndex]]
 
                     # Find the start window pointer.
                     self.startFeatureTimePointer[channelIndex] = self.findStartFeatureWindow(self.startFeatureTimePointer[channelIndex], featureTime, self.featureTimeWindow)
@@ -79,15 +90,19 @@ class eegProtocol(globalProtocol):
                     if self.minPointsPerBatch < len(intervalTimes):
                         # Calculate and save the features in this window.
                         finalFeatures = self.extractFeatures(intervalTimes, intervalData)
-                        self.readData.averageFeatures([featureTime], [finalFeatures], self.featureTimes[channelIndex],
-                                                      self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+
+                        # Keep track of the new features.
+                        newRawFeatures.append(finalFeatures)
+                        newFeatureTimes.append(featureTime)
 
                     # Keep track of which data has been analyzed 
                     self.lastAnalyzedDataInd[channelIndex] += int(self.samplingFreq * self.secondsPerFeature)
 
-            # -------------------------------------------------------------- #   
+                # Compile the new raw features into a smoothened (averaged) feature.
+                self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
 
             # ------------------- Plot Biolectric Signals ------------------ #
+
             if self.plotStreamedData:
                 # Format the raw data:.
                 timePoints = timePoints[dataFinger - startFilterPointer:]  # Shared axis for all signals
@@ -105,7 +120,7 @@ class eegProtocol(globalProtocol):
 
                 # Plot a single feature.
                 if len(self.compiledFeatures[channelIndex]) != 0:
-                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.featureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 0])
+                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.rawFeatureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 0])
                     self.plottingMethods.featureDataPlotAxes[channelIndex].legend(["Hjorth Activity"], loc="upper left")
 
             # -------------------------------------------------------------- #   
@@ -130,7 +145,7 @@ class eegProtocol(globalProtocol):
 
     def findStartFeatureWindow(self, timePointer, currentTime, timeWindow):
         # Loop through until you find the first time in the window 
-        while self.data[0][timePointer] < currentTime - timeWindow:
+        while self.timePoints[timePointer] < currentTime - timeWindow:
             timePointer += 1
 
         return timePointer
@@ -163,10 +178,10 @@ class eegProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(31)]
+            return [0 for _ in range(26)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
-        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 4))
+        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq)
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
         # Note: we are removing the DC component from the power spectrum density.
 
@@ -206,12 +221,6 @@ class eegProtocol(globalProtocol):
         # Calculate band wave power ratios
         engagementLevelEst = betaPower / (alphaPower + thetaPower)
 
-        # Number of zero-crossings
-        num_zerocross = antropy.num_zerocross(data)
-
-        # Frequency Domain Features
-        meanFrequency = np.sum(powerSpectrumDensityFreqs * powerSpectrumDensityNormalized)
-
         # ------------------------------------------------------------------ #
 
         finalFeatures = []
@@ -227,6 +236,6 @@ class eegProtocol(globalProtocol):
         # Feature Extraction: Other
         finalFeatures.extend([deltaPower, thetaPower, alphaPower, betaPower, gammaPower])
         finalFeatures.extend([muPower, beta1Power, beta2Power, beta3Power, smrPower])
-        finalFeatures.extend([engagementLevelEst, num_zerocross, meanFrequency])
+        finalFeatures.extend([engagementLevelEst])
 
         return finalFeatures

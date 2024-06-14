@@ -70,11 +70,11 @@ if __name__ == "__main__":
     allAverageIntervals = [60, 30, 30, 30] # EOG: 120-180; EEG: 60-90; EDA: ?; Temp: 30 - 60
         
     # Compile feature names
-    featureNames, biomarkerFeatureNames, biomarkerOrder = _compileFeatureNames.compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
+    featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = _compileFeatureNames.compileFeatureNames().extractFeatureNames(extractFeaturesFrom)
     
     featureAverageWindows = []
     # Compile feature average windows.
-    for biomarker in biomarkerOrder:
+    for biomarker in biomarkerFeatureOrder:
         featureAverageWindows.append(allAverageIntervals[streamingOrder.index(biomarker)])
         
     # ML Flags
@@ -119,10 +119,10 @@ if __name__ == "__main__":
 
     # Initialize instance to analyze the data
     readData = streamingProtocols.streamingProtocols(None, modelClasses, actionControl, numPointsPerBatch, moveDataFinger, 
-                                                     streamingOrder, biomarkerOrder, featureAverageWindows, plotStreamedData)
+                                                     streamingOrder, extractFeaturesFrom, featureAverageWindows, (None, None), plotStreamedData)
     
     # Take Preprocessed (Saved) Features from Excel Sheet
-    trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerOrder, len(streamingOrder), trainingFolder, readData)
+    trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerFeatureOrder, len(streamingOrder), trainingFolder, readData)
 
     checkFeatureWindow_EEG = False
     if checkFeatureWindow_EEG:
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
         allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-                = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData = plotTrainingData, reanalyzeData = reanalyzeData)    
+                = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, metaTraining=False, reverseOrder=reverseOrder)
     # Assert the validity of the feature extraction
     assert len(allAlignedFeatureHolder[0][0]) == len(featureNames), "Incorrect number of compiled features extracted"
     for analysisInd in range(len(allRawFeatureHolders[0])):

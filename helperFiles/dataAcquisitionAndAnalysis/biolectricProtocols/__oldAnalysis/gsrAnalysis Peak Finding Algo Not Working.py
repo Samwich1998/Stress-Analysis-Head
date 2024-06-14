@@ -227,8 +227,8 @@ class gsrProtocol:
                 peakPointer = 0
                 
                 self.peakAmp = 0
-                while self.lastAnalyzedDataInd < len(self.data[0]):
-                    featureTime = self.data[0][self.lastAnalyzedDataInd]
+                while self.lastAnalyzedDataInd < len(self.timePoints):
+                    featureTime = self.timePoints[self.lastAnalyzedDataInd]
                     self.findStartFeatureWindow(featureTime, peakPresent, subpeakPresent) # logic for startFeatureTimePointer and startPeakTimePointer
                     
                     intervalTimesSCL = timePoints[self.startFeatureTimePointer - dataFinger:self.lastAnalyzedDataInd+1 - dataFinger]
@@ -276,7 +276,7 @@ class gsrProtocol:
                     self.plotPeaks(peakPresent, prevPeakPresent, subpeakPresent, prevSubpeakPresent, timePoints, normalizedData)
                     
                     # Keep track of the new features
-                    self.readData.averageFeatures([featureTime], [gsrFeatures], self.featureTimes, self.rawFeatures, self.compiledFeatures, self.featureAverageWindow)
+                    self.readData.compileContinuousFeatures([featureTime], [gsrFeatures], self.rawFeatureTimes, self.rawFeatures, self.compiledFeatures, self.featureAverageWindow)
                 
                     # Keep track of which data has been analyzed 
                     self.lastAnalyzedDataInd += int(self.samplingFreq*1)

@@ -220,7 +220,7 @@ class pytorchPipeline:
                 
     def printModelParams(self):
         for name, param in self.model.named_parameters():
-            print(name, param.data)
+            print(name, param.channelData)
             break
             
     def plotPredictions(self, allTrainingLabels, allTestingLabels, allPredictedTrainingLabels, allPredictedTestingLabels, plotTitle = "Emotion Prediction"):

@@ -1,14 +1,10 @@
-
-# --------------------------------------------------------------------------- #
-# ---------------------------- Imported Packages ---------------------------- #
-
-# Basic modules
 import os
 import sklearn
 import itertools
-# Plotting kodules
 import matplotlib.pyplot as plt
+
 # Supress tensorflow warnings
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # Tensorflow and keras modules
 import keras

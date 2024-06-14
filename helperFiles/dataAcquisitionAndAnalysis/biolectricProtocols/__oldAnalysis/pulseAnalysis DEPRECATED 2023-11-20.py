@@ -31,7 +31,7 @@ import pulsePlottingProtocols
 
 class pulseAnalysis(_globalProtocol.globalProtocol):
     
-    def __init__(self, numPointsPerBatch = 3000, moveDataFinger = 10, numChannels = 2, plottingClass = None, readData = None):
+    def __init__(self, numPointsPerBatch = 3000, moveDataFinger = 10, channelIndices = (), plottingClass = None, readData = None):
         """
         ----------------------------------------------------------------------
         Input Parameters:
@@ -52,7 +52,7 @@ class pulseAnalysis(_globalProtocol.globalProtocol):
         self.resetGlobalVariables()
         
         # Initialize common model class
-        super().__init__("pulse", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
+        super().__init__("pulse", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
 
     def checkParams(self):
         pass

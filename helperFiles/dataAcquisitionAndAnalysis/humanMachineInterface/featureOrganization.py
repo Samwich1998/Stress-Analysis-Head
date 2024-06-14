@@ -1,212 +1,268 @@
-# -------------------------------------------------------------------------- #
-# ---------------------------- Imported Modules ---------------------------- #
-
-# General Modules
-import scipy
+from scipy.interpolate import Akima1DInterpolator
+import collections
 import numpy as np
+import scipy
 
 # Import files.
 from .humanMachineInterface import humanMachineInterface
 
+# Parameters for the streamingProtocolHelpers class:
+#     Biomarker information:
+#         biomarkerFeatureOrder: A list of biomarkers that require features in streamingOrder; Dim: numFeatureSignals
+#         featureAnalysisOrder: A list of unique biomarkers that require features in streamingOrder; Dim: numUniqueFeatureSignals
+#
+#     Analysis information:
+#         featureAnalysisList: A list of unique analysis protocols in featureAnalysisOrder; Dim: numUniqueFeatureSignals
+#         analysisList: A list of unique analysis protocols; Dim: numUniqueSignals
+#
+#     Feature information:
+#         rawFeatureTimesHolder: A list (in biomarkerFeatureOrder) of lists of raw feature's times; Dim: numFeatureSignals, numPoints
+#         rawFeatureHolder: A list (in biomarkerFeatureOrder) of lists of raw features; Dim: numFeatureSignals, numPoints, numBiomarkerFeatures
 
-# -------------------------------------------------------------------------- #
-# ---------------------------- Global Function ----------------------------- #
 
 class featureOrganization(humanMachineInterface):
 
-    def __init__(self, modelClasses, actionControl, analysisProtocols, biomarkerOrder, biomarkerChannelIndices, featureAverageWindows):
-        super().__init__(modelClasses, actionControl)
+    def __init__(self, modelClasses, actionControl, analysisProtocols, extractFeaturesFrom, featureAverageWindows):
+        super().__init__(modelClasses, actionControl, extractFeaturesFrom)
         # General parameters.
-        self.biomarkerOrder = biomarkerOrder  # The biomarker order for feature analysis.
-        self.biomarkerChannelIndices = biomarkerChannelIndices  # The channel index of each biomarker in biomarkerOrder.
+        self.featureAnalysisOrder = list(collections.OrderedDict.fromkeys(self.biomarkerFeatureOrder))  # The set of unique feature biomarkers, maintaining the order they will be analyzed. Ex: ['eog', 'eeg', 'eda']
+        self.newSamplingFreq = self.compileModelInfo.newSamplingFreq  # The new sampling frequency for the data for the machine learning model.
+        self.minNumExperimentalPoints = 10  # The minimum number of points required for an experimental interval.
+        self.biomarkerFeatureInds = []  # The indices of the biomarker features in the featureNames; Dim: numBiomarkers, numBiomarkerFeatures
+        self.featureAnalysisList = []  # A list of unique analyses that will have features, keeping the order they are streamed in.
+        self.interpBufferPoints = 8  # The buffer for the edge of the feature interpolation.
+        self.trimMeanCut = 0.25  # The proportion to cut for the trimmed mean.
 
         # Assert the integrity of feature organization.
-        assert len(featureAverageWindows) == len(biomarkerOrder), \
-            f"Found {featureAverageWindows} windows for {biomarkerOrder} biomarkers. These must to be the same length."
+        assert len(featureAverageWindows) == len(self.biomarkerFeatureOrder), f"Found {featureAverageWindows} windows for {self.biomarkerFeatureOrder} biomarkers. These must to be the same length."
 
-        self.analysisList_WithFeatures = []  # A list of all analyses that will have features, keeping the order they are streamed in.
-        # Loop through each analysis requiring feature collection.
-        for biomarkerInd in range(len(self.biomarkerOrder)):
-            biomarkerType = self.biomarkerOrder[biomarkerInd]
+        # Loop through each analysis requiring collecting features.
+        for biomarkerInd in range(len(self.featureAnalysisOrder)):
+            biomarkerType = self.featureAnalysisOrder[biomarkerInd]
+
+            # Get the channel indices for the biomarker.
+            featureChannelIndices = np.where(self.biomarkerFeatureOrder == biomarkerType)[0]
 
             # Specify the parameters to collect features.
-            analysisProtocols[biomarkerType].setFeatureCollectionParams(featureAverageWindows[biomarkerInd])
-            self.analysisList_WithFeatures.append(analysisProtocols[biomarkerType])
+            analysisProtocols[biomarkerType].setFeatureCollectionParams(featureAverageWindows[biomarkerInd], featureChannelIndices)
+            self.featureAnalysisList.append(analysisProtocols[biomarkerType])
 
-            # Initialize mutable variables.
+        startBiomarkerInd = 0; endBiomarkerInd = 0
+        # Loop through each biomarker's list of features names.
+        for biomarkerInd in range(len(self.biomarkerFeatureNames)):
+            numBiomarkerFeatures = len(self.biomarkerFeatureNames[biomarkerInd])
+            endBiomarkerInd = startBiomarkerInd + numBiomarkerFeatures
+
+            # Store the feature indices for this biomarker.
+            self.biomarkerFeatureInds.append(np.arange(startBiomarkerInd, endBiomarkerInd, 1))
+            startBiomarkerInd = endBiomarkerInd
+        assert endBiomarkerInd == len(self.featureNames), f"Found {endBiomarkerInd} biomarker features and {len(self.featureNames)} features. These must be the same length."
+
+        # Holder parameters.
+        self.rawFeatureTimesHolder = None  # A list (in biomarkerFeatureOrder) of lists of raw feature's times; Dim: numFeatureSignals, numPoints
+        self.alignmentDataPointers = None  # A list of pointers indicating the last seen aligned feature index for each analysis
+        self.rawFeaturePointers = None  # A list of pointers indicating the last seen raw feature index for each analysis and each channel.
+        self.rawFeatureHolder = None  # A list (in biomarkerFeatureOrder) of lists of raw features; Dim: numFeatureSignals, numPoints, numBiomarkerFeatures
+
+        # Initialize mutable variables.
         self.resetFeatureInformation()
 
     def resetFeatureInformation(self):
         self.resetVariables_HMI()
-        # Experimental information
-        self.experimentTimes = []  # A list of lists of [start, stop] times of each experiment, where each element represents the times for one experiment. None means no time recorded.
-        self.experimentNames = []  # A list of names for each experiment, where len(experimentNames) == len(experimentTimes).
+        # Reset the analysis information
+        for featureAnalysis in self.featureAnalysisList:
+            featureAnalysis.resetAnalysisVariables()
 
         # Raw feature data structure
-        self.rawFeatureHolder = [[] for _ in range(len(self.biomarkerOrder))]  # A list (in biomarkerOrder) of lists of raw features extraction at the current timepoint.
-        self.rawFeatureTimesHolder = [[] for _ in range(len(self.biomarkerOrder))]  # A list (in biomarkerOrder) of lists of each features' times in biomarkerOrder.
+        self.rawFeatureTimesHolder = [[] for _ in range(len(self.biomarkerFeatureOrder))]  # A list (in biomarkerFeatureOrder) of lists of raw feature's times; Dim: numFeatureSignals, numPoints
+        self.rawFeatureHolder = [[] for _ in range(len(self.biomarkerFeatureOrder))]  # A list (in biomarkerFeatureOrder) of lists of raw features; Dim: numFeatureSignals, numPoints, numBiomarkerFeatures
 
         # Feature collection parameters
-        self.alignmentPointers = [0 for _ in range(len(self.biomarkerOrder))]  # A list of pointers indicating the last seen aligned feature index for each analysis
-        self.rawFeaturePointers = [0 for _ in range(len(self.biomarkerOrder))]  # A list of pointers indicating the last seen raw feature index for each analysis
+        self.alignmentDataPointers = np.zeros(len(self.biomarkerFeatureOrder), dtype=int)  # A list of pointers indicating the last seen aligned feature index for each analysis.
+        self.rawFeaturePointers = np.zeros(len(self.biomarkerFeatureOrder), dtype=int)  # A list of pointers indicating the last seen raw feature index for each analysis.
 
     def unifyFeatureTimeWindows(self, featureTimeWindow):
-        # Set the time window for EEG analysis.
-        self.analysisProtocols['eeg'].featureTimeWindow = featureTimeWindow
-        # Set the time window for EDA analysis.
-        self.analysisProtocols['eda'].featureTimeWindow_Phasic = featureTimeWindow
-        self.analysisProtocols['eda'].featureTimeWindow_Tonic = featureTimeWindow
-        # Set the time window for temperature analysis.
-        self.analysisProtocols['temp'].featureTimeWindow = featureTimeWindow
+        for featureAnalysis in self.featureAnalysisList:
+            featureAnalysis.featureTimeWindow = featureTimeWindow
 
-    # ---------------------------------------------------------------------- #
     # --------------------- Organize Incoming Features --------------------- #
 
     def organizeRawFeatures(self):
-        # Loop through and compile each analysis' raw features
-        for analysisInd in range(len(self.biomarkerOrder)):
-            rawFeaturePointer = self.rawFeaturePointers[analysisInd]
-            channelIndex = self.biomarkerChannelIndices[analysisInd]
-            analysis = self.analysisList_WithFeatures[analysisInd]
+        # For each unique analysis.
+        for analysis in self.featureAnalysisList:
 
-            # Organize the raw features
-            self.rawFeatureHolder[analysisInd].extend(analysis.rawFeatures[channelIndex][rawFeaturePointer:])
-            self.rawFeatureTimesHolder[analysisInd].extend(analysis.featureTimes[channelIndex][rawFeaturePointer:])
-            # Update the raw pointers.
-            self.rawFeaturePointers[analysisInd] += len(analysis.rawFeatures[channelIndex][rawFeaturePointer:])
+            # For each channel in the analysis.
+            for featureChannelInd in range(len(analysis.featureChannelIndices)):
+                biomarkerInd = analysis.featureChannelIndices[featureChannelInd]
+                rawFeaturePointer = self.rawFeaturePointers[biomarkerInd]
 
-    def alignFeatures(self, lastTimePoint, secondsPerPoint, rawFeatureTimesHolder=None, compiledFeatureHolders=None):
-        # Create a time interval to interpolate the features.
-        startTime = self.alignedFeatureTimes[-1] + secondsPerPoint if len(self.alignedFeatureTimes) != 0 else 0
-        newInterpolatedTimes = np.arange(startTime, lastTimePoint + secondsPerPoint, secondsPerPoint)
-        # If the time interval is empty, then we need to read in more points.
-        if len(newInterpolatedTimes) == 0:
-            return None
+                # Organize the raw features; NOTE: I am assuming that the raw features are in order of the featureChannelIndices.
+                self.rawFeatureTimesHolder[biomarkerInd].extend(analysis.rawFeatureTimes[featureChannelInd][rawFeaturePointer:])
+                self.rawFeatureHolder[biomarkerInd].extend(analysis.rawFeatures[featureChannelInd][rawFeaturePointer:])
 
-        # Check which feature times to add
-        for currentTime in newInterpolatedTimes:
+                # Update the raw pointers.
+                self.rawFeaturePointers[biomarkerInd] = len(analysis.rawFeatureTimes[featureChannelInd])
 
-            alignedFeatures = []
-            # Loop through and compile each analysis' features
-            for analysisInd in range(len(self.biomarkerOrder)):
-                alignmentPointer = self.alignmentPointers[analysisInd]
+    def findCommonTimeRange(self):
+        # Set up the parameters.
+        rightAlignedTime = np.inf
+        leftAlignedTime = 0
 
-                # Get the feature information
-                if rawFeatureTimesHolder is None:
-                    # Get the features from the streaming analsyis.
-                    channelIndex = self.biomarkerChannelIndices[analysisInd]
-                    alignedFeatureTimes = self.analysisList_WithFeatures[analysisInd].featureTimes[channelIndex]
-                    compiledFeatures = self.analysisList_WithFeatures[analysisInd].compiledFeatures[channelIndex]
-                else:
-                    # Get the features from the information passed in.
-                    alignedFeatureTimes = rawFeatureTimesHolder[analysisInd]
-                    compiledFeatures = compiledFeatureHolders[analysisInd]
+        # For each unique analysis.
+        for analysis in self.featureAnalysisList:
+            # For each channel in the analysis.
+            for featureChannelInd in range(len(analysis.featureChannelIndices)):
 
-                # Check: is there a feature below the currentTime for inteprolation.
-                if len(alignedFeatureTimes) == 0 or alignedFeatureTimes[alignmentPointer] > currentTime:
-                    break
-                # Find the time right before currentTime
-                while alignedFeatureTimes[alignmentPointer] <= currentTime:
-                    # Look at the next feature
-                    alignmentPointer += 1
-                    # If no time before AND after currentTime, you cant interpolate in between
-                    if alignmentPointer == len(alignedFeatureTimes):
-                        return None
-                self.alignmentPointers[analysisInd] = alignmentPointer - 1
+                # Update the min/max times.
+                if len(analysis.rawFeatureTimes[featureChannelInd]) != 0:
+                    leftAlignedTime = max(leftAlignedTime, analysis.rawFeatureTimes[featureChannelInd][0])
+                    rightAlignedTime = min(rightAlignedTime, analysis.rawFeatureTimes[featureChannelInd][-1])
 
-                # Specify the variables
-                t1, t2 = alignedFeatureTimes[alignmentPointer - 1], alignedFeatureTimes[alignmentPointer]
-                compiledFeatureLeft, compiledFeatureRight = compiledFeatures[alignmentPointer - 1], compiledFeatures[alignmentPointer]
+        # Check if the time range is valid.
+        if np.isinf(rightAlignedTime):
+            return None, None
 
-                # Interpolate the feature
-                alignedFeaturePoint = []
-                for featureInd in range(len(compiledFeatureLeft)):
-                    y1, y2 = compiledFeatureLeft[featureInd], compiledFeatureRight[featureInd]
-                    # Interpolate the features
-                    alignedFeaturePoint.append(y1 + ((y2 - y1) / (t2 - t1)) * (currentTime - t1))
+        return leftAlignedTime, rightAlignedTime
 
-                # Smooth data using convolution
-                alignedFeaturePoint = scipy.signal.savgol_filter(alignedFeaturePoint, window_length=5, polyorder=3, mode='interp', deriv=0)
+    def alignFeatures(self):
+        # Create a time interval for interpolation.
+        leftAlignedTime, rightAlignedTime = self.findCommonTimeRange()
+        if rightAlignedTime is None: return None
 
-                # Compile the features from each analysis
-                alignedFeatures.extend(alignedFeaturePoint)
-            else:
-                # If ALL the features are found for currentTime, add the point
-                self.alignedFeatures.append(alignedFeatures)
-                self.alignedFeatureTimes.append(currentTime)
-                # Record the item being shown to the user
-                self.alignedUserNames.append(self.userName)
+        # Do not re-interpolate all the data.
+        if len(self.alignedFeatureTimes) != 0:
+            leftAlignedTime = self.alignedFeatureTimes[-1] + 1 / self.newSamplingFreq
 
-                # itemName = "Baseline"
-                # for experimentInd in range(len(self.experimentNames)):
-                #     startTime, endTime = self.experimentTimes[experimentInd]
+        # Create the new time interval for interpolation.
+        newInterpolatedTimes = np.arange(leftAlignedTime, rightAlignedTime, 1 / self.newSamplingFreq)
 
-                #     if startTime <= currentTime:
-                #         itemName = self.experimentNames[experimentInd]
-                #         if itemName.isdigit(): itemName = "Music"
-                #         elif itemName == "Recovery": itemName = "Baseline"
-                #         elif "VR" in itemName.split(" - "): itemName = "VR"
-                #     if endTime == None or currentTime <= endTime:
-                #         break
-                #     itemName = "Baseline"
-                # self.alignedItemNames.append(itemName)
+        # Store the new time points.
+        numPreviousPoints = len(self.alignedFeatureTimes)
+        self.alignedFeatureTimes.extend(newInterpolatedTimes.tolist())
 
-                # if len(self.experimentTimes) == 0 or self.experimentTimes[-1][1] != None:
-                #     self.alignedItemNames.append("Baseline")
-                # else:
-                #     self.alignedItemNames.append(self.experimentNames[experimentInd])
+        # Calculate the number of new points.
+        numNewPoints = len(self.alignedFeatureTimes) - numPreviousPoints
+        newInterpolatedFeatureTimes = self.alignedFeatureTimes[-numNewPoints - self.interpBufferPoints:]
 
-    # ---------------------------------------------------------------------- #
+        # For each unique analysis.
+        for analysis in self.featureAnalysisList:
+
+            # For each channel in the analysis.
+            for featureChannelInd in range(len(analysis.featureChannelIndices)):
+                biomarkerInd = analysis.featureChannelIndices[featureChannelInd]
+                rawFeatureTimes = analysis.rawFeatureTimes[featureChannelInd]
+                biomarkerFeatureInds = self.biomarkerFeatureInds[biomarkerInd]
+
+                # Get the feature information.
+                alignmentDataPointer = max(0, self.alignmentDataPointers[biomarkerInd] - self.interpBufferPoints)
+                compiledFeatures = analysis.compiledFeatures[featureChannelInd][alignmentDataPointer:]
+                compiledFeatureTimes = rawFeatureTimes[alignmentDataPointer:]
+
+                # Interpolate the features.
+                makimaInterpFunc = Akima1DInterpolator(compiledFeatureTimes, compiledFeatures, method='makima', axis=0)
+                alignedFeatures = makimaInterpFunc(newInterpolatedFeatureTimes).T
+                # alignedFeatures dim: numBiomarkerFeatures, numPoints
+
+                # Extract the dimensional information.
+                numBiomarkerFeatures, numPoints = alignedFeatures.shape
+                numOldPoints = numPoints - numNewPoints
+
+                # Assert the integrity of the feature alignment.
+                assert numBiomarkerFeatures == len(biomarkerFeatureInds), f"Found {numBiomarkerFeatures} biomarker features and {len(biomarkerFeatureInds)} feature indices. These must be the same length."
+
+                # Store the aligned features.
+                for compiledFeatureInd, featureInd in enumerate(biomarkerFeatureInds):
+                    self.alignedFeatures[featureInd][-numOldPoints:] = alignedFeatures[compiledFeatureInd, 0:numOldPoints].tolist()
+                    self.alignedFeatures[featureInd].extend(alignedFeatures[compiledFeatureInd, numOldPoints:].tolist())
+
+                    # Assert the integrity of the feature alignment.
+                    assert len(self.alignedFeatures[featureInd]) == len(self.alignedFeatureTimes), f"Found {len(self.alignedFeatures[featureInd])} aligned features and {len(self.alignedFeatureTimes)} aligned times. These must be the same length."
+
+                # Update the alignment pointers.
+                while rawFeatureTimes[self.alignmentDataPointers[biomarkerInd]] <= self.alignedFeatureTimes[-1]:
+                    self.alignmentDataPointers[biomarkerInd] += 1
+
+                    # Check if the alignment pointer is at the end of the data.
+                    if self.alignmentDataPointers[biomarkerInd] == len(rawFeatureTimes): break
+                # Do not overshoot the final aligned time.
+                self.alignmentDataPointers[biomarkerInd] -= 1
+
     # ---------------------- Compile Incoming Features --------------------- #
 
-    @staticmethod
-    def getFinalFeatures(rawFeatureTimes, rawFeatures, timeInterval):
-        startTime, endTime = timeInterval
+    def compileModelFeatures(self, featureTimes, features, startTime, endTime):
         # Locate the experiment indices within the data
-        endExperimentInd = np.searchsorted(rawFeatureTimes, endTime, side='left')
-        startExperimentInd = np.searchsorted(rawFeatureTimes, startTime, side='left')
-        # Take the inner portion of the interval
-        featureIntervals = rawFeatures[startExperimentInd:endExperimentInd, :]
-        # Ensure enough points in the interval.
-        while len(featureIntervals) < 1:
-            endExperimentInd = endExperimentInd + 1
-            startExperimentInd = max(0, startExperimentInd - 1);
-            featureIntervals = rawFeatures[startExperimentInd:endExperimentInd, :]
+        endStimuliInd = np.searchsorted(featureTimes, endTime, side='left')
+        startStimuliInd = np.searchsorted(featureTimes, startTime, side='right')
 
-        # Average each feature across ALL biomarkers.
-        finalFeatures = scipy.stats.trim_mean(featureIntervals, 0.2, axis=0)
-        return finalFeatures
+        # Check if the time range is valid.
+        if endStimuliInd - startStimuliInd <= self.minNumExperimentalPoints:
+            return None, None
 
-    @staticmethod
-    def averageFeatures(newFeatureTimes, newRawFeatures, rawFeatureTimes, rawFeatures, compiledFeatures, averageWindow):
-        # For each new raw feature
-        for newFeatureInd in range(len(newFeatureTimes)):
-            newRawFeature = newRawFeatures[newFeatureInd]
-            newFeatureTime = newFeatureTimes[newFeatureInd]
+        # Save raw interval information
+        featureIntervalTimes = [featureTimes[startStimuliInd:endStimuliInd] for _ in range(len(features[0]))]
+        featureIntervals = features[:, startStimuliInd:endStimuliInd]
 
-            # Keep track of the new features
-            rawFeatures.append(newRawFeature)
-            rawFeatureTimes.append(newFeatureTime)
+        return featureIntervals, featureIntervalTimes
 
-            # Track the running average of the features
-            featureInterval = np.array(rawFeatures)[np.array(rawFeatureTimes) >= newFeatureTime - averageWindow]
-            newCompiledFeature = scipy.stats.trim_mean(featureInterval, 0.2, axis=0)
-            compiledFeatures.append(newCompiledFeature)
+    def averageFeatures_static(self, rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=0):
+        # Ensure the proper initial data structure.
+        rawFeatureTimes = np.asarray(rawFeatureTimes)
+        rawFeatures = np.asarray(rawFeatures)
 
-    @staticmethod
-    def averageFeatures_DEPRECATED(rawFeatureTimes, rawFeatures, averageWindow):
         compiledFeatures = []
         # Average the Feature Together at Each Point
-        for featureInd in range(len(rawFeatures)):
+        for featureInd in range(startTimeInd, len(rawFeatures)):
+            currentTimepoint = rawFeatureTimes[featureInd]
+
             # Get the interval of features to average
             featureMask = np.logical_and(
-                rawFeatureTimes <= rawFeatureTimes[featureInd],
-                rawFeatureTimes >= rawFeatureTimes[featureInd] - averageWindow
+                currentTimepoint - averageWindow <= rawFeatureTimes,
+                rawFeatureTimes <= currentTimepoint,
             )
             featureInterval = rawFeatures[featureMask]
 
             # Take the trimmed average
-            compiledFeature = scipy.stats.trim_mean(featureInterval, 0.3)
+            compiledFeature = scipy.stats.trim_mean(featureInterval, proportiontocut=self.trimMeanCut, axis=0)
             compiledFeatures.append(compiledFeature)
 
         return compiledFeatures
+
+    def compileContinuousFeatures(self, newFeatureTimes, newRawFeatures, rawFeatureTimes, rawFeatures, compiledFeatures, averageWindow):
+        # Assert the integrity of the feature compilation.
+        assert len(newFeatureTimes) == len(newRawFeatures), f"Found {len(newFeatureTimes)} new times and {len(newRawFeatures)} new features. These must be the same length."
+        assert len(rawFeatureTimes) == len(rawFeatures), f"Found {len(rawFeatureTimes)} times and {len(rawFeatures)} features. These must be the same length."
+        if len(newFeatureTimes) == 0: return None
+
+        startTimeInd = len(rawFeatures)
+        # Append the new features to the raw features
+        rawFeatureTimes.extend(newFeatureTimes)
+        rawFeatures.extend(newRawFeatures)
+
+        # Perform the feature averaging
+        newCompiledFeatures = self.averageFeatures_static(rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=startTimeInd)
+        compiledFeatures.extend(newCompiledFeatures)
+
+        # Assert the integrity of the feature compilation.
+        assert len(rawFeatures) == len(compiledFeatures), f"Found {len(rawFeatures)} raw features and {len(compiledFeatures)} compiled features. These must be the same length."
+
+    def compileStaticFeatures(self, rawFeatureTimesHolder, rawFeatureHolder, featureAverageWindows):
+        # Assert the integrity of the feature compilation.
+        assert len(rawFeatureTimesHolder) == len(rawFeatureHolder), \
+            f"Found {len(rawFeatureTimesHolder)} times and {len(rawFeatureHolder)} features. These must be the same length."
+
+        compiledFeatureHolders = []
+        # Average the features across a sliding window at each timePoint
+        for biomarkerInd in range(len(rawFeatureTimesHolder)):
+            rawFeatureTimes = rawFeatureTimesHolder[biomarkerInd]
+            averageWindow = featureAverageWindows[biomarkerInd]
+            rawFeatures = rawFeatureHolder[biomarkerInd]
+
+            # Assert the integrity of the feature compilation.
+            assert len(rawFeatureTimes) == len(rawFeatures), \
+                f"Found {len(rawFeatureTimes)} times and {len(rawFeatures)} features. These must be the same length."
+
+            # Perform the feature averaging
+            compiledFeatures = self.averageFeatures_static(rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=0)
+            compiledFeatureHolders.append(compiledFeatures)
+
+        return compiledFeatureHolders

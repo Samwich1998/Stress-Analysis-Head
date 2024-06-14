@@ -2,19 +2,19 @@ import random
 
 # Import helper files.
 from helperFiles.machineLearning.modelControl.Models.pyTorch.modelArchitectures.emotionModelInterface.emotionModel.emotionModelHelpers.generalMethods.generalMethods import generalMethods
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.emognitionInterface import emognitionInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.amigosInterface import amigosInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.dapperInterface import dapperInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.wesadInterface import wesadInterface
-from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.caseInterface import caseInterface
 
 
 class modelParameters:
+
     def __init__(self, userInputParams, accelerator=None):
         # General parameters
         self.gpuFlag = accelerator.device.type == 'cuda'
         self.userInputParams = userInputParams
         self.accelerator = accelerator
+
+        # General parameters
+        self.timeWindows = self.getTimeWindows()  # The time windows to consider.
+        self.maxNumSignals = 138  # The maximum number of signals to consider.
 
         # Helper classes.
         self.generalMethods = generalMethods()
@@ -35,12 +35,12 @@ class modelParameters:
         return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
     def getTrainingBatchSize(self, submodel, metaDatasetName):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 223 signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
+        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 86 signals.
+        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 63 signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 138 signals.
+        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 31 signals.
+        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 63 signals.
+        # Collected: Found 30 (out of 30) well-labeled emotions across 194 experiments with 92 signals.
 
         if submodel == "signalEncoder":
             totalMinBatchSize = 16
@@ -62,25 +62,25 @@ class modelParameters:
         if metaDatasetName in ['wesad']: return minimumBatchSize  # 1 times larger than the smallest dataset.
 
         # Specify the small-medium batch size datasets.
-        if metaDatasetName in ['empatch']: return 2 * minimumBatchSize  # 2.5466 times larger than the smallest dataset.
+        if metaDatasetName in ['empatch']: return 2 * minimumBatchSize  # 2.5866 times larger than the smallest dataset.
         if metaDatasetName in ['amigos']: return 2 * minimumBatchSize  # 2.3733 times larger than the smallest dataset.
 
         # Specify the medium batch size datasets.
-        if metaDatasetName in ['emognition']: return 4 * minimumBatchSize  # 5.4266 times larger than the smallest dataset.
-        if metaDatasetName in ['dapper']: return 4 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
+        if metaDatasetName in ['emognition']: return 5 * minimumBatchSize  # 5.4266 times larger than the smallest dataset.
+        if metaDatasetName in ['dapper']: return 5 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
 
         # Specify the large batch size datasets.
-        if metaDatasetName in ['case']: return 8 * minimumBatchSize  # 22 times larger than the smallest dataset.
+        if metaDatasetName in ['case']: return 12 * minimumBatchSize  # 22 times larger than the smallest dataset.
 
         assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
 
     def getInferenceBatchSize(self, submodel, numSignals):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 128 signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 99 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 223 signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 41 signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 87 signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 191 experiments with 183 signals.
+        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 86 signals.
+        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 63 signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 138 signals.
+        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 31 signals.
+        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 63 signals.
+        # Collected: Found 30 (out of 30) well-labeled emotions across 194 experiments with 92 signals.
         # Set the minimum batch size.
         minimumBatchSize = 16 if self.gpuFlag else 8
 
@@ -93,9 +93,8 @@ class modelParameters:
         else:
             raise Exception()
 
-        maxNumSignals = 223
         # Adjust the batch size based on the number of signals used.
-        maxBatchSize = int(minimumBatchSize * maxNumSignals / numSignals)
+        maxBatchSize = int(minimumBatchSize * self.maxNumSignals / numSignals)
         maxBatchSize = min(maxBatchSize, numSignals)  # Ensure the maximum batch size is not larger than the number of signals.
 
         return maxBatchSize
@@ -153,12 +152,16 @@ class modelParameters:
         return 1  # Some wavelets constrained to +/- 1.
 
     @staticmethod
-    def getSequenceLength(submodel, sequenceLength):
+    def getTimeWindows():
+        return [90, 120, 150, 180, 210, 240]
+
+    def getSequenceLength(self, submodel, sequenceLength):
         if submodel == "signalEncoder":
-            return 90, 240
+            return self.timeWindows[0], self.timeWindows[-1]
         elif submodel == "autoencoder":
-            return 90, 240
+            return self.timeWindows[0], self.timeWindows[-1]
         elif submodel == "emotionPrediction":
+            assert self.timeWindows[0] <= sequenceLength <= self.timeWindows[-1], "The sequence length must be within the trained time windows."
             return sequenceLength, sequenceLength
         else:
             raise Exception()
@@ -171,6 +174,8 @@ class modelParameters:
             return ["wesad", "emognition", "amigos", "dapper", "case"], 40, 50
         elif submodel == "emotionPrediction":
             return ['case', 'amigos'], 4, 2
+        elif submodel == "maxShift":
+            return 50
         else:
             raise Exception()
 
@@ -252,16 +257,14 @@ class modelParameters:
     @staticmethod
     def compileModelNames():
         # Specify which metadata analyses to compile
-        metaProtocolInterfaces = [wesadInterface(), emognitionInterface(), amigosInterface(), dapperInterface(), caseInterface()]
         metaDatasetNames = ["wesad", "emognition", "amigos", "dapper", "case"]
         datasetNames = ['empatch']
         allDatasetNames = metaDatasetNames + datasetNames
 
         # Assert the integrity of dataset collection.
-        assert len(metaProtocolInterfaces) == len(metaDatasetNames)
         assert len(datasetNames) == 1
 
-        return datasetNames, metaDatasetNames, allDatasetNames, metaProtocolInterfaces
+        return datasetNames, metaDatasetNames, allDatasetNames
 
     @staticmethod
     def compileParameters(args):

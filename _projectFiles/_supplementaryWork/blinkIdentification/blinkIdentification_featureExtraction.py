@@ -85,7 +85,7 @@ def train_eval_model(hidden_size, dropout, debug=False, min_test_accuracy=float(
             optimizer.step()
 
             # Convert outputs to predictions
-            _, predicted = torch.max(outputs.data, 1)
+            _, predicted = torch.max(outputs.channelData, 1)
             all_preds.extend(predicted.tolist())
             all_labels.extend(labels.tolist())
 
@@ -105,7 +105,7 @@ def train_eval_model(hidden_size, dropout, debug=False, min_test_accuracy=float(
             for inputs, labels in test_loader:
                 outputs = model(inputs)
                 all_outputs.extend(outputs.tolist())
-                _, predicted = torch.max(outputs.data, 1)
+                _, predicted = torch.max(outputs.channelData, 1)
                 all_val_preds.extend(predicted.tolist())
                 all_val_labels.extend(labels.tolist())
 
@@ -198,7 +198,7 @@ def train_eval_model(hidden_size, dropout, debug=False, min_test_accuracy=float(
             for inputs, labels in test_loader:
                 outputs = model(inputs)
                 all_outputs.extend(outputs.tolist())
-                _, predicted = torch.max(outputs.data, 1)
+                _, predicted = torch.max(outputs.channelData, 1)
                 all_val_preds.extend(predicted.tolist())
                 all_val_labels.extend(labels.tolist())
 

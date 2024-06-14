@@ -6,37 +6,44 @@ import scipy
 from .globalProtocol import globalProtocol
 
 
-# ---------------------------------------------------------------------------#
-# ---------------------------------------------------------------------------#
-
 class edaProtocol(globalProtocol):
 
-    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, numChannels=2, plottingClass=None, readData=None):
-        # Feature collection parameters
-        self.secondsPerFeature = 1  # The duration of time that passes between each feature.
-        self.featureTimeWindow_Tonic = 60  # The duration of time that each feature considers.
-        self.featureTimeWindow_Phasic = 15  # The duration of time that each feature considers.
+    def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
+        super().__init__("eda", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
+        # Feature collection parameters.
         self.startFeatureTimePointer_Phasic = []  # The start pointer of the feature window interval.
         self.startFeatureTimePointer_Tonic = []  # The start pointer of the feature window interval.
+        self.featureTimeWindow_Phasic = None  # The duration of time that each feature considers.
+        self.featureTimeWindow_Tonic = None  # The duration of time that each feature considers.
         self.minPointsPerBatchPhasic = 0  # The minimum number of points required to extract features.
         self.minPointsPerBatchTonic = 0  # The minimum number of points required to extract features.
 
-        # Filter Parameters
+        # Filter Parameters.
         self.tonicFrequencyCutoff = 0.05  # Maximum tonic component frequency.
-        self.dataPointBuffer = 5000  # A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
         self.cutOffFreq = [None, 15]  # Filter cutoff frequencies: [HPF, LPF].
 
-        # Initialize common model class
-        super().__init__("eda", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
+        # Finalize the protocol parameters.
+        self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer_Phasic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
         self.startFeatureTimePointer_Tonic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
 
+        # Confirm the feature time windows are set.
+        self.featureTimeWindow_Phasic = self.featureTimeWindow_highFreq  # The duration of time that each feature considers.
+        self.featureTimeWindow_Tonic = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers.
+
+        # Finalize the protocol parameters.
+        self.resetGlobalVariables()
+        self.checkParams()
+
     def checkParams(self):
-        assert self.featureTimeWindow_Tonic < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
+        self.checkGlobalParams()
+
+        # Confirm the buffer is large enough for the feature window.
         assert self.featureTimeWindow_Phasic < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
+        assert self.featureTimeWindow_Tonic < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
 
     def setSamplingFrequencyParams(self):
         maxFeatureTimeWindow = max(self.featureTimeWindow_Tonic, self.featureTimeWindow_Phasic, 15)
@@ -57,8 +64,8 @@ class edaProtocol(globalProtocol):
             # ---------------------- Filter the Data ----------------------- #    
             # Find the starting/ending points of the data to analyze
             startFilterPointer = max(dataFinger - self.dataPointBuffer, 0)
-            dataBuffer = np.array(self.data[1][channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
-            timePoints = np.array(self.data[0][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            dataBuffer = np.array(self.channelData[channelIndex][startFilterPointer:dataFinger + self.numPointsPerBatch])
+            timePoints = np.array(self.timePoints[startFilterPointer:dataFinger + self.numPointsPerBatch])
 
             # Extract sampling frequency from the first batch of data
             if not self.samplingFreq:
@@ -74,12 +81,14 @@ class edaProtocol(globalProtocol):
             # ---------------------- Feature Extraction --------------------- #
             if self.collectFeatures:
                 # Confirm assumptions made about EDA feature extraction
-                assert dataFinger <= self.lastAnalyzedDataInd[channelIndex], str(dataFinger) + "; " + str(
-                    self.lastAnalyzedDataInd[channelIndex])  # We are NOT analyzing data in the buffer region. self.startTimePointerSCL CAN be in the buffer region.
+                assert dataFinger <= self.lastAnalyzedDataInd[channelIndex], f"{dataFinger}; {self.lastAnalyzedDataInd[channelIndex]}"  # We are NOT analyzing data in the buffer region. self.startTimePointerSCL CAN be in the buffer region.
+
+                # Initialize the new raw features and times.
+                newFeatureTimes, newRawFeatures = [], []
 
                 # Extract features across the dataset
-                while self.lastAnalyzedDataInd[channelIndex] < len(self.data[0]):
-                    featureTime = self.data[0][self.lastAnalyzedDataInd[channelIndex]]
+                while self.lastAnalyzedDataInd[channelIndex] < len(self.timePoints):
+                    featureTime = self.timePoints[self.lastAnalyzedDataInd[channelIndex]]
 
                     # Find the start window pointer and get the data.
                     self.startFeatureTimePointer_Tonic[channelIndex] = self.findStartFeatureWindow(self.startFeatureTimePointer_Tonic[channelIndex], featureTime, self.featureTimeWindow_Tonic)
@@ -93,12 +102,17 @@ class edaProtocol(globalProtocol):
                         # Calculate the features in this window.
                         finalFeatures = self.extractFinalFeatures(intervalTimesTonic, intervalTonicData)
                         finalFeatures.extend(self.extractPhasicFeatures(intervalTimesPhasic, intervalPhasicData))
+
                         # Keep track of the new features.
-                        self.readData.averageFeatures([featureTime], [finalFeatures], self.featureTimes[channelIndex],
-                                                      self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+                        newRawFeatures.append(finalFeatures)
+                        newFeatureTimes.append(featureTime)
 
                     # Keep track of which data has been analyzed 
                     self.lastAnalyzedDataInd[channelIndex] += int(self.samplingFreq * self.secondsPerFeature)
+
+                # Compile the new raw features into a smoothened (averaged) feature.
+                self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
+
             # -------------------------------------------------------------- #  
 
             # ------------------- Plot Biolectric Signals ------------------ #
@@ -119,7 +133,7 @@ class edaProtocol(globalProtocol):
 
                 # Plot a single feature.
                 if len(self.compiledFeatures[channelIndex]) != 0:
-                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.featureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 19])
+                    self.plottingMethods.featureDataPlots[channelIndex].set_data(self.rawFeatureTimes[channelIndex], np.array(self.compiledFeatures[channelIndex])[:, 19])
                     self.plottingMethods.featureDataPlotAxes[channelIndex].legend(["Hjorth Activity"], loc="upper left")
 
             # -------------------------------------------------------------- #   
@@ -142,7 +156,7 @@ class edaProtocol(globalProtocol):
 
     def findStartFeatureWindow(self, timePointer, currentTime, timeWindow):
         # Loop through until you find the first time in the window 
-        while self.data[0][timePointer] < currentTime - timeWindow:
+        while self.timePoints[timePointer] < currentTime - timeWindow:
             timePointer += 1
 
         return timePointer
@@ -211,10 +225,10 @@ class edaProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(16)]
+            return [0 for _ in range(14)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
-        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq, int(self.samplingFreq * 10))
+        powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq)
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
         # Note: we are removing the DC component from the power spectrum density.
 
@@ -241,14 +255,6 @@ class edaProtocol(globalProtocol):
         # Fractal analysis
         DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
 
-        # -------------------- Feature Extraction: Other ------------------- #
-
-        # Number of zero-crossings
-        num_zerocross = antropy.num_zerocross(data)
-        meanFrequency = np.sum(powerSpectrumDensityFreqs * powerSpectrumDensityNormalized)
-
-        # ------------------------------------------------------------------ #
-
         finalFeatures = []
         # Feature Extraction: MNE
         finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
@@ -259,7 +265,5 @@ class edaProtocol(globalProtocol):
         finalFeatures.extend([spectral_entropy, perm_entropy])
         # Feature Extraction: Fractal
         finalFeatures.extend([DFA])
-        # Feature Extraction: Other
-        finalFeatures.extend([num_zerocross, meanFrequency])
 
         return finalFeatures

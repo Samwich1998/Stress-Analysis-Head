@@ -379,8 +379,8 @@ class getExcelData(handlingExcelFormat):
 
 
                 # Save the features and labels
-                Training_Data.extend(rawFeatureHolder[0].copy())
-                Training_Labels.extend(len(rawFeatureHolder[0].copy())*[featureLabel])
+                Training_Data.extend(rawFeatureHolder.copy())
+                Training_Labels.extend(len(rawFeatureHolder.copy())*[featureLabel])
                 '''
                 import matplotlib.pyplot as plt
                 

@@ -310,7 +310,7 @@ class FocalLoss(nn.Module):
         if self.alpha is not None:
             if self.alpha.type() != predictedVals.data.type():
                 self.alpha = self.alpha.type_as(predictedVals.data)
-            at = self.alpha.gather(0, targetVals.data.view(-1))
+            at = self.alpha.gather(0, targetVals.channelData.view(-1))
             logpt = logpt * Variable(at)
 
         loss = -1 * (1 - pt) ** self.gamma * logpt

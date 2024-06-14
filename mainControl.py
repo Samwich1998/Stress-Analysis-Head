@@ -6,6 +6,9 @@ import threading
 import sys
 import os
 
+# Compiler flags.
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 # Import helper files.
 from helperFiles.dataAcquisitionAndAnalysis.excelProcessing import extractDataProtocols, saveDataProtocols  # Import interfaces for reading/writing data
 from helperFiles.machineLearning.modelControl.modelSpecifications.compileModelInfo import compileModelInfo  # Import files for machine learning
@@ -42,6 +45,7 @@ if __name__ == "__main__":
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.
     stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
     reanalyzeData = False  # Reanalyze training files: don't use saved features
+    reverseOrder = True  # Reverse the order of the data for training.
 
     # ---------------------------------------------------------------------- #
 
@@ -57,27 +61,25 @@ if __name__ == "__main__":
     collectedDataFolder, currentFilename = inputParameterClass.getSavingInformation(date, trialName, userName)
 
     # Compile all the protocol information.
-    streamingOrder, biomarkerOrder, featureAverageWindows, featureNames, biomarkerFeatureNames = inputParameterClass.getGeneralParameters()
+    streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames, extractFeaturesFrom = inputParameterClass.getGeneralParameters()
     performMachineLearning, modelClasses, actionControl, plotTrainingData, saveModel = inputParameterClass.getMachineLearningParams(featureNames, collectedDataFolder)
-    boardSerialNum, maxVolt, adcResolution, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams(boardSerialNum)
+    boardSerialNum, voltageRange, adcResolution, saveRawSignals, recordQuestionnaire = inputParameterClass.getStreamingParams(boardSerialNum)
     soundInfoFile, dataFolder, playGenres = inputParameterClass.getModelParameters()
     saveRawFeatures, testSheetNum = inputParameterClass.getExcelParams()
-    modelClasses = []
 
     # Initialize instance to analyze the data
-    readData = streamingProtocols.streamingProtocols(boardSerialNum, modelClasses, actionControl, numPointsPerBatch, moveDataFinger,
-                                                     streamingOrder, biomarkerOrder, featureAverageWindows, plotStreamedData)
+    readData = streamingProtocols.streamingProtocols(boardSerialNum, modelClasses, actionControl, numPointsPerBatch, moveDataFinger, streamingOrder,
+                                                     extractFeaturesFrom, featureAverageWindows, voltageRange, plotStreamedData)
 
-    # ---------------------------------------------------------------------- #
+    # ----------------------------- Stream the Data ----------------------------- #
 
-    # Stream in Data
     if streamData:
         if not recordQuestionnaire:
             # Stream in the data from the circuit board
-            readData.streamArduinoData(maxVolt, adcResolution, stopTimeStreaming, currentFilename)
+            readData.streamArduinoData(adcResolution, stopTimeStreaming, currentFilename)
         else:
             # Stream in the data from the circuit board
-            streamingThread = threading.Thread(target=readData.streamArduinoData, args=(maxVolt, adcResolution, stopTimeStreaming, currentFilename), daemon=True)
+            streamingThread = threading.Thread(target=readData.streamArduinoData, args=(adcResolution, stopTimeStreaming, currentFilename), daemon=True)
             streamingThread.start()
             # Open the questionnaire GUI.
             folderPath = "./helperFiles/surveyInformation/"
@@ -86,7 +88,8 @@ if __name__ == "__main__":
             stressQuestionnaire.finishedRun()
             streamingThread.join()
 
-    # Take Data from Excel Sheet
+    # ------------------------ ReStream a Single Excel File ------------------------ #
+
     elif readDataFromExcel:
         # Collect the Data from Excel
         compiledRawData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions = \
@@ -95,27 +98,29 @@ if __name__ == "__main__":
         readData.streamExcelData(compiledRawData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList,
                                  surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, currentFilename)
 
+    # ----------------------------- Extract Feature Data ----------------------------- #
+
     # Take Preprocessed (Saved) Features from Excel Sheet
     elif trainModel:
         # Initializing the training class.
-        trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerOrder, len(streamingOrder), collectedDataFolder, readData)
+        trainingInterface = trainingProtocols.trainingProtocols(biomarkerFeatureNames, streamingOrder, biomarkerFeatureOrder, len(streamingOrder), collectedDataFolder, readData)
 
         checkFeatureWindow_EEG = False
         if checkFeatureWindow_EEG:
             featureTimeWindows = np.arange(5, 25, 5)
             # # featureTimeWindows = [5, 30, 60, 90, 120, 150, 180]
             excelFile = collectedDataFolder + '2022-12-16 Full Dataset TV.xlsx'
-            allRawFeatureTimesHolders, allRawFeatureHolders = trainingInterface.varyAnalysisParam(excelFile, featureAverageWindows, featureTimeWindows)
+            trainingInterface.varyAnalysisParam(excelFile, featureAverageWindows, featureTimeWindows)
 
         # Extract the features from the training files and organize them.
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentalOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, reverseOrder=True)
+            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, metaTraining=False, reverseOrder=reverseOrder)
         # Assert the validity of the feature extraction
         assert len(allAlignedFeatureHolder[0][0]) == len(featureNames), "Incorrect number of compiled features extracted"
         for analysisInd in range(len(allRawFeatureHolders[0])):
-            assert len(allRawFeatureHolders[0][analysisInd][0]) == len(biomarkerFeatureNames[analysisInd]), "Incorrect number of fraw eatures extracted"
+            assert len(allRawFeatureHolders[0][analysisInd][0]) == len(biomarkerFeatureNames[analysisInd]), "Incorrect number of raw features extracted"
         print("\nFinished Feature Extraction")
 
         import matplotlib.pyplot as plt
@@ -192,20 +197,19 @@ if __name__ == "__main__":
             performMachineLearning.modelControl.modelClasses[modelInd].setStandardizationInfo(featureNames, standardizeClass_Features, standardizeClass_Labels[modelInd])
         standardizedLabels = np.array(standardizedLabels)
 
-    # ---------------------------------------------------------------------- #
     # ------------------ Extract Data into this Namespace ------------------ #
 
     if streamData or readDataFromExcel:
         # Extract the data
-        timePoints = np.array(readData.analysisList[0].data[0])
-        eogReadings = np.array(readData.analysisProtocols['eog'].data[1][0])
-        eegReadings = np.array(readData.analysisProtocols['eeg'].data[1][0])
-        edaReadings = np.array(readData.analysisProtocols['eda'].data[1][0])
-        tempReadings = np.array(readData.analysisProtocols['temp'].data[1][0])
+        tempReadings = np.array(readData.analysisProtocols['temp'].channelData if readData.analysisProtocols['temp'] is not None else [])
+        eogReadings = np.array(readData.analysisProtocols['eog'].channelData if readData.analysisProtocols['eog'] is not None else [])
+        eegReadings = np.array(readData.analysisProtocols['eeg'].channelData if readData.analysisProtocols['eeg'] is not None else [])
+        edaReadings = np.array(readData.analysisProtocols['eda'].channelData if readData.analysisProtocols['eda'] is not None else [])
+        timePoints = np.array(readData.analysisList[0].timePoints)  # Assuming each analysis has the same time points.
 
-        # # Extract raw features
-        # eogFeatures, eegFeatures, edaFeatures, tempFeatures = readData.rawFeatureHolder
-        # eogFeatureTimes, eegFeatureTimes, edaFeatureTimes, tempFeatureTimes = readData.rawFeatureTimesHolder
+        # Extract raw features
+        eogFeatureTimes, eegFeatureTimes, edaFeatureTimes, tempFeatureTimes = readData.rawFeatureTimesHolder
+        eogFeatures, eegFeatures, edaFeatures, tempFeatures = readData.rawFeatureHolder
 
         # Extract the features
         alignedFeatures = np.array(readData.alignedFeatures)
@@ -213,170 +217,41 @@ if __name__ == "__main__":
         alignedFeatureLabels = np.array(readData.alignedFeatureLabels)
 
         # Extract the feature labels.
-        surveyAnswersList = np.array(readData.surveyAnswersList)  # A list of list of feature labels.
+        surveyAnswersList = np.array(readData.surveyAnswersList)  # A list of feature labels at each instance.
         surveyAnswerTimes = np.array(readData.surveyAnswerTimes)  # A list of times associated with each feature label.
-        surveyQuestions = np.array(readData.surveyQuestions)  # A list of the survey questions asked to the user.
+        surveyQuestions = np.array(readData.surveyQuestions)  # A list of the survey questions asked the user.
+
         # Extract the experiment information
         experimentTimes = np.array(readData.experimentTimes)
         experimentNames = np.array(readData.experimentNames)
+
         # Extract subject information
         subjectInformationAnswers = np.array(readData.subjectInformationAnswers)
         subjectInformationQuestions = np.array(readData.subjectInformationQuestions)
 
-    # ---------------------------------------------------------------------- #
-    # -------------------------- Save Input data --------------------------- #
-    # Save the Data in Excel
-    if saveRawSignals:
-        # Double Check to See if User Wants to Save the Data
-        # verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
-        verifiedSave = "Y"
-        if verifiedSave.upper() == "Y":
-            # Get the streaming data
-            streamingData = []
-            for analysis in readData.analysisList:
-                for analysisChannelInd in range(len(analysis.data[1])):
-                    streamingData.append(np.array(analysis.data[1][analysisChannelInd]))
+        # -------------------------- Save Input data --------------------------- #
+
+        # Save the Data in Excel
+        if saveRawSignals:
+            # Double Check to See if a User Wants to Save the Data
+            verifiedSave = input("Are you Sure you Want to Save the Data (Y/N): ")
+            if verifiedSave.upper() != "Y":
+                verifiedSave = input(f"\tI recorded your answer as {verifiedSave}. You really do not want to save ... One more time (Y/N): ")
+
+            if verifiedSave.upper() == "Y":
+                # Get the streaming data
+                streamingData = []
+                for analysis in readData.analysisList:
+                    for analysisChannelInd in range(len(analysis.channelData)):
+                        streamingData.append(np.array(analysis.channelData[analysisChannelInd]))
+                # Initialize Class to Save the Data and Save
+                saveInputs.saveData(timePoints, streamingData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions,
+                                    subjectInformationAnswers, subjectInformationQuestions, streamingOrder, currentFilename)
+            else:
+                print("User Chose Not to Save the Data")
+        elif saveRawFeatures:
             # Initialize Class to Save the Data and Save
-            saveInputs.saveData(timePoints, streamingData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions,
-                                subjectInformationAnswers, subjectInformationQuestions, streamingOrder, currentFilename)
-        else:
-            print("User Chose Not to Save the Data")
-    elif saveRawFeatures:
-        # Initialize Class to Save the Data and Save
-        saveInputs.saveRawFeatures(readData.rawFeatureTimesHolder, readData.rawFeatureHolder, biomarkerFeatureNames, biomarkerOrder, experimentTimes,
-                                   experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, currentFilename)
+            saveInputs.saveRawFeatures(readData.rawFeatureTimesHolder, readData.rawFeatureHolder, biomarkerFeatureNames, biomarkerFeatureOrder, experimentTimes,
+                                       experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions, currentFilename)
 
     # ----------------------------- End of Program ----------------------------- #
-    # -------------------------------------------------------------------------- #
-
-    import matplotlib.pyplot as plt
-
-    # Replace 'path_to_arial.ttf' with the actual path to the Arial font on your system
-    plt.rcParams['font.family'] = 'Arial'
-    plt.rcParams['font.sans-serif'] = ['Arial']  # Additional fallback option
-
-    # Optional: Adjust other font-related settings if needed
-    plt.rcParams['font.size'] = 12
-
-    sys.exit()
-
-    # Extract information from the streamed data
-    alignedFeatures = np.asarray(readData.alignedFeatures.copy())[10:-30, :]  # signalLength, numSignals
-    alignedFeatureTimes = np.asarray(readData.alignedFeatureTimes.copy())[10:-30]  # SignalLength
-
-    # Standardize data
-    standardizeClass_Features = standardizeData(alignedFeatures, axisDimension=0, threshold=0)
-    standardizedFeatures = standardizeClass_Features.standardize(alignedFeatures)
-
-    plottingFeatureNames = ["blinkDuration_EOG", "halfClosedTime_EOG",
-                            "hjorthActivity_EEG", "engagementLevelEst_EEG",
-                            "hjorthActivity_EDA", "firstDerivVariance_EDA",
-                            "firstDerivativeMean_TEMP", "mean_TEMP"]
-    shortenedNames = ["BD", "HCT", "HA", "EL", "HA", "FDV", "FDM", "M"]
-
-    plottingColors = [
-        '#3498db', '#2A4D7F',  # Blue shades
-        '#9ED98F', '#38963E',  # Green shades
-        '#918ae1', '#803F91',  # Purple shades
-        '#fc827f', '#E63434'  # Red shades
-    ]
-
-    # plottingColors = [
-    #     '#38c7e8', '#2A4D7F',  # Blue shades
-    #     '#13d6b0', '#38963E',  # Green shades
-    #     '#918ae1', '#803F91',  # Purple shades
-    #     '#fc827f', '#E63434'   # Red shades
-    # ]
-
-    # plottingColors.reverse()
-    # plottingFeatureNames.reverse()
-    # shortenedNames.reverse()
-
-    saveName = currentFilename.split("/")[-1].split(".")[0]
-
-    plottingFeatureInds = [np.where(plottingFeatureNames[i] == featureNames)[0][0] for i in range(len(plottingFeatureNames))]
-    yLim = [-3.5, 3.5]
-
-    # fig, axes = plt.subplots(len(plottingFeatureNames), 1, figsize=(3, 6), sharex=True)
-    fig, axes = plt.subplots(len(plottingFeatureNames), 1, figsize=(2, 6), sharex=True)
-
-    for i in range(len(plottingFeatureNames)):
-        featureInd = plottingFeatureInds[i]
-        featureName = shortenedNames[i]
-        color = plottingColors[i]
-
-        axes[i].plot(alignedFeatureTimes, standardizedFeatures[:, featureInd], linewidth=1, color=color)
-        axes[i].set_yticks([])  # Hide y-axis ticks
-        # axes[i].set_ylabel(featureName)
-
-    for i in range(len(experimentTimes)):
-        for ax in axes:
-            ax.axvline(experimentTimes[i][0], color='gray', linestyle='--', linewidth=0.3)
-            ax.axvline(surveyAnswerTimes[i], color='gray', linestyle='--', linewidth=0.3)
-
-            ax.fill_betweenx(np.array(yLim), experimentTimes[i][0], surveyAnswerTimes[i], color="lightblue", alpha=0.03)
-
-    axes[-1].set_xlabel('Time')
-    plt.ylim(yLim)
-    plt.subplots_adjust(hspace=0)  # No vertical spacing between subplots
-    plt.savefig(f"{saveName}.png", dpi=300, bbox_inches='tight')
-    plt.show()
-
-    for i in range(len(plottingFeatureNames)):
-        fig, ax = plt.subplots(1, 1, figsize=(2, 1), sharex=True)
-
-        featureInd = plottingFeatureInds[i]
-        featureName = shortenedNames[i]
-        color = plottingColors[i]
-
-        ax.plot(alignedFeatureTimes, standardizedFeatures[:, featureInd], linewidth=1, color=color)
-        ax.set_yticks([])  # Hide y-axis ticks
-        ax.set_xticks([])  # Hide y-axis ticks
-        ax.set_ylabel(featureName)
-
-        for i in range(len(experimentTimes)):
-            ax.axvline(experimentTimes[i][0], color='gray', linestyle='--', linewidth=0.3)
-            ax.axvline(surveyAnswerTimes[i], color='gray', linestyle='--', linewidth=0.3)
-
-            ax.fill_betweenx(np.array(yLim), experimentTimes[i][0], surveyAnswerTimes[i], color="lightblue", alpha=0.03)
-
-        # ax.set_xlabel('Time')
-        plt.ylim(yLim)
-        plt.subplots_adjust(hspace=0)  # No vertical spacing between subplots
-        plt.savefig(f"{featureName}_{color}.png", dpi=300, bbox_inches='tight')
-        plt.show()
-
-    data = np.array([eogReadings, eegReadings, edaReadings, tempReadings])
-    # Standardize data
-    standardizeClass_Features = standardizeData(data, axisDimension=1, threshold=0)
-    standardizedFeatures = standardizeClass_Features.standardize(data)
-
-    shortenedNames = ["EOG", "EEG", "EDA", "Temp"]
-    plottingColors = [
-        '#3498db',  # Blue shades
-        '#9ED98F',  # Green shades
-        '#918ae1',  # Purple shades
-        '#fc827f',  # Red shades
-    ]
-
-    fig, axes = plt.subplots(len(shortenedNames), 1, figsize=(2, 3), sharex=True)
-
-    for featureInd in range(len(shortenedNames)):
-        featureName = shortenedNames[featureInd]
-        color = plottingColors[featureInd]
-
-        axes[featureInd].plot(timePoints, standardizedFeatures[featureInd], linewidth=1, color=color)
-        axes[featureInd].set_yticks([])  # Hide y-axis ticks
-        axes[featureInd].set_ylabel(featureName)
-
-    for i in range(len(experimentTimes)):
-        for ax in axes:
-            ax.axvline(experimentTimes[i][0], color='gray', linestyle='--', linewidth=0.3)
-            ax.axvline(surveyAnswerTimes[i], color='gray', linestyle='--', linewidth=0.3)
-
-            ax.fill_betweenx(np.array(yLim), experimentTimes[i][0], surveyAnswerTimes[i], color="lightblue", alpha=0.03)
-
-    axes[-1].set_xlabel('Time')
-    plt.ylim(yLim)
-    plt.subplots_adjust(hspace=0)  # No vertical spacing between subplots
-    plt.show()

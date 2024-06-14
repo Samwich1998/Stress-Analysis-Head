@@ -310,18 +310,18 @@ class dapperInterface(globalMetaAnalysis):
     def getStreamingInfo():
         # Feature information
         streamingOrder = ['eda', 'lowFreq']
-        biomarkerOrder = ['eda', 'lowFreq']
+        biomarkerFeatureOrder = ['eda', 'lowFreq']
         filteringOrders = [[None, None], [None, None]]  # Sampling Freq: 1, 1 (Hz); Need 1/2 frequency at max.
         featureAverageWindows = [30, 30]  # ['EDA', 'Heart Rate']
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders
 
     def compileTrainingInfo(self):
         # Compile the data: specific to the device worn.
-        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
-        featureNames, biomarkerFeatureNames, biomarkerOrder = self.compileFeatureNames.extractFeatureNames(biomarkerOrder)
+        streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = self.getStreamingInfo()
+        featureNames, biomarkerFeatureNames, biomarkerFeatureOrder = self.compileFeatureNames.extractFeatureNames(biomarkerFeatureOrder)
 
-        return streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames
+        return streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames
 
 
 if __name__ == "__main__":
@@ -336,18 +336,18 @@ if __name__ == "__main__":
         dapperAllCompiledDatas, dapperSubjectOrder, dapperAllExperimentalTimes, dapperAllExperimentalNames, \
             dapperAllSurveyAnswerTimes, dapperAllSurveyAnswersList, dapperAllContextualInfo = dapperAnalysisClass.getData(showPlots=False)
         # Compile the data: specific to the device worn.
-        dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperFilteringOrders = dapperAnalysisClass.getStreamingInfo()
+        dapperStreamingOrder, dapperBiomarkerFeatureOrder, dapperFeatureAverageWindows, dapperFilteringOrders = dapperAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         dapperAnalysisClass.extractFeatures(dapperAllCompiledDatas, dapperSubjectOrder, dapperAllExperimentalTimes, dapperAllExperimentalNames, dapperAllSurveyAnswerTimes, dapperAllSurveyAnswersList, dapperAllContextualInfo,
-                                            dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperFilteringOrders, interfaceType='dapper', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
+                                            dapperStreamingOrder, dapperBiomarkerFeatureOrder, dapperFeatureAverageWindows, dapperFilteringOrders, interfaceType='dapper', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.
-        dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperBiomarkerFeatureNames = dapperAnalysisClass.compileTrainingInfo()
+        dapperStreamingOrder, dapperBiomarkerFeatureOrder, dapperFeatureAverageWindows, dapperFeatureNames, dapperBiomarkerFeatureNames = dapperAnalysisClass.compileTrainingInfo()
 
         plotTrainingData = False
         # Collected the training data.
         dapperAllRawFeatureTimesHolders, dapperAllRawFeatureHolders, dapperAllRawFeatureIntervals, dapperAllRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, dapperAllAlignedFeatureHolder, dapperAllAlignedFeatureIntervals, dapperAllAlignedFeatureIntervalTimes, dapperSubjectOrder, \
-            experimentOrder, dapperActivityNames, dapperActivityLabels, dapperAllFinalFeatures, dapperAllFinalLabels, dapperFeatureLabelTypes, dapperSurveyQuestions, dapperSurveyAnswersList, dapperSurveyAnswerTimes \
-            = dapperAnalysisClass.trainingProtocolInterface(dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperBiomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            experimentOrder, dapperActivityNames, dapperActivityLabels, dapperAllFinalLabels, dapperFeatureLabelTypes, dapperSurveyQuestions, dapperSurveyAnswersList, dapperSurveyAnswerTimes \
+            = dapperAnalysisClass.trainingProtocolInterface(dapperStreamingOrder, dapperBiomarkerFeatureOrder, dapperFeatureAverageWindows, dapperBiomarkerFeatureNames, plotTrainingData, metaTraining=True)

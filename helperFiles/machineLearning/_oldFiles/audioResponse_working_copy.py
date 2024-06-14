@@ -165,7 +165,7 @@ class chatGPTController:
         
     
     def getImageURL(self, response):
-        return response.data[0].url
+        return response.channelData[0].url
     
     # ---------------------------------------------------------------------- #
     # ---------------------------- Text Methods ---------------------------- #

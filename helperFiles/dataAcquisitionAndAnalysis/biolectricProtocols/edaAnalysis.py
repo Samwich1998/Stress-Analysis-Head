@@ -159,22 +159,17 @@ class edaProtocol(globalProtocol):
 
         return intervalTimes, intervalData
 
-    @staticmethod
-    def extractFinalFeatures(timePoints, data):
+    def extractFinalFeatures(self, timePoints, data):
 
         # ----------------------- Data Preprocessing ----------------------- #
 
-        standardDeviation = np.std(data, ddof=1)
-
         # Normalize the data
-        if standardDeviation <= 1e-10:
-            standardized_data = (data - np.mean(data))
-        else:
-            standardized_data = (data - np.mean(data)) / standardDeviation
+        standardized_data = self.universalMethods.standardizeData(data)
+        if all(standardized_data == 0):
+            return [0 for _ in range(7)]
 
         # Calculate the derivatives
         firstDerivative = np.gradient(standardized_data, timePoints)
-        secondDerivative = np.gradient(firstDerivative, timePoints)
 
         # Get the baseline data
         baselineX = timePoints - timePoints[0]
@@ -182,13 +177,8 @@ class edaProtocol(globalProtocol):
         # ----------------------- Features from Data ----------------------- #
 
         # General Shape Parameters
+        standardDeviation = np.std(data, ddof=1)
         mean = np.mean(data)
-        if standardDeviation <= 1e-10:
-            skewness = 0
-            kurtosis = 0
-        else:
-            skewness = scipy.stats.skew(data, bias=False)
-            kurtosis = scipy.stats.kurtosis(data, fisher=True, bias=False)
 
         # Other Parameters
         signalRange = max(data) - min(data)
@@ -206,7 +196,7 @@ class edaProtocol(globalProtocol):
 
         finalFeatures = []
         # Add peak shape parameters
-        finalFeatures.extend([mean, standardDeviation, skewness, kurtosis])
+        finalFeatures.extend([mean, standardDeviation])
         finalFeatures.extend([signalRange, signalArea])
 
         # Add derivative features

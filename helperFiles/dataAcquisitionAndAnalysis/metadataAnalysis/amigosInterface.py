@@ -247,8 +247,7 @@ if __name__ == "__main__":
         streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders = amigosAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         amigosAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                            streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='amigos', reanalyzeData=True, showPlots=True)
-
+                                            streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType='amigos', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
     if trainingData:
         # Prepare the data to go through the training interface.
         streamingOrder, biomarkerOrder, featureAverageWindows, biomarkerFeatureNames = amigosAnalysisClass.compileTrainingInfo()

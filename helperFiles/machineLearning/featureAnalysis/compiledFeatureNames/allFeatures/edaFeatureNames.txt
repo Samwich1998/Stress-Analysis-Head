@@ -1,6 +1,6 @@
 finalFeatures = []
 # Add peak shape parameters
-finalFeatures.extend([mean, standardDeviation, skewness, kurtosis])
+finalFeatures.extend([mean, standardDeviation])
 finalFeatures.extend([signalRange, signalArea])
 
 # Add derivative features

@@ -325,7 +325,7 @@ if __name__ == "__main__":
         emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders = emognitionAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         emognitionAnalysisClass.extractFeatures(emognitionAllCompiledDatas, emognitionSubjectOrder, emognitionAllExperimentalTimes, emognitionAllExperimentalNames, emognitionAllSurveyAnswerTimes, emognitionAllSurveyAnswersList, emognitionAllContextualInfo,
-                                                emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders, interfaceType='emognition', reanalyzeData=True, showPlots=True)
+                                                emognitionStreamingOrder, emognitionBiomarkerOrder, emognitionFeatureAverageWindows, emognitionFilteringOrders, interfaceType='emognition', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.

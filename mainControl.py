@@ -111,7 +111,7 @@ if __name__ == "__main__":
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentalOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, reverseOrder=False)
+            = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, reverseOrder=True)
         # Assert the validity of the feature extraction
         assert len(allAlignedFeatureHolder[0][0]) == len(featureNames), "Incorrect number of compiled features extracted"
         for analysisInd in range(len(allRawFeatureHolders[0])):

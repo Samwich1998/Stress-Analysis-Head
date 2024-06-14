@@ -36,7 +36,7 @@ class globalMetaAnalysis(handlingExcelFormat):
     # ------------------ Interface with Training Protocols ----------------- #
 
     def extractFeatures(self, allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType="emognition", reanalyzeData=False, showPlots=True):
+                        streamingOrder, biomarkerOrder, featureAverageWindows, filteringOrders, interfaceType="emognition", reanalyzeData=False, showPlots=True, analyzeSequentially=False):
         # Prepare the data for each subject for parallel processing
         subjects_data = [
             (
@@ -57,9 +57,18 @@ class globalMetaAnalysis(handlingExcelFormat):
             ) for i in range(len(subjectOrder))
         ]
 
-        # Use ProcessPoolExecutor to process each subject in parallel
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            executor.map(self.processFeatures, subjects_data)
+        # Analyze the data sequentially for plotting large datasets.
+        if showPlots and interfaceType in ["dapper", "case"]:
+            print("\tAnalyzing sequentially")
+            analyzeSequentially = True
+
+        if analyzeSequentially:
+            for i in subjects_data:
+                self.processFeatures(i)
+        else:
+            # Use ProcessPoolExecutor to process each subject in parallel
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                executor.map(self.processFeatures, subjects_data)
 
     def processFeatures(self, subject_data):
         # Unpack data

@@ -56,7 +56,6 @@ class channelPositionalEncoding(signalEncoderModules):
     def removePositionalEncoding(self, inputData):
         # Learn how to remove the positional encoding from the data.
         originalData = self.positionalEncoding(inputData, finalStamp=None, learnNeuralOperatorLayers=self.unlearnNeuralOperatorLayers)
-        originalData = originalData + inputData
 
         return originalData
 

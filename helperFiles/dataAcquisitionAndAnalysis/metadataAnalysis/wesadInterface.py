@@ -307,7 +307,7 @@ if __name__ == "__main__":
         wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadFilteringOrders = wesadAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         wesadAnalysisClass.extractFeatures(wesadAllCompiledDatas, wesadSubjectOrder, wesadAllExperimentalTimes, wesadAllExperimentalNames, wesadAllSurveyAnswerTimes, wesadAllSurveyAnswersList, wesadAllContextualInfo,
-                                           wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadFilteringOrders, interfaceType='wesad', reanalyzeData=True, showPlots=True)
+                                           wesadStreamingOrder, wesadBiomarkerOrder, wesadFeatureAverageWindows, wesadFilteringOrders, interfaceType='wesad', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.

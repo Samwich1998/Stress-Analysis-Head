@@ -15,6 +15,10 @@ class tempProtocol(globalProtocol):
         self.dataPointBuffer = 5000  # A Prepended Buffer in the Filtered Data that Represents BAD Filtering; Units: Points
         self.cutOffFreq = [None, 0.1]  # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
 
+        # Holder parameters.
+        self.startFeatureTimePointer = None  # The start pointer of the feature window interval.
+        self.minPointsPerBatch = None  # The minimum number of points per batch.
+
         # Initialize common model class
         super().__init__("temp", numPointsPerBatch, moveDataFinger, numChannels, plottingClass, readData)
 
@@ -106,7 +110,7 @@ class tempProtocol(globalProtocol):
         if removePoints:
             # Find the bad points associated with motion artifacts
             deriv = abs(np.gradient(filteredData, timePoints))
-            motionIndices = deriv > 1  #0.1
+            motionIndices = deriv > 1
             motionIndices_Broadened = scipy.signal.savgol_filter(motionIndices, max(3, int(self.samplingFreq * 20)), 1, mode='nearest', deriv=0)
             goodIndicesMask = motionIndices_Broadened < 0.01
         else:

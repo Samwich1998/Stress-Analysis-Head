@@ -339,7 +339,7 @@ if __name__ == "__main__":
         dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperFilteringOrders = dapperAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         dapperAnalysisClass.extractFeatures(dapperAllCompiledDatas, dapperSubjectOrder, dapperAllExperimentalTimes, dapperAllExperimentalNames, dapperAllSurveyAnswerTimes, dapperAllSurveyAnswersList, dapperAllContextualInfo,
-                                            dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperFilteringOrders, interfaceType='dapper', reanalyzeData=True, showPlots=False)
+                                            dapperStreamingOrder, dapperBiomarkerOrder, dapperFeatureAverageWindows, dapperFilteringOrders, interfaceType='dapper', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
 
     if trainingData:
         # Prepare the data to go through the training interface.

@@ -144,7 +144,7 @@ class generalProtocol_lowFreq(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(23)]
+            return [0 for _ in range(8)]
         
         # Get the baseline data
         baselineX = timePoints - timePoints[0]

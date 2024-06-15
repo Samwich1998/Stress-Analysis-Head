@@ -111,8 +111,11 @@ class streamingProtocols(streamingProtocolHelpers):
         timePoints, Voltages = compiledRawData
         Voltages = np.asarray(Voltages)
 
-        excelDataFinger = 0
+        # Compile streaming parameters.
+        numPointsPerBatch = min(self.numPointsPerBatch, len(timePoints))
         streamingDataFinger = 0
+        excelDataFinger = 0
+
         # Loop Through and Read the Excel Data in Pseudo-Real-Time
         while excelDataFinger != len(timePoints):
             # Organize the Input Data
@@ -120,7 +123,7 @@ class streamingProtocols(streamingProtocolHelpers):
             excelDataFinger = min(len(timePoints), excelDataFinger + self.moveDataFinger)
 
             # When enough data has been collected, analyze the new data in batches.
-            while self.numPointsPerBatch <= excelDataFinger - streamingDataFinger:
+            while numPointsPerBatch <= excelDataFinger - streamingDataFinger:
                 streamingDataFinger = self.analyzeBatchData(streamingDataFinger)
             # Organize experimental information.
             self.organizeExperimentalInformation(timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, excelDataFinger)

@@ -76,6 +76,17 @@ class trainingProtocols(extractData):
                 rawFeatureTimesHolder, rawFeatureHolder, _, experimentTimes, experimentNames, currentSurveyAnswerTimes, \
                     currentSurveyAnswersList, surveyQuestions, currentSubjectInformationAnswers, subjectInformationQuestions \
                     = self.getFeatures(self.biomarkerFeatureOrder, savedFeaturesFile, self.biomarkerFeatureNames, surveyQuestions, subjectInformationQuestions)
+
+                # Add the parameters to readData.
+                self.readData.subjectInformationAnswers = currentSubjectInformationAnswers
+                self.readData.subjectInformationQuestions = subjectInformationQuestions
+                self.readData.rawFeatureTimesHolder = rawFeatureTimesHolder
+                self.readData.surveyAnswerTimes = currentSurveyAnswerTimes
+                self.readData.surveyAnswersList = currentSurveyAnswersList
+                self.readData.rawFeatureHolder = rawFeatureHolder
+                self.readData.experimentTimes = experimentTimes
+                self.readData.experimentNames = experimentNames
+                self.readData.surveyQuestions = surveyQuestions
             else:
                 print("\tReanalyzing the feature file.")
                 self.analyzeFeatures.overwrite = True
@@ -116,6 +127,10 @@ class trainingProtocols(extractData):
 
             # -------------------- Prepare Raw Features -------------------- #
 
+            # Add the parameters to readData.
+            self.readData.rawFeatureTimesHolder = rawFeatureTimesHolder
+            self.readData.rawFeatureHolder = rawFeatureHolder
+
             # Convert to numpy arrays. Note, the holder may be inhomogeneous.
             for biomarkerInd in range(len(rawFeatureHolder)):
                 rawFeatureTimesHolder[biomarkerInd] = np.asarray(rawFeatureTimesHolder[biomarkerInd])
@@ -127,11 +142,6 @@ class trainingProtocols(extractData):
             compiledFeatureHolders = self.readData.compileStaticFeatures(rawFeatureTimesHolder, rawFeatureHolder, featureAverageWindows)
             # compiledFeatureHolders dim: numBiomarkers, numTimePoints, numBiomarkerFeatures
 
-            # ------------------ Align and Predict Labels ------------------ #
-
-            # Prepare the features for alignment.
-            self.readData.resetGlobalVariables()
-
             # For each unique analysis with features.
             for analysis in self.readData.featureAnalysisList:
                 for featureChannelInd in range(len(analysis.featureChannelIndices)):
@@ -140,6 +150,9 @@ class trainingProtocols(extractData):
                     # Add back the relevant feature information.
                     analysis.compiledFeatures[featureChannelInd] = compiledFeatureHolders[biomarkerInd]
                     analysis.rawFeatureTimes[featureChannelInd] = rawFeatureTimesHolder[biomarkerInd]
+                    analysis.rawFeatures[featureChannelInd] = rawFeatureHolder[biomarkerInd]
+
+            # ------------------ Align and Predict Labels ------------------ #
 
             # Align all the features.
             self.readData.alignFeatures()

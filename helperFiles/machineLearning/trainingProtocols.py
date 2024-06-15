@@ -142,19 +142,11 @@ class trainingProtocols(extractData):
             compiledFeatureHolders = self.readData.compileStaticFeatures(rawFeatureTimesHolder, rawFeatureHolder, featureAverageWindows)
             # compiledFeatureHolders dim: numBiomarkers, numTimePoints, numBiomarkerFeatures
 
-<<<<<<< HEAD
-=======
             # Assert the compiled features are the same length as the raw features
             assert len(compiledFeatureHolders[0][0]) == len(rawFeatureHolder[0][0]), "Compiled features are not the same length as the raw features"
             assert len(compiledFeatureHolders[0]) == len(rawFeatureHolder[0]), "Compiled features are not the same length as the raw features"
             assert len(compiledFeatureHolders) == len(rawFeatureHolder), "Compiled features are not the same length as the raw features"
 
-            # ------------------ Align and Predict Labels ------------------ #
-
-            # Prepare the features for alignment.
-            self.readData.resetGlobalVariables()
-
->>>>>>> 6cd3c958 (U)
             # For each unique analysis with features.
             for analysis in self.readData.featureAnalysisList:
                 for featureChannelInd in range(len(analysis.featureChannelIndices)):

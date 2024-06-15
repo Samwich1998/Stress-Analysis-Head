@@ -151,11 +151,8 @@ class trainingProtocols(extractData):
 
             # If there are no aligned features.
             if len(self.readData.alignedFeatureTimes) == 0:
-                print("No aligned features found")
-                allRawFeatureTimesHolders.pop()
-                compiledFeatureHolders.pop()
-                allRawFeatureHolders.pop()
-                continue
+                print("No aligned features found?!? Wierd... why did you waste my time!")
+                raise ValueError
 
             # Finished analyzing the data
             self.readData.resetGlobalVariables()

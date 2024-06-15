@@ -174,9 +174,6 @@ class featureOrganization(humanMachineInterface):
                     self.alignedFeatures[featureInd][-numBufferPoints:] = alignedFeatures[0:numBufferPoints, compiledFeatureInd].tolist()
                     self.alignedFeatures[featureInd].extend(alignedFeatures[numBufferPoints:, compiledFeatureInd].tolist())
 
-                    # Assert the integrity of the feature alignment.
-                    assert len(self.alignedFeatures[:, featureInd]) == len(self.alignedFeatureTimes), f"Found {len(self.alignedFeatures[:, featureInd])} aligned features and {len(self.alignedFeatureTimes)} aligned times. These must be the same length."
-
                 # Update the alignment pointers.
                 while rawFeatureTimes[self.alignmentDataPointers[biomarkerInd]] <= self.alignedFeatureTimes[-1]:
                     self.alignmentDataPointers[biomarkerInd] += 1

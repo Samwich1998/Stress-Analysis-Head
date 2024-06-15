@@ -57,11 +57,11 @@ class streamingProtocolHelpers(featureOrganization):
             biomarkerType = self.analysisOrder[analysisInd]
 
             # Find the locations where each biomarker appears.
-            biomarkerBooleanLocs = self.streamingOrder == biomarkerType
+            streamingChannelIndices = self.streamingOrder == biomarkerType
 
             # Organize the streaming channels by their respective biomarker.
-            self.numChannelDist[analysisInd] = np.sum(biomarkerBooleanLocs)
-            self.channelDist[biomarkerType] = np.where(biomarkerBooleanLocs)[0]
+            self.numChannelDist[analysisInd] = np.sum(streamingChannelIndices)
+            self.channelDist[biomarkerType] = np.where(streamingChannelIndices)[0]
         assert np.sum(self.numChannelDist) == self.numStreamedSignals, f"The number of channels per biomarker ({self.numChannelDist}) does not align with the streaming order ({self.streamingOrder})"
 
         # Initialize global plotting class.
@@ -93,9 +93,9 @@ class streamingProtocolHelpers(featureOrganization):
 
         # Finish setting up the class.
         super().__init__(modelClasses, actionControl, self.analysisProtocols, extractFeaturesFrom, featureAverageWindows)
-        self.resetGlobalVariables()
+        self.resetStreamingInformation()
 
-    def resetGlobalVariables(self):
+    def resetStreamingInformation(self):
         self.resetFeatureInformation()
         # Reset the analysis information
         for analysis in self.analysisList:
@@ -137,11 +137,11 @@ class streamingProtocolHelpers(featureOrganization):
             rawReadsList.append(self.arduinoRead.readline(ser=self.mainArduino))
 
         # Parse the Data
-        Voltages, timePoints = self.arduinoRead.parseCompressedRead(rawReadsList, self.numStreamedSignals, maxVolt, adcResolution)
+        timePoints, Voltages = self.arduinoRead.parseCompressedRead(rawReadsList, self.numStreamedSignals, maxVolt, adcResolution)
         self.organizeData(timePoints, Voltages)  # Organize the data for further processing
 
     def organizeData(self, timePoints, Voltages):
-        if len(timePoints[0]) == 0:
+        if len(timePoints) == 0:
             print("\t !!! NO POINTS FOUND !!!")
 
         # Update the data (if present) for each sensor
@@ -151,7 +151,7 @@ class streamingProtocolHelpers(featureOrganization):
             if analysis.numChannels == 0: continue
 
             # Update the timepoints.
-            analysis.timePoints.extend(timePoints[0])
+            analysis.timePoints.extend(timePoints)
 
             # For each channel, update the voltage data.
             for channelIndex in range(analysis.numChannels):

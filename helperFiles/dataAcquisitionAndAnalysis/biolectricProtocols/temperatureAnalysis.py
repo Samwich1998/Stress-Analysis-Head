@@ -29,6 +29,7 @@ class tempProtocol(globalProtocol):
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
         self.featureTimeWindow = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers
+        self.minPointsPerBatch = None  # The minimum number of points per batch.
 
     def checkParams(self):
         self.checkGlobalParams()
@@ -127,13 +128,10 @@ class tempProtocol(globalProtocol):
         if removePoints:
             # Find the bad points associated with motion artifacts
             deriv = abs(np.gradient(filteredData, timePoints))
-            motionIndices = 0.75 < deriv
+            motionIndices = 1 < deriv
             motionIndices_Broadened = scipy.signal.savgol_filter(motionIndices, max(5, int(self.samplingFreq * 25)), polyorder=1, mode='nearest', deriv=0)
             # Create a boolean mask using element-wise logical operations
-            goodIndicesMask = np.logical_or(
-                np.logical_or(motionIndices_Broadened < 0.01, 55 < data),
-                data < 10
-            )
+            goodIndicesMask = np.logical_or(motionIndices_Broadened < 0.005, np.logical_and(data > 10, data < 55))
         else:
             goodIndicesMask = np.full_like(data, True, dtype=bool)
 
@@ -142,7 +140,7 @@ class tempProtocol(globalProtocol):
         filteredData = filteredData[goodIndicesMask]
 
         # Finish filtering the data
-        filteredData = scipy.signal.savgol_filter(filteredData, max(3, int(self.samplingFreq * 15)), 1, mode='nearest', deriv=0)
+        filteredData = scipy.signal.savgol_filter(filteredData, max(7, int(self.samplingFreq * 15)), 1, mode='nearest', deriv=0)
 
         return filteredTime, filteredData, goodIndicesMask
 

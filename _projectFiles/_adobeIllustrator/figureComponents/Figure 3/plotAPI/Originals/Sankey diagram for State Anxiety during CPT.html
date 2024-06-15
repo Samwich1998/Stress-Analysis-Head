@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>PlotAPI - Sankey Diagram</title>
+
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://plotapi.com/static/css/tippy.translucent.css" />
+    <style>
+        #plotapi-chart-398504d9,
+        .tippy-box,
+        #plotapi-chart-398504d9-to_svg {
+            font-family: "Assistant", sans-serif !important;
+            text-align: center;
+        }
+
+        #plotapi-chart-398504d9 .link:hover {
+            stroke-opacity: .45;
+        }
+
+        #plotapi-chart-398504d9 .node {
+            cursor: move;
+        }
+
+        #plotapi-chart-398504d9 .nodeTextSpan {
+            paint-order: stroke;
+            stroke-width: 3px;
+            stroke-linecap: butt;
+            stroke-linejoin: miter;
+            font-weight: bold;
+            word-spacing: normal;
+        }
+
+        #plotapi-chart-398504d9 .linkText>textPath {
+            paint-order: stroke;
+            stroke-linecap: butt;
+            stroke-linejoin: miter;
+            font-weight: bold;
+        }
+
+        #plotapi-chart-398504d9 .linkText>textPath::selection,
+        #plotapi-chart-398504d9 .nodeText::selection,
+        #plotapi-chart-398504d9 .nodeTextSpan::selection {
+            background: none;
+        }
+
+        #plotapi-chart-398504d9 svg {
+            max-width: 800.0px;
+            
+        }
+
+    
+    </style>
+</head>
+
+<body>
+    <div id="plotapi-chart-398504d9" class="sankey plotapi-container"></div>
+    <script>
+    (function() {
+
+        var dependencies_paths = {
+                        'd3': 'https://plotapi.com/static/js/d3.v7.min',
+                        'd3-sankey': 'https://plotapi.com/static/js/d3-sankey',
+                        '@popperjs/core': 'https://plotapi.com/static/js/popper.min',
+                        'tippy': 'https://plotapi.com/static/js/tippy.min',
+                        'd3-path': 'https://plotapi.com/static/js/d3-path',
+                        'd3-shape': 'https://plotapi.com/static/js/d3-shape',
+                        'd3-array': 'https://plotapi.com/static/js/d3-array'
+                    }
+
+        var jupyter_classic = !(typeof(IPython)==="undefined");
+
+            if(jupyter_classic){
+                require.config(
+                    {
+                        paths: dependencies_paths
+                    }
+                );
+
+                require([
+                'd3',
+                'tippy',
+                'd3-sankey'
+                ], function(d3, tippy, d3sankey) {
+                        window.d3 = d3;
+                        window.tippy = tippy;
+                        window.d3sankey = d3sankey;
+                        plotapi_plot();
+                });
+            }
+            else{
+                var dependencies = Object.values(dependencies_paths);
+                
+                function dependency_loader(dependencies_loaded){
+                    var script = document.createElement("script");
+                    script.type = "text/javascript";
+                    script.src = dependencies[dependencies_loaded] + ".js";
+
+                    script.onload = function () {
+                        if(dependencies_loaded < dependencies.length-1){
+                        dependency_loader(dependencies_loaded+1)
+                        }
+                        else{
+                            d3sankey = d3;
+                            plotapi_plot();
+                        }
+                    };
+                    document.body.appendChild(script);
+                }
+
+                dependency_loader(0);
+            }
+
+        function plotapi_plot(){
+                width_in = 800.0
+                height_in = 500.0
+                margin = {
+                    left: 100.0,
+                    top: 100.0,
+                    right: 100.0,
+                    bottom: 100.0
+                };
+                
+                margin.right += (100 + (24.0 * .25));
+                margin.left += (100 + (24.0 * .25));
+
+                margin.top += (16 + 10);
+
+                var width = width_in - margin.left - margin.right;
+                var height = height_in - margin.top - margin.bottom;
+                var initialMousePosition = {};
+                var initialNodePosition = {};
+
+
+                
+                function mouseoverLink(data) {
+                    return function (d, i) {
+
+                        tippy_content = "<b>"+i.source.name+"</b> " + "→" + " <b>"+i.target.name+"</b><br>" 
+                        + "occurs in " + "<b>"+i.value+"</b> Number of Instances<br>"
+                        + (i.description ? "<br>" + i.description : "");
+                        if (this._tippy == null) {
+                            tippy(this, {
+                                touch: 'hold',
+                                allowHTML: true,
+                                followCursor: true,
+                                content: tippy_content,
+                                arrow: true,
+                                maxWidth: 1000.0,
+                                theme: 'translucent',
+                            });
+                        }           
+                    }
+                }
+
+                function mouseoverNode(data) {
+                    return function (d, i) {
+
+                        animateGradient(d, i);
+                        tippy_content = "<b>"+i.name+"</b><br>"
+                        + "occurs in " + "<b>" + i.value + "</b> Number of Instances<br>"
+                        + (i.description ? "<br>" + i.description : "");
+                        if (this._tippy == null) {
+                            tippy(this, {
+                                touch: 'hold',
+                                allowHTML: true,
+                                followCursor: 'vertical',
+                                content: tippy_content,
+                                arrow: true,
+                                maxWidth: 1000.0,
+                                theme: 'translucent',
+                            });
+                        }
+                    }
+                }
+
+                function register_mouse_interaction() {
+                    d3.select("#plotapi-chart-398504d9-to_svg")
+                        .on("click", function () {
+                            var config = {filename: "diagram"};
+                            to_svg(d3.select("#plotapi-chart-398504d9").select("svg").node(), config);
+                            });
+
+                    svgNodes.on("mouseover", mouseoverNode(data)).on("mouseout", animateReset);
+                    svgBackgroundLinks.on("mouseover", mouseoverLink(data))
+                }
+                
+
+                
+                function wrap(text) {
+                    text.each(function () {
+                        var text = d3.select(this),
+                            words = text.text().split(/\s+/).reverse(),
+                            word,
+                            line = [],
+                            tspan = text.text(null).append("tspan").attr("x", 0).classed("nodeTextSpan",
+                                true),
+                            lines = 0;
+                        while (word = words.pop()) {
+                            line.push(word)
+                            tspan.text(line.join(" "))
+                            if (tspan.node().getComputedTextLength() > (text.classed("rotated")? d3.select(this.parentNode).select(".node").attr("height") : 100) && line.length > 1) {
+                                line.pop()
+                                if (line.length != 0) {
+                                    tspan.text(line.join(" "))
+                                }
+                                line = [word]
+                                tspan = text.append("tspan")
+                                    .attr("x", 0)
+                                    .attr("dy", "1em")
+                                    .text(word)
+                                    .classed("nodeTextSpan", true);
+
+                                lines = lines + 1;
+                            }
+                        }
+                        
+                        text.select("tspan:nth-child(1)").attr("dy", "" + (-(lines * 0.5)) + "em");
+                    })
+                }
+
+                function reduceUnique(previous, current) {
+                    if (previous.indexOf(current) < 0) {
+                        previous.push(current);
+                    }
+                    return previous;
+                }
+                
+
+                
+                function addGradientStop(gradients, offset, fn) {
+                    return gradients.append("stop").attr("offset", offset).attr("stop-color", fn);
+                }
+
+                function getGradientId(d) {
+                    return "gradient_"+d.source.id+"_"+d.target.id;
+                }
+
+                function color(index) {
+                    var node = data.nodes.find(obj => {
+                        return obj.id === index
+                    })
+                    if(node != undefined){
+                        if(node.hasOwnProperty('color')){
+                            if(node.color){
+                                return node.color;
+                            }
+                        }
+                    }
+
+                    var ratio = index / (data.nodes.length - (0.0));
+                    return d3.interpolateRainbow(ratio);
+                }
+
+                function darkenColor(color, factor) {
+                    return d3.color(color).darker(factor)
+                }
+                
+
+                
+                var data = {
+                    nodes: [{'id': 0, 'name': 'G0 A', 'description': '', 'color': ''}, {'id': 1, 'name': 'G0 B', 'description': '', 'color': ''}, {'id': 2, 'name': 'G0 C', 'description': '', 'color': ''}, {'id': 3, 'name': 'G0 D', 'description': '', 'color': ''}, {'id': 4, 'name': 'G0 E', 'description': '', 'color': ''}, {'id': 5, 'name': 'G0 F', 'description': '', 'color': ''}, {'id': 6, 'name': 'G0 G', 'description': '', 'color': ''}, {'id': 7, 'name': 'G0 H', 'description': '', 'color': ''}, {'id': 8, 'name': 'G0 I', 'description': '', 'color': ''}, {'id': 9, 'name': 'G0 J', 'description': '', 'color': ''}, {'id': 10, 'name': 'G0 K', 'description': '', 'color': ''}, {'id': 11, 'name': 'G0 L', 'description': '', 'color': ''}, {'id': 12, 'name': 'G0 M', 'description': '', 'color': ''}, {'id': 13, 'name': 'G1 A', 'description': '', 'color': ''}, {'id': 14, 'name': 'G1 B', 'description': '', 'color': ''}, {'id': 15, 'name': 'G1 C', 'description': '', 'color': ''}, {'id': 16, 'name': 'G1 D', 'description': '', 'color': ''}, {'id': 17, 'name': 'G1 E', 'description': '', 'color': ''}, {'id': 18, 'name': 'G1 F', 'description': '', 'color': ''}, {'id': 19, 'name': 'G1 G', 'description': '', 'color': ''}, {'id': 20, 'name': 'G1 H', 'description': '', 'color': ''}, {'id': 21, 'name': 'G1 I', 'description': '', 'color': ''}, {'id': 22, 'name': 'G1 J', 'description': '', 'color': ''}, {'id': 23, 'name': 'G1 K', 'description': '', 'color': ''}, {'id': 24, 'name': 'G1 L', 'description': '', 'color': ''}, {'id': 25, 'name': 'G1 M', 'description': '', 'color': ''}, {'id': 26, 'name': 'G2 A', 'description': '', 'color': ''}, {'id': 27, 'name': 'G2 B', 'description': '', 'color': ''}, {'id': 28, 'name': 'G2 C', 'description': '', 'color': ''}, {'id': 29, 'name': 'G2 D', 'description': '', 'color': ''}, {'id': 30, 'name': 'G2 E', 'description': '', 'color': ''}, {'id': 31, 'name': 'G2 F', 'description': '', 'color': ''}, {'id': 32, 'name': 'G2 G', 'description': '', 'color': ''}, {'id': 33, 'name': 'G2 H', 'description': '', 'color': ''}, {'id': 34, 'name': 'G2 I', 'description': '', 'color': ''}, {'id': 35, 'name': 'G2 J', 'description': '', 'color': ''}, {'id': 36, 'name': 'G2 K', 'description': '', 'color': ''}, {'id': 37, 'name': 'G2 L', 'description': '', 'color': ''}, {'id': 38, 'name': 'G2 M', 'description': '', 'color': ''}],
+                    links: [{'source': 0, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 22, 'value': 2.0, 'description': ''}, {'source': 0, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 0, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 21, 'value': 3.0, 'description': ''}, {'source': 1, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 1, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 21, 'value': 1.0, 'description': ''}, {'source': 2, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 2, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 17, 'value': 1.0, 'description': ''}, {'source': 3, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 19, 'value': 1.0, 'description': ''}, {'source': 3, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 22, 'value': 1.0, 'description': ''}, {'source': 3, 'target': 23, 'value': 1.0, 'description': ''}, {'source': 3, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 3, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 18, 'value': 1.0, 'description': ''}, {'source': 4, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 4, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 5, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 20, 'value': 1.0, 'description': ''}, {'source': 6, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 6, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 20, 'value': 2.0, 'description': ''}, {'source': 7, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 7, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 21, 'value': 1.0, 'description': ''}, {'source': 8, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 8, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 9, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 10, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 11, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 13, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 14, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 15, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 16, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 17, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 18, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 19, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 20, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 21, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 22, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 23, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 24, 'value': 0.0, 'description': ''}, {'source': 12, 'target': 25, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 13, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 14, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 15, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 16, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 27, 'value': 1.0, 'description': ''}, {'source': 17, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 17, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 31, 'value': 1.0, 'description': ''}, {'source': 18, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 18, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 29, 'value': 1.0, 'description': ''}, {'source': 19, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 19, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 27, 'value': 1.0, 'description': ''}, {'source': 20, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 31, 'value': 1.0, 'description': ''}, {'source': 20, 'target': 32, 'value': 1.0, 'description': ''}, {'source': 20, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 20, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 28, 'value': 1.0, 'description': ''}, {'source': 21, 'target': 29, 'value': 2.0, 'description': ''}, {'source': 21, 'target': 30, 'value': 1.0, 'description': ''}, {'source': 21, 'target': 31, 'value': 1.0, 'description': ''}, {'source': 21, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 21, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 27, 'value': 1.0, 'description': ''}, {'source': 22, 'target': 28, 'value': 1.0, 'description': ''}, {'source': 22, 'target': 29, 'value': 1.0, 'description': ''}, {'source': 22, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 22, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 30, 'value': 1.0, 'description': ''}, {'source': 23, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 23, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 24, 'target': 38, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 26, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 27, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 28, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 29, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 30, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 31, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 32, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 33, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 34, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 35, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 36, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 37, 'value': 0.0, 'description': ''}, {'source': 25, 'target': 38, 'value': 0.0, 'description': ''}]
+                };
+                
+
+                
+                const svg = d3.select("#plotapi-chart-398504d9")
+                    .append("svg")
+                    .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
+                    .attr("class","plotapi-plot")
+                    .attr("preserveAspectRatio", "xMinYMin meet")
+                    .style("background-color", "transparent").style("border", "none").append("g")
+                    .attr("transform", "translate("+margin.left+","+margin.top+")");
+
+                svg.append("text")
+                    .attr("x", (width / 2)).attr("y", 0 - (margin.top) + 10)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", 16)
+                    .style("dominant-baseline", "hanging")
+                    .style("text-decoration", "underline")
+                    .text("State Anxiety Flow through CPT");
+
+                
+                const sankey = d3sankey.sankey()
+                    .size([width, height])
+                    .nodeWidth(24.0)
+                    .nodePadding(16)
+                    .nodeAlign(d3sankey.sankeyLeft);
+
+                sankey.nodeSort(function(a, b) { return a.name.localeCompare(b.name); });
+            
+
+                var graph = sankey(data);
+                var nodeDepths = graph.nodes.map(n => n.depth).reduce(reduceUnique, []);
+                
+                graph.nodes.forEach(node => {
+                    var fillColor = color(node.index);
+                    node.fillColor = fillColor;
+                    node.strokeColor = darkenColor(fillColor, 0.3);
+                    node.width = node.x1 - node.x0;
+                    node.height = node.y1 - node.y0;
+                });
+
+                var svgLinks = svg.append("g")
+                    .classed("links", true)
+                    .selectAll("g")
+                    .data(graph.links)
+                    .enter()
+                    .append("g");
+
+                var svgBackgroundLinks = svg.append("g")
+                    .classed("background_links", true)
+                    .selectAll("g")
+                    .data(graph.links)
+                    .enter()
+                    .append("g");
+
+                var gradients = svgLinks.append("linearGradient")
+                    .attr("gradientUnits", "userSpaceOnUse")
+                    .attr("x1", d => d.source.x1)
+                    .attr("x2", d => d.target.x0)
+                    .attr("id", d => ""+getGradientId(d));
+
+            
+                    addGradientStop(gradients, 0.0, d => color(d.source.index));
+                    addGradientStop(gradients, 1.0, d => color(d.target.index));
+
+                svgLinks.append("path")
+                    .classed("link", true)
+                    .attr("id", d => "path_"+getGradientId(d))
+                    .attr("d", d3sankey.sankeyLinkHorizontal())
+                    .attr("fill", "none").attr("stroke", d => "url(#"+getGradientId(d)+")")
+                    .attr("stroke-width", d => (d.width == 0) ? d.width : Math.max(1.0, d.width))
+                    .attr("stroke-opacity", 0.45);
+
+                svgBackgroundLinks.append("path")
+                    .classed("link", true)
+                    .attr("id", d => "path_bg_"+getGradientId(d))
+                    .attr("d", d3sankey.sankeyLinkHorizontal())
+                    .attr("fill", "none")
+                    .attr("stroke", d => "url(#"+getGradientId(d)+")")
+                    .attr("stroke-width", d => (d.width == 0) ? d.width : Math.max(1.0, d.width))
+                    .attr("stroke-opacity", 1.0);
+
+                var svgNodeGroups = svg.append("g")
+                    .classed("nodes", true)
+                    .selectAll("rect")
+                    .data(graph.nodes)
+                    .enter()
+                    .append("g")
+                    .attr("id", d => "node_group_"+d.index)
+                    .classed("nodeGroup", true);
+
+                var svgNodes = svgNodeGroups.append("rect")
+                    .classed("node", true)
+                    .attr("x", d => d.x0)
+                    .attr("y", d => d.y0)
+                    .attr("width", d => d.width)
+                    .attr("height", d => d.height)
+                    .attr("fill", d => d.fillColor)
+                    .attr("opacity", 1.0)
+                    .attr("stroke", d => d.strokeColor)
+                    .attr("stroke-width", 3);
+                        
+                
+                svgNodeGroups.append("text")
+                .classed("nodeText", true)
+                .classed("rotated", function (d) {
+                    rotated = true;
+
+                    if (d.sourceLinks.length == 0) {
+                        rotated = false;
+                    }
+                    
+                    if (d.depth == 0) {
+                        rotated = false;
+                    }
+
+                    return rotated;
+                })
+                .style("fill", d => "white")
+                .style("font-size", 16)
+                .style("stroke", d => darkenColor(d.fillColor, 1))
+                .attr("pointer-events", "none")
+                .style("text-anchor", function (d) {
+                    alignment = "middle";
+                
+                    if (d.sourceLinks.length == 0) {
+                        alignment = "start";
+                    }
+                
+                    if (0 == d.depth) {
+                        alignment = "end";
+                    }
+
+                    return alignment;
+                })
+                .attr('transform', function (d) {
+
+
+                    p_rotate = -90;
+                    width_denom = 2;
+                    depthOffset = 0;
+
+                    if (d.sourceLinks.length == 0) {
+                        depthOffset = (24.0 * .75);
+                        p_rotate = 0;
+                        width_denom = 2;
+                    }
+                    
+                    if (d.depth == 0) {
+                        depthOffset = -(24.0 * .75);
+                        p_rotate = 0;
+                        width_denom = 2;
+                    }
+
+                    return "translate(" + (d.x0 + (d.width / width_denom) + depthOffset) + "," 
+                                        + (d.y0 + (d.height / 2)) + ") rotate(" + p_rotate + ")";
+                })
+                .text(d => d.name)
+                .call(wrap);
+
+                var nodeTextspans = d3.selectAll(".nodeTextSpan").style("dominant-baseline", "central");
+                
+                
+                
+                function drawLinkText() {
+                    var labelText = svg.selectAll(".linkText")
+                        .data(graph.links)
+                        .enter()
+                        .append("text")
+                        .attr("class", "linkText")
+                        .attr("id", d => "link_text_"+d.index)
+                        .attr("x", function (d) {
+                            var pathElement = d3.select("#path_"+getGradientId(d));
+                            var pathLength = pathElement.node().getTotalLength();
+                            var startPoint = pathElement.node().getPointAtLength(0);
+                            var endPoint = pathElement.node().getPointAtLength(pathLength);
+
+                            w = Math.pow(Math.abs(endPoint.x - startPoint.x),2);
+                            h = Math.pow(Math.abs(endPoint.y - startPoint.y),2);
+
+                            
+                            
+                            
+                            di = Math.sqrt((w + h));
+                            
+                            return di / 2;
+                        })
+                        .attr("dy", function (d) { return 0;})
+                        .append("textPath")
+                        .style("text-anchor", "middle")
+                        .attr("fill",function (d, i) {return d3.interpolateRgb(d3.rgb(d.source.fillColor), d3.rgb(d.target.fillColor))(0.5);})
+                        .style("dominant-baseline", "central")
+                        .style("alignment-baseline", "central")
+                        .attr("pointer-events", "none")
+                        .attr("xlink:href", d => "#path_"+getGradientId(d))
+                        .attr("font-size", 16)
+                        .text(function (d, i) {return (d.value == 0) ? "" : "<plotapi_value>".replace("<plotapi_value>",d.value);});
+                }
+                
+
+                
+                function animateInitialState() {
+                    var links = svgLinks.selectAll("path.link")
+                        .interrupt()
+                        .each(function (d, i) {
+                            var length = this.getTotalLength();
+
+                            d3.select(this)
+                                .attr("stroke-dasharray", length + " " + length)
+                                .attr("stroke-opacity", 0.45);
+
+                            d3.select(this).attr("stroke-dashoffset", length);
+                        })
+                }
+
+                function animateReset() {
+                    svgLinks.selectAll("path.link")
+                        .interrupt()
+                        .transition()
+                        .duration(200)
+                        .ease(d3.easeLinear)
+                        .attr("stroke-opacity", 0)
+                        .on("end", () => {
+                            animateInitialState();
+                        });
+
+                    animateShowLinkText();
+                }
+
+                function animateGradient(d, i) {
+                    animateInitialState();
+                    animateHideLinkText(d, i);
+                    animateNextNode(d, i);
+                }
+
+                function animateHideLinkText(d, i) {
+                    var links = svgLinks.selectAll("path.link")
+                        .each(function (d, i) {
+                            d3.select("#link_text_"+d.index)
+                                .transition()
+                                .duration(200)
+                                .ease(d3.easeLinear)
+                                .style("opacity", 0);
+
+                            d3.select("#node_group_"+d.index)
+                                .transition()
+                                .duration(200)
+                                .ease(d3.easeLinear)
+                                .style("opacity", 0.5);
+                        });
+
+                    d3.select("#node_group_"+i.index).interrupt().style("opacity", 1);
+
+                    animateHideNextLinks(d, i);
+                }
+
+                function animateHideNextLinks(d, i) {
+                    var links = svgLinks.selectAll("path.link")
+                        .filter((link) => {
+                            return i.sourceLinks.indexOf(link) !== -1;
+                        })
+                        .each(function (d, i) {
+                            d3.select("#link_text_"+d.index).interrupt().style("opacity", 1);
+                            d3.select("#node_group_"+d.target.index).interrupt().style("opacity", 1);
+                            animateHideNextLinks(d, d.target);
+                        })
+                }
+
+                function animateShowLinkText(d, i) {
+                    var links = svgLinks.selectAll("path.link")
+                        .each(function (d, i) {
+                            d3.select("#link_text_"+d.index)
+                            .transition()
+                            .duration(200)
+                            .ease(d3.easeLinear)
+                            .style("opacity", 1);
+                        });
+
+                    var nodes = svgNodeGroups
+                        .transition()
+                        .duration(200)
+                        .ease(d3.easeLinear)
+                        .style("opacity", 1);
+                }
+
+                function animateNextNode(d, i) {
+                    var links = svgLinks.selectAll("path.link")
+                        .filter((link) => {
+                            return i.sourceLinks.indexOf(link) !== -1;
+                        })
+                        .each(function (d, i) {
+                            var length = this.getTotalLength();
+                            
+                            d3.select(this)
+                                .attr("stroke-dasharray", length + " " + length)
+                                .attr("stroke-dashoffset", length);
+                        })
+                        .transition()
+                        .duration(function (d, i) {
+                            return (d.target.depth - d.source.depth) * 200;
+                        })
+                        .ease(d3.easeLinear)
+                        .attr("stroke-dashoffset", 0)
+                        .on("end", function (d, i) {
+                            animateNextNode(d, d.target);
+                        });
+                }
+                
+
+                
+                
+
+                
+                function animateIntro(data) {
+                    svgNodeGroups.style("opacity", 0);
+
+                    svgBackgroundLinks.selectAll("path.link")
+                        .interrupt()
+                        .each(function (d, i) {
+                            var length = this.getTotalLength();
+                            d3.select(this)
+                                .attr("stroke-dasharray", length + " " + length)
+                                .attr("stroke-opacity", 0.2)
+                                .attr("stroke-dashoffset", length);
+                    });
+
+                    svg.selectAll(".linkText").style("opacity", 0);
+
+                    data.nodes.forEach(node => {
+                        if (node.depth == 0) { animateIntroNextNode(node, node) }
+                    });
+                }
+
+                function animateIntroNextNode(d, i) {
+                    svgNodeGroups
+                        .filter((node) => {
+                            return node.index == i.index;
+                        })
+                        .transition()
+                        .duration(animated_intro_interval)
+                        .ease(d3.easeLinear)
+                        .style("opacity", 1)
+                        .on("end", function (d, i) {
+                            if (d.depth == d3.max(nodeDepths)) {
+                                svg.selectAll(".linkText")
+                                    .transition()
+                                    .duration(animated_intro_interval)
+                                    .ease(d3.easeLinear)
+                                    .style("opacity", 1);
+
+                                register_mouse_interaction();
+                            }
+                        });
+
+                    animateIntroNexLinks(d, i)
+                }
+
+                function animateIntroNexLinks(d, i) {
+                    svgBackgroundLinks.selectAll("path.link")
+                        .filter((link) => {
+                            return i.sourceLinks.indexOf(link) !== -1;
+                        })
+                        .each(function (d, i) {
+                            var length = this.getTotalLength();
+                            d3.select(this)
+                                .attr("stroke-dasharray", length + " " + length)
+                                .attr("stroke-dashoffset", length);
+                        })
+                        .transition()
+                        .duration(function (d, i) {
+                            return (d.target.depth - d.source.depth) * animated_intro_interval;
+                        })
+                        .ease(d3.easeLinear)
+                        .attr("stroke-dashoffset", 0)
+                        .on("end", function (d, i) {
+                            animateIntroNextNode(d, d.target);
+                        });
+                }
+
+                animateInitialState();
+                drawLinkText();
+
+                animated_intro_interval = 2000 / (d3.max(nodeDepths) + 2);
+                animateIntro(graph);
+
+
+            
+
+             
+
+
+                
+                d3.select("#plotapi-chart-398504d9 svg")
+                    .append("svg:a")
+                    .attr("xlink:href", "https://plotapi.com")
+                    .attr("target", "_blank")
+                    .append("image")
+                    .attr("xlink:href", "https://plotapi.com/gallery/icon/plotapi.svg")
+                    .attr('width', 20)
+                    .attr('height', 20)
+                    .attr('x', width+margin.left + margin.right-20)
+                    .attr('y', 0)
+                    .style("opacity", 0)
+                    .attr("id","plotapi-chart-398504d9_icon")
+
+                d3.select("#plotapi-chart-398504d9_icon")
+                    .append("title")
+                    .text("Produced with PlotAPI");
+
+                d3.select("#plotapi-chart-398504d9_icon").on("mouseover", function(d, i) {
+                    d3.select("#plotapi-chart-398504d9_icon").style("opacity", 1)
+                });
+
+                d3.select("#plotapi-chart-398504d9_icon").on("mouseout", function(d, i) {
+                    d3.select("#plotapi-chart-398504d9_icon").style("opacity", 0.6)
+                });
+                
+
+                d3.select("#plotapi-chart-398504d9 svg").on("mouseenter", function() {
+                    d3.select("#plotapi-chart-398504d9_icon").style("opacity", 0.6)
+                });
+
+                d3.select("#plotapi-chart-398504d9 svg").on("mouseleave", function() {
+                                       
+                    d3.select("#plotapi-chart-398504d9_icon").style("opacity", 0);
+                });
+            }
+        }());
+    </script>
+
+</body>
+
+</html>

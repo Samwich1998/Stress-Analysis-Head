@@ -20,12 +20,12 @@ from ..dataAcquisitionAndAnalysis.excelProcessing.saveDataProtocols import saveE
 
 class trainingProtocols(extractData):
 
-    def __init__(self, biomarkerFeatureNames, streamingOrder, biomarkerFeatureOrder, numberOfChannels, trainingFolder, readData):
+    def __init__(self, biomarkerFeatureNames, streamingOrder, biomarkerFeatureOrder, trainingFolder, readData):
         super().__init__()
         # General parameters
         self.biomarkerFeatureOrder = biomarkerFeatureOrder
         self.biomarkerFeatureNames = biomarkerFeatureNames
-        self.numberOfChannels = numberOfChannels
+        self.numberOfChannels = len(streamingOrder)
         self.trainingFolder = trainingFolder
         self.streamingOrder = streamingOrder
         self.readData = readData
@@ -156,6 +156,9 @@ class trainingProtocols(extractData):
                 compiledFeatureHolders.pop()
                 allRawFeatureHolders.pop()
                 continue
+
+            # Finished analyzing the data
+            self.readData.resetGlobalVariables()
 
             # ----------- Segment the Experimental Feature Signals ----------- #
 

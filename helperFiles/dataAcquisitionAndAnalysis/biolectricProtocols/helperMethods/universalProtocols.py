@@ -43,7 +43,7 @@ class universalMethods:
     @staticmethod
     def calculatePSD(data, samplingFreq):
         # Calculate the power spectrum density parameters.
-        nperseg = int(samplingFreq * 2.5)
+        nperseg = int(samplingFreq * 3)
         noverlap = nperseg // 2
         nfft = nperseg * 2
 

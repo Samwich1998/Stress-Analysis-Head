@@ -1,4 +1,3 @@
-import numpy as np
 import os
 
 # Import Files
@@ -34,8 +33,8 @@ class humanMachineInterface:
     def resetVariables_HMI(self):        
         # Aligned feature data structure
         self.alignedFeatureLabels = [[] for _ in range(len(self.modelClasses))]  # The FINAL predicted labels at the current timepoint.
-        self.alignedFeatureTimes = []   # The interpolated timepoints of the ALIGNED feature. Dimensions: [numTimepoints]
         self.alignedFeatures = [[] for _ in range(len(self.featureNames))]       # Interpolated features to align all at the same timepoint. Dimensions: [numFeatures, numTimepoints]
+        self.alignedFeatureTimes = []   # The interpolated timepoints of the ALIGNED feature. Dimensions: [numTimepoints]
 
         # Subject information
         self.alignedUserNames = []

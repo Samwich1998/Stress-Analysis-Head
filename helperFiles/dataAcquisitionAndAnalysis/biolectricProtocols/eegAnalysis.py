@@ -32,6 +32,7 @@ class eegProtocol(globalProtocol):
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
         self.featureTimeWindow = self.featureTimeWindow_highFreq  # The duration of time that each feature considers
+        self.minPointsPerBatch = None  # The minimum number of points that must be present in a batch to extract features.
 
         # Finalize the protocol parameters.
         self.resetGlobalVariables()

@@ -10,8 +10,8 @@ class generalProtocol_highFreq(globalProtocol):
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
         super().__init__("general_hf", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
+        self.featureTimeWindow = self.featureTimeWindow_highFreq  # The duration of time that each feature considers
         self.startFeatureTimePointer = []  # The start pointer of the feature window interval.
-        self.featureTimeWindow = None  # The duration of time that each feature considers.
         self.minPointsPerBatch = 0  # The minimum number of points per batch.
 
         # Filter parameters.
@@ -28,7 +28,7 @@ class generalProtocol_highFreq(globalProtocol):
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]    # The start pointer of the feature window interval.
-        self.featureTimeWindow = self.featureTimeWindow_highFreq  # The duration of time that each feature considers
+        self.minPointsPerBatch = 0  # The minimum number of points per batch.
 
         # Finalize the protocol parameters.
         self.resetGlobalVariables()
@@ -46,6 +46,9 @@ class generalProtocol_highFreq(globalProtocol):
         self.lastAnalyzedDataInd[:] = int(self.samplingFreq * self.featureTimeWindow)
         self.minPointsPerBatch = int(self.samplingFreq * self.featureTimeWindow * 3 / 4)
         self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq * maxBufferSeconds))  # cutOffFreq = 0.1, use 70 seconds; cutOffFreq = 0.01, use 400 seconds; cutOffFreq = 0.05, use 100 seconds
+
+        # Set the sampling frequency for the MNE interface
+        self.mneInterface.setSamplingFrequencyParams(self.samplingFreq)
 
     # ------------------------- Data Analysis Begins ----------------------- #
 

@@ -17,11 +17,6 @@ class eogProtocol(globalProtocol):
         # Filter parameters.
         self.cutOffFreq = [.5, 15]  # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 20 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
 
-        # High-pass filter parameters.
-        self.stopband_edge = 10  # Common values for EEG are 1 Hz and 2 Hz. If you need to remove more noise, you can choose a higher stopband-edge frequency. If you need to preserve the signal more, you can choose a lower stopband-edge frequency.
-        self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, you can choose a lower passband ripple. If you need to preserve the signal more, you can choose a higher passband ripple.
-        self.stopband_attenuation = 20  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, you can choose a higher stopband attenuation. If you need to preserve the signal more, you can choose a lower stopband attenuation.
-
         # Blink Parameters
         self.voltageRange = voltageRange  # The Voltage Range of the System; Units: Volts
         self.minPeakHeight_Volts = 0.05  # The Minimum Peak Height in Volts; Removes Small Oscillations
@@ -36,8 +31,8 @@ class eogProtocol(globalProtocol):
         self.calibrationAngles = [[-45, 0, 45] for _ in range(self.numChannels)]
         self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         # Pointers for Calibration
-        self.calibrateChannelNum = 0  # The Current Channel We are Calibrating
         self.channelCalibrationPointer = 0  # A Pointer to the Current Angle Being Calibrated (A Pointer for Angle in self.calibrationAngles)
+        self.calibrateChannelNum = 0  # The Current Channel We are Calibrating
         # Calibration Function for Eye Angle
         self.steadyStateEye = voltageRange[0] + (voltageRange[1] - voltageRange[0]) / 2  # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
         self.predictEyeAngle = [lambda x: (x - self.steadyStateEye) * 30] * self.numChannels
@@ -67,6 +62,7 @@ class eogProtocol(globalProtocol):
 
         # Reset Last Eye Voltage (Volts)
         self.currentEyeVoltages = [self.steadyStateEye for _ in range(self.numChannels)]
+        self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         # Reset Blink Indices
         self.singleBlinksX = []
         self.multipleBlinksX = []
@@ -74,6 +70,10 @@ class eogProtocol(globalProtocol):
         self.blinksYLocs = []
         self.culledBlinkX = []
         self.culledBlinkY = []
+
+        # Pointers for Calibration
+        self.channelCalibrationPointer = 0  # A Pointer to the Current Angle Being Calibrated (A Pointer for Angle in self.calibrationAngles)
+        self.calibrateChannelNum = 0  # The Current Channel We are Calibrating
 
         # Blink Classification
         self.blinkTypes = ['Relaxed', 'Stroop', 'Exercise', 'VR']
@@ -126,6 +126,7 @@ class eogProtocol(globalProtocol):
 
                 # Find and record the blinks in the EOG data.
                 self.findBlinks(unAnalyzedTimes, unAnalyzedData, channelIndex, self.debugBlinkDetection)
+
             # --------------------------------------------------------------- #
 
             # --------------------- Calibrate Eye Angle --------------------- #
@@ -322,9 +323,9 @@ class eogProtocol(globalProtocol):
 
             # --------------------------------------------------------------- #
 
-        # Even if no blinks found, we know that blinks wnt reappear in old data.
+        # Even if no blinks found, we know that blinks can reappear in old data.
         if len(xData) != 0:
-            self.lastAnalyzedDataInd[channelIndex] = self.findStartFeatureWindow(self.lastAnalyzedDataInd[channelIndex], xData[-1], 10)
+            self.lastAnalyzedDataInd[channelIndex] = self.findStartFeatureWindow(self.lastAnalyzedDataInd[channelIndex], xData[-1], timeWindow=10)
 
         # Compile the new raw features into a smoothened (averaged) feature.
         self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)

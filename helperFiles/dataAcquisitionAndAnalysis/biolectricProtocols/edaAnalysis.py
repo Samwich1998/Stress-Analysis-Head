@@ -11,12 +11,14 @@ class edaProtocol(globalProtocol):
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
         super().__init__("eda", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters.
-        self.startFeatureTimePointer_Phasic = []  # The start pointer of the feature window interval.
-        self.startFeatureTimePointer_Tonic = []  # The start pointer of the feature window interval.
-        self.featureTimeWindow_Phasic = None  # The duration of time that each feature considers.
-        self.featureTimeWindow_Tonic = None  # The duration of time that each feature considers.
-        self.minPointsPerBatchPhasic = 0  # The minimum number of points required to extract features.
-        self.minPointsPerBatchTonic = 0  # The minimum number of points required to extract features.
+        self.startFeatureTimePointer_Phasic = None  # The start pointer of the feature window interval.
+        self.startFeatureTimePointer_Tonic = None  # The start pointer of the feature window interval.
+        self.minPointsPerBatchPhasic = None  # The minimum number of points required to extract features.
+        self.minPointsPerBatchTonic = None  # The minimum number of points required to extract features.
+
+        # Confirm the feature time windows are set.
+        self.featureTimeWindow_Phasic = self.featureTimeWindow_highFreq  # The duration of time that each feature considers.
+        self.featureTimeWindow_Tonic = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers.
 
         # Filter Parameters.
         self.tonicFrequencyCutoff = 0.05  # Maximum tonic component frequency.
@@ -30,9 +32,9 @@ class edaProtocol(globalProtocol):
         self.startFeatureTimePointer_Phasic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
         self.startFeatureTimePointer_Tonic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
 
-        # Confirm the feature time windows are set.
-        self.featureTimeWindow_Phasic = self.featureTimeWindow_highFreq  # The duration of time that each feature considers.
-        self.featureTimeWindow_Tonic = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers.
+        # Feature collection parameters.
+        self.minPointsPerBatchPhasic = 0  # The minimum number of points required to extract features.
+        self.minPointsPerBatchTonic = 0  # The minimum number of points required to extract features.
 
         # Finalize the protocol parameters.
         self.resetGlobalVariables()
@@ -52,6 +54,9 @@ class edaProtocol(globalProtocol):
         self.minPointsPerBatchPhasic = int(self.samplingFreq * self.featureTimeWindow_Phasic * 3 / 4)
         self.lastAnalyzedDataInd[:] = int(self.samplingFreq * maxFeatureTimeWindow)
         self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq * maxFeatureTimeWindow))
+
+        # Set the sampling frequency for the MNE interface
+        self.mneInterface.setSamplingFrequencyParams(self.samplingFreq)
 
     # ----------------------------------------------------------------------- #
     # ------------------------- Data Analysis Begins ------------------------ #

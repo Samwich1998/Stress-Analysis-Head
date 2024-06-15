@@ -14,8 +14,15 @@ class streamingProtocols(streamingProtocolHelpers):
         # Create Pointer to Common Functions
         super().__init__(mainSerialNum=mainSerialNum, therapySerialNum=None, modelClasses=modelClasses, actionControl=actionControl, numPointsPerBatch=numPointsPerBatch, moveDataFinger=moveDataFinger, streamingOrder=streamingOrder,
                          extractFeaturesFrom=extractFeaturesFrom, featureAverageWindows=featureAverageWindows, voltageRange=voltageRange, plotStreamedData=plotStreamedData)
-
         # Holder parameters.
+        self.experimentInfoPointerStart = None
+        self.experimentInfoPointerEnd = None
+        self.featureInfoPointer = None
+        self.stopTimeStreaming = None
+
+    def resetGlobalVariables(self):
+        self.resetStreamingInformation()
+        # Reset the Experiment Information Pointers
         self.experimentInfoPointerStart = None
         self.experimentInfoPointerEnd = None
         self.featureInfoPointer = None
@@ -109,10 +116,10 @@ class streamingProtocols(streamingProtocolHelpers):
         # Loop Through and Read the Excel Data in Pseudo-Real-Time
         while generalDataFinger < len(timePoints):
             # Organize the Input Data
-            self.organizeData([timePoints[generalDataFinger:generalDataFinger + self.moveDataFinger]], Voltages[:, generalDataFinger:generalDataFinger + self.moveDataFinger])
+            self.organizeData(timePoints=timePoints[generalDataFinger:generalDataFinger + self.moveDataFinger], Voltages=Voltages[:, generalDataFinger:generalDataFinger + self.moveDataFinger].tolist())
 
             # When enough data has been collected, analyze the new data in batches.
-            while generalDataFinger + self.moveDataFinger - dataFinger >= self.numPointsPerBatch:
+            while self.numPointsPerBatch <= generalDataFinger + self.moveDataFinger - dataFinger:
                 dataFinger = self.analyzeBatchData(dataFinger)
             # Organize experimental information.
             self.organizeExperimentalInformation(timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, generalDataFinger)

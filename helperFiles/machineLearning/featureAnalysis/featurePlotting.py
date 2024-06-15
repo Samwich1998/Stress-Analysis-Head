@@ -45,11 +45,11 @@ class featurePlotting(globalPlottingProtocols):
             scaleTime = 60
 
         # Scale the time units.
-        surveyCollectionTimes = np.array(surveyCollectionTimes) / scaleTime
-        timePoints = np.array(timePoints) / scaleTime
-        averageIntervalList = np.array(averageIntervalList) / scaleTime
-        preAveragingSeconds = np.array(preAveragingSeconds) / scaleTime
-        experimentTimes = np.array(experimentTimes) / scaleTime
+        surveyCollectionTimes = np.array(surveyCollectionTimes.copy()) / scaleTime
+        timePoints = np.array(timePoints.copy()) / scaleTime
+        averageIntervalList = np.array(averageIntervalList.copy()) / scaleTime
+        preAveragingSeconds = np.array(preAveragingSeconds.copy()) / scaleTime
+        experimentTimes = np.array(experimentTimes.copy()) / scaleTime
 
         # Return the scaled times wit the new unit
         return timeUnit, timePoints, preAveragingSeconds, averageIntervalList, surveyCollectionTimes, experimentTimes
@@ -69,8 +69,8 @@ class featurePlotting(globalPlottingProtocols):
 
     def addSurveyInfo(self, ax, surveyCollectionTimes, experimentTimes, experimentNames, predictionType, legendAxes, legendLabels, yLim, recordedScores=None):
         # Ensure the correct data type of variables
-        experimentTimes = np.array(experimentTimes)
-        surveyCollectionTimes = np.array(surveyCollectionTimes)
+        experimentTimes = np.array(experimentTimes.copy())
+        surveyCollectionTimes = np.array(surveyCollectionTimes.copy())
 
         # Add the feature collection times to the graph.
         if len(surveyCollectionTimes) != 0:
@@ -122,7 +122,7 @@ class featurePlotting(globalPlottingProtocols):
         # For each biomarker being streamed
         for streamingInd in range(len(compiledRawData[1])):
             biomarkerName = streamingOrder[streamingInd].upper()
-            biomarkerData = np.array(compiledRawData[1][streamingInd])
+            biomarkerData = np.array(compiledRawData[1][streamingInd].copy())
             channelIndex = streamingChannelIndices[streamingInd]
 
             # Filter the data
@@ -261,8 +261,8 @@ class featurePlotting(globalPlottingProtocols):
     def plotEmotionCorrelation(self, allFinalFeatures, currentSurveyAnswersList, surveyQuestions, featureNames, folderName, subjectOrder=()):
         print("\tPlotting emotion correlation in folder:", folderName)
         # Set up the variables
-        allFinalFeatures = np.array(allFinalFeatures)
-        currentSurveyAnswersList = np.array(currentSurveyAnswersList)
+        allFinalFeatures = np.array(allFinalFeatures.copy())
+        currentSurveyAnswersList = np.array(currentSurveyAnswersList.copy())
 
         # For each survey question (feature label)
         for surveyQuestionInd in range(len(surveyQuestions)):
@@ -316,8 +316,8 @@ class featurePlotting(globalPlottingProtocols):
     def plotPsychCorrelation(self, allFinalFeatures, currentSurveyAnswersList, featureNames, folderName, subjectOrder=()):
         print("\tPlotting psych correlation in folder:", folderName)
         # Set up the variables
-        allFinalFeatures = np.array(allFinalFeatures)
-        currentSurveyAnswersList = np.array(currentSurveyAnswersList)
+        allFinalFeatures = np.array(allFinalFeatures.copy())
+        currentSurveyAnswersList = np.array(currentSurveyAnswersList.copy())
 
         # Specify the order of the positive and negative survey questions.
         anxietyTypes, relevantSurveyAnswers = self.modelInfoClass.extractFinalLabels(currentSurveyAnswersList, [])
@@ -440,8 +440,8 @@ class featurePlotting(globalPlottingProtocols):
         saveDataFolder = self.saveDataFolder + "chemicalFeatureComparison/"
         os.makedirs(saveDataFolder, exist_ok=True)
 
-        featureList1 = np.array(featureList1)
-        featureList2 = np.array(featureList2)
+        featureList1 = np.array(featureList1.copy())
+        featureList2 = np.array(featureList2.copy())
 
         labelList = ['Cold', 'Exercise', 'VR']
 
@@ -507,8 +507,8 @@ class featurePlotting(globalPlottingProtocols):
         saveDataFolder = self.saveDataFolder + folderName + labelType + "/"
         os.makedirs(saveDataFolder, exist_ok=True)
 
-        allFinalFeatures = np.array(allFinalFeatures)
-        finalLabels = np.array(finalLabels)
+        allFinalFeatures = np.array(allFinalFeatures.copy())
+        finalLabels = np.array(finalLabels.copy())
         for featureInd in range(len(featureNames)):
             fig = plt.figure()
 

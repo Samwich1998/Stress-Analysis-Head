@@ -205,7 +205,7 @@ class featureOrganization(humanMachineInterface):
         return featureIntervals, featureIntervalTimes
 
     def averageFeatures_static(self, rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=0):
-        # Ensure the proper initial data structure.
+        # Ensure proper initial data structure.
         rawFeatureTimes = np.asarray(rawFeatureTimes)
         rawFeatures = np.asarray(rawFeatures)
 
@@ -225,7 +225,7 @@ class featureOrganization(humanMachineInterface):
             compiledFeature = scipy.stats.trim_mean(featureInterval, proportiontocut=self.trimMeanCut, axis=0)
             compiledFeatures.append(compiledFeature)
 
-        return compiledFeatures
+        return list(compiledFeatures)
 
     def compileContinuousFeatures(self, newFeatureTimes, newRawFeatures, rawFeatureTimes, rawFeatures, compiledFeatures, averageWindow):
         # Assert the integrity of the feature compilation.
@@ -235,15 +235,15 @@ class featureOrganization(humanMachineInterface):
 
         startTimeInd = len(rawFeatures)
         # Append the new features to the raw features
-        rawFeatureTimes.extend(newFeatureTimes)
-        rawFeatures.extend(newRawFeatures)
+        rawFeatureTimes.extend(list(newFeatureTimes))
+        rawFeatures.extend(list(newRawFeatures))
 
         # Perform the feature averaging
         newCompiledFeatures = self.averageFeatures_static(rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=startTimeInd)
         compiledFeatures.extend(newCompiledFeatures)
 
         # Assert the integrity of the feature compilation.
-        assert len(rawFeatures) == len(compiledFeatures), f"Found {len(rawFeatures)} raw features and {len(compiledFeatures)} compiled features. These must be the same length."
+        assert len(rawFeatures) == len(compiledFeatures), f"Found {len(rawFeatures)} raw features and {len(compiledFeatures)} compiled features. {len(rawFeatures[0])} {len(compiledFeatures[0])}"
 
     def compileStaticFeatures(self, rawFeatureTimesHolder, rawFeatureHolder, featureAverageWindows):
         # Assert the integrity of the feature compilation.

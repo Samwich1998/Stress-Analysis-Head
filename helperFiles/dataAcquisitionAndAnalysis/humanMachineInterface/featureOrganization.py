@@ -88,7 +88,7 @@ class featureOrganization(humanMachineInterface):
     # --------------------- Organize Incoming Features --------------------- #
 
     def organizeRawFeatures(self):
-        # For each unique analysis.
+        # For each unique analysis with features.
         for analysis in self.featureAnalysisList:
 
             # For each channel in the analysis.
@@ -103,20 +103,25 @@ class featureOrganization(humanMachineInterface):
                 # Update the raw pointers.
                 self.rawFeaturePointers[biomarkerInd] = len(analysis.rawFeatureTimes[featureChannelInd])
 
+                # Assert the integrity of the raw feature organization.
+                assert len(self.rawFeatureTimesHolder[biomarkerInd]) == len(analysis.rawFeatureTimes[featureChannelInd]), \
+                    f"Found {len(self.rawFeatureTimesHolder[biomarkerInd])} raw times and {len(self.rawFeatureHolder[biomarkerInd])} raw features. These must be the same length."
+                assert len(self.rawFeatureHolder[biomarkerInd]) == len(analysis.rawFeatures[featureChannelInd]), \
+                    f"Found {len(self.rawFeatureHolder[biomarkerInd])} raw features and {len(analysis.rawFeatures[featureChannelInd])} raw features. These must be the same length."
+
     def findCommonTimeRange(self):
         # Set up the parameters.
         rightAlignedTime = np.inf
         leftAlignedTime = 0
 
-        # For each unique analysis.
-        for analysis in self.featureAnalysisList:
-            # For each channel in the analysis.
-            for featureChannelInd in range(len(analysis.featureChannelIndices)):
+        # For each biomarker with features.
+        for biomarkerInd in range(len(self.biomarkerFeatureOrder)):
+            rawFeatureTimes = self.rawFeatureTimesHolder[biomarkerInd]
 
-                # Update the min/max times.
-                if len(analysis.rawFeatureTimes[featureChannelInd]) != 0:
-                    leftAlignedTime = max(leftAlignedTime, analysis.rawFeatureTimes[featureChannelInd][0])
-                    rightAlignedTime = min(rightAlignedTime, analysis.rawFeatureTimes[featureChannelInd][-1])
+            # Update the min/max times.
+            if len(rawFeatureTimes) != 0:
+                leftAlignedTime = max(leftAlignedTime, rawFeatureTimes[0])
+                rightAlignedTime = min(rightAlignedTime, rawFeatureTimes[-1])
 
         # Check if the time range is valid.
         if np.isinf(rightAlignedTime):
@@ -137,46 +142,40 @@ class featureOrganization(humanMachineInterface):
         newInterpolatedTimes = np.arange(leftAlignedTime, rightAlignedTime, 1 / self.newSamplingFreq)
 
         # Store the new time points.
-        numPreviousPoints = len(self.alignedFeatureTimes)
         self.alignedFeatureTimes.extend(newInterpolatedTimes.tolist())
 
         # Calculate the number of new points.
-        numNewPoints = len(self.alignedFeatureTimes) - numPreviousPoints
-        newInterpolatedFeatureTimes = self.alignedFeatureTimes[-numNewPoints - self.interpBufferPoints:]
+        numNewAlignedPoints = len(newInterpolatedTimes)
+        newInterpolatedFeatureTimes = self.alignedFeatureTimes[-numNewAlignedPoints - self.interpBufferPoints:]
+        numBufferPoints = len(newInterpolatedFeatureTimes) - numNewAlignedPoints
 
-        # For each unique analysis.
+        # For each unique analysis with features.
         for analysis in self.featureAnalysisList:
-
-            # For each channel in the analysis.
             for featureChannelInd in range(len(analysis.featureChannelIndices)):
-                biomarkerInd = analysis.featureChannelIndices[featureChannelInd]
-                rawFeatureTimes = analysis.rawFeatureTimes[featureChannelInd]
-                biomarkerFeatureInds = self.biomarkerFeatureInds[biomarkerInd]
+
+                # Extract the feature information.
+                compiledFeatureData = analysis.compiledFeatures[featureChannelInd]  # Dim: numTimePoints, numBiomarkerFeatures
+                biomarkerInd = analysis.featureChannelIndices[featureChannelInd]  # Dim: 1
+                biomarkerFeatureInds = self.biomarkerFeatureInds[biomarkerInd]  # Dim: numBiomarkerFeatures
+                rawFeatureTimes = analysis.rawFeatureTimes[featureChannelInd]  # Dim: numTimePoints
 
                 # Get the feature information.
                 alignmentDataPointer = max(0, self.alignmentDataPointers[biomarkerInd] - self.interpBufferPoints)
-                compiledFeatures = analysis.compiledFeatures[featureChannelInd][alignmentDataPointer:]
-                compiledFeatureTimes = rawFeatureTimes[alignmentDataPointer:]
+                compiledFeatures = compiledFeatureData[alignmentDataPointer:]  # Dim: numTimePoints, numBiomarkerFeatures
+                compiledFeatureTimes = rawFeatureTimes[alignmentDataPointer:]  # Dim: numCompiledPoints
 
                 # Interpolate the features.
                 makimaInterpFunc = Akima1DInterpolator(compiledFeatureTimes, compiledFeatures, method='makima', axis=0)
-                alignedFeatures = makimaInterpFunc(newInterpolatedFeatureTimes).T
-                # alignedFeatures dim: numBiomarkerFeatures, numPoints
-
-                # Extract the dimensional information.
-                numBiomarkerFeatures, numPoints = alignedFeatures.shape
-                numOldPoints = numPoints - numNewPoints
-
-                # Assert the integrity of the feature alignment.
-                assert numBiomarkerFeatures == len(biomarkerFeatureInds), f"Found {numBiomarkerFeatures} biomarker features and {len(biomarkerFeatureInds)} feature indices. These must be the same length."
+                alignedFeatures = makimaInterpFunc(newInterpolatedFeatureTimes)
+                # alignedFeatures dim: numTimePoints, numBiomarkerFeatures
 
                 # Store the aligned features.
                 for compiledFeatureInd, featureInd in enumerate(biomarkerFeatureInds):
-                    self.alignedFeatures[featureInd][-numOldPoints:] = alignedFeatures[compiledFeatureInd, 0:numOldPoints].tolist()
-                    self.alignedFeatures[featureInd].extend(alignedFeatures[compiledFeatureInd, numOldPoints:].tolist())
+                    self.alignedFeatures[featureInd][-numBufferPoints:] = alignedFeatures[0:numBufferPoints, compiledFeatureInd].tolist()
+                    self.alignedFeatures[featureInd].extend(alignedFeatures[numBufferPoints:, compiledFeatureInd].tolist())
 
                     # Assert the integrity of the feature alignment.
-                    assert len(self.alignedFeatures[featureInd]) == len(self.alignedFeatureTimes), f"Found {len(self.alignedFeatures[featureInd])} aligned features and {len(self.alignedFeatureTimes)} aligned times. These must be the same length."
+                    assert len(self.alignedFeatures[:, featureInd]) == len(self.alignedFeatureTimes), f"Found {len(self.alignedFeatures[:, featureInd])} aligned features and {len(self.alignedFeatureTimes)} aligned times. These must be the same length."
 
                 # Update the alignment pointers.
                 while rawFeatureTimes[self.alignmentDataPointers[biomarkerInd]] <= self.alignedFeatureTimes[-1]:
@@ -200,34 +199,44 @@ class featureOrganization(humanMachineInterface):
 
         # Save raw interval information
         featureIntervalTimes = [featureTimes[startStimuliInd:endStimuliInd] for _ in range(len(features[0]))]
-        featureIntervals = features[:, startStimuliInd:endStimuliInd]
+        featureIntervals = features[startStimuliInd:endStimuliInd]
 
         return featureIntervals, featureIntervalTimes
 
     def averageFeatures_static(self, rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=0):
+        # rawFeatures dim: numTimePoints, numBiomarkerFeatures
+        # rawFeatureTimes dim: numTimePoints
+
         # Ensure proper initial data structure.
         rawFeatureTimes = np.asarray(rawFeatureTimes)
         rawFeatures = np.asarray(rawFeatures)
 
         compiledFeatures = []
         # Average the Feature Together at Each Point
-        for featureInd in range(startTimeInd, len(rawFeatures)):
-            currentTimepoint = rawFeatureTimes[featureInd]
+        for timePointInd in range(startTimeInd, len(rawFeatureTimes)):
+            currentTimepoint = rawFeatureTimes[timePointInd]
 
             # Get the interval of features to average
-            featureMask = np.logical_and(
+            timeMask = np.logical_and(
                 currentTimepoint - averageWindow <= rawFeatureTimes,
                 rawFeatureTimes <= currentTimepoint,
             )
-            featureInterval = rawFeatures[featureMask]
+            featureInterval = rawFeatures[timeMask]
 
             # Take the trimmed average
             compiledFeature = scipy.stats.trim_mean(featureInterval, proportiontocut=self.trimMeanCut, axis=0)
             compiledFeatures.append(compiledFeature)
+        # compiledFeatures dim: numTimePoints, numBiomarkerFeatures
 
         return list(compiledFeatures)
 
     def compileContinuousFeatures(self, newFeatureTimes, newRawFeatures, rawFeatureTimes, rawFeatures, compiledFeatures, averageWindow):
+        # newRawFeatures dim: numNewTimePoints, numBiomarkerFeatures
+        # compiledFeatures dim: numTimePoints, numBiomarkerFeatures
+        # rawFeatures dim: numTimePoints, numBiomarkerFeatures
+        # newFeatureTimes dim: numNewTimePoints
+        # rawFeatureTimes dim: numTimePoints
+
         # Assert the integrity of the feature compilation.
         assert len(newFeatureTimes) == len(newRawFeatures), f"Found {len(newFeatureTimes)} new times and {len(newRawFeatures)} new features. These must be the same length."
         assert len(rawFeatureTimes) == len(rawFeatures), f"Found {len(rawFeatureTimes)} times and {len(rawFeatures)} features. These must be the same length."
@@ -246,6 +255,10 @@ class featureOrganization(humanMachineInterface):
         assert len(rawFeatures) == len(compiledFeatures), f"Found {len(rawFeatures)} raw features and {len(compiledFeatures)} compiled features. {len(rawFeatures[0])} {len(compiledFeatures[0])}"
 
     def compileStaticFeatures(self, rawFeatureTimesHolder, rawFeatureHolder, featureAverageWindows):
+        # rawFeatureHolder dim: numBiomarkers, numTimePoints, numBiomarkerFeatures
+        # rawFeatureTimesHolder dim: numBiomarkers, numTimePoints
+        # featureAverageWindows dim: numBiomarkers
+
         # Assert the integrity of the feature compilation.
         assert len(rawFeatureTimesHolder) == len(rawFeatureHolder), \
             f"Found {len(rawFeatureTimesHolder)} times and {len(rawFeatureHolder)} features. These must be the same length."
@@ -264,5 +277,6 @@ class featureOrganization(humanMachineInterface):
             # Perform the feature averaging
             compiledFeatures = self.averageFeatures_static(rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=0)
             compiledFeatureHolders.append(compiledFeatures)
+        # compiledFeatures dim: numTimePoints, numBiomarkerFeatures
 
         return compiledFeatureHolders

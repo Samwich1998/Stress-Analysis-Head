@@ -114,10 +114,10 @@ class streamingProtocolHelpers(featureOrganization):
         self.experimentTimes = []  # A list of lists of [start, stop] times of each experiment, where each element represents the times for one experiment. None means no time recorded.
         self.experimentNames = []  # A list of names for each experiment, where len(experimentNames) == len(experimentTimes).
 
-    def analyzeBatchData(self, dataFinger):
+    def analyzeBatchData(self, streamingDataFinger):
         # Analyze the current data
         for analysis in self.analysisList:
-            analysis.analyzeData(dataFinger)
+            analysis.analyzeData(streamingDataFinger)
 
         # Organize the new features
         self.organizeRawFeatures()
@@ -127,8 +127,8 @@ class streamingProtocolHelpers(featureOrganization):
         # Plot the Data
         if self.plotStreamedData: self.plottingClass.displayData()
 
-        # Move the dataFinger pointer to analyze the next batch of data
-        return dataFinger + self.moveDataFinger
+        # Move the streamingDataFinger pointer to analyze the next batch of data
+        return streamingDataFinger + self.moveDataFinger
 
     def recordData(self, maxVolt=3.3, adcResolution=4096):
         # Read in at least one point
@@ -142,11 +142,12 @@ class streamingProtocolHelpers(featureOrganization):
 
     def organizeData(self, timePoints, Voltages):
         if len(timePoints) == 0:
-            print("\t !!! NO POINTS FOUND !!!")
+            print("\tNO NEW TIMEPOINTS ADDED")
 
         # Update the data (if present) for each sensor
         for analysisInd in range(len(self.analysisOrder)):
             analysis = self.analysisList[analysisInd]
+
             # Skip if no data is present for this sensor
             if analysis.numChannels == 0: continue
 

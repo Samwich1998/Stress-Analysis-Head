@@ -89,8 +89,8 @@ class trainingProtocols(extractData):
                     = self.extractExperimentalData(WB.worksheets, self.numberOfChannels, surveyQuestions=surveyQuestions, finalSubjectInformationQuestions=subjectInformationQuestions)
                 self.readData.streamExcelData(compiledRawData, experimentTimes, experimentNames, currentSurveyAnswerTimes, currentSurveyAnswersList, surveyQuestions, currentSubjectInformationAnswers, subjectInformationQuestions, excelFileName)
                 # Extract information from the streamed data
-                rawFeatureTimesHolder = self.readData.rawFeatureTimesHolder.copy()
-                rawFeatureHolder = self.readData.rawFeatureHolder.copy()
+                rawFeatureTimesHolder = self.readData.rawFeatureTimesHolder.copy()  # dim: numBiomarkers, numTimePoints
+                rawFeatureHolder = self.readData.rawFeatureHolder.copy()  # dim: numBiomarkers, numTimePoints, numBiomarkerFeatures
 
                 # Plot the signals
                 self.analyzeFeatures.plotRawData(self.readData, compiledRawData, currentSurveyAnswerTimes, experimentTimes, experimentNames, self.streamingOrder, folderName=excelFileName + "/rawSignals/")
@@ -98,6 +98,8 @@ class trainingProtocols(extractData):
                 # Save the features to be analyzed in the future.
                 self.saveInputs.saveRawFeatures(rawFeatureTimesHolder, rawFeatureHolder, self.biomarkerFeatureNames, self.biomarkerFeatureOrder, experimentTimes, experimentNames, currentSurveyAnswerTimes,
                                                 currentSurveyAnswersList, surveyQuestions, currentSubjectInformationAnswers, subjectInformationQuestions, trainingExcelFile)
+            # rawFeatureHolder dim: numBiomarkers, numTimePoints, numBiomarkerFeatures
+            # rawFeatureTimesHolder dim: numBiomarkers, numTimePoints
 
             # ----------------------- Safety Checks ----------------------- #
 
@@ -107,12 +109,12 @@ class trainingProtocols(extractData):
 
             noFeaturesFound = False
             # Checkpoint: are there features in ALL categories
-            for biomarkerInd in range(len(rawFeatureHolder)):
-                if not len(rawFeatureHolder[biomarkerInd]) > 1:
+            for biomarkerInd in range(len(rawFeatureTimesHolder)):
+                if not len(rawFeatureTimesHolder[biomarkerInd]) != 0:
                     noFeaturesFound = True
             if noFeaturesFound: print("No features found"); continue
 
-            # -------------------- Extract Raw Features -------------------- #
+            # -------------------- Prepare Raw Features -------------------- #
 
             # Convert to numpy arrays. Note, the holder may be inhomogeneous.
             for biomarkerInd in range(len(rawFeatureHolder)):
@@ -130,10 +132,8 @@ class trainingProtocols(extractData):
             # Prepare the features for alignment.
             self.readData.resetGlobalVariables()
 
-            # For each unique analysis.
+            # For each unique analysis with features.
             for analysis in self.readData.featureAnalysisList:
-
-                # For each channel in the analysis.
                 for featureChannelInd in range(len(analysis.featureChannelIndices)):
                     biomarkerInd = analysis.featureChannelIndices[featureChannelInd]
 
@@ -146,7 +146,7 @@ class trainingProtocols(extractData):
             # Extract the aligned features
             alignedFeatureTimes = np.asarray(self.readData.alignedFeatureTimes)
             alignedFeatures = np.asarray(self.readData.alignedFeatures)
-            # alignedFeatures dim: numFeatures, numTimePoints
+            # alignedFeatures dim: numTimePoints, numFeatures
             # alignedFeatureTimes dim: numTimePoints
 
             # If there are no aligned features.
@@ -169,15 +169,11 @@ class trainingProtocols(extractData):
                 startSurveyTime = currentSurveyAnswerTimes[experimentInd]
 
                 # Calculate the raw feature intervals
-                allRawFeatureIntervals, allRawFeatureIntervalTimes, goodExperimentInd = self.organizeRawFeatureIntervals(startExperimentTime, startSurveyTime, rawFeatureTimesHolder, rawFeatureHolder, allRawFeatureIntervalTimes, allRawFeatureIntervals)
+                newRawFeatureIntervalTimes, newRawFeatureIntervals = self.organizeRawFeatureIntervals(startExperimentTime, startSurveyTime, rawFeatureTimesHolder, rawFeatureHolder)
 
                 # Check the features.
-                if not goodExperimentInd:
+                if newRawFeatureIntervalTimes is None:
                     badExperimentalInds.append(experimentInd)
-
-                    # Remove the last data point.
-                    allRawFeatureIntervalTimes.pop()
-                    allRawFeatureIntervals.pop()
                     continue
 
                 # Calculate the aligned feature intervals
@@ -186,8 +182,10 @@ class trainingProtocols(extractData):
 
                 # Save the interval information
                 allAlignedFeatureIntervalTimes.append(alignedFeatureIntervalTimes)
+                allRawFeatureIntervalTimes.append(newRawFeatureIntervalTimes)
                 allAlignedFeatureIntervals.append(alignedFeatureIntervals)
                 experimentalOrder.append(experimentNames[experimentInd])
+                allRawFeatureIntervals.append(newRawFeatureIntervals)
 
                 if metaTraining:
                     subjectOrder.append(int(re.search(r'\d+', excelFileName).group()))
@@ -225,7 +223,7 @@ class trainingProtocols(extractData):
 
                     # Get the training data's aligned features information
                     endBiomarkerFeatureIndex = startBiomarkerFeatureIndex + len(self.biomarkerFeatureNames[biomarkerInd])
-                    alignedFeatureSet = np.asarray(alignedFeatures[startBiomarkerFeatureIndex:endBiomarkerFeatureIndex]).T
+                    alignedFeatureSet = np.asarray(alignedFeatures)[:, startBiomarkerFeatureIndex:endBiomarkerFeatureIndex]
                     startBiomarkerFeatureIndex = endBiomarkerFeatureIndex
 
                     # Plot each biomarker's features from the training file.
@@ -273,11 +271,10 @@ class trainingProtocols(extractData):
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
             subjectOrder, experimentalOrder, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes
 
-    def organizeRawFeatureIntervals(self, startExperimentTime, startSurveyTime, rawFeatureTimesHolder, rawFeatureHolder, allRawFeatureIntervalTimes, allRawFeatureIntervals):
+    def organizeRawFeatureIntervals(self, startExperimentTime, startSurveyTime, rawFeatureTimesHolder, rawFeatureHolder):
         # Append a new data point.
-        allRawFeatureIntervalTimes.append([])
-        allRawFeatureIntervals.append([])
-        featureIntervals = None
+        newRawFeatureIntervalTimes = []
+        newRawFeatureIntervals = []
 
         # For each biomarker during that trial
         for biomarkerInd in range(len(rawFeatureHolder)):
@@ -288,13 +285,17 @@ class trainingProtocols(extractData):
 
             # Calculate the raw feature intervals
             featureIntervals, featureIntervalTimes = self.readData.compileModelFeatures(rawFeatureTimes, rawFeatures, startExperimentTime, startSurveyTime)
-            if featureIntervals is None: break
+
+            # If there are no features found
+            if featureIntervals is None:
+                newRawFeatureIntervalTimes, newRawFeatureIntervals = None, None
+                break
 
             # Save raw and aligned interval information
-            allRawFeatureIntervalTimes[-1].extend(featureIntervalTimes)
-            allRawFeatureIntervals[-1].extend(featureIntervals)
+            newRawFeatureIntervalTimes.extend(featureIntervalTimes)
+            newRawFeatureIntervals.extend(featureIntervals)
 
-        return allRawFeatureIntervals, allRawFeatureIntervalTimes, featureIntervals is not None
+        return newRawFeatureIntervalTimes, newRawFeatureIntervals
 
     def varyAnalysisParam(self, dataFile, featureAverageWindows, featureTimeWindows):
         print("\nLoading Excel File", dataFile)
@@ -334,7 +335,7 @@ class trainingProtocols(extractData):
             # For each feature-variation within a certain time window
             for trialInd in range(len(allRawFeatureHolders)):
                 averageWindow = featureAverageWindows[biomarkerInd]
-                rawFeatures = np.asarray(allRawFeatureHolders[trialInd][biomarkerInd])[:, featureInd]
+                rawFeatures = np.asarray(allRawFeatureHolders[trialInd][biomarkerInd])[:, featureInd:featureInd+1]
                 rawFeatureTimes = np.asarray(allRawFeatureTimesHolders[trialInd][biomarkerInd])
 
                 # Perform the feature averaging

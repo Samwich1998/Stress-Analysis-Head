@@ -61,7 +61,7 @@ class streamingProtocols(streamingProtocolHelpers):
         # Prepare the arduino to stream in data
         self.stopTimeStreaming = self.setupArduinoStream(stopTimeStreaming)
         timePoints = self.analysisList[0].timePoints
-        dataFinger = 0
+        streamingDataFinger = 0
 
         try:
             print("\tBeginning to loop through streamed data")
@@ -71,11 +71,11 @@ class streamingProtocols(streamingProtocolHelpers):
                 self.recordData(self.voltageRange[1], adcResolution)
 
                 # When enough data has been collected, analyze the new data in batches.
-                while len(timePoints) - dataFinger >= self.numPointsPerBatch:
-                    dataFinger = self.analyzeBatchData(dataFinger)
+                while len(timePoints) - streamingDataFinger >= self.numPointsPerBatch:
+                    streamingDataFinger = self.analyzeBatchData(streamingDataFinger)
 
             # At the end, analyze all remaining data
-            self.analyzeBatchData(dataFinger)
+            self.analyzeBatchData(streamingDataFinger)
 
         except Exception as error:
             self.mainArduino.close()
@@ -111,20 +111,19 @@ class streamingProtocols(streamingProtocolHelpers):
         timePoints, Voltages = compiledRawData
         Voltages = np.asarray(Voltages)
 
-        dataFinger = 0
-        generalDataFinger = -self.moveDataFinger
+        excelDataFinger = 0
+        streamingDataFinger = 0
         # Loop Through and Read the Excel Data in Pseudo-Real-Time
-        while generalDataFinger != len(timePoints) - 1:
-            generalDataFinger = min(len(timePoints) - 1, generalDataFinger + self.moveDataFinger)
-
+        while excelDataFinger != len(timePoints):
             # Organize the Input Data
-            self.organizeData(timePoints=timePoints[generalDataFinger:generalDataFinger + self.moveDataFinger], Voltages=Voltages[:, generalDataFinger:generalDataFinger + self.moveDataFinger])
+            self.organizeData(timePoints=timePoints[excelDataFinger:excelDataFinger + self.moveDataFinger], Voltages=Voltages[:, excelDataFinger:excelDataFinger + self.moveDataFinger])
+            excelDataFinger = min(len(timePoints), excelDataFinger + self.moveDataFinger)
 
             # When enough data has been collected, analyze the new data in batches.
-            while self.numPointsPerBatch <= generalDataFinger + self.moveDataFinger - dataFinger:
-                dataFinger = self.analyzeBatchData(dataFinger)
+            while self.numPointsPerBatch <= excelDataFinger - streamingDataFinger:
+                streamingDataFinger = self.analyzeBatchData(streamingDataFinger)
             # Organize experimental information.
-            self.organizeExperimentalInformation(timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, generalDataFinger)
+            self.organizeExperimentalInformation(timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, excelDataFinger)
 
         # Assert that experimental information was read in correctly.
         assert np.array_equal(experimentTimes, self.experimentTimes), f"{experimentTimes} \n {self.experimentTimes}"
@@ -136,17 +135,17 @@ class streamingProtocols(streamingProtocolHelpers):
         # Finished Analyzing the Data
         print("\n\tFinished Analyzing Excel Data")
 
-    def organizeExperimentalInformation(self, timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, generalDataFinger):
+    def organizeExperimentalInformation(self, timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, excelDataFinger):
         # Add the experiment information when the timepoint is reached.
-        while self.experimentInfoPointerStart != len(experimentTimes) and experimentTimes[self.experimentInfoPointerStart][0] <= timePoints[min(len(timePoints) - 1, generalDataFinger + self.moveDataFinger - 1)]:
+        while self.experimentInfoPointerStart != len(experimentTimes) and experimentTimes[self.experimentInfoPointerStart][0] <= timePoints[min(len(timePoints) - 1, excelDataFinger - 1)]:
             self.experimentTimes.append([experimentTimes[self.experimentInfoPointerStart][0], None])
             self.experimentNames.append(experimentNames[self.experimentInfoPointerStart])
             self.experimentInfoPointerStart += 1
-        while self.experimentInfoPointerEnd != len(experimentTimes) and experimentTimes[self.experimentInfoPointerEnd][1] <= timePoints[min(len(timePoints) - 1, generalDataFinger + self.moveDataFinger - 1)]:
+        while self.experimentInfoPointerEnd != len(experimentTimes) and experimentTimes[self.experimentInfoPointerEnd][1] <= timePoints[min(len(timePoints) - 1, excelDataFinger - 1)]:
             self.experimentTimes[self.experimentInfoPointerEnd][1] = experimentTimes[self.experimentInfoPointerEnd][1]
             self.experimentInfoPointerEnd += 1
         # Add the feature information when the timepoint is reached.
-        while self.featureInfoPointer != len(surveyAnswerTimes) and surveyAnswerTimes[self.featureInfoPointer] <= timePoints[min(len(timePoints) - 1, generalDataFinger + self.moveDataFinger - 1)]:
+        while self.featureInfoPointer != len(surveyAnswerTimes) and surveyAnswerTimes[self.featureInfoPointer] <= timePoints[min(len(timePoints) - 1, excelDataFinger - 1)]:
             self.surveyAnswerTimes.append(surveyAnswerTimes[self.featureInfoPointer])
             self.surveyAnswersList.append(surveyAnswersList[self.featureInfoPointer])
             self.featureInfoPointer += 1

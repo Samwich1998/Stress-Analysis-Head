@@ -93,8 +93,8 @@ class eegProtocol(globalProtocol):
                         finalFeatures = self.extractFeatures(intervalTimes, intervalData)
 
                         # Keep track of the new features.
-                        newRawFeatures.append(finalFeatures)
-                        newFeatureTimes.append(featureTime)
+                        newRawFeatures.append(finalFeatures)  # Dimension: [numTimePoints x numChannelFeatures]
+                        newFeatureTimes.append(featureTime)  # Dimension: [numTimePoints]
 
                     # Keep track of which data has been analyzed 
                     self.lastAnalyzedDataInd[channelIndex] += int(self.samplingFreq * self.secondsPerFeature)
@@ -102,7 +102,7 @@ class eegProtocol(globalProtocol):
                 # Compile the new raw features into a smoothened (averaged) feature.
                 self.readData.compileContinuousFeatures(newFeatureTimes, newRawFeatures, self.rawFeatureTimes[channelIndex], self.rawFeatures[channelIndex], self.compiledFeatures[channelIndex], self.featureAverageWindow)
 
-            # ------------------- Plot Biolectric Signals ------------------ #
+            # ------------------- Plot Bioelectric Signals ------------------ #
 
             if self.plotStreamedData:
                 # Format the raw data:.

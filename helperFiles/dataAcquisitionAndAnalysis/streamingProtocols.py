@@ -109,14 +109,16 @@ class streamingProtocols(streamingProtocolHelpers):
 
         # Extract the Time and Voltage Data
         timePoints, Voltages = compiledRawData
-        Voltages = np.array(Voltages)
+        Voltages = np.asarray(Voltages)
 
         dataFinger = 0
-        generalDataFinger = 0
+        generalDataFinger = -self.moveDataFinger
         # Loop Through and Read the Excel Data in Pseudo-Real-Time
-        while generalDataFinger < len(timePoints):
+        while generalDataFinger != len(timePoints) - 1:
+            generalDataFinger = min(len(timePoints) - 1, generalDataFinger + self.moveDataFinger)
+
             # Organize the Input Data
-            self.organizeData(timePoints=timePoints[generalDataFinger:generalDataFinger + self.moveDataFinger], Voltages=Voltages[:, generalDataFinger:generalDataFinger + self.moveDataFinger].tolist())
+            self.organizeData(timePoints=timePoints[generalDataFinger:generalDataFinger + self.moveDataFinger], Voltages=Voltages[:, generalDataFinger:generalDataFinger + self.moveDataFinger])
 
             # When enough data has been collected, analyze the new data in batches.
             while self.numPointsPerBatch <= generalDataFinger + self.moveDataFinger - dataFinger:
@@ -124,17 +126,9 @@ class streamingProtocols(streamingProtocolHelpers):
             # Organize experimental information.
             self.organizeExperimentalInformation(timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, generalDataFinger)
 
-            # Move onto the next batch of data
-            generalDataFinger += self.moveDataFinger
-        # At the end, analyze all remaining data
-        self.analyzeBatchData(dataFinger)
-
-        # Organize experimental information.
-        self.organizeExperimentalInformation(timePoints, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, generalDataFinger)
-
         # Assert that experimental information was read in correctly.
         assert np.array_equal(experimentTimes, self.experimentTimes), f"{experimentTimes} \n {self.experimentTimes}"
-        assert np.all(np.array(experimentNames) == np.array(self.experimentNames)), experimentNames
+        assert np.all(np.asarray(experimentNames) == np.asarray(self.experimentNames)), experimentNames
         # Assert that experimental information was read in correctly.
         assert np.array_equal(surveyAnswerTimes, self.surveyAnswerTimes), print(surveyAnswerTimes, self.surveyAnswerTimes)
         assert np.array_equal(surveyAnswersList, self.surveyAnswersList), print(surveyAnswersList, self.surveyAnswersList)

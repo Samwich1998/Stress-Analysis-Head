@@ -269,7 +269,7 @@ if __name__ == "__main__":
         streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = caseAnalysisClass.getStreamingInfo()
         # # Analyze and save the metadata features
         caseAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                          streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=False, analyzeSequentially=False)  # Requires a lot of memory if not sequential.
+                                          streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=False, showPlots=False, analyzeSequentially=True)  # Keep reanalyzeData=True for memory reasons.
 
     if trainingData:
         # Prepare the data to go through the training interface.
@@ -280,4 +280,4 @@ if __name__ == "__main__":
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, subjectOrder, \
             experimentOrder, activityNames, activityLabels, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
-            = caseAnalysisClass.trainingProtocolInterface(streamingOrder, biomarkerFeatureOrder, featureAverageWindows, featureNames, biomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            = caseAnalysisClass.trainingProtocolInterface(streamingOrder, biomarkerFeatureOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData, metaTraining=True)

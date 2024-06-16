@@ -204,14 +204,12 @@ class featureOrganization(humanMachineInterface):
         # rawFeatures dim: numTimePoints, numBiomarkerFeatures
         # rawFeatureTimes dim: numTimePoints
 
-        # Ensure proper initial data structure.
-        rawFeatureTimes = np.asarray(rawFeatureTimes)
-        rawFeatures = np.asarray(rawFeatures)
-
         compiledFeatures = []
         # Average the Feature Together at Each Point
         for timePointInd in range(startTimeInd, len(rawFeatureTimes)):
             currentTimepoint = rawFeatureTimes[timePointInd]
+
+            leftIndex = bisect.bisect_left(rawFeatureTimes, currentTimepoint - averageWindow)
 
             # Get the interval of features to average
             timeMask = np.logical_and(

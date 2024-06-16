@@ -366,7 +366,6 @@ class trainingProtocols(extractData):
 
             for finalFeatures in heatMap:
                 plt.plot(finalTimePoints, finalFeatures, linewidth=1)
-
             plt.show()
 
             vMin = np.asarray(heatMap)[:, 100:].min()

@@ -1,4 +1,5 @@
 from scipy.interpolate import Akima1DInterpolator
+from bisect import bisect, bisect_left, bisect_right
 import collections
 import numpy as np
 import scipy
@@ -209,14 +210,9 @@ class featureOrganization(humanMachineInterface):
         for timePointInd in range(startTimeInd, len(rawFeatureTimes)):
             currentTimepoint = rawFeatureTimes[timePointInd]
 
-            leftIndex = bisect.bisect_left(rawFeatureTimes, currentTimepoint - averageWindow)
-
             # Get the interval of features to average
-            timeMask = np.logical_and(
-                currentTimepoint - averageWindow <= rawFeatureTimes,
-                rawFeatureTimes <= currentTimepoint,
-            )
-            featureInterval = rawFeatures[timeMask]
+            windowTimeInd = bisect_left(rawFeatureTimes, currentTimepoint - averageWindow)
+            featureInterval = rawFeatures[windowTimeInd:timePointInd + 1]
 
             # Take the trimmed average
             compiledFeature = scipy.stats.trim_mean(featureInterval, proportiontocut=self.trimMeanCut, axis=0)

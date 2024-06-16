@@ -67,6 +67,7 @@ class trainingProtocols(extractData):
 
             # ---------------- Stream in the Training File --------------- #
             print(f"\nCompiling training features from {excelFileName}")
+            self.readData.resetGlobalVariables()
 
             # If you want to and can use previously extracted features
             if not reanalyzeData and os.path.isfile(savedFeaturesFile):

@@ -317,7 +317,7 @@ class featurePlotting(globalPlottingProtocols):
         print("\tPlotting psych correlation in folder:", folderName)
         # Set up the variables
         allFinalFeatures = np.array(allFinalFeatures.copy())
-        currentSurveyAnswersList = np.array(currentSurveyAnswersList.copy())
+        currentSurveyAnswersList = np.array(currentSurveyAnswersList)
 
         # Specify the order of the positive and negative survey questions.
         anxietyTypes, relevantSurveyAnswers = self.modelInfoClass.extractFinalLabels(currentSurveyAnswersList, [])

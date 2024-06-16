@@ -33,13 +33,7 @@ class ecgProtocol(globalProtocol):
         self.minPointsPerBatch = None  # The minimum number of points required to analyze a batch of data.
         self.lastRPeak = None
 
-        # Finalize the protocol parameters.
-        self.resetAnalysisVariables()
-        self.checkParams()
-
     def resetAnalysisVariables(self):
-        self.resetGlobalVariables()
-
         # General parameters 
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
 
@@ -48,7 +42,6 @@ class ecgProtocol(globalProtocol):
         self.lastRPeak = None
 
     def checkParams(self):
-        self.checkGlobalParams()
         assert self.numChannels == 1, "The ECG protocol now only supports one channel of data due tp feature alignment issues."
 
     def setSamplingFrequencyParams(self):

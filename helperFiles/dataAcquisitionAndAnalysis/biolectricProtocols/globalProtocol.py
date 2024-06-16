@@ -72,8 +72,14 @@ class globalProtocol(abc.ABC):
         if self.plotStreamedData:
             plt.close('all')
 
+        # Reset the analysis variables.
+        self.resetAnalysisVariables()
+
     def checkGlobalParams(self):
         assert self.moveDataFinger < self.numPointsPerBatch, "You are Analyzing Too Much Data in a Batch. 'moveDataFinger' MUST be Less than 'numPointsPerBatch'"
+
+        # Check to see if the user has set the correct parameters for the analysis.
+        self.checkParams()
 
     def setSamplingFrequency(self, startFilterPointer):
         # Calculate the Sampling Frequency

@@ -130,7 +130,7 @@ class extractData(handlingExcelFormat):
         # Loop Through the Excel Worksheet to collect all the data
         for dataRow in excelSheet.iter_rows(min_col=1, min_row=dataStartRow, max_col=2, max_row=excelSheet.max_row):
             # Stop Collecting Data When there is No More
-            if dataRow[0].value == None:
+            if dataRow[0].value is None:
                 break
 
             # Get Data
@@ -139,16 +139,16 @@ class extractData(handlingExcelFormat):
 
         return subjectInformationAnswers, subjectInformationQuestions
 
-    def extractExperimentalData(self, worksheets, numberOfChannels, surveyQuestions=[], finalSubjectInformationQuestions=[]):
+    def extractExperimentalData(self, worksheets, numberOfChannels, surveyQuestions=(), finalSubjectInformationQuestions=()):
         # Initialize data holder
-        compiledRawData = [[], [[] for channel in range(numberOfChannels)]]
+        compiledRawData = [[], [[] for _ in range(numberOfChannels)]]
         # Initialize experimental information
-        experimentTimes = [];
+        experimentTimes = []
         experimentNames = []
-        surveyAnswerTimes = [];
-        surveyAnswersList = [];
-        # Initialize suject information
-        subjectInformationAnswers = [];
+        surveyAnswerTimes = []
+        surveyAnswersList = []
+        # Initialize subject information
+        subjectInformationAnswers = []
         subjectInformationQuestions = []
 
         # Loop through and compile all the data in the file
@@ -168,8 +168,8 @@ class extractData(handlingExcelFormat):
             print("\tNo data found in this file")
         # Check that the subject background questions are all the same
         if len(finalSubjectInformationQuestions) != 0:
-            assert all(np.array(finalSubjectInformationQuestions) == subjectInformationQuestions), "finalSubjectInformationQuestions: " + str(finalSubjectInformationQuestions) + "; subjectInformationQuestions: " + str(
-                subjectInformationQuestions)
+            assert np.all(np.array(finalSubjectInformationQuestions) == subjectInformationQuestions), (
+                f"finalSubjectInformationQuestions: {finalSubjectInformationQuestions}; subjectInformationQuestions: {subjectInformationQuestions}")
 
         return compiledRawData, experimentTimes, experimentNames, surveyAnswerTimes, surveyAnswersList, surveyQuestions, subjectInformationAnswers, subjectInformationQuestions
 

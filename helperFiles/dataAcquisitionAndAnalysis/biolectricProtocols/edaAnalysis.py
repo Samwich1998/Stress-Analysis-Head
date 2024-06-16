@@ -24,9 +24,6 @@ class edaProtocol(globalProtocol):
         self.tonicFrequencyCutoff = 0.05  # Maximum tonic component frequency.
         self.cutOffFreq = [None, 15]  # Filter cutoff frequencies: [HPF, LPF].
 
-        # Finalize the protocol parameters.
-        self.resetAnalysisVariables()
-
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer_Phasic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
@@ -36,13 +33,7 @@ class edaProtocol(globalProtocol):
         self.minPointsPerBatchPhasic = 0  # The minimum number of points required to extract features.
         self.minPointsPerBatchTonic = 0  # The minimum number of points required to extract features.
 
-        # Finalize the protocol parameters.
-        self.resetGlobalVariables()
-        self.checkParams()
-
     def checkParams(self):
-        self.checkGlobalParams()
-
         # Confirm the buffer is large enough for the feature window.
         assert self.featureTimeWindow_Phasic < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
         assert self.featureTimeWindow_Tonic < self.dataPointBuffer, "The buffer does not include enough points for the feature window"

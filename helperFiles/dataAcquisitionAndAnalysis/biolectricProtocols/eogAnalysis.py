@@ -50,10 +50,6 @@ class eogProtocol(globalProtocol):
         self.blinksYLocs = None
         self.blinkTypes = None
 
-        # Finalize the protocol parameters.
-        self.resetAnalysisVariables()
-        self.checkParams()
-
     def resetAnalysisVariables(self):
         # Hold Past Information
         self.trailingAverageData = {}
@@ -80,7 +76,6 @@ class eogProtocol(globalProtocol):
         self.currentState = self.blinkTypes[0]
 
     def checkParams(self):
-        self.checkGlobalParams()
         assert self.numChannels == 1, "The EOG protocol now only supports one channel of data due tp feature alignment issues."
 
     def setSamplingFrequencyParams(self):

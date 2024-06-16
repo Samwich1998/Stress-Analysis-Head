@@ -37,12 +37,9 @@ class emgProtocol(globalProtocol):
             7: "tab:ocean",
         }
 
-        # Finalize the protocol parameters.
-        self.resetAnalysisVariables()
-        self.checkParams()
 
     # TODO: [0 for _ in range(self.numChannels)] FOR CERTAIN VARIABLES
-    def resetAnalysisVariables(self):        
+    def resetAnalysisVariables(self):
         # Reset Mutable Variables
         self.xDataRMS = []              # Holder for Most Recent RMS Data
         self.groupWidthRMS = None       # The Number of Seconds for 1 Group
@@ -58,7 +55,6 @@ class emgProtocol(globalProtocol):
         self.previousDataRMS = [[] for _ in range(self.numChannels)]
             
     def checkParams(self):
-        self.checkGlobalParams()
         assert self.stepSize < self.rmsWindow, "'stepSize' Should NOT be Greater Than 'rmsWindow'. This Means You are JUMPING OVER Datapoints (Missing Point)."
         assert self.numChannels == 1, "The EMG protocol now only supports one channel of data due tp feature alignment issues."
                 

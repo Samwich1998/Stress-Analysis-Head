@@ -1,5 +1,5 @@
 from scipy.interpolate import Akima1DInterpolator
-from bisect import bisect, bisect_left, bisect_right
+from bisect import bisect_left
 import collections
 import numpy as np
 import scipy
@@ -73,6 +73,7 @@ class featureOrganization(humanMachineInterface):
         # Reset the analysis information
         for featureAnalysis in self.featureAnalysisList:
             featureAnalysis.resetAnalysisVariables()
+            featureAnalysis.resetGlobalVariables()
 
         # Raw feature data structure
         self.rawFeatureTimesHolder = [[] for _ in range(len(self.biomarkerFeatureOrder))]  # A list (in biomarkerFeatureOrder) of lists of raw feature's times; Dim: numFeatureSignals, numPoints
@@ -215,11 +216,11 @@ class featureOrganization(humanMachineInterface):
             featureInterval = rawFeatures[windowTimeInd:timePointInd + 1]
 
             # Take the trimmed average
-            compiledFeature = scipy.stats.trim_mean(featureInterval, proportiontocut=self.trimMeanCut, axis=0)
+            compiledFeature = scipy.stats.trim_mean(featureInterval, proportiontocut=self.trimMeanCut, axis=0).tolist()
             compiledFeatures.append(compiledFeature)
         # compiledFeatures dim: numTimePoints, numBiomarkerFeatures
 
-        return list(compiledFeatures)
+        return compiledFeatures
 
     def compileContinuousFeatures(self, newFeatureTimes, newRawFeatures, rawFeatureTimes, rawFeatures, compiledFeatures, averageWindow):
         # newRawFeatures dim: numNewTimePoints, numBiomarkerFeatures
@@ -235,8 +236,8 @@ class featureOrganization(humanMachineInterface):
 
         startTimeInd = len(rawFeatures)
         # Append the new features to the raw features
-        rawFeatureTimes.extend(list(newFeatureTimes))
-        rawFeatures.extend(list(newRawFeatures))
+        rawFeatureTimes.extend(newFeatureTimes)
+        rawFeatures.extend(newRawFeatures)
 
         # Perform the feature averaging
         newCompiledFeatures = self.averageFeatures_static(rawFeatureTimes, rawFeatures, averageWindow, startTimeInd=startTimeInd)

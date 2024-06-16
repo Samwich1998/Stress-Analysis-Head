@@ -19,21 +19,13 @@ class tempProtocol(globalProtocol):
         self.startFeatureTimePointer = None  # The start pointer of the feature window interval.
         self.minPointsPerBatch = None  # The minimum number of points per batch.
 
-        # Finalize the protocol parameters.
-        self.resetAnalysisVariables()
-        self.checkParams()
-
     def resetAnalysisVariables(self):
-        self.resetGlobalVariables()
-
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.
         self.featureTimeWindow = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers
         self.minPointsPerBatch = None  # The minimum number of points per batch.
 
     def checkParams(self):
-        self.checkGlobalParams()
-
         # Assert that the buffer is large enough for the feature window.
         assert self.featureTimeWindow < self.dataPointBuffer, "The buffer does not include enough points for the feature window"
 

@@ -101,6 +101,9 @@ class streamingProtocolHelpers(featureOrganization):
         for analysis in self.analysisList:
             analysis.resetAnalysisVariables()
 
+        for analysis in self.analysisProtocols:
+            self.analysisProtocols[analysis].resetAnalysisVariables()
+
         # Subject Information
         self.subjectInformationQuestions = []  # A list of subject background questions, such as race, age, and gender.
         self.subjectInformationAnswers = []  # A list of subject background answers, where each element represents an answer to subjectInformationQuestions.
@@ -143,6 +146,11 @@ class streamingProtocolHelpers(featureOrganization):
     def organizeData(self, timePoints, Voltages):
         if len(timePoints) == 0:
             print("\tNO NEW TIMEPOINTS ADDED")
+
+        if not isinstance(Voltages, list):
+            Voltages = list(Voltages)
+        if not isinstance(timePoints, list):
+            timePoints = list(timePoints)
 
         # Update the data (if present) for each sensor
         for analysisInd in range(len(self.analysisOrder)):

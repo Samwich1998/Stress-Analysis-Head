@@ -37,6 +37,8 @@ class emgProtocol(globalProtocol):
             7: "tab:ocean",
         }
 
+        # Reset analysis variables
+        self.resetAnalysisVariables()
 
     # TODO: [0 for _ in range(self.numChannels)] FOR CERTAIN VARIABLES
     def resetAnalysisVariables(self):

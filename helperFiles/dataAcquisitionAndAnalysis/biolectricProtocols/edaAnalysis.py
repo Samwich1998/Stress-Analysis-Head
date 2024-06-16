@@ -24,6 +24,9 @@ class edaProtocol(globalProtocol):
         self.tonicFrequencyCutoff = 0.05  # Maximum tonic component frequency.
         self.cutOffFreq = [None, 15]  # Filter cutoff frequencies: [HPF, LPF].
 
+        # Reset analysis variables
+        self.resetAnalysisVariables()
+
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer_Phasic = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.

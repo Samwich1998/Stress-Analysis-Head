@@ -17,6 +17,9 @@ class generalProtocol_lowFreq(globalProtocol):
         # High Pass Filter Parameters
         self.cutOffFreq = [None, 25]        # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
 
+        # Reset analysis variables
+        self.resetAnalysisVariables()
+
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]    # The start pointer of the feature window interval.

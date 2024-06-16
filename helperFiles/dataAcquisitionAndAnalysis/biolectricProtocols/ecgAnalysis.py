@@ -33,6 +33,9 @@ class ecgProtocol(globalProtocol):
         self.minPointsPerBatch = None  # The minimum number of points required to analyze a batch of data.
         self.lastRPeak = None
 
+        # Reset analysis variables
+        self.resetAnalysisVariables()
+
     def resetAnalysisVariables(self):
         # General parameters 
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.

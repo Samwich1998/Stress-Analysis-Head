@@ -41,8 +41,8 @@ class globalProtocol(abc.ABC):
         self.timePoints = None
 
         # Prepare the Program to Begin Data Analysis
-        self.checkGlobalParams()  # Check to See if the User's Input Parameters Make Sense
         self.resetGlobalVariables()  # Start with Fresh Inputs (Clear All Arrays/Values)
+        self.checkGlobalParams()  # Check to See if the User's Input Parameters Make Sense
 
         # Define general classes to process data.
         self.filteringMethods = filteringMethods()

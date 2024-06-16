@@ -12,8 +12,6 @@ from .globalProtocol import globalProtocol
 class eogProtocol(globalProtocol):
 
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=2, plottingClass=None, readData=None, voltageRange=(0, 3.3)):
-        # Initialize the global protocol.
-        super().__init__("eog", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Filter parameters.
         self.cutOffFreq = [.5, 15]  # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 20 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
 
@@ -49,6 +47,10 @@ class eogProtocol(globalProtocol):
         self.blinksXLocs = None
         self.blinksYLocs = None
         self.blinkTypes = None
+        self.resetAnalysisVariables()
+
+        # Initialize the global protocol.
+        super().__init__("eog", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
 
     def resetAnalysisVariables(self):
         # Hold Past Information
@@ -57,6 +59,7 @@ class eogProtocol(globalProtocol):
             self.trailingAverageData[channelIndex] = [0] * self.numPointsPerBatch
 
         # Reset Last Eye Voltage (Volts)
+        self.steadyStateEye = self.voltageRange[0] + (self.voltageRange[1] - self.voltageRange[0]) / 2  # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
         self.currentEyeVoltages = [self.steadyStateEye for _ in range(self.numChannels)]
         self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         # Reset Blink Indices

@@ -25,6 +25,9 @@ class eegProtocol(globalProtocol):
         self.passband_ripple = 0.1  # Common values for EEG are 0.1 dB and 0.5 dB. If you need to remove more noise, choose a lower passband ripple. If you need to preserve the signal more, choose a higher passband ripple.
         self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, choose a higher stopband attenuation. If you need to preserve the signal more, choose a lower stopband attenuation.
 
+        # Reset analysis variables
+        self.resetAnalysisVariables()
+
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]  # The start pointer of the feature window interval.

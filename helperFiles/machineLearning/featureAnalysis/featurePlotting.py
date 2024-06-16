@@ -47,8 +47,8 @@ class featurePlotting(globalPlottingProtocols):
         # Scale the time units.
         surveyCollectionTimes = np.array(surveyCollectionTimes.copy()) / scaleTime
         timePoints = np.array(timePoints.copy()) / scaleTime
-        averageIntervalList = np.array(averageIntervalList.copy()) / scaleTime
-        preAveragingSeconds = np.array(preAveragingSeconds.copy()) / scaleTime
+        averageIntervalList = np.array(averageIntervalList) / scaleTime
+        preAveragingSeconds = np.array(preAveragingSeconds) / scaleTime
         experimentTimes = np.array(experimentTimes.copy()) / scaleTime
 
         # Return the scaled times wit the new unit

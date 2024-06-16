@@ -163,7 +163,7 @@ class trainingProtocols(extractData):
             self.readData.alignFeatures()
             # Extract the aligned features
             alignedFeatureTimes = np.asarray(self.readData.alignedFeatureTimes)
-            alignedFeatures = np.asarray(self.readData.alignedFeatures)
+            alignedFeatures = np.asarray(self.readData.alignedFeatures).T
             # alignedFeatures dim: numTimePoints, numFeatures
             # alignedFeatureTimes dim: numTimePoints
 

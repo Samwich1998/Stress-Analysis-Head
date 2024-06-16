@@ -8,7 +8,6 @@ from .globalProtocol import globalProtocol
 class generalProtocol_lowFreq(globalProtocol):
     
     def __init__(self, numPointsPerBatch = 2000, moveDataFinger = 200, channelIndices=(), plottingClass = None, readData = None):
-        super().__init__("general_lf", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
         self.startFeatureTimePointer = []  # The start pointer of the feature window interval.
         self.featureTimeWindow = None         # The duration of time that each feature considers
@@ -18,6 +17,7 @@ class generalProtocol_lowFreq(globalProtocol):
         self.cutOffFreq = [None, 25]        # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 25 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
 
         # Reset analysis variables
+        super().__init__("general_lf", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):

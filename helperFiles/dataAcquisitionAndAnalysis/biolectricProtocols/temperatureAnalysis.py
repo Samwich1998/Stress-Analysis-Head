@@ -8,7 +8,6 @@ from .globalProtocol import globalProtocol
 class tempProtocol(globalProtocol):
 
     def __init__(self, numPointsPerBatch=2000, moveDataFinger=200, channelIndices=(), plottingClass=None, readData=None):
-        super().__init__("temp", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
         self.featureTimeWindow = None  # The duration of time that each feature considers
 
@@ -20,6 +19,7 @@ class tempProtocol(globalProtocol):
         self.minPointsPerBatch = None  # The minimum number of points per batch.
 
         # Reset analysis variables
+        super().__init__("temp", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):

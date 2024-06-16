@@ -25,21 +25,20 @@ class eogProtocol(globalProtocol):
         self.minVoltageMovement = 0.05  # The Minimum Voltage Change Required to Register an Eye Movement; Units: Volts
         self.predictEyeAngleGap = 5  # The Number of Points Between Each Eye Gaze Prediction; Will Back-calculate if moveDataFinger > predictEyeAngleGap; Units: Points
 
-        # Calibration Angles
-        self.calibrationAngles = [[-45, 0, 45] for _ in range(self.numChannels)]
-        self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         # Pointers for Calibration
         self.channelCalibrationPointer = 0  # A Pointer to the Current Angle Being Calibrated (A Pointer for Angle in self.calibrationAngles)
         self.calibrateChannelNum = 0  # The Current Channel We are Calibrating
         # Calibration Function for Eye Angle
         self.steadyStateEye = voltageRange[0] + (voltageRange[1] - voltageRange[0]) / 2  # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
-        self.predictEyeAngle = [lambda x: (x - self.steadyStateEye) * 30] * self.numChannels
 
         # Holder parameters.
         self.minPoints_halfBaseline = None
+        self.calibrationVoltages = None
         self.trailingAverageData = None
         self.currentEyeVoltages = None
+        self.calibrationAngles = None
         self.multipleBlinksX = None
+        self.predictEyeAngle = None
         self.singleBlinksX = None
         self.currentState = None
         self.culledBlinkY = None
@@ -47,10 +46,10 @@ class eogProtocol(globalProtocol):
         self.blinksXLocs = None
         self.blinksYLocs = None
         self.blinkTypes = None
-        self.resetAnalysisVariables()
 
         # Initialize the global protocol.
         super().__init__("eog", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
+        self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):
         # Hold Past Information
@@ -58,10 +57,14 @@ class eogProtocol(globalProtocol):
         for channelIndex in range(self.numChannels):
             self.trailingAverageData[channelIndex] = [0] * self.numPointsPerBatch
 
+        # Calibration Angles
+        self.predictEyeAngle = [lambda x: (x - self.steadyStateEye) * 30] * self.numChannels
+        self.calibrationAngles = [[-45, 0, 45] for _ in range(self.numChannels)]
+        self.calibrationVoltages = [[] for _ in range(self.numChannels)]
+
         # Reset Last Eye Voltage (Volts)
         self.steadyStateEye = self.voltageRange[0] + (self.voltageRange[1] - self.voltageRange[0]) / 2  # The Steady State Voltage of the System (With No Eye Movement); Units: Volts
         self.currentEyeVoltages = [self.steadyStateEye for _ in range(self.numChannels)]
-        self.calibrationVoltages = [[] for _ in range(self.numChannels)]
         # Reset Blink Indices
         self.singleBlinksX = []
         self.multipleBlinksX = []

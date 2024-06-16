@@ -11,7 +11,6 @@ from .globalProtocol import globalProtocol
 class emgProtocol(globalProtocol):
     
     def __init__(self, numPointsPerBatch = 3000, moveDataFinger = 10, channelIndices=(), plottingClass = None, readData = None):
-        super().__init__("emg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Prediction Parameters
         self.gestureClasses = []
         
@@ -38,6 +37,7 @@ class emgProtocol(globalProtocol):
         }
 
         # Reset analysis variables
+        super().__init__("emg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     # TODO: [0 for _ in range(self.numChannels)] FOR CERTAIN VARIABLES

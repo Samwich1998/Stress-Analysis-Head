@@ -18,7 +18,6 @@ from .globalProtocol import globalProtocol
 class ecgProtocol(globalProtocol):
 
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
-        super().__init__("ecg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
         self.initializingTimeWindow = 5
         self.secondsPerFeature = 1  # The duration of time that passes between each feature.
@@ -34,6 +33,7 @@ class ecgProtocol(globalProtocol):
         self.lastRPeak = None
 
         # Reset analysis variables
+        super().__init__("ecg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):

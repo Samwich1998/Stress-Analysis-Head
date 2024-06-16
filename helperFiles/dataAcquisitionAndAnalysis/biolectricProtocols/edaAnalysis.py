@@ -9,22 +9,20 @@ from .globalProtocol import globalProtocol
 class edaProtocol(globalProtocol):
 
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
-        super().__init__("eda", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters.
         self.startFeatureTimePointer_Phasic = None  # The start pointer of the feature window interval.
         self.startFeatureTimePointer_Tonic = None  # The start pointer of the feature window interval.
+        self.featureTimeWindow_Phasic = None  # The duration of time that each feature considers.
+        self.featureTimeWindow_Tonic = None  # The duration of time that each feature considers.
         self.minPointsPerBatchPhasic = None  # The minimum number of points required to extract features.
         self.minPointsPerBatchTonic = None  # The minimum number of points required to extract features.
-
-        # Confirm the feature time windows are set.
-        self.featureTimeWindow_Phasic = self.featureTimeWindow_highFreq  # The duration of time that each feature considers.
-        self.featureTimeWindow_Tonic = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers.
 
         # Filter Parameters.
         self.tonicFrequencyCutoff = 0.05  # Maximum tonic component frequency.
         self.cutOffFreq = [None, 15]  # Filter cutoff frequencies: [HPF, LPF].
 
         # Reset analysis variables
+        super().__init__("eda", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):
@@ -35,6 +33,10 @@ class edaProtocol(globalProtocol):
         # Feature collection parameters.
         self.minPointsPerBatchPhasic = 0  # The minimum number of points required to extract features.
         self.minPointsPerBatchTonic = 0  # The minimum number of points required to extract features.
+
+        # Confirm the feature time windows are set.
+        self.featureTimeWindow_Phasic = self.featureTimeWindow_highFreq  # The duration of time that each feature considers.
+        self.featureTimeWindow_Tonic = self.featureTimeWindow_lowFreq  # The duration of time that each feature considers.
 
     def checkParams(self):
         # Confirm the buffer is large enough for the feature window.

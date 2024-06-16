@@ -101,9 +101,6 @@ class streamingProtocolHelpers(featureOrganization):
         for analysis in self.analysisList:
             analysis.resetAnalysisVariables()
 
-        for analysis in self.analysisProtocols:
-            self.analysisProtocols[analysis].resetAnalysisVariables()
-
         # Subject Information
         self.subjectInformationQuestions = []  # A list of subject background questions, such as race, age, and gender.
         self.subjectInformationAnswers = []  # A list of subject background answers, where each element represents an answer to subjectInformationQuestions.

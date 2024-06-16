@@ -8,10 +8,9 @@ from .globalProtocol import globalProtocol
 class generalProtocol_highFreq(globalProtocol):
 
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
-        super().__init__("general_hf", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         # Feature collection parameters
-        self.featureTimeWindow = self.featureTimeWindow_highFreq  # The duration of time that each feature considers
         self.startFeatureTimePointer = []  # The start pointer of the feature window interval.
+        self.featureTimeWindow = None  # The duration of time that each feature considers
         self.minPointsPerBatch = 0  # The minimum number of points per batch.
 
         # Filter parameters.
@@ -23,11 +22,13 @@ class generalProtocol_highFreq(globalProtocol):
         self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, you can choose a higher stopband attenuation. If you need to preserve the signal more, you can choose a lower stopband attenuation.
 
         # Reset analysis variables
+        super().__init__("general_hf", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):
         # General parameters
         self.startFeatureTimePointer = [0 for _ in range(self.numChannels)]    # The start pointer of the feature window interval.
+        self.featureTimeWindow = self.featureTimeWindow_highFreq  # The duration of time that each feature considers
         self.minPointsPerBatch = 0  # The minimum number of points per batch.
 
     def checkParams(self):

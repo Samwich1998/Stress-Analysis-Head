@@ -9,9 +9,6 @@ from .globalProtocol import globalProtocol
 class eegProtocol(globalProtocol):
 
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=(), plottingClass=None, readData=None):
-        # Initialize common model class
-        super().__init__("eeg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
-
         # Feature collection parameters
         self.startFeatureTimePointer = None  # The start pointer of the feature window interval.
         self.featureTimeWindow = None  # The duration of time that each feature considers
@@ -26,6 +23,7 @@ class eegProtocol(globalProtocol):
         self.stopband_attenuation = 60  # Common values for EEG are 40 dB and 60 dB. If you need to remove more noise, choose a higher stopband attenuation. If you need to preserve the signal more, choose a lower stopband attenuation.
 
         # Reset analysis variables
+        super().__init__("eeg", numPointsPerBatch, moveDataFinger, channelIndices, plottingClass, readData)
         self.resetAnalysisVariables()
 
     def resetAnalysisVariables(self):

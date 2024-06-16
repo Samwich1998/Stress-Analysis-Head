@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # User options during the run: any number can be true.
     useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
     plotStreamedData = False  # Graph the data to show incoming signals.
-    useTherapyData = True  # Use the Therapy Data folder for any files.
+    useTherapyData = False  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
     userName = "Ruixiao".replace(" ", "")
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.
     stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
     reanalyzeData = False  # Reanalyze training files: don't use saved features
-    reverseOrder = False  # Reverse the order of the data for training.
+    reverseOrder = True  # Reverse the order of the data for training.
 
     # ---------------------------------------------------------------------- #
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         # Extract the features from the training files and organize them.
         allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
             allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
-            subjectOrder, experimentalOrder, allFinalFeatures, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
+            subjectOrder, experimentalOrder, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
             = trainingInterface.streamTrainingData(featureAverageWindows, plotTrainingData=plotTrainingData, reanalyzeData=reanalyzeData, metaTraining=False, reverseOrder=reverseOrder)
         # Assert the validity of the feature extraction
         assert len(allAlignedFeatureHolder[0][0]) == len(featureNames), "Incorrect number of compiled features extracted"

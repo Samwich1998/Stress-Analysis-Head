@@ -269,7 +269,7 @@ if __name__ == "__main__":
         streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders = caseAnalysisClass.getStreamingInfo()
         # # Analyze and save the metadata features
         caseAnalysisClass.extractFeatures(allCompiledDatas, subjectOrder, allExperimentalTimes, allExperimentalNames, allSurveyAnswerTimes, allSurveyAnswersList, allContextualInfo,
-                                          streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=False, analyzeSequentially=True)  # Requires a lot of memory if not sequential.
+                                          streamingOrder, biomarkerFeatureOrder, featureAverageWindows, filteringOrders, interfaceType='case', reanalyzeData=True, showPlots=False, analyzeSequentially=False)  # Requires a lot of memory if not sequential.
 
     if trainingData:
         # Prepare the data to go through the training interface.

@@ -1,4 +1,6 @@
 import os
+import re
+
 import scipy
 import numpy as np
 import pandas as pd
@@ -211,9 +213,11 @@ class amigosInterface(globalMetaAnalysis):
         return videoNames, (np.asarray(allExperimentalNamesAmigos, dtype=float) - 1).astype(int)
 
     def getStreamingInfo(self):
-        # Specify the number of EEG sensors.
-        numOtherSensors = len(np.where(np.array(self.streamingOrder_keeping) != 'eeg')[0])
-        numEEGSensors = len(self.streamingOrder_keeping) - numOtherSensors  # Remove ECG and GSR
+        def contains_number(s):
+            return bool(re.search(r'\d', s))
+
+        # Count the number of EEG sensors.
+        numEEGSensors = sum(contains_number(s) for s in self.streamingOrder_keeping)
 
         # Specify EEG sensors.
         streamingOrderAmigos = ['eeg'] * numEEGSensors

@@ -45,7 +45,7 @@ if __name__ == "__main__":
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.
     stopTimeStreaming = 60 * 300  # If Float/Int: The Number of Seconds to Stream Data; If String, it is the TimeStamp to Stop (Military Time) as "Hours:Minutes:Seconds:MicroSeconds"
     reanalyzeData = False  # Reanalyze training files: don't use saved features
-    reverseOrder = True  # Reverse the order of the data for training.
+    reverseOrder = False  # Reverse the order of the data for training.
 
     # ---------------------------------------------------------------------- #
 

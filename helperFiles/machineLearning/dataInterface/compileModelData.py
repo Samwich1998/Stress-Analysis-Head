@@ -107,8 +107,8 @@ class compileModelData(compileModelDataHelpers):
             else:
                 # Collected the training data.
                 allRawFeatureTimesHolders, allRawFeatureHolders, allRawFeatureIntervals, allRawFeatureIntervalTimes, \
-                    allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, subjectOrder, \
-                    experimentalOrder, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
+                    allAlignedFeatureTimes, allAlignedFeatureHolder, allAlignedFeatureIntervals, allAlignedFeatureIntervalTimes, \
+                    subjectOrder, experimentalOrder, allFinalLabels, featureLabelTypes, surveyQuestions, surveyAnswersList, surveyAnswerTimes \
                     = metaAnalysisProtocol.trainingProtocolInterface(streamingOrder, biomarkerFeatureOrder, featureAverageWindows, biomarkerFeatureNames, plotTrainingData, metaTraining=True)
 
                 # Compile experimental information.
@@ -122,6 +122,9 @@ class compileModelData(compileModelDataHelpers):
                                                                     activityNames, activityLabels]}
                 self.saveCompiledInfo(data_to_store_Full, compiledModelFinalName + self.fullAnalysisSuffix)
                 self.saveCompiledInfo(data_to_store, compiledModelFinalName)
+
+            print(len(allAlignedFeatureIntervals))
+            print(len(allAlignedFeatureIntervals[0]))
 
             # Organize all the metadata analyses.
             metaSubjectOrder.append(subjectOrder)

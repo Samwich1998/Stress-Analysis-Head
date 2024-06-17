@@ -323,7 +323,7 @@ class compileModelDataHelpers:
         """
         Purpose: Remove bad experiments from the data list.
         --------------------------------------------
-        allSignalData : A list of size (batchSize, numSignals, sequenceLength)
+        allSignalData : A list of size (batchSize, sequenceLength, numSignals)
         allLabels : A 2D numpy array of size (batchSize, numLabels)
         subjectInds : A 1D numpy array of size (batchSize,)
         """
@@ -333,7 +333,7 @@ class compileModelDataHelpers:
 
         # For each set of signals.
         for dataInd in range(len(allSignalData)):
-            signalData = np.asarray(allSignalData[dataInd])
+            signalData = np.asarray(allSignalData[dataInd]).T
             numSignals, sequenceLength = signalData.shape
 
             # Assert that the signal is long enough.
@@ -354,7 +354,7 @@ class compileModelDataHelpers:
         """
         # Initialize data holders.
         goodFeatureInds = set(np.arange(0, len(featureNames)))
-        assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), "Feature names do not match data dimensions."
+        assert len(allSignalData) == 0 or len(featureNames) == len(allSignalData[0]), f"Feature names do not match data dimensions. {len(featureNames)} != {len(allSignalData[0])}"
 
         # For each set of signals.
         for batchInd in range(len(allSignalData)):

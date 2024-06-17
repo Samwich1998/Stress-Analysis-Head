@@ -188,14 +188,14 @@ class trainingProtocols(extractData):
                 # Calculate the raw feature intervals
                 newRawFeatureIntervalTimes, newRawFeatureIntervals = self.organizeRawFeatureIntervals(startExperimentTime, startSurveyTime, rawFeatureTimesHolder, rawFeatureHolder)
 
-                # Check the features.
-                if newRawFeatureIntervalTimes is None:
-                    badExperimentalInds.append(experimentInd)
-                    continue
-
                 # Calculate the aligned feature intervals
                 modelFeatureTimeBuffer = self.modelParameters.getTimeWindows()[-1] + self.modelParameters.getShiftInfo(submodel='maxShift') - 5
                 alignedFeatureIntervals, alignedFeatureIntervalTimes = self.readData.compileModelFeatures(alignedFeatureTimes, alignedFeatures, startSurveyTime - modelFeatureTimeBuffer, startSurveyTime)
+
+                # Check the features.
+                if newRawFeatureIntervalTimes is None or alignedFeatureIntervals is None:
+                    badExperimentalInds.append(experimentInd)
+                    continue
 
                 # Save the interval information
                 allAlignedFeatureIntervalTimes.append(alignedFeatureIntervalTimes)
@@ -203,6 +203,7 @@ class trainingProtocols(extractData):
                 allAlignedFeatureIntervals.append(alignedFeatureIntervals)
                 experimentalOrder.append(experimentNames[experimentInd])
                 allRawFeatureIntervals.append(newRawFeatureIntervals)
+                print(len(alignedFeatureIntervals))
 
                 if metaTraining:
                     subjectOrder.append(int(re.search(r'\d+', excelFileName).group()))
@@ -296,7 +297,7 @@ class trainingProtocols(extractData):
         # For each biomarker during that trial
         for biomarkerInd in range(len(rawFeatureHolder)):
             rawFeatureTimes = rawFeatureTimesHolder[biomarkerInd]
-            rawFeatures = np.array(rawFeatureHolder[biomarkerInd]).T
+            rawFeatures = np.array(rawFeatureHolder[biomarkerInd])
             # rawFeatures dim: numTimePoints, numBiomarkerFeatures
             # rawFeatureTimes dim: numTimePoints
 

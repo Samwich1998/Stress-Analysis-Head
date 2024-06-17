@@ -14,6 +14,9 @@ class eogProtocol(globalProtocol):
     def __init__(self, numPointsPerBatch=3000, moveDataFinger=10, channelIndices=2, plottingClass=None, readData=None, voltageRange=(0, 3.3)):
         # Filter parameters.
         self.cutOffFreq = [.5, 15]  # Optimal LPF Cutoff in Literature is 6-8 or 20 Hz (Max 35 or 50); I Found 20 Hz was the Best, but can go to 15 if noisy (small amplitude cutoff)
+        if voltageRange[0] is None:
+            print("No Voltage Range Given; Defaulting to 0-3.3 Volts")
+            voltageRange = [0, 3.3]
 
         # Blink Parameters
         self.voltageRange = voltageRange  # The Voltage Range of the System; Units: Volts

@@ -24,13 +24,13 @@ from helperFiles.dataAcquisitionAndAnalysis.metadataAnalysis.caseInterface impor
 
 class compileModelData(compileModelDataHelpers):
 
-    def __init__(self, submodel, userInputParams, accelerator=None):
+    def __init__(self, submodel, userInputParams, useTherapyData, accelerator=None):
         super().__init__(submodel, userInputParams, accelerator)
         # Initialize relevant classes.
         self.compileModelInfo = compileModelInfo()
 
         # Get the data folder.
-        self.trainingFolder = "/../../../" + self.compileModelInfo.getTrainingDataFolder(useTherapyData=True)
+        self.trainingFolder = "/../../../" + self.compileModelInfo.getTrainingDataFolder(useTherapyData=useTherapyData)
 
         # Initialize the metadata interfaces.
         metaDatasetNames = ["wesad", "emognition", "amigos", "dapper", "case"]

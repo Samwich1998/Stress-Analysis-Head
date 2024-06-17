@@ -80,7 +80,7 @@ if __name__ == "__main__":
     fastPass = True
 
     # Initialize the model information classes.
-    modelCompiler = compileModelData(submodel, userInputParams, accelerator)
+    modelCompiler = compileModelData(submodel, userInputParams, useTherapyData=False, accelerator=accelerator)
     modelParameters = modelParameters(userInputParams, accelerator)
     modelInfoClass = compileModelInfo()
 

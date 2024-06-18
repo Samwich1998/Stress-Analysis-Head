@@ -28,8 +28,8 @@ if __name__ == "__main__":
 
     # Protocol switches: only the first true variably executes.
     readDataFromExcel = False  # For SINGLE FILE analysis. Analyze Data from Excel File called 'currentFilename' on Sheet Number 'testSheetNum'
-    streamData = False  # Stream in Data from the Board and Analyze.
-    trainModel = True  # Train Model with ALL Data in 'collectedDataFolder'.
+    streamData = True  # Stream in Data from the Board and Analyze.
+    trainModel = False  # Train Model with ALL Data in 'collectedDataFolder'.
 
     # User options during the run: any number can be true.
     useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
@@ -38,8 +38,8 @@ if __name__ == "__main__":
 
     # Specify the user parameters.
     userName = "Ruixiao".replace(" ", "")
-    trialName = "EEGBinauralBeatsWhiteNoise"
-    date = "2024-06-12"
+    trialName = "EEGBinauralBeats-DurationTest-Gamma"
+    date = "2024-06-17"
 
     # Specify experimental parameters.
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.

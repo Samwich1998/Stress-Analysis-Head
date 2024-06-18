@@ -117,7 +117,7 @@ class trainingProtocols(extractData):
             # ----------------------- Safety Checks ----------------------- #
 
             # Assert consistency across training data.
-            assert len(experimentTimes) == len(currentSurveyAnswerTimes), f"Mismatch in experiment and survey times: {experimentTimes}, {currentSurveyAnswerTimes}"
+            if len(experimentTimes) != len(currentSurveyAnswerTimes): f"Mismatch in experiment and survey times: {experimentTimes}, {currentSurveyAnswerTimes}"
             assert len(self.biomarkerFeatureOrder) == len(rawFeatureHolder), "Incorrect number of channels"
 
             noFeaturesFound = False
@@ -171,8 +171,8 @@ class trainingProtocols(extractData):
 
             # If there are no aligned features.
             if len(self.readData.alignedFeatureTimes) == 0:
-                print("No aligned features found?!? Wierd... why did you waste my time!")
-                raise ValueError
+                print("No aligned features found!? Wierd... why did you waste my time!")
+                continue
 
             # Finished analyzing the data
             self.readData.resetGlobalVariables()

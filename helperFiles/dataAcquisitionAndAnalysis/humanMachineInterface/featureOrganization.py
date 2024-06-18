@@ -124,6 +124,8 @@ class featureOrganization(humanMachineInterface):
             if 10 < len(rawFeatureTimes):  # Check if there are enough points to interpolate.
                 leftAlignedTime = max(leftAlignedTime, rawFeatureTimes[0])
                 rightAlignedTime = min(rightAlignedTime, rawFeatureTimes[-1])
+            else:
+                return None, None
 
         # Check if the time range is valid.
         if np.isinf(rightAlignedTime):

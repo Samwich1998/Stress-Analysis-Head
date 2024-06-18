@@ -58,10 +58,10 @@ class universalMethods:
         return powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized
 
     @staticmethod
-    def standardizeData(data):
+    def standardizeData(data, stdThreshold=0):
         standardDeviation = np.std(data, ddof=1)
 
-        if standardDeviation == 0:
+        if standardDeviation <= stdThreshold:
             return np.zeros_like(data)
 
         return (data - np.mean(data)) / standardDeviation

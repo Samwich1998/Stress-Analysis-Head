@@ -176,7 +176,7 @@ class edaProtocol(globalProtocol):
         # ----------------------- Data Preprocessing ----------------------- #
 
         # Normalize the data
-        standardized_data = self.universalMethods.standardizeData(data)
+        standardized_data = self.universalMethods.standardizeData(data, stdThreshold=1E-20)
         if all(standardized_data == 0):
             return [0 for _ in range(9)]
 

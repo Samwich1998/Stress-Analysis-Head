@@ -307,7 +307,7 @@ if __name__ == "__main__":
         wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFilteringOrders = wesadAnalysisClass.getStreamingInfo()
         # Analyze and save the metadata features
         wesadAnalysisClass.extractFeatures(wesadAllCompiledDatas, wesadSubjectOrder, wesadAllExperimentalTimes, wesadAllExperimentalNames, wesadAllSurveyAnswerTimes, wesadAllSurveyAnswersList, wesadAllContextualInfo,
-                                           wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFilteringOrders, interfaceType='wesad', reanalyzeData=True, showPlots=False, analyzeSequentially=False)
+                                           wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFilteringOrders, interfaceType='wesad', reanalyzeData=True, showPlots=False, analyzeSequentially=True)
 
     if trainingData:
         # Prepare the data to go through the training interface.
@@ -318,4 +318,4 @@ if __name__ == "__main__":
         wesadAllRawFeatureTimesHolders, wesadAllRawFeatureHolders, wesadAllRawFeatureIntervals, wesadAllRawFeatureIntervalTimes, \
             wesadAllAlignedFeatureTimes, wesadAllAlignedFeatureHolder, wesadAllAlignedFeatureIntervals, wesadAllAlignedFeatureIntervalTimes, wesadSubjectOrder, \
             wesadExperimentOrder, wesadActivityNames, wesadActivityLabels, wesadAllFinalLabels, wesadFeatureLabelTypes, wesadSurveyQuestions, wesadSurveyAnswersList, wesadSurveyAnswerTimes \
-            = wesadAnalysisClass.trainingProtocolInterface(wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadFeatureNames, wesadBiomarkerFeatureNames, plotTrainingData, metaTraining=True)
+            = wesadAnalysisClass.trainingProtocolInterface(wesadStreamingOrder, wesadBiomarkerFeatureOrder, wesadFeatureAverageWindows, wesadBiomarkerFeatureNames, plotTrainingData, metaTraining=True)

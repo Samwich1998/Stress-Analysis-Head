@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from .helperMethods.universalProtocols import universalMethods  # Import files with general analysis methods
 from .helperMethods.filteringProtocols import filteringMethods  # Import files with filtering methods
 from .helperMethods.plottingMethods import plottingMethods  # Import files with plotting methods
-from .helperMethods.mneInterface import mneInterface  # Import files with MNE-features methods
 
 
 class globalProtocol(abc.ABC):
@@ -47,7 +46,6 @@ class globalProtocol(abc.ABC):
         # Define general classes to process data.
         self.filteringMethods = filteringMethods()
         self.universalMethods = universalMethods()
-        self.mneInterface = mneInterface()
 
         # If Plotting, Define Class for Plotting Peaks
         if self.plotStreamedData and self.numChannels != 0:

@@ -51,9 +51,6 @@ class edaProtocol(globalProtocol):
         self.lastAnalyzedDataInd[:] = int(self.samplingFreq * maxFeatureTimeWindow)
         self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq * maxFeatureTimeWindow))
 
-        # Set the sampling frequency for the MNE interface
-        self.mneInterface.setSamplingFrequencyParams(self.samplingFreq)
-
     # ----------------------------------------------------------------------- #
     # ------------------------- Data Analysis Begins ------------------------ #
 
@@ -181,7 +178,7 @@ class edaProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(6)]
+            return [0 for _ in range(9)]
 
         # Calculate the derivatives
         firstDerivative = np.gradient(standardized_data, timePoints)
@@ -189,26 +186,33 @@ class edaProtocol(globalProtocol):
         # ----------------------- Features from Data ----------------------- #
 
         # General Shape Parameters
+        signalRange = max(standardized_data) - min(standardized_data)
         standardDeviation = np.std(data, ddof=1)
-        signalRange = max(data) - min(data)
         mean = np.mean(data)
 
         # -------------------- Features from Derivatives ------------------- #
 
         # First derivative features
-        firstDerivativeMean = np.mean(firstDerivative)
         firstDerivativeStdDev = np.std(firstDerivative, ddof=1)
-        firstDerivativePower = scipy.integrate.simpson(firstDerivative ** 2, timePoints) / (timePoints[-1] - timePoints[0])
+        firstDerivativeMean = np.mean(firstDerivative)
+
+        # ------------------- Feature Extraction: Fractal ------------------- #
+
+        # Fractal analysis
+        petrosian_fd = antropy.petrosian_fd(standardized_data, axis=-1)  # Amplitude-invariant. Averages 25 μs.
+        higuchi_fd = antropy.higuchi_fd(standardized_data, kmax=6)  # Amplitude-invariant. Same if standardized or not
+        DFA = antropy.detrended_fluctuation(standardized_data)  # Amplitude-invariant. Same if standardized or not
+        katz_fd = antropy.katz_fd(standardized_data, axis=-1)  # Amplitude-invariant. Same if standardized or not
 
         # ----------------------- Organize Features ------------------------ #
 
         finalFeatures = []
         # Add peak shape parameters
-        finalFeatures.extend([mean, standardDeviation])
-        finalFeatures.extend([signalRange])
-
+        finalFeatures.extend([mean, standardDeviation, signalRange])
         # Add derivative features
-        finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
+        finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev])
+        # Feature Extraction: Fractal
+        finalFeatures.extend([petrosian_fd, higuchi_fd, DFA, katz_fd])
 
         return finalFeatures
 
@@ -219,16 +223,12 @@ class edaProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(10)]
+            return [0 for _ in range(6)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
         powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq)
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
         # Note: we are removing the DC component from the power spectrum density.
-
-        # ------------------- Feature Extraction: MNE ------------------- #
-
-        higuchi_fd, katz_fd, ptp_amp = self.mneInterface.extractFeatures(standardized_data)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
@@ -245,17 +245,10 @@ class edaProtocol(globalProtocol):
 
         # ------------------- Feature Extraction: Fractals ------------------ #
 
-        # Fractal analysis
-        DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
-
         finalFeatures = []
-        # Feature Extraction: MNE
-        finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
         # Feature Extraction: Hjorth
         finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
         # Feature Extraction: Entropy
         finalFeatures.extend([spectral_entropy, perm_entropy])
-        # Feature Extraction: Fractal
-        finalFeatures.extend([DFA])
 
         return finalFeatures

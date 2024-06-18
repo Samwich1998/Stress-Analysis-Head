@@ -42,9 +42,6 @@ class eegProtocol(globalProtocol):
         self.minPointsPerBatch = int(self.samplingFreq * self.featureTimeWindow * 4 / 5)
         self.dataPointBuffer = max(self.dataPointBuffer, int(self.samplingFreq * maxBufferSeconds))  # cutOffFreq = 0.1, use 70 seconds; cutOffFreq = 0.01, use 400 seconds; cutOffFreq = 0.05, use 100 seconds
 
-        # Set the sampling frequency for the MNE interface
-        self.mneInterface.setSamplingFrequencyParams(self.samplingFreq)
-
     # ------------------------- Data Analysis Begins ------------------------ #
 
     def analyzeData(self, dataFinger):
@@ -173,16 +170,12 @@ class eegProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(25)]
+            return [0 for _ in range(26)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
         powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq)
         # powerSpectrumDensityNormalized is amplitude-invariant to the original data UNLIKE powerSpectrumDensity.
         # Note: we are removing the DC component from the power spectrum density.
-
-        # ------------------- Feature Extraction: MNE ------------------- #
-
-        higuchi_fd, katz_fd, ptp_amp = self.mneInterface.extractFeatures(standardized_data)
 
         # ------------------- Feature Extraction: Hjorth ------------------- #
 
@@ -206,7 +199,10 @@ class eegProtocol(globalProtocol):
         # ------------------- Feature Extraction: Fractals ------------------ #
 
         # Fractal analysis
-        DFA = antropy.detrended_fluctuation(data)  # Numba. Same if standardized or not
+        petrosian_fd = antropy.petrosian_fd(standardized_data, axis=-1)  # Amplitude-invariant. Averages 25 μs.
+        higuchi_fd = antropy.higuchi_fd(standardized_data, kmax=6)  # Amplitude-invariant. Same if standardized or not
+        DFA = antropy.detrended_fluctuation(standardized_data)  # Amplitude-invariant. Same if standardized or not
+        katz_fd = antropy.katz_fd(standardized_data, axis=-1)  # Amplitude-invariant. Same if standardized or not
 
         # -------------------- Feature Extraction: Other ------------------- #
 
@@ -219,15 +215,13 @@ class eegProtocol(globalProtocol):
         # ------------------------------------------------------------------ #
 
         finalFeatures = []
-        # Feature Extraction: MNE
-        finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
         # Feature Extraction: Hjorth
         finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
-        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD])
+        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD])
         # Feature Extraction: Entropy
         finalFeatures.extend([spectral_entropy, perm_entropy, svd_entropy])
         # Feature Extraction: Fractal
-        finalFeatures.extend([DFA])
+        finalFeatures.extend([petrosian_fd, higuchi_fd, DFA, katz_fd])
         # Feature Extraction: Other
         finalFeatures.extend([deltaPower, thetaPower, alphaPower, betaPower, gammaPower])
         finalFeatures.extend([muPower, beta1Power, beta2Power, beta3Power, smrPower])

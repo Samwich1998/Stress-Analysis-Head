@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # User options during the run: any number can be true.
     useModelPredictions = False or trainModel  # Apply the learning algorithm to decode the signals.
     plotStreamedData = False  # Graph the data to show incoming signals.
-    useTherapyData = True  # Use the Therapy Data folder for any files.
+    useTherapyData = False  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
     userName = "Ruixiao".replace(" ", "")
@@ -172,30 +172,30 @@ if __name__ == "__main__":
         # exit()
 
         # Standardize data
-        standardizeClass_Features = standardizeData(allFinalFeatures, threshold=0)
-        standardizedFeatures = standardizeClass_Features.standardize(allFinalFeatures)
-        # Standardize labels
-        standardizeClass_Labels = []
-        standardizedLabels = []
-        scoreTransformations = []
-        for modelInd in range(len(performMachineLearning.modelControl.modelClasses)):
-            if modelInd == 2:
-                standardizeClass_Labels.append(standardizeData(allFinalLabels[modelInd], threshold=0))
-                standardizedLabels.append(standardizeClass_Labels[modelInd].standardize(allFinalLabels[modelInd]))
-
-                scoreTransformation = np.diff(standardizedLabels[modelInd]) / np.diff(allFinalLabels[modelInd])
-                scoreTransformations.append(scoreTransformation[~np.isnan(scoreTransformation)][0])
-            else:
-                oddLabels = allFinalLabels[modelInd]  # + (np.mod(allFinalLabels[modelInd],2)==0)
-                standardizeClass_Labels.append(standardizeData(oddLabels, threshold=0))
-                standardizedLabels.append(standardizeClass_Labels[modelInd].standardize(oddLabels))
-
-                scoreTransformation = np.diff(standardizedLabels[modelInd]) / np.diff(oddLabels)
-                scoreTransformations.append(scoreTransformation[~np.isnan(scoreTransformation)][0])
-
-            # Compile information into the model class
-            performMachineLearning.modelControl.modelClasses[modelInd].setStandardizationInfo(featureNames, standardizeClass_Features, standardizeClass_Labels[modelInd])
-        standardizedLabels = np.array(standardizedLabels)
+        # standardizeClass_Features = standardizeData(allFinalFeatures, threshold=0)
+        # standardizedFeatures = standardizeClass_Features.standardize(allFinalFeatures)
+        # # Standardize labels
+        # standardizeClass_Labels = []
+        # standardizedLabels = []
+        # scoreTransformations = []
+        # for modelInd in range(len(performMachineLearning.modelControl.modelClasses)):
+        #     if modelInd == 2:
+        #         standardizeClass_Labels.append(standardizeData(allFinalLabels[modelInd], threshold=0))
+        #         standardizedLabels.append(standardizeClass_Labels[modelInd].standardize(allFinalLabels[modelInd]))
+        #
+        #         scoreTransformation = np.diff(standardizedLabels[modelInd]) / np.diff(allFinalLabels[modelInd])
+        #         scoreTransformations.append(scoreTransformation[~np.isnan(scoreTransformation)][0])
+        #     else:
+        #         oddLabels = allFinalLabels[modelInd]  # + (np.mod(allFinalLabels[modelInd],2)==0)
+        #         standardizeClass_Labels.append(standardizeData(oddLabels, threshold=0))
+        #         standardizedLabels.append(standardizeClass_Labels[modelInd].standardize(oddLabels))
+        #
+        #         scoreTransformation = np.diff(standardizedLabels[modelInd]) / np.diff(oddLabels)
+        #         scoreTransformations.append(scoreTransformation[~np.isnan(scoreTransformation)][0])
+        #
+        #     # Compile information into the model class
+        #     performMachineLearning.modelControl.modelClasses[modelInd].setStandardizationInfo(featureNames, standardizeClass_Features, standardizeClass_Labels[modelInd])
+        # standardizedLabels = np.array(standardizedLabels)
 
     # ------------------ Extract Data into this Namespace ------------------ #
 

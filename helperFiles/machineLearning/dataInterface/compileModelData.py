@@ -123,9 +123,6 @@ class compileModelData(compileModelDataHelpers):
                 self.saveCompiledInfo(data_to_store_Full, compiledModelFinalName + self.fullAnalysisSuffix)
                 self.saveCompiledInfo(data_to_store, compiledModelFinalName)
 
-            print(len(allAlignedFeatureIntervals))
-            print(len(allAlignedFeatureIntervals[0]))
-
             # Organize all the metadata analyses.
             metaSubjectOrder.append(subjectOrder)
             metaFeatureNames.append(featureNames)

@@ -207,14 +207,10 @@ if __name__ == "__main__":
         edaReadings = np.array(readData.analysisProtocols['eda'].channelData if readData.analysisProtocols['eda'] is not None else [])
         timePoints = np.array(readData.analysisList[0].timePoints)  # Assuming each analysis has the same time points.
 
-        # Extract raw features
-        eogFeatureTimes, eegFeatureTimes, edaFeatureTimes, tempFeatureTimes = readData.rawFeatureTimesHolder
-        eogFeatures, eegFeatures, edaFeatures, tempFeatures = readData.rawFeatureHolder
-
         # Extract the features
-        alignedFeatures = np.array(readData.alignedFeatures)
-        alignedFeatureTimes = np.array(readData.alignedFeatureTimes)
         alignedFeatureLabels = np.array(readData.alignedFeatureLabels)
+        alignedFeatureTimes = np.array(readData.alignedFeatureTimes)
+        alignedFeatures = np.array(readData.alignedFeatures)
 
         # Extract the feature labels.
         surveyAnswersList = np.array(readData.surveyAnswersList)  # A list of feature labels at each instance.
@@ -226,8 +222,8 @@ if __name__ == "__main__":
         experimentNames = np.array(readData.experimentNames)
 
         # Extract subject information
-        subjectInformationAnswers = np.array(readData.subjectInformationAnswers)
         subjectInformationQuestions = np.array(readData.subjectInformationQuestions)
+        subjectInformationAnswers = np.array(readData.subjectInformationAnswers)
 
         # -------------------------- Save Input data --------------------------- #
 

@@ -186,9 +186,6 @@ class edaProtocol(globalProtocol):
         # Calculate the derivatives
         firstDerivative = np.gradient(standardized_data, timePoints)
 
-        # Get the baseline data
-        baselineX = timePoints - timePoints[0]
-
         # ----------------------- Features from Data ----------------------- #
 
         # General Shape Parameters
@@ -197,15 +194,14 @@ class edaProtocol(globalProtocol):
 
         # Other Parameters
         signalRange = max(data) - min(data)
-        signalArea = scipy.integrate.simpson(data, timePoints) / (baselineX[-1] - baselineX[0])
+        signalArea = scipy.integrate.simpson(data, timePoints) / (timePoints[-1] - timePoints[0])
 
-        # ------------------------------------------------------------------ #  
         # -------------------- Features from Derivatives ------------------- #
 
         # First derivative features
         firstDerivativeMean = np.mean(firstDerivative)
         firstDerivativeStdDev = np.std(firstDerivative, ddof=1)
-        firstDerivativePower = scipy.integrate.simpson(firstDerivative ** 2, timePoints) / (baselineX[-1] - baselineX[0])
+        firstDerivativePower = scipy.integrate.simpson(firstDerivative ** 2, timePoints) / (timePoints[-1] - timePoints[0])
 
         # ----------------------- Organize Features ------------------------ #
 

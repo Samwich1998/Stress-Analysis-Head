@@ -35,12 +35,12 @@ class modelParameters:
         return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
     def getTrainingBatchSize(self, submodel, metaDatasetName):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 86 signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 63 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 138 signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 31 signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 63 signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 194 experiments with 92 signals.
+        # Wesad: Found 32 (out of 32) well-labeled emotions across 61 experiments with 81 signals.
+        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 60 signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 318 experiments with 136 signals.
+        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 24 signals.
+        # Case: Found 2 (out of 2) well-labeled emotions across 1495 experiments with 61 signals.
+        # Collected: Found 30 (out of 30) well-labeled emotions across 177 experiments with 88 signals.
 
         if submodel == "signalEncoder":
             totalMinBatchSize = 16

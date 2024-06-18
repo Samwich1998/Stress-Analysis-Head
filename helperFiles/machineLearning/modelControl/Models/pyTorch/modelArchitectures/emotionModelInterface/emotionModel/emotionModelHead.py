@@ -56,7 +56,7 @@ class emotionModelHead(globalModel):
         self.numBasicEmotions = userInputParams['numBasicEmotions']         # The number of basic emotions (basis states of emotions).
 
         # Tunable encoding parameters.
-        self.numEncodedSignals = 16  # The final number of signals to accept, encoding all signal information.
+        self.numEncodedSignals = 8  # The final number of signals to accept, encoding all signal information.
         self.compressedLength = 64  # The final length of the compressed signal after the autoencoder.
         # Feature parameters (code changes required if you change these!!!)
         self.numCommonSignals = 8    # The number of features from considering all the signals.

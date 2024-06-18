@@ -110,8 +110,8 @@ class emotionPipeline(emotionPipelineHelpers):
                     if submodel == "signalEncoder":
                         if self.accelerator.sync_gradients:
                             # Randomly choose to use an inflated number of signals.
-                            self.maxBatchSignals = 128 if self.datasetName in ["case"] else max(model.maxNumSignals, model.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals)
-                            self.maxBatchSignals = random.choices(population=[model.maxNumSignals, self.maxBatchSignals], weights=[0.6, 0.4], k=1)[0]
+                            maxBatchSignals = max(model.maxNumSignals, model.signalEncoderModel.encodeSignals.positionalEncodingInterface.maxNumEncodedSignals)
+                            self.maxBatchSignals = random.choices(population=[model.maxNumSignals, maxBatchSignals], weights=[0.6, 0.4], k=1)[0]
 
                         # Augment the signals to train an arbitrary sequence length and order.
                         initialSignalData, augmentedSignalData = self.dataInterface.changeNumSignals(signalDatas=(signalData, augmentedSignalData), minNumSignals=model.numEncodedSignals, maxNumSignals=self.maxBatchSignals, alteredDim=1)

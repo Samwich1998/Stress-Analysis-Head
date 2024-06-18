@@ -35,12 +35,12 @@ class modelParameters:
         return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
     def getTrainingBatchSize(self, submodel, metaDatasetName):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 61 experiments with 81 signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 60 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 318 experiments with 136 signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 24 signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1495 experiments with 61 signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 177 experiments with 88 signals.
+        # Wesad: Found 32 (out of 32) well-labeled emotions across 61 experiments with 70 signals.
+        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 55 signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 318 experiments with 120 signals.
+        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 19 signals.
+        # Case: Found 2 (out of 2) well-labeled emotions across 1523 experiments with 49 signals.
+        # Collected: Found 30 (out of 30) well-labeled emotions across 177 experiments with 79 signals.
 
         if submodel == "signalEncoder":
             totalMinBatchSize = 16
@@ -62,30 +62,30 @@ class modelParameters:
         if metaDatasetName in ['wesad']: return minimumBatchSize  # 1 times larger than the smallest dataset.
 
         # Specify the small-medium batch size datasets.
-        if metaDatasetName in ['empatch']: return 2 * minimumBatchSize  # 2.5866 times larger than the smallest dataset.
-        if metaDatasetName in ['amigos']: return 2 * minimumBatchSize  # 2.3733 times larger than the smallest dataset.
+        if metaDatasetName in ['empatch']: return 3 * minimumBatchSize  # 2.9016 times larger than the smallest dataset.
+        if metaDatasetName in ['amigos']: return 5 * minimumBatchSize  # 5.213 times larger than the smallest dataset.
 
         # Specify the medium batch size datasets.
-        if metaDatasetName in ['emognition']: return 5 * minimumBatchSize  # 5.4266 times larger than the smallest dataset.
-        if metaDatasetName in ['dapper']: return 5 * minimumBatchSize  # 4.8533 times larger than the smallest dataset.
+        if metaDatasetName in ['emognition']: return 6 * minimumBatchSize  # 6.672 times larger than the smallest dataset.
+        if metaDatasetName in ['dapper']: return 6 * minimumBatchSize  # 5.967 times larger than the smallest dataset.
 
         # Specify the large batch size datasets.
-        if metaDatasetName in ['case']: return 12 * minimumBatchSize  # 22 times larger than the smallest dataset.
+        if metaDatasetName in ['case']: return 12 * minimumBatchSize  # 24.967 times larger than the smallest dataset.
 
         assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
 
     def getInferenceBatchSize(self, submodel, numSignals):
-        # Wesad: Found 32 (out of 32) well-labeled emotions across 75 experiments with 86 signals.
-        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 63 signals.
-        # Amigos: Found 12 (out of 12) well-labeled emotions across 178 experiments with 138 signals.
-        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 31 signals.
-        # Case: Found 2 (out of 2) well-labeled emotions across 1650 experiments with 63 signals.
-        # Collected: Found 30 (out of 30) well-labeled emotions across 194 experiments with 92 signals.
+        # Wesad: Found 32 (out of 32) well-labeled emotions across 61 experiments with 70 signals.
+        # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 55 signals.
+        # Amigos: Found 12 (out of 12) well-labeled emotions across 318 experiments with 120 signals.
+        # Dapper: Found 12 (out of 12) well-labeled emotions across 364 experiments with 19 signals.
+        # Case: Found 2 (out of 2) well-labeled emotions across 1523 experiments with 49 signals.
+        # Collected: Found 30 (out of 30) well-labeled emotions across 177 experiments with 79 signals.
         # Set the minimum batch size.
-        minimumBatchSize = 16 if self.gpuFlag else 8
+        minimumBatchSize = 32 if self.gpuFlag else 16
 
         if submodel == "signalEncoder":
-            if self.userInputParams['numSigEncodingLayers'] <= 2 and self.userInputParams['numSigLiftedChannels'] <= 48: minimumBatchSize = 16
+            if self.userInputParams['numSigEncodingLayers'] <= 2 and self.userInputParams['numSigLiftedChannels'] <= 16: minimumBatchSize = 64
         elif submodel == "autoencoder":
             minimumBatchSize = 32 if self.userInputParams['deviceListed'].startswith("HPC") else 32
         elif submodel == "emotionPrediction":

@@ -83,6 +83,7 @@ class signalEncoderModules(convolutionalHelpers):
 
         return nn.Sequential(
             # Convolution architecture: feature engineering
+            self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[inChannel, inChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
             self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
         )
 
@@ -90,7 +91,7 @@ class signalEncoderModules(convolutionalHelpers):
         assert inChannel == outChannel, "The number of input and output signals must be equal."
 
         return independentModelCNN(
-            module=self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+            module=self.convolutionalFiltersBlocks(numBlocks=4, numChannels=[1, 1], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
             useCheckpoint=False,
         )
 
@@ -156,7 +157,7 @@ class signalEncoderModules(convolutionalHelpers):
     def heuristicEncoding(self, inChannel=1, outChannel=2):
         return nn.Sequential(
             # Convolution architecture: heuristic operator.
-            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=1, dilations=1, groups=1, strides=1, convType='conv1D', activationType='none', numLayers=None, addBias=False),
+            self.convolutionalFiltersBlocks(numBlocks=1, numChannels=[inChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
             self.convolutionalFiltersBlocks(numBlocks=3, numChannels=[outChannel, outChannel], kernel_sizes=3, dilations=1, groups=1, strides=1, convType='conv1D', activationType='boundedExp_0_2', numLayers=None, addBias=False),
         )
 

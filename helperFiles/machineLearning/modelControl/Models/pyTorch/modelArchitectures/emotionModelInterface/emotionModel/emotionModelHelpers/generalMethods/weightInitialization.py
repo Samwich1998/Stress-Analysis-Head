@@ -16,7 +16,7 @@ class weightInitialization:
         # Extract the linearity of the layer.
         layerInformation = layerType.split("_")
         linearity = layerInformation[0]
-        normalizationGain = 0.75
+        normalizationGain = 1.0
 
         # Assert the validity of the input parameters.
         assert linearity in ['conv1D', 'fc', 'pointwise'], "I have not considered this layer's initialization strategy yet."

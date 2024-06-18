@@ -34,7 +34,7 @@ class modelParameters:
 
         return self.generalMethods.biased_high_sample(*addingNoiseRange, randomValue=random.uniform(a=0, b=1)), addingNoiseRange
 
-    def getTrainingBatchSize(self, submodel, metaDatasetName):
+    def getTrainingBatchSize(self, submodel, metaDatasetName, numExperiments):
         # Wesad: Found 32 (out of 32) well-labeled emotions across 61 experiments with 70 signals.
         # Emognition: Found 12 (out of 12) well-labeled emotions across 407 experiments with 55 signals.
         # Amigos: Found 12 (out of 12) well-labeled emotions across 318 experiments with 120 signals.
@@ -58,21 +58,11 @@ class modelParameters:
         assert totalMinBatchSize % gradientAccumulation == 0, "The total batch size must be divisible by the gradient accumulation steps."
         assert gradientAccumulation <= totalMinBatchSize, "The gradient accumulation steps must be less than the total batch size."
 
-        # Specify the small batch size datasets.
-        if metaDatasetName in ['wesad']: return minimumBatchSize  # 1 times larger than the smallest dataset.
+        # Adjust the batch size based on the total size.
+        batchSize = int(minimumBatchSize * numExperiments / 61)
+        batchSize = min(batchSize, numExperiments)
 
-        # Specify the small-medium batch size datasets.
-        if metaDatasetName in ['empatch']: return 3 * minimumBatchSize  # 2.9016 times larger than the smallest dataset.
-        if metaDatasetName in ['amigos']: return 5 * minimumBatchSize  # 5.213 times larger than the smallest dataset.
-
-        # Specify the medium batch size datasets.
-        if metaDatasetName in ['emognition']: return 6 * minimumBatchSize  # 6.672 times larger than the smallest dataset.
-        if metaDatasetName in ['dapper']: return 6 * minimumBatchSize  # 5.967 times larger than the smallest dataset.
-
-        # Specify the large batch size datasets.
-        if metaDatasetName in ['case']: return 12 * minimumBatchSize  # 24.967 times larger than the smallest dataset.
-
-        assert False, f"Dataset {metaDatasetName} not found for submodel {submodel}."
+        return batchSize
 
     def getInferenceBatchSize(self, submodel, numSignals):
         # Wesad: Found 32 (out of 32) well-labeled emotions across 61 experiments with 70 signals.

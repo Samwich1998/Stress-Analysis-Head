@@ -47,7 +47,7 @@ class bandPassFilter:
             Output filtered signal.
         """
         # If no data to filter, return data
-        if cutoffFreq == None:
+        if cutoffFreq is None:
             return data
 
         nyq = 0.5 * samplingFreq

@@ -181,7 +181,7 @@ class edaProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(7)]
+            return [0 for _ in range(6)]
 
         # Calculate the derivatives
         firstDerivative = np.gradient(standardized_data, timePoints)
@@ -190,11 +190,8 @@ class edaProtocol(globalProtocol):
 
         # General Shape Parameters
         standardDeviation = np.std(data, ddof=1)
-        mean = np.mean(data)
-
-        # Other Parameters
         signalRange = max(data) - min(data)
-        signalArea = scipy.integrate.simpson(data, timePoints) / (timePoints[-1] - timePoints[0])
+        mean = np.mean(data)
 
         # -------------------- Features from Derivatives ------------------- #
 
@@ -208,7 +205,7 @@ class edaProtocol(globalProtocol):
         finalFeatures = []
         # Add peak shape parameters
         finalFeatures.extend([mean, standardDeviation])
-        finalFeatures.extend([signalRange, signalArea])
+        finalFeatures.extend([signalRange])
 
         # Add derivative features
         finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
@@ -222,7 +219,7 @@ class edaProtocol(globalProtocol):
         # Normalize the data
         standardized_data = self.universalMethods.standardizeData(data)
         if all(standardized_data == 0):
-            return [0 for _ in range(14)]
+            return [0 for _ in range(10)]
 
         # Calculate the power spectral density (PSD) of the signal. USE NORMALIZED DATA
         powerSpectrumDensityFreqs, powerSpectrumDensity, powerSpectrumDensityNormalized = self.universalMethods.calculatePSD(standardized_data, self.samplingFreq)
@@ -237,7 +234,6 @@ class edaProtocol(globalProtocol):
 
         # Calculate the hjorth parameters
         hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance, secondDerivVariance = self.universalMethods.hjorthParameters(timePoints, data, firstDeriv=None, secondDeriv=None, standardized_data=standardized_data)
-        hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD, secondDerivVariancePSD = self.universalMethods.hjorthParameters(powerSpectrumDensityFreqs, powerSpectrumDensityNormalized, firstDeriv=None, secondDeriv=None, standardized_data=powerSpectrumDensityNormalized)
 
         # ------------------- Feature Extraction: Entropy ------------------ #
 
@@ -257,7 +253,6 @@ class edaProtocol(globalProtocol):
         finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
         # Feature Extraction: Hjorth
         finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
-        finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD])
         # Feature Extraction: Entropy
         finalFeatures.extend([spectral_entropy, perm_entropy])
         # Feature Extraction: Fractal

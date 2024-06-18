@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------- #
 # ---------------------------- Imported Modules ---------------------------- #
-
+import antropy
 # Basic Modules
 import scipy
 import numpy as np
@@ -291,67 +291,58 @@ class ecgProtocol(globalProtocol):
         return timePoints[PIndex], timePoints[QIndex], R, timePoints[SIndex], QRSWave, timePoints[P0Index]
     '''
 
-    def extractPeakFeatures(self, timePoints, data, firstDer, secondDer, Q, R, S, QRSWave):
+    @staticmethod
+    def extractPeakFeatures(timePoints, data, Q, R, S, QRSWave):
         # TODO: T not done, P needs improvement
-        finalFeatures = []
 
-        # PIndex = np.where(timePoints == P)[0][0] # P NOT IMPLEMENTED
+        # Find the indices of the Q, R, and S points, and the start and end of the QRS wave
         QIndex = np.where(timePoints == Q)[0][0]
         RIndex = np.where(timePoints == R)[0][0]
         SIndex = np.where(timePoints == S)[0][0]
         QRS0Index = np.where(timePoints == QRSWave[0])[0][0]
         QRS1Index = np.where(timePoints == QRSWave[1])[0][0]
-        # TIndex = np.where(timePoints == T)[0][0] # T NOT IMPLEMENTED
 
-        # Wave Time Durations
-        QRSWaveLength = QRSWave[1] - QRSWave[0]
-        QLength = Q - QRSWave[0]
-        SLength = QRSWave[1] - S
+        # Calculate durations related to the QRS complex
+        QRSWaveLength = QRSWave[1] - QRSWave[0]  # Duration of the QRS wave
+        QLength = Q - QRSWave[0]  # Duration from start of QRS wave to Q point
+        SLength = QRSWave[1] - S  # Duration from S point to end of QRS wave
+        PreRWavePeakTime = R - QRSWave[0]  # Time from start of QRS wave to R peak
+        PostRWavePeakTime = QRSWave[1] - R  # Time from R peak to end of QRS wave
+        PRbaseline = np.mean(data[:QRS0Index])  # Baseline value before QRS wave
 
-        PreRWavePeakTime = R - QRSWave[0]
-        PostRWavePeakTime = QRSWave[1] - R
-        PRbaseline = np.mean(data[:QRS0Index])
-
-        finalFeatures.extend([QRSWaveLength, QLength, SLength, PreRWavePeakTime, PostRWavePeakTime])
-        # QRS Wave Feature Extraction
-
+        # Check if the indices are valid for calculating derivatives
         if (RIndex - QIndex <= 0) or (SIndex - RIndex <= 0):
             return None
 
-        QRDer = np.mean(firstDer[QIndex:RIndex])
-        RSDer = np.mean(firstDer[RIndex:SIndex])
-        QRSWaveDer = np.mean(firstDer[QRS0Index:QRS1Index])
-
+        # Extract QRS wave data and calculate statistical features
         QRSWaveData = data[QRS0Index:QRS1Index]
-        QRSVariance = np.var(QRSWaveData) / (data[RIndex] - PRbaseline)
-        QRSWaveSkew = scipy.stats.skew(QRSWaveData)
-        QRSWaveKurt = scipy.stats.kurtosis(QRSWaveData)
+        QRSVariance = np.var(QRSWaveData) / (data[RIndex] - PRbaseline)  # Variance normalized by peak height
+        QRSWaveSkew = scipy.stats.skew(QRSWaveData)  # Skewness of QRS wave data
+        QRSWaveKurt = scipy.stats.kurtosis(QRSWaveData)  # Kurtosis of QRS wave data
+        netDirectionQRS = np.trapz([pt - PRbaseline for pt in QRSWaveData])  # Net direction of QRS wave
 
-        # net direction is amplitude specific but used in literature
-        netDirectionQRS = np.trapz([pt - PRbaseline for pt in QRSWaveData])
-
+        # Find data points above and below the baseline within the QRS wave
         QRSWaveData_above_baseline = np.where(QRSWaveData > PRbaseline)[0]
         QRSWaveData_below_baseline = np.where(QRSWaveData < PRbaseline)[0]
-        QData_below_baseline = np.where(data[QRS0Index:RIndex] < QRS0Index)[0]
-        SData_below_baseline = np.where(data[RIndex:QRS1Index] < QRS1Index)[0]
 
-        # divided by height of peak to normalize
+        # Calculate the areas above and below the baseline, normalized by peak height
         areaAbove = np.trapz(QRSWaveData_above_baseline - PRbaseline) / (data[RIndex] - PRbaseline)
         areaBelow = np.trapz(QRSWaveData_below_baseline - PRbaseline) / (data[RIndex] - PRbaseline)
 
-        QAreaBelow = np.trapz(QData_below_baseline - PRbaseline) / (data[RIndex] - PRbaseline)
-        SAreaBelow = np.trapz(SData_below_baseline - PRbaseline) / (data[RIndex] - PRbaseline)
-
-        if areaBelow == 0 or QAreaBelow == 0 or SAreaBelow == 0:
+        # Check if the area below the baseline is zero to avoid division by zero
+        if areaBelow == 0:
             return None
-        else:
-            ratioDirectionQRS = np.abs(areaAbove / areaBelow)
-            ratioQSArea = np.abs(QAreaBelow / SAreaBelow)
 
-        finalFeatures.extend([QRDer, RSDer, QRSWaveDer, QRSVariance, QRSWaveSkew, QRSWaveKurt,
-                              netDirectionQRS])
+        # Add additional statistical features: median and entropy
+        entropy = antropy.perm_entropy(data, order=3, delay=1, normalize=True)  # Permutation entropy of the ECG data
+        ratioDirectionQRS = np.abs(areaAbove / areaBelow)  # Ratio of areas above and below the baseline
+        median = np.median(data)  # Median of the ECG data
 
-        finalFeatures.extend([QAreaBelow, SAreaBelow, ratioDirectionQRS, ratioQSArea])
+        finalFeatures = []
+        # Append new features to the final features list
+        finalFeatures.extend([QRSVariance, QRSWaveSkew, QRSWaveKurt, netDirectionQRS, ratioDirectionQRS])
+        finalFeatures.extend([QRSWaveLength, QLength, SLength, PreRWavePeakTime, PostRWavePeakTime])
+        finalFeatures.extend([median, entropy])
 
         return finalFeatures
 
@@ -423,7 +414,7 @@ class ecgProtocol(globalProtocol):
                                         firstDer[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)], secondDer[peak - int(self.samplingFreq * 0.25): peak + int(self.samplingFreq * 0.5)])
             if PQRST != None:
                 Q, R, S, QRSWave = PQRST
-                features = self.extractPeakFeatures(timePoints, data, firstDer, secondDer, Q, R, S, QRSWave)
+                features = self.extractPeakFeatures(timePoints, data, Q, R, S, QRSWave)
                 if features != None:
                     finalFeatures.append(features)
                     featureTimes.append(timePoints[peak])

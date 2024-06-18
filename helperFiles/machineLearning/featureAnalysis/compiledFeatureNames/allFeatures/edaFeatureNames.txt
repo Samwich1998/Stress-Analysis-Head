@@ -1,7 +1,7 @@
 finalFeatures = []
 # Add peak shape parameters
 finalFeatures.extend([mean, standardDeviation])
-finalFeatures.extend([signalRange, signalArea])
+finalFeatures.extend([signalRange])
 
 # Add derivative features
 finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativePower])
@@ -10,7 +10,6 @@ finalFeatures.extend([firstDerivativeMean, firstDerivativeStdDev, firstDerivativ
 finalFeatures.extend([higuchi_fd, katz_fd, ptp_amp])
 # Feature Extraction: Hjorth
 finalFeatures.extend([hjorthActivity, hjorthMobility, hjorthComplexity, firstDerivVariance])
-finalFeatures.extend([hjorthActivityPSD, hjorthMobilityPSD, hjorthComplexityPSD, firstDerivVariancePSD])
 # Feature Extraction: Entropy
 finalFeatures.extend([spectral_entropy, perm_entropy])
 # Feature Extraction: Fractal

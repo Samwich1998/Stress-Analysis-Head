@@ -189,7 +189,7 @@ class trainingProtocols(extractData):
                 newRawFeatureIntervalTimes, newRawFeatureIntervals = self.organizeRawFeatureIntervals(startExperimentTime, startSurveyTime, rawFeatureTimesHolder, rawFeatureHolder)
 
                 # Calculate the aligned feature intervals
-                modelFeatureTimeBuffer = self.modelParameters.getTimeWindows()[-1] + self.modelParameters.getShiftInfo(submodel='maxShift') - 5
+                modelFeatureTimeBuffer = max(300, self.modelParameters.getTimeWindows()[-1] + self.modelParameters.getShiftInfo(submodel='maxShift') - 5)
                 alignedFeatureIntervals, alignedFeatureIntervalTimes = self.readData.compileModelFeatures(alignedFeatureTimes, alignedFeatures, startSurveyTime - modelFeatureTimeBuffer, startSurveyTime)
 
                 # Check the features.
@@ -203,7 +203,6 @@ class trainingProtocols(extractData):
                 allAlignedFeatureIntervals.append(alignedFeatureIntervals)
                 experimentalOrder.append(experimentNames[experimentInd])
                 allRawFeatureIntervals.append(newRawFeatureIntervals)
-                print(len(alignedFeatureIntervals))
 
                 if metaTraining:
                     subjectOrder.append(int(re.search(r'\d+', excelFileName).group()))

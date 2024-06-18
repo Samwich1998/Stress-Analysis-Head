@@ -121,7 +121,7 @@ class featureOrganization(humanMachineInterface):
             rawFeatureTimes = self.rawFeatureTimesHolder[biomarkerInd]
 
             # Update the min/max times.
-            if len(rawFeatureTimes) != 0:
+            if 10 < len(rawFeatureTimes):  # Check if there are enough points to interpolate.
                 leftAlignedTime = max(leftAlignedTime, rawFeatureTimes[0])
                 rightAlignedTime = min(rightAlignedTime, rawFeatureTimes[-1])
 

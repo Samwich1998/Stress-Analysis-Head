@@ -116,7 +116,7 @@ class compileModelInfo:
     def extractFinalLabels(self, surveyAnswersList, finalLabels=()):
         assert len(surveyAnswersList[0]) == self.numSurveyQuestions
         # Configure the input variables to numpy.
-        surveyAnswersList = torch.as_tensor(surveyAnswersList)
+        surveyAnswersList = np.asarray(surveyAnswersList)
         # Create holder for final labels
         if len(finalLabels) == 0:
             finalLabels = [[] for _ in range(len(self.predictionOrder))]

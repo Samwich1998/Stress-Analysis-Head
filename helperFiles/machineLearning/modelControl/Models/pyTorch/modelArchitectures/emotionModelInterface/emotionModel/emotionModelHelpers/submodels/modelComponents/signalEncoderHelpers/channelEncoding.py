@@ -35,6 +35,10 @@ class channelEncoding(signalEncoderModules):
         self.compressedLiftingLayers = nn.ModuleList([])
         self.expandedLiftingLayers = nn.ModuleList([])
 
+        # Initialize the post-processing layer.
+        self.compressedPostProcessingLayers = nn.ModuleList([])
+        self.expandedPostProcessingLayers = nn.ModuleList([])
+
         # For each encoder model.
         for modelInd in range(self.numSigEncodingLayers):
             self.addModelBlock()  # Add a block to build up the model.
@@ -53,8 +57,8 @@ class channelEncoding(signalEncoderModules):
 
     def addModelBlock(self):
         # Create the spectral convolution layers.
-        compressedNeuralOperatorLayer, compressedLiftingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numExpandedSignals, numFinalChannels=self.numCompressedSignals)
-        expandedNeuralOperatorLayer, expandedLiftingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numCompressedSignals, numFinalChannels=self.numExpandedSignals)
+        compressedNeuralOperatorLayer, compressedLiftingLayers, compressedPostProcessingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numExpandedSignals, numFinalChannels=self.numCompressedSignals)
+        expandedNeuralOperatorLayer, expandedLiftingLayers, expandedPostProcessingLayers = self.initializeNeuralLayer(numLiftedChannels=self.numSigLiftedChannels, numInitialChannels=self.numCompressedSignals, numFinalChannels=self.numExpandedSignals)
 
         # Create the spectral convolution layers.
         self.compressedNeuralOperatorLayers.append(compressedNeuralOperatorLayer)
@@ -64,27 +68,33 @@ class channelEncoding(signalEncoderModules):
         self.compressedLiftingLayers.append(compressedLiftingLayers)
         self.expandedLiftingLayers.append(expandedLiftingLayers)
 
+        # Create the post-processing layers.
+        self.compressedPostProcessingLayers.append(compressedPostProcessingLayers)
+        self.expandedPostProcessingLayers.append(expandedPostProcessingLayers)
+
     def initializeNeuralLayer(self, numLiftedChannels, numInitialChannels, numFinalChannels):
         # Create the spectral convolution layers.
         liftingLayers = self.liftingOperatorLayer(inChannel=numInitialChannels, outChannel=numLiftedChannels)
         neuralOperatorLayers = waveletNeuralOperatorLayer(numInputSignals=numLiftedChannels, numOutputSignals=numLiftedChannels, sequenceBounds=self.sequenceBounds, numDecompositions=self.numDecompositions, waveletType=self.waveletType,
                                                           mode=self.mode, addBiasTerm=False, smoothingKernelSize=0, activationMethod=self.activationMethod, encodeLowFrequencyProtocol='lowFreq',
-                                                          encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='none')
+                                                          encodeHighFrequencyProtocol='highFreq', useConvolutionFlag=True, independentChannels=False, skipConnectionProtocol='singleCNN')
 
-        return neuralOperatorLayers, liftingLayers
+        postProcessingLayer = self.postProcessingLayer(inChannel=numLiftedChannels)
+
+        return neuralOperatorLayers, liftingLayers, postProcessingLayer
 
     # ---------------------------------------------------------------------- #
     # ----------------------- Signal Encoding Methods ---------------------- #
 
     def compressionAlgorithm(self, inputData):
         return self.applyChannelEncoding(inputData, self.heuristicCompressionModel, self.liftingCompressionModel, self.compressedNeuralOperatorLayers,
-                                         self.compressedLiftingLayers, self.projectingCompressionModel, self.finalCompressionModel)
+                                         self.compressedLiftingLayers, self.compressedPostProcessingLayers, self.projectingCompressionModel, self.finalCompressionModel)
 
     def expansionAlgorithm(self, inputData):
         return self.applyChannelEncoding(inputData, self.heuristicExpansionModel, self.liftingExpansionModel, self.expandedNeuralOperatorLayers,
-                                         self.expandedLiftingLayers, self.projectingExpansionModel, self.finalExpansionModel)
+                                         self.expandedLiftingLayers, self.expandedPostProcessingLayers, self.projectingExpansionModel, self.finalExpansionModel)
 
-    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, liftingLayers, projectingModel, finalChannelModel):
+    def applyChannelEncoding(self, inputData, heuristicModel, liftingModel, neuralOperatorLayers, liftingLayers, postProcessingLayeys, projectingModel, finalChannelModel):
         # Learn the initial signal.
         processedData = liftingModel(inputData)
         # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
@@ -95,6 +105,9 @@ class channelEncoding(signalEncoderModules):
             liftedLayerData = checkpoint(liftingLayers[modelInd], inputData, use_reentrant=False)  # Apply the lifting operator to maintain self-attention.
             processedData = checkpoint(neuralOperatorLayers[modelInd], processedData, liftedLayerData, use_reentrant=False)
             # processedData dimension: batchSize, numSigLiftedChannels, signalDimension
+
+            # Apply the post-processing layer.
+            processedData = checkpoint(postProcessingLayeys[modelInd], processedData, use_reentrant=False)
 
         # Learn the final signal.
         processedData = projectingModel(processedData)

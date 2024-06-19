@@ -90,7 +90,7 @@ class emotionPipeline(emotionPipelineHelpers):
 
                     # Randomly choose to add noise to the model.
                     if self.accelerator.sync_gradients:
-                        self.calculateFullLoss = random.random() < 0.8 and not constrainedTraining
+                        self.calculateFullLoss = random.random() < 0.5 and not constrainedTraining
                         self.addingNoiseFlag = random.random() < 0.5 and not constrainedTraining
 
                     # Randomly choose to add noise to the model.
@@ -145,9 +145,9 @@ class emotionPipeline(emotionPipelineHelpers):
                         finalLoss = compressionFactor * signalReconstructedLoss
 
                         # Compile the loss into one value
-                        if 0.25 < encodedSignalMinMaxLoss:
+                        if 0.3 < encodedSignalMinMaxLoss:
                             finalLoss = finalLoss + 0.1*encodedSignalMinMaxLoss
-                        if 0.01 < signalEncodingTrainingLayerLoss:
+                        if 0.1 < signalEncodingTrainingLayerLoss:
                             finalLoss = finalLoss + 0.25*signalEncodingTrainingLayerLoss
                         if 0.1 < encodedSignalMeanLoss:
                             finalLoss = finalLoss + encodedSignalMeanLoss

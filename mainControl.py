@@ -38,8 +38,8 @@ if __name__ == "__main__":
 
     # Specify the user parameters.
     userName = "Ruixiao".replace(" ", "")
-    trialName = "EEGBinauralBeats-DurationTest-Gamma"
-    date = "2024-06-17"
+    trialName = "EEGBinauralBeats-DurationTest-HighAlpha"
+    date = "2024-06-18"
 
     # Specify experimental parameters.
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.

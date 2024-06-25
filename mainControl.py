@@ -37,9 +37,9 @@ if __name__ == "__main__":
     useTherapyData = True  # Use the Therapy Data folder for any files.
 
     # Specify the user parameters.
-    userName = "Kexin".replace(" ", "")
-    trialName = "EEGBinauralBeats-DurationTest-HighAlpha"
-    date = "2024-06-19"
+    userName = "Peng".replace(" ", "")
+    trialName = "EEGBinauralBeats-DurationTest-HighAlpha-Distraction"
+    date = "2024-06-25"
 
     # Specify experimental parameters.
     boardSerialNum = '12ba4cb61c85ec11bc01fc2b19c2d21c'  # Board's Serial Number (port.serial_number). Only used if streaming data, else it gets reset to None.

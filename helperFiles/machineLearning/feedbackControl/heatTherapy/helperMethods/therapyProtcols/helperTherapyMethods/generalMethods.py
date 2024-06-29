@@ -55,11 +55,13 @@ class generalMethods:
 
         # Calculate the probability matrix.
         for initialDataPoints in initialData:
-            currentUserTemp, currentUserLoss = initialDataPoints
+            currentUserTemp = initialDataPoints[0] # within loop: torch.Size([1, 1])
+            currentUserLoss = initialDataPoints[1:4] # within loop: torch.Size([3, 1. 1])
 
             if applyGaussianFilter:
                 # Generate a delta function probability.
                 tempBinIndex = self.dataInterface.getBinIndex(allParameterBins, currentUserTemp)
+                print('allPredictionBins: ', allPredictionBins)
                 lossBinIndex = self.dataInterface.getBinIndex(allPredictionBins, currentUserLoss)
                 probabilityMatrix[tempBinIndex][lossBinIndex] += 1  # map out bins and fill out with discrete values
             else:
@@ -77,3 +79,6 @@ class generalMethods:
         probabilityMatrix = probabilityMatrix / probabilityMatrix.sum()
 
         return probabilityMatrix
+
+
+

@@ -5,8 +5,8 @@ from .generalTherapyProtocol import generalTherapyProtocol
 
 
 class aStarTherapyProtocol(generalTherapyProtocol):
-    def __init__(self, temperatureBounds, simulationParameters, learningRate=5):
-        super().__init__(temperatureBounds, simulationParameters)
+    def __init__(self, initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod, learningRate=5):
+        super().__init__(initialParameterBounds, unNormalizedParameterBinWidths, simulationParameters, therapyMethod)
         # Define update parameters.
         self.gausSTD = np.array([0.05, 2.5])  # The standard deviation for the Gaussian distribution.
         self.learningRate = learningRate  # The learning rate for the therapy.

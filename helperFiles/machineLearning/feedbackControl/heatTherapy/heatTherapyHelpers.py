@@ -17,6 +17,7 @@ class heatTherapyHelpers:
         # Therapy parameters.
         self.therapyProtocol = None
         self.therapyMethod = None
+        self.therapyType = None
 
         # Set up the therapy protocols.
         self.setupTherapyProtocols(therapyMethod)
@@ -28,7 +29,7 @@ class heatTherapyHelpers:
         # Change the therapy method.
         self.therapyMethod = therapyMethod
         if self.therapyMethod == "aStarTherapyProtocol":
-            self.therapyProtocol = aStarTherapyProtocol(self.initialParameterBounds, self.simulationParameters, learningRate=2)
+            self.therapyProtocol = aStarTherapyProtocol(self.initialParameterBounds, self.unNormalizedParameterBinWidths, self.simulationParameters, therapyMethod, learningRate=2)
         elif self.therapyMethod == "basicTherapyProtocol":
             self.therapyProtocol = basicTherapyProtocol(self.initialParameterBounds, self.simulationParameters)
         elif self.therapyMethod == "nnTherapyProtocol":

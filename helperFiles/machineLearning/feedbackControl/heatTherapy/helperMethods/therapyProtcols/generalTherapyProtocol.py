@@ -24,7 +24,7 @@ class generalTherapyProtocol(abc.ABC):
         # Initialize the hard-coded survey information.
         self.compileModelInfoClass = compileModelInfo()  # The class for compiling model information.
         # Get information from the hard-coded survey information.
-        self.predictionBinWidths = self.compileModelInfoClass.standardErrorMeasurements  # using the SEM as the bin width for the losses (PA, NA, SA)
+        self.predictionBinWidths = self.compileModelInfoClass.standardErrorMeasurements  # using the SEM as bin width for the losses (PA, NA, SA)
         self.optimalPredictions = self.compileModelInfoClass.optimalPredictions  # The bounds for the mental health predictions.
         self.predictionWeights = self.compileModelInfoClass.predictionWeights  # The weights for the loss function. [PA, NA, SA]
         self.predictionBounds = self.compileModelInfoClass.predictionBounds  # The bounds for the mental health predictions.
@@ -53,6 +53,8 @@ class generalTherapyProtocol(abc.ABC):
         # Initialize the loss and parameter bins.
         self.allParameterBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.parameterBinWidths)    # Note this is an UNEVEN 2D list. [[parameter]] bin list
         self.allPredictionBins = dataInterface.initializeAllBins(self.modelParameterBounds, self.predictionBinWidths)  # Note this is an UNEVEN 2D list. [[PA], [NA], [SA]] bin list
+        print('allParameterBins: ', self.allParameterBins)
+        print('allPredictionBins: ', self.allPredictionBins)
 
         # Initialize the number of bins for the parameter and loss.
         self.allNumParameterBins = [len(self.allParameterBins[parameterInd]) for parameterInd in range(self.numParameters)]  # Parameter number of Bins in the list
@@ -61,7 +63,7 @@ class generalTherapyProtocol(abc.ABC):
         # Define a helper class for experimental parameters.
         self.simulationProtocols = simulationProtocols(self.allParameterBins, self.allPredictionBins, self.predictionBinWidths, self.modelParameterBounds, self.numPredictions, self.numParameters, self.predictionWeights, self.optimalNormalizedState, simulationParameters)
         self.plottingProtocolsMain = plottingProtocolsMain(self.modelParameterBounds, self.allNumParameterBins, self.parameterBinWidths, self.predictionBounds, self.allNumPredictionBins, self.predictionBinWidths)
-        self.empatchProtocols = empatchProtocols(self.predictionOrder, self.predictionBounds, self.modelParameterBounds, therapyMethod=therapyMethod)
+        #self.empatchProtocols = empatchProtocols(self.predictionOrder, self.predictionBounds, self.modelParameterBounds, therapyMethod=therapyMethod)
         self.dataInterface = dataInterface(self.predictionWeights, self.optimalNormalizedState)
         self.generalMethods = generalMethods()
 
@@ -69,6 +71,7 @@ class generalTherapyProtocol(abc.ABC):
         self.userMentalStatePath = None
         self.paramStatePath = None
         self.timePoints = None
+        self.userMentalStateCompiledLoss = None
         self.resetTherapy()
 
     def resetTherapy(self):
@@ -76,14 +79,14 @@ class generalTherapyProtocol(abc.ABC):
         self.userMentalStatePath = []  # The path of the user's mental state: PA, NA, SA
         self.finishedTherapy = False  # Whether the therapy has finished.
         self.paramStatePath = []  # The path of the therapy parameters: numParameters
-        self.timePoints = []  # The time points for the therapy.
+        self.timePoints = [] # The time points for the therapy.
+        self.userMentalStateCompiledLoss = []  # The compiled loss for the user's mental state.
 
         # Reset the therapy maps.
         self.initializeMaps()
         print('passed here')
 
     # ------------------------ Track User States ------------------------ #
-
     def initializeMaps(self):
         if self.simulateTherapy:
             self.simulationProtocols.initializeSimulatedMaps(self.predictionWeights, self.gausLossSTDs, self.applyGaussianFilter)
@@ -102,71 +105,55 @@ class generalTherapyProtocol(abc.ABC):
 
     def initializeUserState(self, userName):
         # Get the user information.
-        timePoint, userState = self.getCurrentState()  # userState: (T, PA, NA, SA)
-
+        timePoints, parameters, emptionStates = self.getCurrentState()  # TODO: (double check) dim: numPoints, timePoint: t; emotionStates: (PA, NA, SA); prediction: predict the next state
         # Track the user state and time delay.
-        self.userFullStatePath.append(userState)  # userFullStatePath: (numEpochs, 4=(timePoint, T, PA, NA, SA))
+        self.timePoints.append(timePoints) # TODO: check dimension
+        self.paramStatePath.append(parameters) # TODO: check dimension
+        self.userMentalStatePath.append(emptionStates) # TODO: check dimension
 
         # Calculate the initial user loss.
-        initialUserState = self.dataInterface.compileStates(userState)[-1]
+        compiledLoss = self.dataInterface.calculateCompiledLoss(emptionStates[-1])  # compile the loss state for the current emotion state
+        self.userMentalStateCompiledLoss.append(compiledLoss) # TODO: check dimension
 
-        # Initialize to the current state
-        newUserLoss_simulated, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.simulationProtocols.getSimulatedLoss(initialUserState, newUserTemp=None)  # userState[0] # _dist shape = (11.) probability distributions
-        self.userFullStatePathDistribution.append([userState[0], PA_dist, NA_dist, SA_dist])
 
     def getCurrentState(self):
         if self.simulateTherapy:
             # Simulate a new time point by adding a constant delay factor.
-            lastTimePoint = self.parameterTimepoints[-1][0] if len(self.parameterTimepoints) != 0 else 0
-            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
-            getFirstPoint = self.simulationProtocols.getFirstPoint()
+            currentTime, currentParam, currentPredictions = self.simulationProtocols.getInitialState() #TODO: check starting point, what are them
+            print('passed here')
+            return currentTime, currentParam, currentPredictions
         else:
             # TODO: Implement a method to get the current user state.
             # Simulate a new time.
-            lastTimePoint = self.parameterTimepoints[-1][0] if len(self.parameterTimepoints) != 0 else 0
-            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
-            getFirstPoint = self.simulationProtocols.getFirstPoint()
+            pass
 
         # Returning timePoint, (T, PA, NA, SA)
-        return timePoint, getFirstPoint
 
-    def getNextState(self, newUserTemp):
+    def getNextState(self, newParamValues):
         if self.simulateTherapy:
             # Simulate a new time.
-            lastTimePoint = self.parameterTimepoints[-1][0] if len(self.parameterTimepoints) != 0 else 0
-            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
+            lastTimePoint = self.timePoints[-1][0] if len(self.timePoints) != 0 else 0
+            newTimePoint = self.simulationProtocols.getSimulatedTimes(self.simulationProtocols.initialPoints, lastTimePoint)
+
+            # get the current user state
+            currentParam = self.paramStatePath[-1]
+            currentEmotionStates = self.userMentalStatePath[-1]
 
             # Sample the new loss form a pre-simulated map.
-            newUserLoss, PA, NA, SA, _, _, _ = self.simulationProtocols.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
-            newUserLoss_simulated, newUserLoss_PA_simulated, newUserLoss_NA_simulated, newUserLoss_SA_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated = self.simulationProtocols.getSimulatedLoss(self.userStatePath[-1],
-                                                                                                                                                                                                                     newUserTemp)
+            newUserLoss, PA, NA, SA = self.simulationProtocols.getSimulatedCompiledLoss(currentParam, currentEmotionStates, newParamValues)
+
             # User state update
-            tempIndex = self.dataInterface.getBinIndex(self.allParameterBins, newUserTemp)
-            self.userStatePath.append([newUserTemp, newUserLoss_simulated])
-            self.parameterTimepoints.append((timePoint, tempIndex))
-            self.userFullStatePath.append([newUserTemp, PA, NA, SA])
-            self.userStatePath.append([newUserTemp, newUserLoss])
-            return newUserLoss_simulated, PA_dist_simulated, NA_dist_simulated, SA_dist_simulated
+            self.timePoints.append(newTimePoint)  # TODO: check dimension
+            self.paramStatePath.append(newParamValues)  # TODO: check dimension
+            self.userMentalStatePath.append((PA, NA, SA))  # TODO: check dimension
+            self.userMentalStateCompiledLoss.append(newUserLoss)  # TODO: check dimension
         else:
-            # TODO: Implement a method to get the next user state.
-            # Simulate a new time.
-            lastTimePoint = self.parameterTimepoints[-1][0] if len(self.parameterTimepoints) != 0 else 0
-            timePoint = self.simulationProtocols.getSimulatedTime(lastTimePoint)
-            # Sample the new loss form a pre-simulated map.
-            newUserLoss, PA, NA, SA, PA_dist, NA_dist, SA_dist = self.simulationProtocols.getSimulatedLoss(self.userStatePath[-1], newUserTemp)
-        # Get the bin index for the new parameter.
-        tempIndex = self.dataInterface.getBinIndex(self.allParameterBins, newUserTemp)
-        # Update the user state.
-        self.parameterTimepoints.append((timePoint, tempIndex))
-        self.userFullStatePath.append([newUserTemp, PA, NA, SA])
-        self.userStatePath.append([newUserTemp, newUserLoss])
-        return newUserLoss, PA_dist, NA_dist, SA_dist
-        # return newUserLoss, PA, NA, SA
+            pass
 
     def checkConvergence(self, maxIterations):
         # Check if the therapy has converged.
         if maxIterations is not None:
-            if len(self.userStatePath) >= maxIterations:
+            if len(self.userMentalStatePath) >= maxIterations:
                 self.finishedTherapy = True
         else:
             # TODO: Implement a convergence check. Maybe based on stagnant loss.

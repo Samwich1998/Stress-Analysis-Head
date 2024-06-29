@@ -68,6 +68,7 @@ class compileModelInfo:
         # Compile the standard error of measurements in the correct order.
         self.standardErrorMeasurements = [self.standardErrorMeasurementPA, self.standardErrorMeasurementNA, self.standardErrorMeasurementSTAI]
 
+
     def assertValidTherapyMethod(self, therapyMethod):
         assert therapyMethod in self.therapyNames, f"Invalid therapy method: {therapyMethod}"
 

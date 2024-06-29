@@ -121,7 +121,7 @@ class heatTherapyControl(heatTherapyHelpers):
 
 if __name__ == "__main__":
     # User parameters.
-    userTherapyMethod = "hmmTherapyProtocol"  # The therapy algorithm to run. Options: "aStarTherapyProtocol", "basicTherapyProtocol", "nnTherapyProtocol", "hmmTherapyProtocol"
+    userTherapyMethod = "aStarTherapyProtocol"  # The therapy algorithm to run. Options: "aStarTherapyProtocol", "basicTherapyProtocol", "nnTherapyProtocol", "hmmTherapyProtocol"
     testingUserName = "Squirtle"  # The username for the therapy.
     temperatureBounds = (35, 50)  # The temperature bounds for the therapy.
     temperatureBinWidth = 5  # The temperature bounds for the therapy.
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         'simulatedMapType': 'uniformSampling',  # The method for generating the simulated map. Options: 'uniformSampling', 'linearSampling', 'parabolicSampling'
         'numSimulationHeuristicSamples': 50,  # The number of simulation samples to generate.
         'numSimulationTrueSamples': 30,  # The number of simulation samples to generate.
-        'simulateTherapy': False,  # Whether to simulate the therapy.
+        'simulateTherapy': True,  # Whether to simulate the therapy.
     }
 
     # Initialize the therapy protocol

@@ -8,20 +8,25 @@ class dataInterface:
         # General parameters
         self.optimalNormalizedState = optimalNormalizedState
         self.predictionWeights = predictionWeights
+        self.numPredictions = 3 # PA, NA, SA
+        self.numParameters = 1 # 1 for heat therapy, predicting 1 temperature
+        self.singleBatch = 1 # numTrue sample processed in a single batch (with all the same weights and other parameters)
 
     def calculateCompiledLoss(self, initialMentalStates):
         """ initialStates: numPoints, (PA, NA, SA); 2D array"""
-        initialMentalStates = torch.as_tensor(initialMentalStates)
-
-        print(initialMentalStates.size(), self.optimalNormalizedState.size(), self.predictionWeights.size())
+        initialMentalStates = torch.as_tensor(initialMentalStates) # dim = numPoints, (PA, NA, SA), 1, 1; torch.Size([30, 3, 1, 1])
+        predictionWeights_tensor = torch.as_tensor(self.predictionWeights)
+        predictionWeights_tensor = predictionWeights_tensor.view(self.singleBatch, self.numPredictions, 1, 1) # dim = 1, 3, 1, 1; torch.Size([1, 3, 1, 1])
+        self.optimalNormalizedState = self.optimalNormalizedState.view(self.singleBatch, self.numPredictions, 1, 1) # dim = 1, 3, 1, 1; torch.Size([1, 3, 1, 1])
+        # print the sizes for perdictionWeights and optimalNormalizedState and initialMentalStates
 
         # Calculate the compiled loss.
-        compiledLoss = self.predictionWeights * (initialMentalStates - self.optimalNormalizedState).pow(2) # weighted MSE
-        compiledLoss = compiledLoss.sum(dim=1)
-        # compiledLoss dimension: numPoints
+        compiledLoss = predictionWeights_tensor * (initialMentalStates - self.optimalNormalizedState).pow(2) # weighted MSE; torch.Size([30, 3, 1, 1])
+
+        compiledLoss = compiledLoss.sum(dim=1) # dim = numPoints, 1, 1; torch.Size([30, 1, 1])
 
         # Normalize the loss values.
-        compiledLoss = compiledLoss / self.predictionWeights.sum()
+        compiledLoss = compiledLoss / compiledLoss.sum() # dim = numPoints, 1, 1; torch.Size([30, 1, 1])
         # compiledLoss dimension: numPoints
 
         return compiledLoss
@@ -33,6 +38,7 @@ class dataInterface:
 
         # Multidimensional interface.
         if allParameterBounds.ndim == 1:
+            assert len(allParameterBounds) == 2, f"Parameter bounds must be a list of length 2, found {allParameterBounds}"
             assert len(allParameterBounds) == 2, f"Parameter bounds must be a list of length 2, found {allParameterBounds}"
             initialLowerBounds, initialUpperBounds = allParameterBounds
         else:
@@ -70,10 +76,12 @@ class dataInterface:
     @staticmethod
     def getBinIndex(allBins, binValue):
         # Ensure allBins is a PyTorch tensor
-        allBins = torch.as_tensor(allBins, dtype=torch.float32)
-        binValue = torch.as_tensor([binValue])
+        allBins = torch.as_tensor(allBins, dtype=torch.float32) # torch.Size([1, 4])
+        binValue = torch.as_tensor([binValue]) # torch.Size([1])
 
         # Find the index where binValue should be inserted
+        # ensure dimension matches
+        allBins = allBins.squeeze() # torch.Size([4])
         binIndex = torch.searchsorted(allBins, binValue, right=True).item()
         binIndex = min(binIndex, len(allBins) - 1)
 

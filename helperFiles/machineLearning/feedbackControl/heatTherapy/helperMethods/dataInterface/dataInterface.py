@@ -76,7 +76,7 @@ class dataInterface:
     @staticmethod
     def getBinIndex(allBins, binValue):
         # Ensure allBins is a PyTorch tensor
-        allBins = torch.as_tensor(allBins, dtype=torch.float32) # torch.Size([1, 4])
+        allBins = torch.as_tensor(allBins, dtype=torch.float32) # torch.Size([1, 4]) # TODO: torch.as_tensor requires a rectangular array. Uneven 2D array needs to be padded before continue
         binValue = torch.as_tensor([binValue]) # torch.Size([1])
 
         # Find the index where binValue should be inserted

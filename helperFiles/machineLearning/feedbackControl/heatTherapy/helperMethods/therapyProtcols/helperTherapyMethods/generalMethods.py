@@ -27,9 +27,9 @@ class generalMethods:
         return gaussianArray
 
     @staticmethod
-    def createGaussianMap(allParameterBins, allPredictionBins, gausMean, gausSTD):
+    def createGaussianMap(allParameterBins, predictionBins, gausMean, gausSTD):
         # Generate a grid for Gaussian distribution calculations
-        x, y = torch.meshgrid(allPredictionBins, allParameterBins)
+        x, y = torch.meshgrid(predictionBins, allParameterBins)
 
         # Calculate Gaussian distribution values across the grid
         gaussMatrix = torch.exp(-0.5 * ((x - gausMean[0]) ** 2 / gausSTD[0] ** 2 + (y - gausMean[1]) ** 2 / gausSTD[1] ** 2))
@@ -37,8 +37,13 @@ class generalMethods:
 
         return gaussMatrix
 
+    @staticmethod
+    def separateUneven2DArray(inputArray, index):
+        return inputArray[index]
+
     def getProbabilityMatrix(self, initialData, allParameterBins, allPredictionBins, gausSTD, noise=0.0, applyGaussianFilter=True):
         probabilityMatrix = []
+
         # For each input parameter.
         for parameterInd in range(len(allParameterBins)):
             parameterBins = allParameterBins[parameterInd]
@@ -52,6 +57,9 @@ class generalMethods:
                 probabilityMatrix.append(torch.zeros(len(parameterBins), len(predictionBins)))
 
         probabilityMatrix = [torch.zeros((len(allParameterBins), len(allPredictionBins[predictionInd]))) for predictionInd in range(len(allPredictionBins))]
+        prob_matrix_PA = probabilityMatrix[0]
+        prob_matrix_NA = probabilityMatrix[1]
+        prob_matrix_SA = probabilityMatrix[2]
 
         # Calculate the probability matrix.
         for initialDataPoints in initialData:
@@ -61,22 +69,51 @@ class generalMethods:
             if applyGaussianFilter:
                 # Generate a delta function probability.
                 tempBinIndex = self.dataInterface.getBinIndex(allParameterBins, currentUserTemp)
-                print('allPredictionBins: ', allPredictionBins)
-                lossBinIndex = self.dataInterface.getBinIndex(allPredictionBins, currentUserLoss)
-                probabilityMatrix[tempBinIndex][lossBinIndex] += 1  # map out bins and fill out with discrete values
+                #print('allPredictionBins: ', allPredictionBins)
+                # separate out uneven 2D arrays
+                PA_list_separated = generalMethods.separateUneven2DArray(allPredictionBins, 0)
+                NA_list_separated = generalMethods.separateUneven2DArray(allPredictionBins, 1)
+                SA_list_separated = generalMethods.separateUneven2DArray(allPredictionBins, 2)
+
+                lossBinIndex_PA = self.dataInterface.getBinIndex(PA_list_separated, currentUserLoss)
+                lossBinIndex_NA = self.dataInterface.getBinIndex(NA_list_separated, currentUserLoss)
+                lossBinIndex_SA = self.dataInterface.getBinIndex(SA_list_separated, currentUserLoss)
+                prob_matrix_PA[tempBinIndex][lossBinIndex_PA] += 1  # map out bins and fill out with discrete values
+                prob_matrix_NA[tempBinIndex][lossBinIndex_NA] += 1  # map out bins and fill out with discrete values
+                prob_matrix_SA[tempBinIndex][lossBinIndex_SA] += 1  # map out bins and fill out with discrete values
             else:
+                # separate out uneven 2D arrays
+                PA_list_separated = generalMethods.separateUneven2DArray(allPredictionBins, 0)
+                NA_list_separated = generalMethods.separateUneven2DArray(allPredictionBins, 1)
+                SA_list_separated = generalMethods.separateUneven2DArray(allPredictionBins, 2)
                 # Generate 2D gaussian matrix.
-                gaussianMatrix = self.createGaussianMap(allParameterBins, allPredictionBins, gausMean=(currentUserLoss, currentUserTemp), gausSTD=gausSTD)
-                probabilityMatrix += gaussianMatrix  # Add the gaussian map to the matrix
+                gaussianMatrix_PA = self.createGaussianMap(allParameterBins, PA_list_separated, gausMean=(currentUserLoss, currentUserTemp), gausSTD=gausSTD)
+                gaussianMatrix_NA = self.createGaussianMap(allParameterBins, NA_list_separated, gausMean=(currentUserLoss, currentUserTemp), gausSTD=gausSTD)
+                gaussianMatrix_SA = self.createGaussianMap(allParameterBins, SA_list_separated, gausMean=(currentUserLoss, currentUserTemp), gausSTD=gausSTD)
+                prob_matrix_PA += gaussianMatrix_PA  # Add the gaussian map to the matrix
+                prob_matrix_NA += gaussianMatrix_NA  # Add the gaussian map to the matrix
+                prob_matrix_SA += gaussianMatrix_SA  # Add the gaussian map to the matrix
 
         if applyGaussianFilter:
             # Smoothen the probability matrix.
-            probabilityMatrix = self.smoothenArray(probabilityMatrix, sigma=gausSTD[::-1])
+            prob_matrix_PA = self.smoothenArray(prob_matrix_PA, sigma=gausSTD[::-1])
+            prob_matrix_NA = self.smoothenArray(prob_matrix_NA, sigma=gausSTD[::-1])
+            prob_matrix_SA = self.smoothenArray(prob_matrix_SA, sigma=gausSTD[::-1])
 
         # Normalize the probability matrix.
-        probabilityMatrix += noise * torch.randn(*probabilityMatrix.size())  # Add random noise
-        probabilityMatrix = torch.clamp(probabilityMatrix, min=0, max=None)  # Ensure no negative probabilities
-        probabilityMatrix = probabilityMatrix / probabilityMatrix.sum()
+        prob_matrix_PA += noise * torch.randn(*prob_matrix_PA.size())  # Add random noise
+        prob_matrix_NA += noise * torch.randn(*prob_matrix_NA.size())  # Add random noise
+        prob_matrix_SA += noise * torch.randn(*prob_matrix_SA.size())  # Add random noise
+        prob_matrix_PA = torch.clamp(prob_matrix_PA, min=0, max=None)  # Ensure no negative probabilities
+        prob_matrix_NA = torch.clamp(prob_matrix_NA, min=0, max=None)  # Ensure no negative probabilities
+        prob_matrix_SA = torch.clamp(prob_matrix_SA, min=0, max=None)  # Ensure no negative probabilities
+
+        prob_matrix_PA = prob_matrix_PA / prob_matrix_PA.sum()
+        prob_matrix_NA = prob_matrix_NA / prob_matrix_NA.sum()
+        prob_matrix_SA = prob_matrix_SA / prob_matrix_SA.sum()
+
+        # TODO: combine three probability matrices
+
 
         return probabilityMatrix
 
